@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = process.env.OPENAI_API_KEY 
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 export async function POST(request: Request) {
   try {
@@ -118,6 +120,10 @@ Respond with ONLY valid JSON in this exact format:
   "gymPlan": { ... },
   "nutritionPlan": { ... }
 }`;
+
+    if (!openai) {
+      return NextResponse.json({ error: "OpenAI client not initialized" }, { status: 500 });
+    }
 
     let completion;
     try {

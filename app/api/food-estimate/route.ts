@@ -18,28 +18,25 @@ export async function POST(request: Request) {
 
     const prompt = `You are a nutrition coach. Analyze the photo and estimate calories, protein, carbs, and fats for the primary food. Use the provided label if helpful: "${label || "unknown"}". Respond with strict JSON matching this schema: {"name":string,"calories":number,"protein":number,"carbs":number,"fats":number}.`;
 
-    const response = await client.responses.create({
+    const response = await client.chat.completions.create({
       model: "gpt-4o-mini",
-      input: [
+      messages: [
         {
           role: "user",
           content: [
-            { type: "input_text", text: prompt },
-            { type: "input_image", image_base64: base64Data },
+            { type: "text", text: prompt },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Data}`,
+              },
+            },
           ],
         },
       ],
     });
 
-    const outputText = response.output
-      ?.map((part) => {
-        if ("content" in part && Array.isArray(part.content)) {
-          return part.content.map((item) => (item.type === "output_text" ? item.text : "")).join(" ");
-        }
-        return "";
-      })
-      .join(" ")
-      .trim();
+    const outputText = response.choices[0]?.message?.content?.trim() || "";
 
     if (!outputText) {
       throw new Error("Model response empty");

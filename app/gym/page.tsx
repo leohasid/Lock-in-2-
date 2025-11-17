@@ -327,7 +327,7 @@ export default function GymPage() {
         setWorkoutPlan((prev) => {
           const dayExercises = prev[selectedDateWorkoutType] || [];
           const updatedExercises = dayExercises.map(ex => {
-            const savedEx = savedData.find((s) => s.id === ex.id);
+            const savedEx = savedData.find((s: any) => s.id === ex.id);
             if (savedEx && savedEx.sets) {
               // Restore sets with completion status
               return {

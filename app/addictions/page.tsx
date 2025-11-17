@@ -241,9 +241,9 @@ export default function AddictionsPage() {
     window.addEventListener("phoneUsageUpdate", handler as EventListener);
 
     // Attempt initial sync if bridge available
-    const bridgeAvailable = !!window.lockedInUsageBridge?.getUsage;
-    if (bridgeAvailable) {
-      Promise.resolve(window.lockedInUsageBridge.getUsage())
+    const usageFn = window.lockedInUsageBridge?.getUsage;
+    if (usageFn) {
+      Promise.resolve(usageFn())
         .then(applySyncedUsage)
         .catch((err) => console.error("Initial phone usage sync failed", err));
     }

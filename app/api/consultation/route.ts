@@ -21,9 +21,9 @@ Frequency: ${context?.frequency || "not provided"}`;
       model: "gpt-4o-mini",
       temperature: 0.7,
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system" as const, content: systemPrompt },
         ...(Array.isArray(messages) ? messages : []).map((msg: { role: string; content: string }) => ({
-          role: msg.role === "assistant" ? "assistant" : "user",
+          role: (msg.role === "assistant" ? "assistant" : "user") as "assistant" | "user",
           content: msg.content,
         })),
       ],
