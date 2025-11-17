@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Onboarding Data</title>
+</head>
+<body>
+    <h1>Clear Onboarding Data</h1>
+    <p>Click the button below to clear onboarding and subscription data:</p>
+    <button onclick="clearData()">Clear Data</button>
+    <script>
+        function clearData() {
+            localStorage.removeItem('onboardingData');
+            localStorage.removeItem('onboardingCompleted');
+            localStorage.removeItem('customGymPlan');
+            localStorage.removeItem('customNutritionPlan');
+            localStorage.removeItem('subscriptionStatus');
+            localStorage.removeItem('subscriptionPlan');
+            localStorage.removeItem('subscriptionDate');
+            alert('Data cleared! You can now go through onboarding again.');
+            window.location.href = '/onboarding';
+        }
+    </script>
+</body>
+</html>
