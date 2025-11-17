@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 export async function POST(request: Request) {
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({ error: "Missing OPENAI_API_KEY" }, { status: 500 });
@@ -18,6 +16,7 @@ export async function POST(request: Request) {
 
     const prompt = `You are a nutrition coach. Analyze the photo and estimate calories, protein, carbs, and fats for the primary food. Use the provided label if helpful: "${label || "unknown"}". Respond with strict JSON matching this schema: {"name":string,"calories":number,"protein":number,"carbs":number,"fats":number}.`;
 
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const response = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [

@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 export async function POST(request: Request) {
   if (!process.env.OPENAI_API_KEY) {
     return NextResponse.json({ error: "Missing OPENAI_API_KEY" }, { status: 500 });
@@ -17,6 +15,7 @@ Goal: ${context?.goal || "unspecified"}
 Equipment: ${context?.equipment || "not provided"}
 Frequency: ${context?.frequency || "not provided"}`;
 
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0.7,

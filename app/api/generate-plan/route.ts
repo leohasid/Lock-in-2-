@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
-const openai = process.env.OPENAI_API_KEY 
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null;
-
 export async function POST(request: Request) {
   try {
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({ error: "Missing OPENAI_API_KEY" }, { status: 500 });
     }
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     let requestData;
     try {
@@ -120,10 +118,6 @@ Respond with ONLY valid JSON in this exact format:
   "gymPlan": { ... },
   "nutritionPlan": { ... }
 }`;
-
-    if (!openai) {
-      return NextResponse.json({ error: "OpenAI client not initialized" }, { status: 500 });
-    }
 
     let completion;
     try {
