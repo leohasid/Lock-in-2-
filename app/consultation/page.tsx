@@ -11,22 +11,10 @@ interface Message {
   content: string;
 }
 
-type ConversationState = 
-  | "greeting"
-  | "choice"
-  | "consultation_goal"
-  | "consultation_equipment"
-  | "consultation_frequency"
-  | "consultation_creating"
-  | "consultation_complete"
-  | "evaluation_analyzing"
-  | "evaluation_complete";
-
 export default function ConsultationPage() {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [conversationState, setConversationState] = useState<ConversationState>("greeting");
   const [consultationData, setConsultationData] = useState({
     goal: "",
     equipment: "",
@@ -225,120 +213,6 @@ export default function ConsultationPage() {
     }
   };
 
-  const analyzeProgress = () => {
-    const workoutData = getWorkoutData();
-    
-    const analysis = `📊 **Progress Evaluation**
-
-Based on your workout data:
-
-**Workout Statistics:**
-• Total workouts completed: ${workoutData.totalWorkouts}
-• Workouts this week: ${workoutData.workoutsThisWeek}
-• Consistency rate: ${workoutData.consistency}%
-
-**Analysis:**
-${workoutData.consistency >= 80 
-  ? "🎉 Excellent consistency! You're maintaining a strong workout routine."
-  : workoutData.consistency >= 60
-  ? "👍 Good progress! You're building a solid habit."
-  : "💪 Keep pushing! Consistency is key to reaching your goals."
-}
-
-${workoutData.workoutsThisWeek >= 4
-  ? "🔥 You're on fire this week! Great job staying active."
-  : workoutData.workoutsThisWeek >= 2
-  ? "📈 You're making progress. Try to increase frequency for better results."
-  : "🎯 Consider increasing your workout frequency to see better results."
-}
-
-**Recommendations:**
-• ${workoutData.workoutsThisWeek < 3 ? "Aim for at least 3-4 workouts per week for optimal results." : "Maintain your current frequency - you're doing great!"}
-• Focus on progressive overload in your exercises
-• Ensure adequate rest and recovery between sessions
-• Track your strength gains to monitor progress
-
-Would you like to create a new plan or continue with your current routine?`;
-
-    const analysisMessage: Message = {
-      id: Date.now().toString(),
-      role: "assistant",
-      content: analysis,
-    };
-    setMessages((prev) => [...prev, analysisMessage]);
-    setConversationState("evaluation_complete");
-  };
-
-  const createWorkoutPlan = () => {
-    const { goal, equipment, frequency } = consultationData;
-    const daysPerWeek = parseInt(frequency.match(/\d+/)?.[0] || "3");
-    
-    const plan = `💪 **Your Personalized Workout Plan**
-
-**Goal:** ${goal}
-**Equipment:** ${equipment}
-**Frequency:** ${daysPerWeek} days per week
-
-**Weekly Schedule:**
-
-${generateWeeklyPlan(daysPerWeek, goal, equipment)}
-
-**Key Principles:**
-• Progressive overload: Gradually increase weight or reps each week
-• Proper form: Focus on technique over weight
-• Rest days: Essential for recovery and growth
-• Nutrition: Support your workouts with adequate protein and calories
-
-**Next Steps:**
-1. Start with the first workout of the week
-2. Track your sets, reps, and weights
-3. Aim to increase intensity each week
-4. Stay consistent with your schedule
-
-Would you like me to explain any exercises or adjust the plan?`;
-
-    const planMessage: Message = {
-      id: Date.now().toString(),
-      role: "assistant",
-      content: plan,
-    };
-    setMessages((prev) => [...prev, planMessage]);
-    setConversationState("consultation_complete");
-  };
-
-  const generateWeeklyPlan = (days: number, goal: string, equipment: string): string => {
-    const plans: { [key: number]: string[] } = {
-      3: [
-        "Day 1: Upper Body (Chest, Shoulders, Triceps)",
-        "Day 2: Lower Body (Legs, Glutes, Calves)",
-        "Day 3: Back & Biceps",
-      ],
-      4: [
-        "Day 1: Upper Body Push (Chest, Shoulders, Triceps)",
-        "Day 2: Lower Body (Legs, Glutes)",
-        "Day 3: Upper Body Pull (Back, Biceps)",
-        "Day 4: Full Body / Cardio",
-      ],
-      5: [
-        "Day 1: Chest & Triceps",
-        "Day 2: Back & Biceps",
-        "Day 3: Legs & Shoulders",
-        "Day 4: Upper Body",
-        "Day 5: Lower Body",
-      ],
-      6: [
-        "Day 1: Chest",
-        "Day 2: Back",
-        "Day 3: Shoulders",
-        "Day 4: Legs",
-        "Day 5: Arms",
-        "Day 6: Cardio / Active Recovery",
-      ],
-    };
-
-    const selectedPlan = plans[days] || plans[3];
-    return selectedPlan.map((day, i) => `${i + 1}. ${day}`).join("\n");
-  };
 
   const handleReset = () => {
     setMessages([]);
