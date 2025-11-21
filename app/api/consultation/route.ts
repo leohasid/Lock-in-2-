@@ -55,12 +55,40 @@ export async function POST(request: Request) {
       ],
     });
 
-    const reply = completion.choices[0]?.message?.content?.trim()
-      || "I'm here and ready to help whenever you are.";
+    const reply = completion.choices[0]?.message?.content?.trim();
+    
+    if (!reply) {
+      console.error("OpenAI returned empty response");
+      return NextResponse.json({ 
+        error: "AI service returned an empty response. Please try again." 
+      }, { status: 500 });
+    }
 
     return NextResponse.json({ reply });
-  } catch (error) {
-    console.error("Consultation API error", error);
-    return NextResponse.json({ error: "Unable to generate a response." }, { status: 500 });
+  } catch (error: any) {
+    console.error("Consultation API error:", error);
+    
+    // Provide more specific error messages
+    if (error.message?.includes("API key") || error.message?.includes("Invalid API key")) {
+      return NextResponse.json({ 
+        error: "OpenAI API key is missing or invalid. Please check your Vercel environment variables." 
+      }, { status: 500 });
+    }
+    
+    if (error.message?.includes("rate limit") || error.status === 429) {
+      return NextResponse.json({ 
+        error: "Rate limit exceeded. Please try again in a moment." 
+      }, { status: 429 });
+    }
+    
+    if (error.message?.includes("insufficient_quota")) {
+      return NextResponse.json({ 
+        error: "OpenAI account has insufficient quota. Please check your OpenAI account billing." 
+      }, { status: 500 });
+    }
+    
+    return NextResponse.json({ 
+      error: error.message || "Unable to generate a response. Please try again." 
+    }, { status: 500 });
   }
 }

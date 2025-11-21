@@ -95,9 +95,28 @@ export default function ConsultationPage() {
       }
 
       const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
       return data.reply || "I'm here to help! How can I assist you with your fitness journey today?";
     } catch (error: any) {
       console.error("AI consultation error:", error);
+      
+      // Provide helpful error messages
+      if (error.message?.includes("API key") || error.message?.includes("Missing")) {
+        return "⚠️ OpenAI API key is not configured. Please check your Vercel environment variables.";
+      }
+      
+      if (error.message?.includes("rate limit")) {
+        return "⏱️ Rate limit reached. Please wait a moment and try again.";
+      }
+      
+      if (error.message?.includes("quota")) {
+        return "💳 OpenAI account quota exceeded. Please check your OpenAI account billing.";
+      }
+      
       return `I'm having trouble connecting right now. ${error.message ? `Error: ${error.message}` : "Please check your internet connection and try again."}`;
     }
   };
