@@ -40,10 +40,9 @@ export default function ConsultationPage() {
       const greetingMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
-        content: "Hi! How are you? I'm here to help you with your fitness journey. Would you like an evaluation on your progress or a consultation to create a new workout plan?",
+        content: "Hi! I'm your AI fitness coach. I can help you with workout plans, nutrition advice, progress evaluation, and answer any fitness questions. I can also create a new training plan or modify your existing one. What would you like help with today?",
       };
       setMessages([greetingMessage]);
-      setConversationState("choice");
     }
   }, []);
 
@@ -76,7 +75,38 @@ export default function ConsultationPage() {
     };
   };
 
-  const handleSendMessage = () => {
+  const generateAIResponse = async (userMessage: string) => {
+    try {
+      const workoutData = getWorkoutData();
+      const context = {
+        goal: consultationData.goal || "general fitness",
+        equipment: consultationData.equipment || "not specified",
+        frequency: consultationData.frequency || "not specified",
+        workoutStats: workoutData,
+      };
+
+      const response = await fetch("/api/consultation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: messages.map(m => ({ role: m.role, content: m.content })),
+          context,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get AI response");
+      }
+
+      const data = await response.json();
+      return data.reply || "I'm here to help!";
+    } catch (error) {
+      console.error("AI consultation error:", error);
+      return "I'm having trouble connecting right now. Please try again.";
+    }
+  };
+
+  const handleSendMessage = async () => {
     if (!input.trim()) return;
 
     const userMessage: Message = {
@@ -86,12 +116,28 @@ export default function ConsultationPage() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const currentInput = input;
     setInput("");
 
-    // Process user response based on conversation state
-    setTimeout(() => {
-      processUserResponse(input.toLowerCase());
-    }, 500);
+    // Show loading message
+    const loadingMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: "assistant",
+      content: "Thinking...",
+    };
+    setMessages((prev) => [...prev, loadingMessage]);
+
+    // Get AI response
+    const aiResponse = await generateAIResponse(currentInput);
+    
+    // Replace loading message with actual response
+    setMessages((prev) => 
+      prev.map(msg => 
+        msg.id === loadingMessage.id 
+          ? { ...msg, content: aiResponse }
+          : msg
+      )
+    );
   };
 
   const processUserResponse = (userInput: string) => {
