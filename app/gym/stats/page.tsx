@@ -51,15 +51,19 @@ const fallbackPlan: Exercise[] = [
   },
 ];
 
-const CircularProgress = ({ percentage, size = 120, color = "#f97316" }: { percentage: number; size?: number; color?: string }) => {
+const CircularProgress = ({ percentage, size = 120, color = "#f97316", label }: { percentage: number; size?: number; color?: string; label?: string }) => {
   const radius = (size - 20) / 2;
   const circumference = 2 * Math.PI * radius;
   const safePercentage = isNaN(percentage) || !isFinite(percentage) ? 0 : Math.max(0, Math.min(100, percentage));
   const offset = circumference - (safePercentage / 100) * circumference;
 
+  // Dynamic text sizing based on circle size
+  const percentageTextSize = size >= 120 ? "text-xl" : size >= 90 ? "text-lg" : "text-sm";
+  const labelTextSize = size >= 120 ? "text-xs" : "text-[10px]";
+
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="transform -rotate-90">
+      <svg width={size} height={size} className="transform -rotate-90 absolute">
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -81,9 +85,15 @@ const CircularProgress = ({ percentage, size = 120, color = "#f97316" }: { perce
           className="transition-all duration-500"
         />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <div className="text-2xl font-bold text-white">{Math.round(safePercentage)}%</div>
-        <div className="text-xs text-gray-400">complete</div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <div className={`${percentageTextSize} font-bold text-white leading-tight`}>
+          {Math.round(safePercentage)}%
+        </div>
+        {label && (
+          <div className={`${labelTextSize} text-gray-400 leading-tight mt-0.5`}>
+            {label}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -308,59 +318,52 @@ export default function GymStatsPage() {
           </div>
         </div>
 
-        {/* Stats Grid with Circular Progress */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          {/* Volume Delta - Just a number with trend indicator */}
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <div className="flex justify-center mb-2">
-              <CircularProgress
-                percentage={Math.max(volumeDelta, 0)}
-                size={80}
-                color="#f97316"
-              />
-            </div>
-            <p className="text-xl font-bold text-orange-400 mt-2">
+            <TrendingUp className={`w-8 h-8 mx-auto mb-2 ${volumeDelta >= 0 ? "text-green-400" : "text-red-400"}`} />
+            <p className={`text-2xl font-bold ${volumeDelta >= 0 ? "text-green-400" : "text-red-400"}`}>
               {volumeDelta >= 0 ? "+" : ""}
               {volumeDelta}%
             </p>
-            <p className="text-xs text-gray-400">Daily vs avg volume</p>
+            <p className="text-xs text-gray-400">Volume change</p>
+            {volumeDelta > 0 && <p className="text-xs text-green-400 mt-1">📈 Improving</p>}
+            {volumeDelta < 0 && <p className="text-xs text-red-400 mt-1">📉 Declining</p>}
+            {volumeDelta === 0 && <p className="text-xs text-gray-500 mt-1">➡️ Stable</p>}
           </div>
 
+          {/* Heaviest Set - Just a number */}
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <div className="flex justify-center mb-2">
-              <CircularProgress
-                percentage={heaviestSet ? Math.min((heaviestSet / 200) * 100, 100) : 0}
-                size={80}
-                color="#3b82f6"
-              />
-            </div>
-            <p className="text-xl font-bold text-orange-400 mt-2">{heaviestSet} kg</p>
-            <p className="text-xs text-gray-400">Heaviest set logged</p>
+            <Target className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+            <p className="text-2xl font-bold text-blue-400">{heaviestSet} kg</p>
+            <p className="text-xs text-gray-400">Heaviest set</p>
+            {heaviestSet >= 100 && <p className="text-xs text-blue-400 mt-1">💪 Personal best</p>}
           </div>
 
+          {/* Average Set Volume - Just a number */}
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <div className="flex justify-center mb-2">
-              <CircularProgress
-                percentage={Math.min((averageSetVolume / 200) * 100, 100)}
-                size={80}
-                color="#eab308"
-              />
-            </div>
-            <p className="text-xl font-bold text-orange-400 mt-2">
+            <Activity className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
+            <p className="text-2xl font-bold text-yellow-400">
               {averageSetVolume} kg
             </p>
             <p className="text-xs text-gray-400">Avg set volume</p>
+            {averageSetVolume > 0 && <p className="text-xs text-yellow-400 mt-1">📊 {totals.completedSets} sets</p>}
           </div>
 
+          {/* Active Streak - Circular chart makes sense (progress toward goal) */}
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
             <div className="flex justify-center mb-2">
               <CircularProgress
-                percentage={Math.min((activeStreak / 14) * 100, 100)}
-                size={80}
+                percentage={Math.min((activeStreak / 7) * 100, 100)}
+                size={100}
                 color="#22c55e"
               />
             </div>
-            <p className="text-xl font-bold text-orange-400 mt-2">{activeStreak} days</p>
+            <p className="text-xl font-bold text-green-400 mt-2">{activeStreak} days</p>
             <p className="text-xs text-gray-400">Active streak</p>
+            {activeStreak >= 7 && <p className="text-xs text-green-400 mt-1">🔥 Keep it up!</p>}
+            {activeStreak > 0 && activeStreak < 7 && <p className="text-xs text-gray-400 mt-1">Goal: 7 days</p>}
           </div>
         </div>
 
@@ -407,7 +410,7 @@ export default function GymStatsPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <CircularProgress percentage={progress} size={80} color="#f97316" />
+                    <CircularProgress percentage={progress} size={100} color="#f97316" />
                     <div className="flex-1">
                       <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
                         <div
