@@ -216,7 +216,6 @@ export default function ConsultationPage() {
 
   const handleReset = () => {
     setMessages([]);
-    setConversationState("greeting");
     setConsultationData({ goal: "", equipment: "", frequency: "" });
     setInput("");
   };
