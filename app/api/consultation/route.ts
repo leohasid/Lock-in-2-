@@ -46,7 +46,8 @@ export async function POST(request: Request) {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.7,
+      temperature: 0.8, // Higher temperature for more natural, varied responses
+      max_tokens: 1000, // Allow longer, more detailed responses
       messages: [
         { role: "system" as const, content: systemPrompt },
         ...(Array.isArray(messages) ? messages : []).map((msg: { role: string; content: string }) => ({
