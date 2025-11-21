@@ -7,7 +7,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { imageData, label } = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      console.error("Failed to parse request body:", parseError);
+      return NextResponse.json({ error: "Invalid request format. Please ensure the image data is properly formatted." }, { status: 400 });
+    }
+
+    const { imageData, label } = body;
     if (!imageData) {
       return NextResponse.json({ error: "No image data provided" }, { status: 400 });
     }

@@ -208,18 +208,58 @@ export default function NutritionPage() {
     }
   };
 
+  const compressImage = (dataUrl: string, maxWidth: number = 1024, quality: number = 0.8): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL("image/jpeg", quality);
+          resolve(compressed);
+        } else {
+          resolve(dataUrl); // Fallback to original if canvas fails
+        }
+      };
+      img.onerror = () => resolve(dataUrl); // Fallback to original on error
+      img.src = dataUrl;
+    });
+  };
+
   const analyzeFood = async (imageData: string) => {
     setIsAnalyzing(true);
     setAiEstimate(null);
     try {
+      // Compress image before sending to reduce size
+      const compressedImage = await compressImage(imageData, 1024, 0.8);
+      
       const response = await fetch("/api/food-estimate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageData,
+          imageData: compressedImage,
           label: foodToScan || "Unknown meal",
         }),
       });
+
+      // Check if response is JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error("Non-JSON response from API:", text.substring(0, 200));
+        throw new Error("Server returned an invalid response. Please check your API configuration.");
+      }
 
       const data = await response.json();
       if (!response.ok) {
