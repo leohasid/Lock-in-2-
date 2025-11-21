@@ -66,10 +66,17 @@ export default function ConsultationPage() {
   const generateAIResponse = async (userMessage: string) => {
     try {
       const workoutData = getWorkoutData();
+      
+      // Try to extract context from conversation
+      const lastFewMessages = messages.slice(-5).map(m => m.content).join(" ");
+      const extractedGoal = consultationData.goal || (lastFewMessages.match(/goal.*?(?:build|muscle|lose|weight|strength|endurance|cardio)/i)?.[0] || "");
+      const extractedEquipment = consultationData.equipment || (lastFewMessages.match(/(?:gym|dumbbell|barbell|bodyweight|home|equipment)/i)?.[0] || "");
+      const extractedFrequency = consultationData.frequency || (lastFewMessages.match(/\d+\s*(?:day|times|week)/i)?.[0] || "");
+      
       const context = {
-        goal: consultationData.goal || "general fitness",
-        equipment: consultationData.equipment || "not specified",
-        frequency: consultationData.frequency || "not specified",
+        goal: extractedGoal || "general fitness",
+        equipment: extractedEquipment || "not specified",
+        frequency: extractedFrequency || "not specified",
         workoutStats: workoutData,
       };
 
@@ -83,14 +90,15 @@ export default function ConsultationPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to get AI response");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to get AI response");
       }
 
       const data = await response.json();
-      return data.reply || "I'm here to help!";
-    } catch (error) {
+      return data.reply || "I'm here to help! How can I assist you with your fitness journey today?";
+    } catch (error: any) {
       console.error("AI consultation error:", error);
-      return "I'm having trouble connecting right now. Please try again.";
+      return `I'm having trouble connecting right now. ${error.message ? `Error: ${error.message}` : "Please check your internet connection and try again."}`;
     }
   };
 
