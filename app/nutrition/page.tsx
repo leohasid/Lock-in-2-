@@ -223,12 +223,23 @@ export default function NutritionPage() {
 
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || "Unable to analyze food");
+        const errorMsg = data.error || "Unable to analyze food";
+        console.error("Food estimate API error:", errorMsg);
+        alert(errorMsg);
+        setCapturedImage(null);
+        setAiEstimate(null);
+        return;
       }
+      
+      if (!data.estimate) {
+        throw new Error("No estimate data received");
+      }
+      
       setAiEstimate(data.estimate);
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI food analysis failed", error);
-      alert("Unable to analyze this photo right now. Please try again.");
+      const errorMsg = error?.message || "Unable to analyze this photo right now. Please try again.";
+      alert(errorMsg);
       setCapturedImage(null);
       setAiEstimate(null);
     } finally {
