@@ -128,90 +128,6 @@ export default function ConsultationPage() {
     );
   };
 
-  const processUserResponse = (userInput: string) => {
-    let assistantResponse: Message;
-
-    switch (conversationState) {
-      case "choice":
-        if (userInput.includes("evaluation") || userInput.includes("evaluate") || userInput.includes("progress")) {
-          assistantResponse = {
-            id: Date.now().toString(),
-            role: "assistant",
-            content: "Great! I'll analyze your workout data and provide an evaluation of your progress. Let me gather your workout information...",
-          };
-          setMessages((prev) => [...prev, assistantResponse]);
-          setConversationState("evaluation_analyzing");
-          
-          // Analyze after a delay
-          setTimeout(() => {
-            analyzeProgress();
-          }, 2000);
-        } else if (userInput.includes("consultation") || userInput.includes("new plan") || userInput.includes("plan")) {
-          assistantResponse = {
-            id: Date.now().toString(),
-            role: "assistant",
-            content: "Perfect! Let's create a personalized workout plan for you. First, what's your main fitness goal? (e.g., build muscle, lose weight, increase strength, improve endurance)",
-          };
-          setMessages((prev) => [...prev, assistantResponse]);
-          setConversationState("consultation_goal");
-        } else {
-          assistantResponse = {
-            id: Date.now().toString(),
-            role: "assistant",
-            content: "I can help you with either an evaluation of your progress or create a new workout plan. Which would you like?",
-          };
-          setMessages((prev) => [...prev, assistantResponse]);
-        }
-        break;
-
-      case "consultation_goal":
-        setConsultationData((prev) => ({ ...prev, goal: userInput }));
-        assistantResponse = {
-          id: Date.now().toString(),
-          role: "assistant",
-          content: `Got it! Your goal is ${userInput}. Now, what equipment do you have access to? (e.g., full gym, home gym, dumbbells only, bodyweight, resistance bands)`,
-        };
-        setMessages((prev) => [...prev, assistantResponse]);
-        setConversationState("consultation_equipment");
-        break;
-
-      case "consultation_equipment":
-        setConsultationData((prev) => ({ ...prev, equipment: userInput }));
-        assistantResponse = {
-          id: Date.now().toString(),
-          role: "assistant",
-          content: `Perfect! You have access to ${userInput}. How many days per week would you like to train? (e.g., 3 days, 4 days, 5 days, 6 days)`,
-        };
-        setMessages((prev) => [...prev, assistantResponse]);
-        setConversationState("consultation_frequency");
-        break;
-
-      case "consultation_frequency":
-        setConsultationData((prev) => ({ ...prev, frequency: userInput }));
-        assistantResponse = {
-          id: Date.now().toString(),
-          role: "assistant",
-          content: `Excellent! Creating your personalized ${consultationData.goal} workout plan for ${userInput} days per week using ${consultationData.equipment}...`,
-        };
-        setMessages((prev) => [...prev, assistantResponse]);
-        setConversationState("consultation_creating");
-        
-        // Create plan after a delay
-        setTimeout(() => {
-          createWorkoutPlan();
-        }, 2000);
-        break;
-
-      default:
-        assistantResponse = {
-          id: Date.now().toString(),
-          role: "assistant",
-          content: "I'm here to help! Would you like an evaluation on your progress or a consultation to create a new workout plan?",
-        };
-        setMessages((prev) => [...prev, assistantResponse]);
-        setConversationState("choice");
-    }
-  };
 
 
   const handleReset = () => {
@@ -266,32 +182,6 @@ export default function ConsultationPage() {
                 )}
               </div>
             ))}
-            {conversationState === "consultation_creating" && (
-              <div className="flex gap-3 justify-start">
-                <div className="bg-orange-500 text-black rounded-full p-2 w-10 h-10 flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-5 h-5" />
-                </div>
-                <div className="bg-gray-800 text-white rounded-2xl p-4">
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500"></div>
-                    <span className="text-sm">Creating your personalized plan...</span>
-                  </div>
-                </div>
-              </div>
-            )}
-            {conversationState === "evaluation_analyzing" && (
-              <div className="flex gap-3 justify-start">
-                <div className="bg-orange-500 text-black rounded-full p-2 w-10 h-10 flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-5 h-5" />
-                </div>
-                <div className="bg-gray-800 text-white rounded-2xl p-4">
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-500"></div>
-                    <span className="text-sm">Analyzing your workout data...</span>
-                  </div>
-                </div>
-              </div>
-            )}
             <div ref={messagesEndRef} />
           </div>
 
@@ -318,7 +208,7 @@ export default function ConsultationPage() {
                 Send
               </button>
             </div>
-            {(conversationState === "consultation_complete" || conversationState === "evaluation_complete") && (
+            {messages.length > 1 && (
               <button
                 onClick={handleReset}
                 className="mt-3 w-full bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
