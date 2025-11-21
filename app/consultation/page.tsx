@@ -28,7 +28,7 @@ export default function ConsultationPage() {
       const greetingMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
-        content: "Hi! I'm your AI fitness coach. I can help you with workout plans, nutrition advice, progress evaluation, and answer any fitness questions. I can also create a new training plan or modify your existing one. What would you like help with today?",
+        content: "Hey! I'm your AI fitness coach. I'm here to help with anything you need - workout plans, nutrition advice, progress evaluation, exercise questions, or just general fitness chat. I can also create a new training plan or modify your existing one. What's on your mind?",
       };
       setMessages([greetingMessage]);
     }
