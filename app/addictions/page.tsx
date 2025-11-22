@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { Shield, Clock, AlertTriangle, Lock, Unlock, Settings, X } from "lucide-react";
@@ -183,45 +183,25 @@ export default function AddictionsPage() {
     );
   };
 
-  // Update time every second for countdown and check app blocking
+  // Update time every second for countdown
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-      
-      // Periodically check and enforce app blocking
-      setAddictions((prev) =>
-        prev.map((addiction) => {
-          if ("apps" in addiction) {
-            const phoneAddiction = addiction as PhoneAddiction;
-            const updatedApps = phoneAddiction.apps.map((app) => {
-              const shouldBeBlocked = app.currentUsage >= app.dailyLimit;
-              
-              // Enforce blocking if limit reached
-              if (shouldBeBlocked && !app.blocked) {
-                blockAppNative(app.appName, true);
-                return { ...app, blocked: true };
-              }
-              
-              return app;
-            });
-            
-            return {
-              ...phoneAddiction,
-              apps: updatedApps,
-            };
-          }
-          return addiction;
-        })
-      );
     }, 1000);
     return () => clearInterval(timer);
   }, []);
 
 
+  // Check if limits are exceeded and automatically block apps
+  // Use a ref to track if we've already shown notifications to prevent spam
+  const notificationShownRef = useRef<Set<string>>(new Set());
+  const prevUsageRef = useRef<Record<string, number>>({});
+  
   useEffect(() => {
-    // Check if limits are exceeded and automatically block apps
-    setAddictions((prev) =>
-      prev.map((addiction) => {
+    // Only check and update if there are actual changes needed
+    setAddictions((prev) => {
+      let hasChanges = false;
+      const updated = prev.map((addiction) => {
         if ("apps" in addiction) {
           const phoneAddiction = addiction as PhoneAddiction;
           const totalUsage = phoneAddiction.apps.reduce((sum, app) => sum + app.currentUsage, 0);
@@ -231,16 +211,27 @@ export default function AddictionsPage() {
           // Check each app individually and block if limit reached
           const updatedApps = phoneAddiction.apps.map((app) => {
             const shouldBeBlocked = app.currentUsage >= app.dailyLimit;
+            const usageKey = `${phoneAddiction.id}-${app.appName}`;
+            const prevUsage = prevUsageRef.current[usageKey] || 0;
+            
+            // Only update if usage changed or blocking status needs to change
+            const usageChanged = app.currentUsage !== prevUsage;
+            if (usageChanged) {
+              prevUsageRef.current[usageKey] = app.currentUsage;
+            }
             
             // If app should be blocked but isn't, block it now
             if (shouldBeBlocked && !app.blocked) {
+              hasChanges = true;
               blockAppNative(app.appName, true);
               
-              // Show notification for individual app blocking
-              if (Notification.permission === "granted") {
+              // Show notification for individual app blocking (only once)
+              const notificationKey = `blocked-${app.appName}`;
+              if (Notification.permission === "granted" && !notificationShownRef.current.has(notificationKey)) {
                 new Notification(`🚫 ${app.appName} Blocked`, {
                   body: `Daily limit of ${app.dailyLimit} minutes reached!`,
                 });
+                notificationShownRef.current.add(notificationKey);
               }
               
               return { ...app, blocked: true };
@@ -248,19 +239,23 @@ export default function AddictionsPage() {
             
             // If app is blocked but usage is below limit (e.g., new day), unblock it
             if (!shouldBeBlocked && app.blocked) {
+              hasChanges = true;
               blockAppNative(app.appName, false);
+              notificationShownRef.current.delete(`blocked-${app.appName}`);
               return { ...app, blocked: false };
             }
             
             return app;
           });
 
-          // Show warning at 80% usage
-          if (usagePercent >= 80 && usagePercent < 100 && !phoneAddiction.blocked) {
+          // Show warning at 80% usage (only once)
+          const warningKey = `warning-${phoneAddiction.id}`;
+          if (usagePercent >= 80 && usagePercent < 100 && !phoneAddiction.blocked && !notificationShownRef.current.has(warningKey)) {
             if (Notification.permission === "granted") {
               new Notification("⚠️ Phone Usage Warning", {
                 body: `You've used ${Math.round(usagePercent)}% of your daily limit!`,
               });
+              notificationShownRef.current.add(warningKey);
             }
           }
 
@@ -269,6 +264,7 @@ export default function AddictionsPage() {
           const allBlocked = updatedApps.every((app) => app.blocked) || shouldBlockAll;
 
           if (shouldBlockAll && !phoneAddiction.blocked) {
+            hasChanges = true;
             // Block all apps that aren't already blocked
             updatedApps.forEach((app) => {
               if (!app.blocked) {
@@ -276,10 +272,12 @@ export default function AddictionsPage() {
               }
             });
             
-            if (Notification.permission === "granted") {
+            const allBlockedKey = `all-blocked-${phoneAddiction.id}`;
+            if (Notification.permission === "granted" && !notificationShownRef.current.has(allBlockedKey)) {
               new Notification("🚫 Phone Blocked", {
                 body: "Daily limit exceeded! Apps are now blocked.",
               });
+              notificationShownRef.current.add(allBlockedKey);
             }
           }
 
@@ -290,9 +288,12 @@ export default function AddictionsPage() {
           };
         }
         return addiction;
-      })
-    );
-  }, [addictions, currentTime]); // Add currentTime to trigger periodic checks
+      });
+      
+      // Only return updated state if there were actual changes
+      return hasChanges ? updated : prev;
+    });
+  }, [currentTime]); // Only depend on currentTime which updates every second
 
   // Request notification permission on mount
   useEffect(() => {
