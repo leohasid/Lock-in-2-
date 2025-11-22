@@ -259,16 +259,35 @@ export default function GymPage() {
       const workoutStatus = localStorage.getItem(`workout_${todayStr}`);
       const scheduledWorkout = workoutSchedule.find(w => w.date === todayStr);
       
-      // Check if workout was scheduled, not a rest day, not rescheduled, and has no completed exercises
-      if (scheduledWorkout && 
-          scheduledWorkout.workoutName !== "Rest Day" &&
+      // If no workout is scheduled for today, hide the alert
+      if (!scheduledWorkout) {
+        setShowMissedWorkoutAlert(false);
+        setMissedWorkoutDate(null);
+        return;
+      }
+      
+      // Get the workout type for today to check if there are exercises
+      let workoutType: "pushDay" | "pullDay" | "legsDay" | null = null;
+      if (scheduledWorkout.workoutName === "Push Day") {
+        workoutType = "pushDay";
+      } else if (scheduledWorkout.workoutName === "Pull Day") {
+        workoutType = "pullDay";
+      } else if (scheduledWorkout.workoutName === "Legs Day") {
+        workoutType = "legsDay";
+      }
+      
+      const hasExercises = workoutType && workoutPlan[workoutType] && workoutPlan[workoutType].length > 0;
+      
+      // Check if workout was scheduled, not a rest day, has exercises, not rescheduled, and has no completed exercises
+      if (scheduledWorkout.workoutName !== "Rest Day" &&
+          hasExercises &&
           workoutStatus !== "rescheduled" &&
           workoutStatus !== "completed" &&
           !hasCompletedExercises(todayStr)) {
         setMissedWorkoutDate(todayStr);
         setShowMissedWorkoutAlert(true);
       } else {
-        // Workout is completed or doesn't exist, hide alert
+        // No workout scheduled, rest day, no exercises, completed, or doesn't exist - hide alert
         setShowMissedWorkoutAlert(false);
         setMissedWorkoutDate(null);
       }
