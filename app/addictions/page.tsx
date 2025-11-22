@@ -150,19 +150,26 @@ export default function AddictionsPage() {
             );
             if (!match) return app;
             const minutes = Math.max(0, Math.round(match.minutes));
-            // Check if app should be blocked based on usage or native state
+            // Only block if usage has actually reached or exceeded the limit
             const shouldBeBlocked = minutes >= app.dailyLimit;
-            const isBlocked = match.blocked ?? shouldBeBlocked;
             
-            // If app should be blocked, call native blocking
+            // Use native blocked state if available, otherwise determine from usage
+            const isBlocked = match.blocked !== undefined ? match.blocked : shouldBeBlocked;
+            
+            // If app should be blocked based on usage, call native blocking
             if (shouldBeBlocked && !isBlocked) {
               blockAppNative(app.appName, true);
+            }
+            
+            // If app is blocked but usage is below limit (e.g., new day), unblock it
+            if (!shouldBeBlocked && isBlocked) {
+              blockAppNative(app.appName, false);
             }
             
             return {
               ...app,
               currentUsage: minutes,
-              blocked: isBlocked,
+              blocked: shouldBeBlocked, // Only block when usage >= limit
             };
           });
 
@@ -306,25 +313,35 @@ export default function AddictionsPage() {
     setCurrencyInfo(determineCurrency());
   }, []);
 
+  // Sync phone usage data periodically and on events
   useEffect(() => {
     if (typeof window === "undefined") return;
+    
+    const syncPhoneData = () => {
+      const usageFn = window.lockedInUsageBridge?.getUsage;
+      if (usageFn) {
+        Promise.resolve(usageFn())
+          .then(applySyncedUsage)
+          .catch((err) => console.error("Phone usage sync failed", err));
+      }
+    };
+
+    // Event listener for phone usage updates
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<PhoneUsageSnapshot>).detail;
       applySyncedUsage(detail);
     };
+    window.addEventListener("phoneUsageUpdate", handler);
 
-    window.addEventListener("phoneUsageUpdate", handler as EventListener);
+    // Initial sync
+    syncPhoneData();
 
-    // Attempt initial sync if bridge available
-    const usageFn = window.lockedInUsageBridge?.getUsage;
-    if (usageFn) {
-      Promise.resolve(usageFn())
-        .then(applySyncedUsage)
-        .catch((err) => console.error("Initial phone usage sync failed", err));
-    }
+    // Sync every 30 seconds to get latest usage data from phone
+    const syncInterval = setInterval(syncPhoneData, 30000);
 
     return () => {
       window.removeEventListener("phoneUsageUpdate", handler as EventListener);
+      clearInterval(syncInterval);
     };
   }, []);
 
@@ -1083,8 +1100,8 @@ export default function AddictionsPage() {
                                 </span>
                               </div>
                               <div className="flex items-center justify-between mb-1 text-[11px]">
-                                <span className={remaining === 0 ? "text-red-400" : "text-gray-400"}>
-                                  {remaining === 0 ? "Blocked" : `${formatMinutes(remaining)} remaining`}
+                                <span className={app.currentUsage >= app.dailyLimit ? "text-red-400" : "text-gray-400"}>
+                                  {app.currentUsage >= app.dailyLimit ? "Blocked" : `${formatMinutes(remaining)} remaining`}
                                 </span>
                                 <button
                                   onClick={() => toggleAppBlock(addictionId, app.appName)}
