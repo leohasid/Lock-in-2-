@@ -44,6 +44,15 @@ export default function SupportPage() {
   const [newMessageContent, setNewMessageContent] = useState("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showUsernameModal, setShowUsernameModal] = useState(false);
+  const [usernameInput, setUsernameInput] = useState("");
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+
+  const checkUsernameAvailability = (username: string): boolean => {
+    if (!username || username.trim() === "") return false;
+    const users = JSON.parse(localStorage.getItem("users") || "[]");
+    return !users.some((u: { username: string }) => u.username.toLowerCase() === username.toLowerCase());
+  };
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -52,6 +61,9 @@ export default function SupportPage() {
     const userStr = localStorage.getItem("currentUser");
     if (userStr) {
       setCurrentUser(JSON.parse(userStr));
+    } else {
+      // Show username modal if no user exists
+      setShowUsernameModal(true);
     }
 
     // Load posts
@@ -66,6 +78,39 @@ export default function SupportPage() {
       setMessages(JSON.parse(storedMessages));
     }
   }, []);
+
+  const handleSetUsername = () => {
+    if (!usernameInput.trim()) {
+      setUsernameError("Username cannot be empty");
+      return;
+    }
+
+    if (usernameInput.trim().length < 3) {
+      setUsernameError("Username must be at least 3 characters");
+      return;
+    }
+
+    if (!checkUsernameAvailability(usernameInput.trim())) {
+      setUsernameError("Username already taken");
+      return;
+    }
+
+    // Save user
+    const userData: User = {
+      username: usernameInput.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    
+    const users = JSON.parse(localStorage.getItem("users") || "[]");
+    users.push(userData);
+    localStorage.setItem("users", JSON.stringify(users));
+    localStorage.setItem("currentUser", JSON.stringify(userData));
+    
+    setCurrentUser(userData);
+    setShowUsernameModal(false);
+    setUsernameInput("");
+    setUsernameError(null);
+  };
 
   const savePosts = (updatedPosts: Post[]) => {
     localStorage.setItem("communityPosts", JSON.stringify(updatedPosts));
@@ -224,18 +269,6 @@ export default function SupportPage() {
     post.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-400 mb-4">Please complete onboarding to access the community</p>
-          <Link href="/onboarding" className="text-orange-400 hover:text-orange-300">
-            Go to Onboarding
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -412,6 +445,63 @@ export default function SupportPage() {
               />
             ) : null}
           </>
+        )}
+
+        {/* Username Modal - Shows on first visit */}
+        {showUsernameModal && (
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full border border-gray-800">
+              <h2 className="text-2xl font-bold text-white mb-2">Choose Your Username</h2>
+              <p className="text-gray-400 mb-6">
+                This will be your identity in the community. Make it unique!
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <input
+                    type="text"
+                    value={usernameInput}
+                    onChange={(e) => {
+                      const username = e.target.value.trim();
+                      setUsernameInput(e.target.value);
+                      setUsernameError(null);
+                      
+                      // Check availability in real-time
+                      if (username.length >= 3) {
+                        if (!checkUsernameAvailability(username)) {
+                          setUsernameError("Username already taken");
+                        } else {
+                          setUsernameError(null);
+                        }
+                      } else if (username.length > 0) {
+                        setUsernameError("Username must be at least 3 characters");
+                      }
+                    }}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter" && usernameInput.trim() && !usernameError && checkUsernameAvailability(usernameInput.trim())) {
+                        handleSetUsername();
+                      }
+                    }}
+                    placeholder="Enter your username"
+                    className="w-full bg-gray-800 text-white p-4 rounded-lg border-2 border-gray-700 focus:border-orange-500 focus:outline-none"
+                    autoFocus
+                  />
+                  {usernameError && (
+                    <p className="text-red-400 text-sm mt-2">{usernameError}</p>
+                  )}
+                  {usernameInput.trim().length >= 3 && !usernameError && checkUsernameAvailability(usernameInput.trim()) && (
+                    <p className="text-green-400 text-sm mt-2">✓ Username available</p>
+                  )}
+                </div>
+                <button
+                  onClick={handleSetUsername}
+                  disabled={!usernameInput.trim() || !!usernameError || !checkUsernameAvailability(usernameInput.trim())}
+                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-black px-6 py-3 rounded-lg font-semibold transition-colors"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Create Post Modal */}
