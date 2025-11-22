@@ -30,6 +30,7 @@ interface AIGymPlan {
 }
 
 interface OnboardingData {
+  username: string | null;
   fitnessGoal: FitnessGoal | null;
   equipment: Equipment | null;
   height: number | null; // in cm
@@ -54,6 +55,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<OnboardingData>({
+    username: null,
     fitnessGoal: null,
     equipment: null,
     height: null,
@@ -70,6 +72,7 @@ export default function OnboardingPage() {
     otherWeeklySpend: null,
     addictionStartDate: null,
   });
+  const [usernameError, setUsernameError] = useState<string | null>(null);
 
   // Redirect if user is already subscribed (they shouldn't see onboarding)
   useEffect(() => {
@@ -79,19 +82,30 @@ export default function OnboardingPage() {
     }
   }, [router]);
 
+  const checkUsernameAvailability = (username: string): boolean => {
+    if (!username || username.trim() === "") return false;
+    const users = JSON.parse(localStorage.getItem("users") || "[]");
+    return !users.some((u: { username: string }) => u.username.toLowerCase() === username.toLowerCase());
+  };
+
   const getStepInfo = (currentStep: number) => {
-    // Steps 1-6 are always fitness questions
-    if (currentStep <= 6) {
+    // Step 1: Username
+    if (currentStep === 1) {
       return { step: currentStep, isLast: false };
     }
     
-    // Step 7: AI Workout Plan
-    if (currentStep === 7) {
+    // Steps 2-7 are fitness questions
+    if (currentStep >= 2 && currentStep <= 7) {
       return { step: currentStep, isLast: false };
     }
     
-    // Step 8: Macros Plan
+    // Step 8: AI Workout Plan
     if (currentStep === 8) {
+      return { step: currentStep, isLast: false };
+    }
+    
+    // Step 9: Macros Plan
+    if (currentStep === 9) {
       // Check if we have addiction questions
       if (data.wantsToTrackAddictions === null) {
         return { step: currentStep, isLast: false };
@@ -102,40 +116,40 @@ export default function OnboardingPage() {
       return { step: currentStep, isLast: false };
     }
     
-    // Step 9: Track addictions?
-    if (currentStep === 9) {
+    // Step 10: Track addictions?
+    if (currentStep === 10) {
       if (data.wantsToTrackAddictions === false) {
         return { step: currentStep, isLast: true };
       }
       return { step: currentStep, isLast: false };
     }
     
-    // Step 10: Which addictions
-    if (currentStep === 10) {
+    // Step 11: Which addictions
+    if (currentStep === 11) {
       return { step: currentStep, isLast: false };
     }
     
-    // Step 11: Phone limit (only if phone selected)
-    if (currentStep === 11) {
+    // Step 12: Phone limit (only if phone selected)
+    if (currentStep === 12) {
       if (!data.selectedAddictions.includes("phone")) {
         // Skip this step, go to next
-        return getStepInfo(12);
+        return getStepInfo(13);
       }
       const hasSpendStep = data.selectedAddictions.some(a => ["vape", "alcohol", "other"].includes(a));
       return { step: currentStep, isLast: !hasSpendStep && !data.addictionStartDate };
     }
     
-    // Step 12: Weekly spend (only if vape/alcohol/other selected)
-    if (currentStep === 12) {
+    // Step 13: Weekly spend (only if vape/alcohol/other selected)
+    if (currentStep === 13) {
       if (!data.selectedAddictions.some(a => ["vape", "alcohol", "other"].includes(a))) {
         // Skip this step, go to next
-        return getStepInfo(13);
+        return getStepInfo(14);
       }
       return { step: currentStep, isLast: !data.addictionStartDate };
     }
     
-    // Step 13: Start date (always last if tracking addictions)
-    if (currentStep === 13) {
+    // Step 14: Start date (always last if tracking addictions)
+    if (currentStep === 14) {
       return { step: currentStep, isLast: true };
     }
     
@@ -143,25 +157,26 @@ export default function OnboardingPage() {
   };
 
   const getTotalSteps = () => {
-    let total = 6; // Base fitness questions
+    let total = 1; // Step 1: Username
+    total += 6; // Steps 2-7: Base fitness questions
     
-    // AI Plan questions (steps 7-8)
-    total += 1; // Step 7: AI Workout Plan
-    total += 1; // Step 8: Macros Plan
+    // AI Plan questions (steps 8-9)
+    total += 1; // Step 8: AI Workout Plan
+    total += 1; // Step 9: Macros Plan
     
     // Addiction questions
     if (data.wantsToTrackAddictions === true) {
-      total += 1; // Step 9: Track addictions?
-      total += 1; // Step 10: Which addictions
+      total += 1; // Step 10: Track addictions?
+      total += 1; // Step 11: Which addictions
       if (data.selectedAddictions.includes("phone")) {
-        total += 1; // Step 11: Phone limit
+        total += 1; // Step 12: Phone limit
       }
       if (data.selectedAddictions.some(a => ["vape", "alcohol", "other"].includes(a))) {
-        total += 1; // Step 12: Weekly spend
+        total += 1; // Step 13: Weekly spend
       }
-      total += 1; // Step 13: Start date
+      total += 1; // Step 14: Start date
     } else if (data.wantsToTrackAddictions === null) {
-      total += 1; // Step 9: Track addictions? (not answered yet)
+      total += 1; // Step 10: Track addictions? (not answered yet)
     }
     
     return total;
@@ -196,6 +211,18 @@ export default function OnboardingPage() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      // Store user data with username
+      if (data.username) {
+        const userData = {
+          username: data.username,
+          createdAt: new Date().toISOString(),
+        };
+        const users = JSON.parse(localStorage.getItem("users") || "[]");
+        users.push(userData);
+        localStorage.setItem("users", JSON.stringify(users));
+        localStorage.setItem("currentUser", JSON.stringify(userData));
+      }
+      
       // Store onboarding data
       localStorage.setItem("onboardingData", JSON.stringify(data));
       localStorage.setItem("onboardingCompleted", "true");
@@ -474,8 +501,69 @@ export default function OnboardingPage() {
           </p>
         </div>
 
-        {/* Step 1: Fitness Goal */}
+        {/* Step 1: Username */}
         {step === 1 && (
+          <div className="space-y-6">
+            <h1 className="text-3xl font-bold text-center mb-2">
+              Choose Your Username
+            </h1>
+            <p className="text-gray-400 text-center mb-6">
+              This will be your identity in the community. Make it unique!
+            </p>
+            <div className="space-y-4">
+              <div>
+                <input
+                  type="text"
+                  value={data.username || ""}
+                  onChange={(e) => {
+                    const username = e.target.value.trim();
+                    setData((prev) => ({ ...prev, username }));
+                    setUsernameError(null);
+                    
+                    // Check availability in real-time
+                    if (username.length >= 3) {
+                      if (!checkUsernameAvailability(username)) {
+                        setUsernameError("Username already taken");
+                      } else {
+                        setUsernameError(null);
+                      }
+                    } else if (username.length > 0) {
+                      setUsernameError("Username must be at least 3 characters");
+                    }
+                  }}
+                  placeholder="Enter your username"
+                  className="w-full bg-gray-800 text-white p-4 rounded-xl border-2 border-gray-700 focus:border-orange-500 focus:outline-none"
+                />
+                {usernameError && (
+                  <p className="text-red-400 text-sm mt-2">{usernameError}</p>
+                )}
+                {data.username && !usernameError && checkUsernameAvailability(data.username) && (
+                  <p className="text-green-400 text-sm mt-2">✓ Username available</p>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  if (!data.username || data.username.trim().length < 3) {
+                    setUsernameError("Username must be at least 3 characters");
+                    return;
+                  }
+                  if (!checkUsernameAvailability(data.username)) {
+                    setUsernameError("Username already taken");
+                    return;
+                  }
+                  setStep(2);
+                }}
+                disabled={!data.username || !!usernameError || !checkUsernameAvailability(data.username || "")}
+                className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Fitness Goal */}
+        {step === 2 && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold text-center mb-2">
               What&apos;s your fitness goal?
@@ -508,8 +596,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 2: Equipment */}
-        {step === 2 && (
+        {/* Step 3: Equipment */}
+        {step === 3 && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold text-center mb-2">
               What equipment do you have access to?
@@ -543,8 +631,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 3: Height */}
-        {step === 3 && (
+        {/* Step 4: Height */}
+        {step === 4 && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold text-center mb-2">
               How tall are you?
@@ -569,8 +657,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 4: Age */}
-        {step === 4 && (
+        {/* Step 5: Age */}
+        {step === 5 && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold text-center mb-2">
               How old are you?
@@ -595,8 +683,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 5: Weight */}
-        {step === 5 && (
+        {/* Step 6: Weight */}
+        {step === 6 && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold text-center mb-2">
               What&apos;s your current weight?
@@ -621,8 +709,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 6: Aggressiveness */}
-        {step === 6 && (
+        {/* Step 7: Aggressiveness */}
+        {step === 7 && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold text-center mb-2">
               How aggressive do you want to hit your target?
@@ -658,8 +746,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 7: AI Workout Plan */}
-        {step === 7 && (
+        {/* Step 8: AI Workout Plan */}
+        {step === 8 && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold text-center mb-2">
               Want an AI-built workout plan?
@@ -691,8 +779,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 8: Macros Plan */}
-        {step === 8 && (
+        {/* Step 9: Macros Plan */}
+        {step === 9 && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold text-center mb-2">
               Want a personalized macros plan?
@@ -724,8 +812,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 9: Track Addictions? */}
-        {step === 9 && (
+        {/* Step 10: Track Addictions? */}
+        {step === 10 && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold text-center mb-2">
               Do you want to track any addictions?
@@ -763,8 +851,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 10: Which Addictions */}
-        {step === 10 && (
+        {/* Step 11: Which Addictions */}
+        {step === 11 && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold text-center mb-2">
               Which addictions would you like to track?
@@ -804,8 +892,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 11: Phone Daily Limit */}
-        {step === 11 && data.selectedAddictions.includes("phone") && (
+        {/* Step 12: Phone Daily Limit */}
+        {step === 12 && data.selectedAddictions.includes("phone") && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold text-center mb-2">
               What&apos;s your daily phone limit?
@@ -831,8 +919,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 12: Weekly Spend for Vape/Alcohol/Other */}
-        {step === 12 && data.selectedAddictions.some(a => ["vape", "alcohol", "other"].includes(a)) && (
+        {/* Step 13: Weekly Spend for Vape/Alcohol/Other */}
+        {step === 13 && data.selectedAddictions.some(a => ["vape", "alcohol", "other"].includes(a)) && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold text-center mb-2">
               How much do you spend weekly?
@@ -887,8 +975,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 13: Start Date */}
-        {step === 13 && (
+        {/* Step 14: Start Date */}
+        {step === 14 && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold text-center mb-2">
               When did you start your journey?
@@ -947,22 +1035,23 @@ export default function OnboardingPage() {
             onClick={handleNext}
             disabled={
               loading ||
-              (step === 1 && !data.fitnessGoal) ||
-              (step === 2 && !data.equipment) ||
-              (step === 3 && !data.height) ||
-              (step === 4 && !data.age) ||
-              (step === 5 && !data.weight) ||
-              (step === 6 && !data.aggressiveness) ||
-              (step === 7 && data.wantsAIWorkoutPlan === null) ||
-              (step === 8 && data.wantsMacrosPlan === null) ||
-              (step === 9 && data.wantsToTrackAddictions === null) ||
-              (step === 10 && data.selectedAddictions.length === 0) ||
-              (step === 11 && (!data.phoneDailyLimit || data.phoneDailyLimit <= 0)) ||
-              (step === 12 && data.selectedAddictions.some(a => ["vape", "alcohol", "other"].includes(a)) && 
+              (step === 1 && (!data.username || !!usernameError || !checkUsernameAvailability(data.username || ""))) ||
+              (step === 2 && !data.fitnessGoal) ||
+              (step === 3 && !data.equipment) ||
+              (step === 4 && !data.height) ||
+              (step === 5 && !data.age) ||
+              (step === 6 && !data.weight) ||
+              (step === 7 && !data.aggressiveness) ||
+              (step === 8 && data.wantsAIWorkoutPlan === null) ||
+              (step === 9 && data.wantsMacrosPlan === null) ||
+              (step === 10 && data.wantsToTrackAddictions === null) ||
+              (step === 11 && data.selectedAddictions.length === 0) ||
+              (step === 12 && (!data.phoneDailyLimit || data.phoneDailyLimit <= 0)) ||
+              (step === 13 && data.selectedAddictions.some(a => ["vape", "alcohol", "other"].includes(a)) && 
                 ((data.selectedAddictions.includes("vape") && !data.vapeWeeklySpend) ||
                  (data.selectedAddictions.includes("alcohol") && !data.alcoholWeeklySpend) ||
                  (data.selectedAddictions.includes("other") && !data.otherWeeklySpend))) ||
-              (step === 13 && !data.addictionStartDate)
+              (step === 14 && !data.addictionStartDate)
             }
             className="flex-1 p-4 bg-orange-500 text-black rounded-xl font-semibold hover:bg-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
