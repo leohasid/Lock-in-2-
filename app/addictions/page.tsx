@@ -58,6 +58,7 @@ declare global {
   interface Window {
     lockedInUsageBridge?: {
       getUsage?: () => Promise<PhoneUsageSnapshot> | PhoneUsageSnapshot;
+      blockApp?: (appName: string, block: boolean) => Promise<void> | void;
     };
   }
 }
@@ -149,7 +150,15 @@ export default function AddictionsPage() {
             );
             if (!match) return app;
             const minutes = Math.max(0, Math.round(match.minutes));
-            const isBlocked = match.blocked ?? minutes >= app.dailyLimit;
+            // Check if app should be blocked based on usage or native state
+            const shouldBeBlocked = minutes >= app.dailyLimit;
+            const isBlocked = match.blocked ?? shouldBeBlocked;
+            
+            // If app should be blocked, call native blocking
+            if (shouldBeBlocked && !isBlocked) {
+              blockAppNative(app.appName, true);
+            }
+            
             return {
               ...app,
               currentUsage: minutes,
@@ -184,41 +193,80 @@ export default function AddictionsPage() {
 
 
   useEffect(() => {
-    // Check if limits are exceeded and show alerts
-    addictions.forEach((addiction) => {
-      if ("apps" in addiction) {
-        // Phone addiction
-        const phoneAddiction = addiction as PhoneAddiction;
-        const totalUsage = phoneAddiction.apps.reduce((sum, app) => sum + app.currentUsage, 0);
-        const totalLimit = phoneAddiction.totalDailyLimit;
-        const usagePercent = totalLimit > 0 ? (totalUsage / totalLimit) * 100 : 0;
+    // Check if limits are exceeded and automatically block apps
+    setAddictions((prev) =>
+      prev.map((addiction) => {
+        if ("apps" in addiction) {
+          const phoneAddiction = addiction as PhoneAddiction;
+          const totalUsage = phoneAddiction.apps.reduce((sum, app) => sum + app.currentUsage, 0);
+          const totalLimit = phoneAddiction.totalDailyLimit;
+          const usagePercent = totalLimit > 0 ? (totalUsage / totalLimit) * 100 : 0;
 
-        if (usagePercent >= 80 && usagePercent < 100 && !phoneAddiction.blocked) {
-          // Show warning notification
-          if (Notification.permission === "granted") {
-            new Notification("⚠️ Phone Usage Warning", {
-              body: `You've used ${Math.round(usagePercent)}% of your daily limit!`,
-            });
-          }
-        }
+          // Check each app individually and block if limit reached
+          const updatedApps = phoneAddiction.apps.map((app) => {
+            const shouldBeBlocked = app.currentUsage >= app.dailyLimit;
+            
+            // If app should be blocked but isn't, block it now
+            if (shouldBeBlocked && !app.blocked) {
+              blockAppNative(app.appName, true);
+              
+              // Show notification for individual app blocking
+              if (Notification.permission === "granted") {
+                new Notification(`🚫 ${app.appName} Blocked`, {
+                  body: `Daily limit of ${app.dailyLimit} minutes reached!`,
+                });
+              }
+              
+              return { ...app, blocked: true };
+            }
+            
+            // If app is blocked but usage is below limit (e.g., new day), unblock it
+            if (!shouldBeBlocked && app.blocked) {
+              blockAppNative(app.appName, false);
+              return { ...app, blocked: false };
+            }
+            
+            return app;
+          });
 
-        if (usagePercent >= 100 && !phoneAddiction.blocked) {
-          setAddictions((prev) =>
-            prev.map((a) =>
-              a.id === phoneAddiction.id
-                ? { ...a, blocked: true } as PhoneAddiction
-                : a
-            )
-          );
-          if (Notification.permission === "granted") {
-            new Notification("🚫 Phone Blocked", {
-              body: "Daily limit exceeded! Apps are now blocked.",
-            });
+          // Show warning at 80% usage
+          if (usagePercent >= 80 && usagePercent < 100 && !phoneAddiction.blocked) {
+            if (Notification.permission === "granted") {
+              new Notification("⚠️ Phone Usage Warning", {
+                body: `You've used ${Math.round(usagePercent)}% of your daily limit!`,
+              });
+            }
           }
+
+          // Block all if total limit exceeded
+          const shouldBlockAll = usagePercent >= 100;
+          const allBlocked = updatedApps.every((app) => app.blocked) || shouldBlockAll;
+
+          if (shouldBlockAll && !phoneAddiction.blocked) {
+            // Block all apps that aren't already blocked
+            updatedApps.forEach((app) => {
+              if (!app.blocked) {
+                blockAppNative(app.appName, true);
+              }
+            });
+            
+            if (Notification.permission === "granted") {
+              new Notification("🚫 Phone Blocked", {
+                body: "Daily limit exceeded! Apps are now blocked.",
+              });
+            }
+          }
+
+          return {
+            ...phoneAddiction,
+            apps: updatedApps,
+            blocked: allBlocked,
+          };
         }
-      }
-    });
-  }, [addictions]);
+        return addiction;
+      })
+    );
+  }, [addictions, currentTime]); // Add currentTime to trigger periodic checks
 
   // Request notification permission on mount
   useEffect(() => {
@@ -405,16 +453,37 @@ export default function AddictionsPage() {
     );
   };
 
-  const toggleAppBlock = (addictionId: string, appName: string) => {
+  // Call native blocking API if available
+  const blockAppNative = async (appName: string, block: boolean) => {
+    if (typeof window !== "undefined" && window.lockedInUsageBridge) {
+      try {
+        // If there's a native blocking function, call it
+        if (window.lockedInUsageBridge.blockApp) {
+          await window.lockedInUsageBridge.blockApp(appName, block);
+        }
+      } catch (error) {
+        console.error("Failed to block app natively:", error);
+      }
+    }
+  };
+
+  const toggleAppBlock = async (addictionId: string, appName: string) => {
     setAddictions((prev) =>
       prev.map((a) => {
         if (a.id === addictionId && "apps" in a) {
           const phoneAddiction = a as PhoneAddiction;
+          const updatedApps = phoneAddiction.apps.map((app) => {
+            if (app.appName === appName) {
+              const newBlockedState = !app.blocked;
+              // Call native blocking API
+              blockAppNative(appName, newBlockedState);
+              return { ...app, blocked: newBlockedState };
+            }
+            return app;
+          });
           return {
             ...phoneAddiction,
-            apps: phoneAddiction.apps.map((app) =>
-              app.appName === appName ? { ...app, blocked: !app.blocked } : app
-            ),
+            apps: updatedApps,
           };
         }
         return a;
