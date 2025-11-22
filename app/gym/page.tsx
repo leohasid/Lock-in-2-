@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { Dumbbell, Save, TrendingUp, AlertCircle, X, Plus, Trash2 } from "lucide-react";
+import { requestNotificationPermission, registerServiceWorker, showWorkoutReminder } from "@/app/utils/notifications";
 
 interface Exercise {
   id: string;
@@ -64,6 +65,36 @@ export default function GymPage() {
   });
 
   const [isLoaded, setIsLoaded] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
+  const [notificationShown, setNotificationShown] = useState(false);
+
+  // Register service worker and request notification permission on mount
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+
+    const setupNotifications = async () => {
+      // Register service worker
+      await registerServiceWorker();
+      
+      // Request notification permission
+      await requestNotificationPermission();
+      setNotificationPermission(Notification.permission);
+    };
+
+    setupNotifications();
+    
+    // Update permission status if it changes
+    const checkPermission = () => {
+      if ("Notification" in window) {
+        setNotificationPermission(Notification.permission);
+      }
+    };
+    
+    // Check permission periodically
+    const interval = setInterval(checkPermission, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Load workout plan from localStorage on mount
   useEffect(() => {
@@ -249,6 +280,7 @@ export default function GymPage() {
         // Outside the alert window, hide the alert
         setShowMissedWorkoutAlert(false);
         setMissedWorkoutDate(null);
+        setNotificationShown(false); // Reset notification flag for next day
         return;
       }
       
@@ -286,10 +318,22 @@ export default function GymPage() {
           !hasCompletedExercises(todayStr)) {
         setMissedWorkoutDate(todayStr);
         setShowMissedWorkoutAlert(true);
+        
+        // Show push notification if permission is granted and we haven't shown it yet today
+        if (notificationPermission === "granted" && !notificationShown) {
+          showWorkoutReminder(scheduledWorkout.workoutName).catch(err => {
+            console.error("Failed to show notification:", err);
+          });
+          setNotificationShown(true);
+        }
       } else {
         // No workout scheduled, rest day, no exercises, completed, or doesn't exist - hide alert
         setShowMissedWorkoutAlert(false);
         setMissedWorkoutDate(null);
+        // Reset notification flag when workout is completed or outside window
+        if (workoutStatus === "completed" || hasCompletedExercises(todayStr)) {
+          setNotificationShown(false);
+        }
       }
     };
 
@@ -461,6 +505,7 @@ export default function GymPage() {
         if (patch.completed === true && dateStr === new Date().toISOString().split("T")[0]) {
           setShowMissedWorkoutAlert(false);
           setMissedWorkoutDate(null);
+          setNotificationShown(false); // Reset notification flag
         }
       }
       

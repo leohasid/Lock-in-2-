@@ -16,6 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Locked In - Your All-in-One Self-Improvement App",
   description: "Personalized gym plans, workout tracking, addiction recovery, and calendar reminders all in one place",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
