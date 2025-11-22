@@ -183,10 +183,36 @@ export default function AddictionsPage() {
     );
   };
 
-  // Update time every second for countdown
+  // Update time every second for countdown and check app blocking
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
+      
+      // Periodically check and enforce app blocking
+      setAddictions((prev) =>
+        prev.map((addiction) => {
+          if ("apps" in addiction) {
+            const phoneAddiction = addiction as PhoneAddiction;
+            const updatedApps = phoneAddiction.apps.map((app) => {
+              const shouldBeBlocked = app.currentUsage >= app.dailyLimit;
+              
+              // Enforce blocking if limit reached
+              if (shouldBeBlocked && !app.blocked) {
+                blockAppNative(app.appName, true);
+                return { ...app, blocked: true };
+              }
+              
+              return app;
+            });
+            
+            return {
+              ...phoneAddiction,
+              apps: updatedApps,
+            };
+          }
+          return addiction;
+        })
+      );
     }, 1000);
     return () => clearInterval(timer);
   }, []);
