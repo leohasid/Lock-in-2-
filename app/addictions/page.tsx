@@ -535,6 +535,34 @@ export default function AddictionsPage() {
     );
   };
 
+  // Delete/remove an app's time limit (only if limit not fully reached)
+  const deleteAppLimit = (addictionId: string, appName: string) => {
+    setAddictions((prev) =>
+      prev.map((a) => {
+        if (a.id === addictionId && "apps" in a) {
+          const phoneAddiction = a as PhoneAddiction;
+          const app = phoneAddiction.apps.find((app) => app.appName === appName);
+          
+          // Only allow deletion if limit hasn't been fully reached
+          if (app && app.currentUsage < app.dailyLimit) {
+            // Remove the app from tracking
+            const updatedApps = phoneAddiction.apps.filter((app) => app.appName !== appName);
+            
+            // Recalculate total daily limit
+            const newTotalDailyLimit = updatedApps.reduce((sum, app) => sum + app.dailyLimit, 0);
+            
+            return {
+              ...phoneAddiction,
+              apps: updatedApps,
+              totalDailyLimit: newTotalDailyLimit,
+            };
+          }
+        }
+        return a;
+      })
+    );
+  };
+
   const getCountdown = (startTime: string | undefined) => {
     if (!startTime) {
       return { days: 0, hours: 0, minutes: 0, seconds: 0 };
@@ -837,7 +865,7 @@ export default function AddictionsPage() {
                         {allApps.length === 0 && (
                           <p className="text-xs text-gray-500">No apps configured yet.</p>
                         )}
-                        {allApps.map(({ app }) => {
+                        {allApps.map(({ app, addictionId }) => {
                           const remaining = Math.max(app.dailyLimit - app.currentUsage, 0);
                           const percent =
                             app.dailyLimit > 0
@@ -847,9 +875,36 @@ export default function AddictionsPage() {
                             <div key={app.appName}>
                               <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
                                 <span className="font-medium text-white">{app.appName}</span>
-                                <span className={remaining === 0 ? "text-red-400" : "text-gray-300"}>
-                                  {remaining === 0 ? "Blocked" : `${formatMinutes(remaining)} left`}
-                                </span>
+                                <div className="flex items-center gap-1">
+                                  <span className={app.currentUsage >= app.dailyLimit ? "text-red-400" : "text-gray-300"}>
+                                    {app.currentUsage >= app.dailyLimit ? "Blocked" : `${formatMinutes(remaining)} left`}
+                                  </span>
+                                  {/* Delete limit button - only show if limit not fully reached */}
+                                  {app.currentUsage < app.dailyLimit && (
+                                    <button
+                                      onClick={() => {
+                                        if (confirm(`Remove time limit for ${app.appName}?`)) {
+                                          deleteAppLimit(addictionId, app.appName);
+                                        }
+                                      }}
+                                      className="w-5 h-5 rounded text-[10px] border border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700 flex items-center justify-center ml-1"
+                                      title="Delete time limit"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                  {/* Manual block button */}
+                                  <button
+                                    onClick={() => toggleAppBlock(addictionId, app.appName)}
+                                    className={`w-10 h-5 rounded text-[10px] border flex items-center justify-center ml-1 ${
+                                      app.blocked
+                                        ? "bg-green-700 border-green-500 text-white hover:bg-green-600"
+                                        : "bg-red-700 border-red-500 text-white hover:bg-red-600"
+                                    }`}
+                                  >
+                                    {app.blocked ? "Unblock" : "Block"}
+                                  </button>
+                                </div>
                               </div>
                               <div className="w-full bg-gray-700 rounded-full h-1.5">
                                 <div
@@ -1103,16 +1158,33 @@ export default function AddictionsPage() {
                                 <span className={app.currentUsage >= app.dailyLimit ? "text-red-400" : "text-gray-400"}>
                                   {app.currentUsage >= app.dailyLimit ? "Blocked" : `${formatMinutes(remaining)} remaining`}
                                 </span>
-                                <button
-                                  onClick={() => toggleAppBlock(addictionId, app.appName)}
-                                  className={`w-16 h-8 rounded-md text-xs font-semibold border flex items-center justify-center ${
-                                    app.blocked
-                                      ? "bg-green-700 border-green-500 text-white hover:bg-green-600"
-                                      : "bg-red-700 border-red-500 text-white hover:bg-red-600"
-                                  }`}
-                                >
-                                  {app.blocked ? "Unblock" : "Block"}
-                                </button>
+                                <div className="flex items-center gap-2">
+                                  {/* Delete limit button - only show if limit not fully reached */}
+                                  {app.currentUsage < app.dailyLimit && (
+                                    <button
+                                      onClick={() => {
+                                        if (confirm(`Remove time limit for ${app.appName}?`)) {
+                                          deleteAppLimit(addictionId, app.appName);
+                                        }
+                                      }}
+                                      className="w-8 h-8 rounded-md text-xs font-semibold border border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700 flex items-center justify-center"
+                                      title="Delete time limit"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  {/* Manual block/unblock button */}
+                                  <button
+                                    onClick={() => toggleAppBlock(addictionId, app.appName)}
+                                    className={`w-16 h-8 rounded-md text-xs font-semibold border flex items-center justify-center ${
+                                      app.blocked
+                                        ? "bg-green-700 border-green-500 text-white hover:bg-green-600"
+                                        : "bg-red-700 border-red-500 text-white hover:bg-red-600"
+                                    }`}
+                                  >
+                                    {app.blocked ? "Unblock" : "Block"}
+                                  </button>
+                                </div>
                               </div>
                               <div className="w-full bg-gray-700 rounded-full h-2">
                                 <div
