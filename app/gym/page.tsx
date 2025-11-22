@@ -233,31 +233,54 @@ export default function GymPage() {
     return `${workoutSchedule.length}-${dates}-${names}`;
   }, [workoutSchedule]);
 
-  // Check for missed workouts - runs on every page load
+  // Check for missed workouts - only shows between 11:45 AM and 12:00 PM if workout not completed
   useEffect(() => {
-    const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
-    
-    // Check for any missed workouts that haven't been rescheduled
-    // Look back up to 7 days
-    for (let i = 1; i <= 7; i++) {
-      const checkDate = new Date(today);
-      checkDate.setDate(checkDate.getDate() - i);
-      const checkDateStr = checkDate.toISOString().split("T")[0];
+    const checkMissedWorkout = () => {
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const currentTime = currentHour * 60 + currentMinute; // Time in minutes since midnight
       
-      const workoutStatus = localStorage.getItem(`workout_${checkDateStr}`);
-      const scheduledWorkout = workoutSchedule.find(w => w.date === checkDateStr);
+      // Only show alert between 11:45 AM (705 minutes) and 12:00 PM (720 minutes)
+      const alertStartTime = 11 * 60 + 45; // 11:45 AM
+      const alertEndTime = 12 * 60; // 12:00 PM
+      
+      if (currentTime < alertStartTime || currentTime >= alertEndTime) {
+        // Outside the alert window, hide the alert
+        setShowMissedWorkoutAlert(false);
+        setMissedWorkoutDate(null);
+        return;
+      }
+      
+      const today = new Date();
+      const todayStr = today.toISOString().split("T")[0];
+      
+      // Check today's workout - only show if it hasn't been completed
+      const workoutStatus = localStorage.getItem(`workout_${todayStr}`);
+      const scheduledWorkout = workoutSchedule.find(w => w.date === todayStr);
       
       // Check if workout was scheduled, not a rest day, not rescheduled, and has no completed exercises
       if (scheduledWorkout && 
           scheduledWorkout.workoutName !== "Rest Day" &&
           workoutStatus !== "rescheduled" &&
-          !hasCompletedExercises(checkDateStr)) {
-        setMissedWorkoutDate(checkDateStr);
+          workoutStatus !== "completed" &&
+          !hasCompletedExercises(todayStr)) {
+        setMissedWorkoutDate(todayStr);
         setShowMissedWorkoutAlert(true);
-        break; // Only show the most recent missed workout
+      } else {
+        // Workout is completed or doesn't exist, hide alert
+        setShowMissedWorkoutAlert(false);
+        setMissedWorkoutDate(null);
       }
-    }
+    };
+
+    // Check immediately
+    checkMissedWorkout();
+
+    // Set up interval to check every minute during the alert window
+    const interval = setInterval(checkMissedWorkout, 60000); // Check every minute
+
+    return () => clearInterval(interval);
   }, [workoutScheduleKey, workoutPlan.pushDay.length, workoutPlan.pullDay.length, workoutPlan.legsDay.length]);
 
   // Generate dates for the scroll wheel (show past 7 days and future 7 days)
@@ -414,6 +437,12 @@ export default function GymPage() {
           sets: ex.sets,
         }));
         localStorage.setItem(`workout_data_${dateStr}`, JSON.stringify(workoutData));
+        
+        // If a set was marked as completed and we're on today's date, hide the missed workout alert
+        if (patch.completed === true && dateStr === new Date().toISOString().split("T")[0]) {
+          setShowMissedWorkoutAlert(false);
+          setMissedWorkoutDate(null);
+        }
       }
       
       return updated;
