@@ -1,0 +1,74 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:  # Allows manual triggering
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest  # iOS requires macOS
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build Next.js app
+        run: npm run build
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      
+      - name: Sync Capacitor
+        run: npx cap sync ios
+      
+      - name: Install CocoaPods
+        run: |
+          sudo gem install cocoapods
+          cd ios/App/App
+          pod install
+      
+      - name: Build iOS IPA
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cd ios/App/App
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -archivePath build/App.xcarchive \
+            archive \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+      
+      - name: Export IPA
+        run: |
+          cd ios/App/App
+          xcodebuild -exportArchive \
+            -archivePath build/App.xcarchive \
+            -exportPath build \
+            -exportOptionsPlist ExportOptions.plist
+      
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-ipa
+          path: ios/App/App/build/*.ipa
+          retention-days: 30
+
