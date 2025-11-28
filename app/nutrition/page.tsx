@@ -258,7 +258,17 @@ export default function NutritionPage() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await response.text();
         console.error("Non-JSON response from API:", text.substring(0, 200));
-        throw new Error("Server returned an invalid response. Please check your API configuration.");
+        
+        // Check for common error scenarios
+        if (text.includes("OPENAI_API_KEY") || text.includes("API key")) {
+          throw new Error("OpenAI API key is not configured. Please add OPENAI_API_KEY to your Vercel environment variables.");
+        } else if (text.includes("404") || text.includes("Not Found")) {
+          throw new Error("API endpoint not found. Please check your deployment.");
+        } else if (text.includes("500") || text.includes("Internal Server Error")) {
+          throw new Error("Server error. Please check your API configuration and try again.");
+        } else {
+          throw new Error("Server returned an invalid response. Please check your API configuration.");
+        }
       }
 
       const data = await response.json();
