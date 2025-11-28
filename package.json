@@ -10,7 +10,8 @@
     "build:mobile": "next build && npx cap sync",
     "cap:sync": "npx cap sync",
     "cap:ios": "npx cap open ios",
-    "cap:android": "npx cap open android"
+    "cap:android": "npx cap open android",
+    "eas": "eas"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",
@@ -32,6 +33,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eas-cli": "^16.28.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.2",
     "tailwindcss": "^4",
