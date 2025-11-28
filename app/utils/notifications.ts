@@ -65,6 +65,7 @@ export function scheduleWorkoutNotification(date: Date, workoutName: string): vo
           badge: '/icon-192x192.png',
           tag: `workout-${todayStr}`,
           requireInteraction: false,
+          // @ts-ignore - vibrate is supported but not in TypeScript types
           vibrate: [200, 100, 200],
         });
       }
@@ -110,6 +111,7 @@ export async function showWorkoutReminder(workoutName: string): Promise<void> {
 
   // Add vibrate if supported (mobile)
   if ('vibrate' in navigator) {
+    // @ts-ignore - vibrate is supported but not in TypeScript types
     notificationOptions.vibrate = [200, 100, 200];
   }
 

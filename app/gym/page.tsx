@@ -753,21 +753,153 @@ export default function GymPage() {
           </div>
         )}
 
-        {/* Header */}
-        <header className="flex flex-col items-start mb-4">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="bg-orange-500 text-black rounded-full p-2">
-              <Dumbbell className="w-4 h-4" />
-            </div>
-            <h1 className="text-xl font-bold">{currentDayWorkoutName}</h1>
+        {/* Date Scroll Wheel */}
+        <div className="mb-6">
+          <p className="text-xs text-gray-400 mb-3 uppercase tracking-wide">Select Date</p>
+          <div className="flex overflow-x-auto gap-2 py-2 scrollbar-hide">
+            {days.map((day) => {
+              const isSelected = day.toDateString() === selectedDate.toDateString();
+              const isToday = day.toDateString() === new Date().toDateString();
+              const formatted = day.toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+              });
+              const dayName = day.toLocaleDateString("en-GB", { weekday: "short" });
+              return (
+                <button
+                  key={day.toISOString()}
+                  onClick={() => setSelectedDate(day)}
+                  className={`flex-shrink-0 flex flex-col items-center px-4 py-3 rounded-xl text-xs font-medium transition-all min-w-[4rem] ${
+                    isSelected
+                      ? "bg-gradient-to-br from-orange-500 to-orange-600 text-black shadow-lg scale-105"
+                      : isToday
+                      ? "bg-gray-800 text-white border-2 border-orange-500/50"
+                      : "bg-gray-900 text-gray-300 hover:bg-gray-800 border border-gray-700"
+                  }`}
+                >
+                  <span className="text-[10px] uppercase tracking-wide opacity-70 mb-1">{dayName}</span>
+                  <span className="text-base font-bold">{formatted.split(" ")[0]}</span>
+                  <span className="text-[10px] opacity-70">{formatted.split(" ")[1]}</span>
+                </button>
+              );
+            })}
           </div>
-          <p className="text-gray-400 text-xs">
-            {selectedDate.toLocaleDateString("en-GB")}
-          </p>
+        </div>
+
+        {/* Header */}
+        <header className="mb-6">
+          <div className="bg-gradient-to-r from-orange-500/20 to-orange-600/20 border border-orange-500/30 rounded-2xl p-5 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="bg-orange-500 text-black rounded-xl p-3 shadow-lg">
+                  <Dumbbell className="w-6 h-6" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-white">{currentDayWorkoutName}</h1>
+                  <p className="text-gray-300 text-sm mt-0.5">
+                    {selectedDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+                  </p>
+                </div>
+              </div>
+            </div>
+            {currentDayWorkoutName !== "Rest Day" && (
+              <div className="flex items-center gap-4 pt-3 border-t border-orange-500/20">
+                <div className="flex-1">
+                  <p className="text-xs text-gray-400 mb-1">Progress</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-gray-800 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className="bg-gradient-to-r from-orange-500 to-orange-600 h-full transition-all duration-300 rounded-full"
+                        style={{ width: `${totals.progress}%` }}
+                      />
+                    </div>
+                    <span className="text-orange-400 font-bold text-sm min-w-[3rem] text-right">{totals.progress}%</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-400 mb-1">Volume</p>
+                  <p className="text-orange-400 font-bold text-lg">{totals.totalVolume} kg</p>
+                </div>
+              </div>
+            )}
+          </div>
         </header>
 
+        {/* Workout Cards - Grid Layout */}
+        {currentDayWorkoutName === "Rest Day" ? (
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-12 border border-gray-700 text-center mb-6 shadow-xl">
+            <div className="text-6xl mb-4">😴</div>
+            <p className="text-2xl font-bold text-gray-300 mb-2">Rest Day</p>
+            <p className="text-gray-400">Take a break and recover!</p>
+          </div>
+        ) : currentDayExercises.length === 0 ? (
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-12 border border-gray-700 text-center mb-6 shadow-xl">
+            <div className="text-6xl mb-4">💪</div>
+            <p className="text-xl font-bold text-gray-300 mb-2">No exercises for {currentDayWorkoutName}</p>
+            <p className="text-gray-400 text-sm">Add your own workout plan or get an AI consultation to get started!</p>
+          </div>
+        ) : (
+          <main className="mb-6">
+            <p className="text-xs text-gray-400 mb-4 uppercase tracking-wide">Exercises</p>
+            <div className="grid grid-cols-2 gap-4">
+              {currentDayExercises.map((ex) => {
+              const completedSets = ex.sets.filter(s => s.completed).length;
+              const totalSets = ex.sets.length;
+              const progressPercent = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
+              const isComplete = completedSets === totalSets && totalSets > 0;
+              
+              return (
+                <section
+                  key={ex.id}
+                  className={`bg-gradient-to-br ${
+                    isComplete 
+                      ? "from-green-900/30 to-green-800/20 border-green-600/50" 
+                      : "from-gray-900 to-gray-800 border-gray-700"
+                  } border rounded-xl p-4 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl shadow-lg`}
+                  onClick={() => setActiveExerciseId(ex.id)}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h2 className="text-base font-bold text-white mb-1.5 line-clamp-2">{ex.name}</h2>
+                      <p className="text-xs text-gray-400">
+                        {ex.goalSets} sets × {ex.goalReps} reps
+                      </p>
+                    </div>
+                    {isComplete && (
+                      <div className="bg-green-500 text-white rounded-full p-1.5">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-400">Progress</span>
+                      <span className={`text-sm font-bold ${isComplete ? "text-green-400" : "text-orange-400"}`}>
+                        {completedSets}/{totalSets}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className={`h-full transition-all duration-300 rounded-full ${
+                          isComplete 
+                            ? "bg-gradient-to-r from-green-500 to-green-600" 
+                            : "bg-gradient-to-r from-orange-500 to-orange-600"
+                        }`}
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                </section>
+              );
+            })}
+            </div>
+          </main>
+        )}
+
         {/* Action Buttons */}
-        <div className="flex gap-3 mb-4">
+        <div className="flex gap-3 mb-6">
           <button
             onClick={() => {
               // Load existing workout plan into the modal
@@ -792,7 +924,7 @@ export default function GymPage() {
               });
               setShowCustomWorkoutModal(true);
             }}
-            className="flex-1 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-white px-4 py-3 rounded-lg font-semibold transition-colors text-sm"
+            className="flex-1 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white px-4 py-3 rounded-xl font-semibold transition-all text-sm shadow-lg hover:shadow-xl"
           >
             {workoutPlan.pushDay.length > 0 || workoutPlan.pullDay.length > 0 || workoutPlan.legsDay.length > 0
               ? "Edit Workout Plan"
@@ -802,120 +934,44 @@ export default function GymPage() {
             onClick={() => {
               router.push("/consultation");
             }}
-            className="flex-1 bg-orange-500 hover:bg-orange-600 text-black px-4 py-3 rounded-lg font-semibold transition-colors text-sm"
+            className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-black px-4 py-3 rounded-xl font-semibold transition-all text-sm shadow-lg hover:shadow-xl"
           >
             AI Consultation & Evaluation
           </button>
         </div>
 
-        {/* Date Scroll Wheel */}
-        <div className="flex overflow-x-auto gap-2 mb-4 py-2 scrollbar-hide">
-          {days.map((day) => {
-            const isSelected = day.toDateString() === selectedDate.toDateString();
-            const formatted = day.toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "short",
-            });
-            return (
-              <button
-                key={day.toISOString()}
-                onClick={() => setSelectedDate(day)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  isSelected
-                    ? "bg-orange-500 text-black"
-                    : "bg-gray-900 text-gray-300 hover:bg-gray-800"
-                }`}
-              >
-                {formatted}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Workout Cards - Grid Layout */}
-        {currentDayWorkoutName === "Rest Day" ? (
-          <div className="bg-gray-900 rounded-2xl p-8 border border-gray-800 text-center mb-6">
-            <p className="text-2xl text-gray-400">Rest Day</p>
-            <p className="text-gray-500 mt-2">Take a break and recover!</p>
-          </div>
-        ) : currentDayExercises.length === 0 ? (
-          <div className="bg-gray-900 rounded-2xl p-8 border border-gray-800 text-center mb-6">
-            <p className="text-xl text-gray-400 mb-2">No exercises for {currentDayWorkoutName}</p>
-            <p className="text-gray-500 text-sm">Add your own workout plan or get an AI consultation to get started!</p>
-          </div>
-        ) : (
-          <main className="grid grid-cols-3 gap-3 mb-6">
-            {currentDayExercises.map((ex) => {
-            const completedSets = ex.sets.filter(s => s.completed).length;
-            const totalSets = ex.sets.length;
-            
-            return (
-              <section
-                key={ex.id}
-                className="bg-gray-900 border border-gray-800 rounded-lg p-3 cursor-pointer transition-transform hover:-translate-y-1"
-                onClick={() => setActiveExerciseId(ex.id)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h2 className="text-sm font-semibold mb-1">{ex.name}</h2>
-                    <p className="text-xs text-gray-400">
-                      {ex.goalSets}×{ex.goalReps}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-gray-400">Progress</div>
-                    <div className="text-xs font-semibold text-orange-400">
-                      {completedSets}/{totalSets}
-                    </div>
-                  </div>
-                </div>
-              </section>
-            );
-          })}
-          </main>
-        )}
-
         {/* Strength Progress Section */}
-        <section className="mt-8 bg-gray-900 border border-gray-800 rounded-xl p-5 mb-4">
-          <h2 className="text-lg font-semibold mb-4">Strength Progress Overview</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            <div>
-              <p className="text-2xl font-bold text-orange-400">+12%</p>
-              <p className="text-sm text-gray-400">Total Volume Increase</p>
+        <section className="mt-8 bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-6 mb-6 shadow-xl">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xl font-bold text-white">Strength Progress Overview</h2>
+            <TrendingUp className="w-5 h-5 text-orange-400" />
+          </div>
+          <div className="grid grid-cols-2 gap-4 mb-5">
+            <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+              <p className="text-2xl font-bold text-orange-400 mb-1">+12%</p>
+              <p className="text-xs text-gray-400">Total Volume</p>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-orange-400">+5 kg</p>
-              <p className="text-sm text-gray-400">Bench Press PB</p>
+            <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+              <p className="text-2xl font-bold text-orange-400 mb-1">+5 kg</p>
+              <p className="text-xs text-gray-400">Bench Press PB</p>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-orange-400">+8%</p>
-              <p className="text-sm text-gray-400">Avg Set Volume</p>
+            <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+              <p className="text-2xl font-bold text-orange-400 mb-1">+8%</p>
+              <p className="text-xs text-gray-400">Avg Set Volume</p>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-orange-400">7 days</p>
-              <p className="text-sm text-gray-400">Active Streak</p>
+            <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
+              <p className="text-2xl font-bold text-orange-400 mb-1">7 days</p>
+              <p className="text-xs text-gray-400">Active Streak</p>
             </div>
           </div>
           <Link
             href="/gym/stats"
-            className="w-full mt-4 bg-orange-500 hover:bg-orange-600 text-black px-4 py-3 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors"
+            className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-black px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-semibold transition-all shadow-lg hover:shadow-xl"
           >
             <TrendingUp className="w-5 h-5" />
             View All Stats & Charts
           </Link>
         </section>
-
-        {/* Footer Summary - Minimal */}
-        <footer className="mt-6 flex justify-between items-center border-t border-gray-800 pt-4 mb-20">
-          <div>
-            <p className="text-gray-400 text-xs">Progress</p>
-            <p className="text-base font-bold text-orange-400">{totals.progress}%</p>
-          </div>
-          <div>
-            <p className="text-gray-400 text-xs">Volume</p>
-            <p className="text-base font-bold text-orange-400">{totals.totalVolume} kg</p>
-          </div>
-        </footer>
 
         {/* Custom Workout Plan Modal */}
         {showCustomWorkoutModal && (

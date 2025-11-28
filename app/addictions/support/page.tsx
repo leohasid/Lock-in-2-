@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { ArrowLeft, Send, Heart, MessageCircle, Plus, X, Search } from "lucide-react";
+import { ArrowLeft, Send, Heart, MessageCircle, Plus, X, Search, Image } from "lucide-react";
 
 interface Post {
   id: string;
@@ -11,6 +11,7 @@ interface Post {
   content: string;
   timestamp: string;
   likes: string[];
+  imageUrl?: string; // Base64 image data
   comments: Array<{
     id: string;
     username: string;
@@ -41,9 +42,11 @@ export default function SupportPage() {
   const [showMessages, setShowMessages] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [newPostContent, setNewPostContent] = useState("");
+  const [newPostImage, setNewPostImage] = useState<string | null>(null);
   const [newMessageContent, setNewMessageContent] = useState("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [usernameInput, setUsernameInput] = useState("");
   const [usernameError, setUsernameError] = useState<string | null>(null);
@@ -122,8 +125,32 @@ export default function SupportPage() {
     setMessages(updatedMessages);
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image must be less than 5MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setNewPostImage(base64String);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleCreatePost = () => {
-    if (!newPostContent.trim() || !currentUser) return;
+    if ((!newPostContent.trim() && !newPostImage) || !currentUser) return;
 
     const newPost: Post = {
       id: `post-${Date.now()}`,
@@ -132,11 +159,13 @@ export default function SupportPage() {
       timestamp: new Date().toISOString(),
       likes: [],
       comments: [],
+      ...(newPostImage && { imageUrl: newPostImage }),
     };
 
     const updatedPosts = [newPost, ...posts];
     savePosts(updatedPosts);
     setNewPostContent("");
+    setNewPostImage(null);
     setShowPostForm(false);
   };
 
@@ -354,13 +383,24 @@ export default function SupportPage() {
                     </div>
                     <p className="text-gray-300 mb-4 whitespace-pre-wrap">{post.content}</p>
                     
+                    {/* Post Image */}
+                    {post.imageUrl && (
+                      <div className="mb-4 rounded-lg overflow-hidden">
+                        <img
+                          src={post.imageUrl}
+                          alt="Post image"
+                          className="w-full max-h-96 object-cover"
+                        />
+                      </div>
+                    )}
+                    
                     {/* Actions */}
                     <div className="flex items-center gap-4 mb-3">
                       <button
                         onClick={() => handleLikePost(post.id)}
-                        className={`flex items-center gap-2 ${post.likes.includes(currentUser.username) ? "text-red-400" : "text-gray-400 hover:text-red-400"}`}
+                        className={`flex items-center gap-2 ${currentUser && post.likes.includes(currentUser.username) ? "text-red-400" : "text-gray-400 hover:text-red-400"}`}
                       >
-                        <Heart className={`w-5 h-5 ${post.likes.includes(currentUser.username) ? "fill-current" : ""}`} />
+                        <Heart className={`w-5 h-5 ${currentUser && post.likes.includes(currentUser.username) ? "fill-current" : ""}`} />
                         <span>{post.likes.length}</span>
                       </button>
                       <div className="flex items-center gap-2 text-gray-400">
@@ -430,7 +470,7 @@ export default function SupportPage() {
                   ))
                 )}
               </div>
-            ) : selectedUser ? (
+            ) : selectedUser && currentUser ? (
               <MessageView
                 user={selectedUser}
                 messages={getMessagesWithUser(selectedUser)}
@@ -514,6 +554,7 @@ export default function SupportPage() {
                   onClick={() => {
                     setShowPostForm(false);
                     setNewPostContent("");
+                    setNewPostImage(null);
                   }}
                   className="text-gray-400 hover:text-white"
                 >
@@ -527,6 +568,42 @@ export default function SupportPage() {
                 className="w-full bg-gray-800 text-white p-4 rounded-lg border border-gray-700 focus:border-orange-500 focus:outline-none min-h-[150px] resize-none"
                 maxLength={500}
               />
+              
+              {/* Image Preview */}
+              {newPostImage && (
+                <div className="mt-4 relative">
+                  <img
+                    src={newPostImage}
+                    alt="Preview"
+                    className="w-full max-h-64 object-cover rounded-lg"
+                  />
+                  <button
+                    onClick={() => setNewPostImage(null)}
+                    className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+              
+              {/* Image Upload Button */}
+              <div className="mt-4">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageSelect}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors border border-gray-700"
+                >
+                  <Image className="w-5 h-5" />
+                  {newPostImage ? "Change Photo" : "Add Photo"}
+                </button>
+              </div>
+              
               <div className="flex items-center justify-between mt-4">
                 <p className="text-sm text-gray-400">{newPostContent.length}/500</p>
                 <div className="flex gap-2">
@@ -534,6 +611,7 @@ export default function SupportPage() {
                     onClick={() => {
                       setShowPostForm(false);
                       setNewPostContent("");
+                      setNewPostImage(null);
                     }}
                     className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors"
                   >
@@ -541,7 +619,7 @@ export default function SupportPage() {
                   </button>
                   <button
                     onClick={handleCreatePost}
-                    disabled={!newPostContent.trim()}
+                    disabled={!newPostContent.trim() && !newPostImage}
                     className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-black rounded-lg transition-colors font-semibold"
                   >
                     Post
