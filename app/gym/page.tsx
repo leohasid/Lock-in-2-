@@ -632,7 +632,7 @@ export default function GymPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-4">
         {/* Missed Workout Alert */}
         {showMissedWorkoutAlert && missedWorkoutDate && (
           <div className="mb-4 bg-yellow-900/50 border border-yellow-600 rounded-xl p-4 flex items-start gap-4">
@@ -754,9 +754,9 @@ export default function GymPage() {
         )}
 
         {/* Date Scroll Wheel */}
-        <div className="mb-6">
-          <p className="text-xs text-gray-400 mb-3 uppercase tracking-wide">Select Date</p>
-          <div className="flex overflow-x-auto gap-2 py-2 scrollbar-hide">
+        <div className="mb-4">
+          <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">Select Date</p>
+          <div className="flex overflow-x-auto gap-2 py-1.5 scrollbar-hide">
             {days.map((day) => {
               const isSelected = day.toDateString() === selectedDate.toDateString();
               const isToday = day.toDateString() === new Date().toDateString();
@@ -769,7 +769,7 @@ export default function GymPage() {
                 <button
                   key={day.toISOString()}
                   onClick={() => setSelectedDate(day)}
-                  className={`flex-shrink-0 flex flex-col items-center px-4 py-3 rounded-xl text-xs font-medium transition-all min-w-[4rem] ${
+                  className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-lg text-xs font-medium transition-all min-w-[3.5rem] ${
                     isSelected
                       ? "bg-gradient-to-br from-orange-500 to-orange-600 text-black shadow-lg scale-105"
                       : isToday
@@ -777,9 +777,9 @@ export default function GymPage() {
                       : "bg-gray-900 text-gray-300 hover:bg-gray-800 border border-gray-700"
                   }`}
                 >
-                  <span className="text-[10px] uppercase tracking-wide opacity-70 mb-1">{dayName}</span>
-                  <span className="text-base font-bold">{formatted.split(" ")[0]}</span>
-                  <span className="text-[10px] opacity-70">{formatted.split(" ")[1]}</span>
+                  <span className="text-[9px] uppercase tracking-wide opacity-70 mb-0.5">{dayName}</span>
+                  <span className="text-sm font-bold">{formatted.split(" ")[0]}</span>
+                  <span className="text-[9px] opacity-70">{formatted.split(" ")[1]}</span>
                 </button>
               );
             })}
@@ -787,38 +787,38 @@ export default function GymPage() {
         </div>
 
         {/* Header */}
-        <header className="mb-6">
-          <div className="bg-gradient-to-r from-orange-500/20 to-orange-600/20 border border-orange-500/30 rounded-2xl p-5 mb-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="bg-orange-500 text-black rounded-xl p-3 shadow-lg">
-                  <Dumbbell className="w-6 h-6" />
+        <header className="mb-4">
+          <div className="bg-gradient-to-r from-orange-500/20 to-orange-600/20 border border-orange-500/30 rounded-xl p-4 mb-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2.5">
+                <div className="bg-orange-500 text-black rounded-lg p-2 shadow-lg">
+                  <Dumbbell className="w-5 h-5" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-white">{currentDayWorkoutName}</h1>
-                  <p className="text-gray-300 text-sm mt-0.5">
+                  <h1 className="text-xl font-bold text-white">{currentDayWorkoutName}</h1>
+                  <p className="text-gray-300 text-xs mt-0.5">
                     {selectedDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
                   </p>
                 </div>
               </div>
             </div>
             {currentDayWorkoutName !== "Rest Day" && (
-              <div className="flex items-center gap-4 pt-3 border-t border-orange-500/20">
+              <div className="flex items-center gap-3 pt-2 border-t border-orange-500/20">
                 <div className="flex-1">
-                  <p className="text-xs text-gray-400 mb-1">Progress</p>
+                  <p className="text-[10px] text-gray-400 mb-0.5">Progress</p>
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-gray-800 rounded-full h-2 overflow-hidden">
+                    <div className="flex-1 bg-gray-800 rounded-full h-1.5 overflow-hidden">
                       <div 
                         className="bg-gradient-to-r from-orange-500 to-orange-600 h-full transition-all duration-300 rounded-full"
                         style={{ width: `${totals.progress}%` }}
                       />
                     </div>
-                    <span className="text-orange-400 font-bold text-sm min-w-[3rem] text-right">{totals.progress}%</span>
+                    <span className="text-orange-400 font-bold text-xs min-w-[2.5rem] text-right">{totals.progress}%</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-gray-400 mb-1">Volume</p>
-                  <p className="text-orange-400 font-bold text-lg">{totals.totalVolume} kg</p>
+                  <p className="text-[10px] text-gray-400 mb-0.5">Volume</p>
+                  <p className="text-orange-400 font-bold text-base">{totals.totalVolume} kg</p>
                 </div>
               </div>
             )}
@@ -827,21 +827,21 @@ export default function GymPage() {
 
         {/* Workout Cards - Grid Layout */}
         {currentDayWorkoutName === "Rest Day" ? (
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-12 border border-gray-700 text-center mb-6 shadow-xl">
-            <div className="text-6xl mb-4">😴</div>
-            <p className="text-2xl font-bold text-gray-300 mb-2">Rest Day</p>
-            <p className="text-gray-400">Take a break and recover!</p>
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-8 border border-gray-700 text-center mb-4 shadow-xl">
+            <div className="text-5xl mb-3">😴</div>
+            <p className="text-xl font-bold text-gray-300 mb-1">Rest Day</p>
+            <p className="text-gray-400 text-sm">Take a break and recover!</p>
           </div>
         ) : currentDayExercises.length === 0 ? (
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-12 border border-gray-700 text-center mb-6 shadow-xl">
-            <div className="text-6xl mb-4">💪</div>
-            <p className="text-xl font-bold text-gray-300 mb-2">No exercises for {currentDayWorkoutName}</p>
-            <p className="text-gray-400 text-sm">Add your own workout plan or get an AI consultation to get started!</p>
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-8 border border-gray-700 text-center mb-4 shadow-xl">
+            <div className="text-5xl mb-3">💪</div>
+            <p className="text-lg font-bold text-gray-300 mb-1">No exercises for {currentDayWorkoutName}</p>
+            <p className="text-gray-400 text-xs">Add your own workout plan or get an AI consultation to get started!</p>
           </div>
         ) : (
-          <main className="mb-6">
-            <p className="text-xs text-gray-400 mb-4 uppercase tracking-wide">Exercises</p>
-            <div className="grid grid-cols-2 gap-4">
+          <main className="mb-4">
+            <p className="text-xs text-gray-400 mb-3 uppercase tracking-wide">Exercises</p>
+            <div className="grid grid-cols-2 gap-3">
               {currentDayExercises.map((ex) => {
               const completedSets = ex.sets.filter(s => s.completed).length;
               const totalSets = ex.sets.length;
@@ -855,32 +855,32 @@ export default function GymPage() {
                     isComplete 
                       ? "from-green-900/30 to-green-800/20 border-green-600/50" 
                       : "from-gray-900 to-gray-800 border-gray-700"
-                  } border rounded-xl p-4 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl shadow-lg`}
+                  } border rounded-lg p-3 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl shadow-lg`}
                   onClick={() => setActiveExerciseId(ex.id)}
                 >
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
-                      <h2 className="text-base font-bold text-white mb-1.5 line-clamp-2">{ex.name}</h2>
-                      <p className="text-xs text-gray-400">
+                      <h2 className="text-sm font-bold text-white mb-1 line-clamp-2">{ex.name}</h2>
+                      <p className="text-[10px] text-gray-400">
                         {ex.goalSets} sets × {ex.goalReps} reps
                       </p>
                     </div>
                     {isComplete && (
-                      <div className="bg-green-500 text-white rounded-full p-1.5">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="bg-green-500 text-white rounded-full p-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                         </svg>
                       </div>
                     )}
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-400">Progress</span>
-                      <span className={`text-sm font-bold ${isComplete ? "text-green-400" : "text-orange-400"}`}>
+                      <span className="text-[10px] text-gray-400">Progress</span>
+                      <span className={`text-xs font-bold ${isComplete ? "text-green-400" : "text-orange-400"}`}>
                         {completedSets}/{totalSets}
                       </span>
                     </div>
-                    <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
                       <div 
                         className={`h-full transition-all duration-300 rounded-full ${
                           isComplete 
