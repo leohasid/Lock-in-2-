@@ -1314,24 +1314,6 @@ export default function AddictionsPage() {
           );
         })()}
 
-        {/* Info Section */}
-        <div className="mt-8 bg-gray-900 rounded-2xl p-6 border border-gray-800">
-          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-            <Shield className="w-6 h-6" />
-            How It Works
-          </h2>
-          <div className="space-y-3 text-gray-300">
-            <p>
-              <strong className="text-white">Phone Addictions:</strong> Circular progress bar shows your daily usage percentage. Set limits and track individual apps.
-            </p>
-            <p>
-              <strong className="text-white">Other Addictions:</strong> Live countdown timer shows exactly how long you've been clean - updating every second!
-            </p>
-            <p className="text-sm text-orange-400">
-              💡 Tip: The countdown helps you stay motivated by showing your progress in real-time.
-            </p>
-          </div>
-        </div>
       </div>
       <div className="pb-20">
         {/* Spacer for bottom navigation */}
