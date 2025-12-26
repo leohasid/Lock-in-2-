@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import OnboardingCheck from "./onboarding-check";
@@ -17,6 +17,13 @@ export const metadata: Metadata = {
   title: "Locked In - Your All-in-One Self-Improvement App",
   description: "Personalized gym plans, workout tracking, addiction recovery, and calendar reminders all in one place",
   manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

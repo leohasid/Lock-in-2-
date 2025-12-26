@@ -676,19 +676,19 @@ export default function AddictionsPage() {
     <div className="min-h-screen bg-black text-white">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <h1 className="text-4xl font-bold text-white">🛡️ Addiction Recovery</h1>
-            <div className="flex items-center gap-3">
+        <div className="mb-6">
+          <div className="flex flex-col gap-3">
+            <h1 className="text-3xl font-bold text-white">🛡️ Addiction Recovery</h1>
+            <div className="flex items-center gap-2">
               <Link
                 href="/addictions/support"
-                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
               >
                 💬 Support
               </Link>
               <button
                 onClick={() => setShowAddForm(true)}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
               >
                 + Track New
               </button>
