@@ -337,7 +337,7 @@ export default function NutritionPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="container mx-auto px-4 py-3">
+      <div className="px-4 py-3">
         {/* Header */}
         <div className="mb-4">
           <div className="flex flex-col gap-2">
@@ -654,8 +654,8 @@ export default function NutritionPage() {
           </div>
         )}
 
-        {/* Daily Goals & Progress - All macros visible */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+        {/* Daily Goals & Progress - All macros visible - Full width */}
+        <div className="grid grid-cols-4 gap-2 mb-4 -mx-4 px-4">
           <button
             onClick={() => {
               setMacroSettings(dailyGoals);
@@ -734,7 +734,7 @@ export default function NutritionPage() {
         <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold text-white">Today&apos;s Meals</h2>
-            {meals.length > 2 && (
+            {meals.length > 0 && (
               <button
                 onClick={() => setShowAllMeals(true)}
                 className="text-xs text-gray-400 hover:text-white flex items-center gap-1 transition-colors"
@@ -814,39 +814,71 @@ export default function NutritionPage() {
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="space-y-3">
-                {meals.map((meal) => (
-                  <div key={meal.id} className="bg-gray-800 rounded-lg p-3">
-                    {meal.imageUrl && (
-                      <img
-                        src={meal.imageUrl}
-                        alt={meal.name}
-                        className="w-full h-32 object-cover rounded-lg mb-3"
-                      />
-                    )}
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="text-white font-semibold">{meal.name}</h3>
-                        <p className="text-gray-400 text-sm">{meal.time}</p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setMeals(meals.filter((m) => m.id !== meal.id));
-                          if (meals.length === 1) setShowAllMeals(false);
-                        }}
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        ×
-                      </button>
+              
+              {/* Total Summary */}
+              {meals.length > 0 && (
+                <div className="bg-gray-800 rounded-lg p-3 mb-4 border border-gray-700">
+                  <h3 className="text-sm font-semibold text-white mb-2">Total Today</h3>
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div>
+                      <div className="text-lg font-bold text-orange-400">{totals.calories}</div>
+                      <div className="text-[10px] text-gray-400">Calories</div>
                     </div>
-                    <div className="flex gap-4 text-sm text-gray-300">
-                      <span>{meal.calories} cal</span>
-                      <span>P: {meal.protein}g</span>
-                      <span>C: {meal.carbs}g</span>
-                      <span>F: {meal.fats}g</span>
+                    <div>
+                      <div className="text-lg font-bold text-blue-400">{totals.protein}g</div>
+                      <div className="text-[10px] text-gray-400">Protein</div>
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold text-green-400">{totals.carbs}g</div>
+                      <div className="text-[10px] text-gray-400">Carbs</div>
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold text-yellow-400">{totals.fats}g</div>
+                      <div className="text-[10px] text-gray-400">Fats</div>
                     </div>
                   </div>
-                ))}
+                </div>
+              )}
+              
+              <div className="space-y-3">
+                {meals.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400">No meals logged today</p>
+                  </div>
+                ) : (
+                  meals.map((meal) => (
+                    <div key={meal.id} className="bg-gray-800 rounded-lg p-3">
+                      {meal.imageUrl && (
+                        <img
+                          src={meal.imageUrl}
+                          alt={meal.name}
+                          className="w-full h-32 object-cover rounded-lg mb-3"
+                        />
+                      )}
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="text-white font-semibold">{meal.name}</h3>
+                          <p className="text-gray-400 text-sm">{meal.time}</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setMeals(meals.filter((m) => m.id !== meal.id));
+                            if (meals.length === 1) setShowAllMeals(false);
+                          }}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <div className="flex gap-4 text-sm text-gray-300">
+                        <span>{meal.calories} cal</span>
+                        <span>P: {meal.protein}g</span>
+                        <span>C: {meal.carbs}g</span>
+                        <span>F: {meal.fats}g</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
