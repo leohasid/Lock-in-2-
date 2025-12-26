@@ -822,7 +822,7 @@ export default function AddictionsPage() {
                         : "border-gray-800"
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
                         <div className="text-3xl">📱</div>
                         <div>
@@ -831,19 +831,12 @@ export default function AddictionsPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="inline-flex flex-col bg-gray-800 rounded-lg px-2.5 py-1.5 border border-gray-700 mb-3 max-w-[140px]">
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">Used today</p>
-                      <p className="text-sm font-bold text-white">
-                        {formatMinutes(totalCurrentUsage)}
-                      </p>
-                      <p className="text-[9px] text-gray-500">on phone</p>
-                    </div>
-                    <div className="bg-gray-800 rounded-lg p-2.5 border border-gray-700 mb-3">
+                    <div className="bg-gray-800 rounded-lg p-2.5 border border-gray-700 mb-2.5">
                       <div className="flex items-center justify-between text-xs text-gray-300 mb-1.5">
                         <span>Today's usage</span>
-                        <span>{formatMinutes(totalCurrentUsage)}</span>
+                        <span>{formatMinutes(totalCurrentUsage)} / {formatMinutes(totalDailyLimit)}</span>
                       </div>
-                      <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                      <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
                         {allApps.length === 0 && (
                           <p className="text-[10px] text-gray-500">No apps configured yet.</p>
                         )}
