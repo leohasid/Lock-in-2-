@@ -1,11 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Only use static export for production builds (for Capacitor)
-  // This allows dev server to work properly
-  ...(process.env.NODE_ENV === 'production' && { output: 'export' }),
+  // Only use static export for Capacitor builds (when BUILD_FOR_MOBILE is set)
+  // Vercel should run as a Next.js server, not static export
+  ...(process.env.BUILD_FOR_MOBILE === 'true' && { output: 'export' }),
   images: {
-    unoptimized: true, // Required for static export
+    unoptimized: process.env.BUILD_FOR_MOBILE === 'true', // Only unoptimized for static export
   },
 };
 
