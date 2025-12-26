@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Upload, Camera, X, Settings } from "lucide-react";
+import { Upload, Camera, X, Settings, ArrowRight, ChevronRight } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
 interface Meal {
@@ -25,6 +25,7 @@ export default function NutritionPage() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [foodToScan, setFoodToScan] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showAllMeals, setShowAllMeals] = useState(false);
   const [aiEstimate, setAiEstimate] = useState<{
     name: string;
     calories: number;
@@ -336,7 +337,7 @@ export default function NutritionPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="container mx-auto px-4 py-4">
+      <div className="container mx-auto px-4 py-3">
         {/* Header */}
         <div className="mb-4">
           <div className="flex flex-col gap-2">
@@ -654,21 +655,21 @@ export default function NutritionPage() {
         )}
 
         {/* Daily Goals & Progress - All macros visible */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
           <button
             onClick={() => {
               setMacroSettings(dailyGoals);
               setShowMacroSettings(true);
             }}
-            className="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-orange-500/50 transition-colors text-left"
+            className="bg-gray-900 rounded-lg p-3 border border-gray-800 hover:border-orange-500/50 transition-colors text-left"
           >
-            <div className="text-xs text-gray-400 mb-1">Calories</div>
-            <div className="text-xl font-bold text-white mb-1.5">
+            <div className="text-[10px] text-gray-400 mb-0.5">Calories</div>
+            <div className="text-lg font-bold text-white mb-1">
               {totals.calories} / {dailyGoals.calories}
             </div>
-            <div className="w-full bg-gray-800 rounded-full h-1.5">
+            <div className="w-full bg-gray-800 rounded-full h-1">
               <div
-                className="bg-orange-500 h-1.5 rounded-full"
+                className="bg-orange-500 h-1 rounded-full"
                 style={{ width: `${Math.min((totals.calories / dailyGoals.calories) * 100, 100)}%` }}
               />
             </div>
@@ -678,15 +679,15 @@ export default function NutritionPage() {
               setMacroSettings(dailyGoals);
               setShowMacroSettings(true);
             }}
-            className="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-blue-500/50 transition-colors text-left"
+            className="bg-gray-900 rounded-lg p-3 border border-gray-800 hover:border-blue-500/50 transition-colors text-left"
           >
-            <div className="text-xs text-gray-400 mb-1">Protein</div>
-            <div className="text-xl font-bold text-white mb-1.5">
+            <div className="text-[10px] text-gray-400 mb-0.5">Protein</div>
+            <div className="text-lg font-bold text-white mb-1">
               {totals.protein}g / {dailyGoals.protein}g
             </div>
-            <div className="w-full bg-gray-800 rounded-full h-1.5">
+            <div className="w-full bg-gray-800 rounded-full h-1">
               <div
-                className="bg-blue-600 h-1.5 rounded-full"
+                className="bg-blue-600 h-1 rounded-full"
                 style={{ width: `${Math.min((totals.protein / dailyGoals.protein) * 100, 100)}%` }}
               />
             </div>
@@ -696,15 +697,15 @@ export default function NutritionPage() {
               setMacroSettings(dailyGoals);
               setShowMacroSettings(true);
             }}
-            className="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-green-500/50 transition-colors text-left"
+            className="bg-gray-900 rounded-lg p-3 border border-gray-800 hover:border-green-500/50 transition-colors text-left"
           >
-            <div className="text-xs text-gray-400 mb-1">Carbs</div>
-            <div className="text-xl font-bold text-white mb-1.5">
+            <div className="text-[10px] text-gray-400 mb-0.5">Carbs</div>
+            <div className="text-lg font-bold text-white mb-1">
               {totals.carbs}g / {dailyGoals.carbs}g
             </div>
-            <div className="w-full bg-gray-800 rounded-full h-1.5">
+            <div className="w-full bg-gray-800 rounded-full h-1">
               <div
-                className="bg-green-600 h-1.5 rounded-full"
+                className="bg-green-600 h-1 rounded-full"
                 style={{ width: `${Math.min((totals.carbs / dailyGoals.carbs) * 100, 100)}%` }}
               />
             </div>
@@ -714,15 +715,15 @@ export default function NutritionPage() {
               setMacroSettings(dailyGoals);
               setShowMacroSettings(true);
             }}
-            className="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-yellow-500/50 transition-colors text-left"
+            className="bg-gray-900 rounded-lg p-3 border border-gray-800 hover:border-yellow-500/50 transition-colors text-left"
           >
-            <div className="text-xs text-gray-400 mb-1">Fats</div>
-            <div className="text-xl font-bold text-white mb-1.5">
+            <div className="text-[10px] text-gray-400 mb-0.5">Fats</div>
+            <div className="text-lg font-bold text-white mb-1">
               {totals.fats}g / {dailyGoals.fats}g
             </div>
-            <div className="w-full bg-gray-800 rounded-full h-1.5">
+            <div className="w-full bg-gray-800 rounded-full h-1">
               <div
-                className="bg-yellow-600 h-1.5 rounded-full"
+                className="bg-yellow-600 h-1 rounded-full"
                 style={{ width: `${Math.min((totals.fats / dailyGoals.fats) * 100, 100)}%` }}
               />
             </div>
@@ -730,54 +731,65 @@ export default function NutritionPage() {
         </div>
 
         {/* Meals List */}
-        <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-          <h2 className="text-2xl font-semibold text-white mb-4">Today&apos;s Meals</h2>
+        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-white">Today&apos;s Meals</h2>
+            {meals.length > 2 && (
+              <button
+                onClick={() => setShowAllMeals(true)}
+                className="text-xs text-gray-400 hover:text-white flex items-center gap-1 transition-colors"
+              >
+                View All
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
           {meals.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-400 text-lg mb-4">No meals logged today</p>
-              <div className="flex gap-3 justify-center">
+            <div className="text-center py-8">
+              <p className="text-gray-400 text-sm mb-3">No meals logged today</p>
+              <div className="flex gap-2 justify-center">
                 <button
                   onClick={() => {
                     setFoodToScan("");
                     setShowScanIntro(true);
                   }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
                 >
-                  <Camera className="w-5 h-5" />
+                  <Camera className="w-4 h-4" />
                   Scan Food
                 </button>
                 <button
                   onClick={() => setShowAddMeal(true)}
-                  className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
                 >
                   Add Manually
                 </button>
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
-              {meals.map((meal) => (
-                <div key={meal.id} className="bg-gray-800 rounded-lg p-4">
+            <div className="space-y-2">
+              {(showAllMeals ? meals : meals.slice(0, 2)).map((meal) => (
+                <div key={meal.id} className="bg-gray-800 rounded-lg p-3">
                   {meal.imageUrl && (
                     <img
                       src={meal.imageUrl}
                       alt={meal.name}
-                      className="w-full h-32 object-cover rounded-lg mb-3"
+                      className="w-full h-24 object-cover rounded-lg mb-2"
                     />
                   )}
-                  <div className="flex justify-between items-start mb-2">
+                  <div className="flex justify-between items-start mb-1.5">
                     <div>
-                      <h3 className="text-white font-semibold">{meal.name}</h3>
-                      <p className="text-gray-400 text-sm">{meal.time}</p>
+                      <h3 className="text-white font-semibold text-sm">{meal.name}</h3>
+                      <p className="text-gray-400 text-xs">{meal.time}</p>
                     </div>
                     <button
                       onClick={() => setMeals(meals.filter((m) => m.id !== meal.id))}
-                      className="text-red-400 hover:text-red-300"
+                      className="text-red-400 hover:text-red-300 text-lg"
                     >
                       ×
                     </button>
                   </div>
-                  <div className="flex gap-4 text-sm text-gray-300">
+                  <div className="flex gap-3 text-xs text-gray-300">
                     <span>{meal.calories} cal</span>
                     <span>P: {meal.protein}g</span>
                     <span>C: {meal.carbs}g</span>
@@ -788,6 +800,57 @@ export default function NutritionPage() {
             </div>
           )}
         </div>
+
+        {/* View All Meals Modal */}
+        {showAllMeals && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 rounded-xl p-4 max-w-md w-full max-h-[90vh] overflow-y-auto border border-gray-800">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white">Today&apos;s Meals</h2>
+                <button
+                  onClick={() => setShowAllMeals(false)}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="space-y-3">
+                {meals.map((meal) => (
+                  <div key={meal.id} className="bg-gray-800 rounded-lg p-3">
+                    {meal.imageUrl && (
+                      <img
+                        src={meal.imageUrl}
+                        alt={meal.name}
+                        className="w-full h-32 object-cover rounded-lg mb-3"
+                      />
+                    )}
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h3 className="text-white font-semibold">{meal.name}</h3>
+                        <p className="text-gray-400 text-sm">{meal.time}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setMeals(meals.filter((m) => m.id !== meal.id));
+                          if (meals.length === 1) setShowAllMeals(false);
+                        }}
+                        className="text-red-400 hover:text-red-300"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="flex gap-4 text-sm text-gray-300">
+                      <span>{meal.calories} cal</span>
+                      <span>P: {meal.protein}g</span>
+                      <span>C: {meal.carbs}g</span>
+                      <span>F: {meal.fats}g</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <div className="pb-20">
         {/* Spacer for bottom navigation */}
