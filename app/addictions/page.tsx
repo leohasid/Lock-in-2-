@@ -1034,62 +1034,62 @@ export default function AddictionsPage() {
           });
 
           return (
-            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
-              <div className="bg-gray-900 rounded-2xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-gray-800 my-8">
-                <div className="flex items-center justify-between mb-4">
+            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+              <div className="bg-gray-900 rounded-xl p-4 max-w-2xl w-full max-h-[95vh] border border-gray-800 overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between mb-3 flex-shrink-0">
                   <div>
-                    <h2 className="text-2xl font-bold text-white">📱 Phone & Social Media</h2>
-                    <p className="text-sm text-gray-400">Live insights synced from your device</p>
+                    <h2 className="text-xl font-bold text-white">📱 Phone & Social Media</h2>
+                    <p className="text-xs text-gray-400">Live insights synced from your device</p>
                   </div>
                   <button
                     onClick={() => setShowPhoneDetail(false)}
                     className="text-gray-400 hover:text-white"
                   >
-                    <X className="w-6 h-6" />
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                  <div className="bg-gray-800 rounded-xl p-3 border border-gray-700">
-                    <p className="text-xs text-gray-400 mb-1">Usage Today</p>
-                    <p className="text-xl font-bold text-white">{formatMinutes(totalCurrentUsage)}</p>
-                    <p className="text-[11px] text-gray-500">of {formatMinutes(totalDailyLimit)}</p>
+                <div className="grid grid-cols-4 gap-2 mb-3 flex-shrink-0">
+                  <div className="bg-gray-800 rounded-lg p-2 border border-gray-700">
+                    <p className="text-[10px] text-gray-400 mb-0.5">Usage Today</p>
+                    <p className="text-base font-bold text-white">{formatMinutes(totalCurrentUsage)}</p>
+                    <p className="text-[9px] text-gray-500">of {formatMinutes(totalDailyLimit)}</p>
                   </div>
-                  <div className="bg-gray-800 rounded-xl p-3 border border-gray-700">
-                    <p className="text-xs text-gray-400 mb-1">Limit Remaining</p>
-                    <p className="text-xl font-bold text-white">{formatMinutes(projectedFreeTime)}</p>
-                    <p className="text-[11px] text-gray-500">before block</p>
+                  <div className="bg-gray-800 rounded-lg p-2 border border-gray-700">
+                    <p className="text-[10px] text-gray-400 mb-0.5">Remaining</p>
+                    <p className="text-base font-bold text-white">{formatMinutes(projectedFreeTime)}</p>
+                    <p className="text-[9px] text-gray-500">before block</p>
                   </div>
-                  <div className="bg-gray-800 rounded-xl p-3 border border-gray-700">
-                    <p className="text-xs text-gray-400 mb-1">Apps Tracked</p>
-                    <p className="text-xl font-bold text-white">{allApps.length}</p>
-                    <p className="text-[11px] text-gray-500">auto-synced</p>
+                  <div className="bg-gray-800 rounded-lg p-2 border border-gray-700">
+                    <p className="text-[10px] text-gray-400 mb-0.5">Apps</p>
+                    <p className="text-base font-bold text-white">{allApps.length}</p>
+                    <p className="text-[9px] text-gray-500">tracked</p>
                   </div>
-                  <div className="bg-gray-800 rounded-xl p-3 border border-gray-700">
-                    <p className="text-xs text-gray-400 mb-1">Tracking Days</p>
-                    <p className="text-xl font-bold text-white">{daysClean}</p>
-                    <p className="text-[11px] text-gray-500">day streak</p>
+                  <div className="bg-gray-800 rounded-lg p-2 border border-gray-700">
+                    <p className="text-[10px] text-gray-400 mb-0.5">Days</p>
+                    <p className="text-base font-bold text-white">{daysClean}</p>
+                    <p className="text-[9px] text-gray-500">streak</p>
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-lg font-semibold text-white">Tracked Apps</h3>
+                <div className="grid grid-cols-2 gap-3 flex-1 min-h-0 overflow-hidden">
+                  <div className="bg-gray-800 rounded-lg p-3 border border-gray-700 flex flex-col min-h-0">
+                    <div className="flex items-center justify-between mb-2 flex-shrink-0">
+                      <h3 className="text-sm font-semibold text-white">Tracked Apps</h3>
                       <button
                         onClick={() => {
                           setShowPhoneDetail(false);
                           setShowAppSettings(phoneAddictions[0].id);
                         }}
-                        className="px-3 py-1.5 text-xs rounded-lg bg-orange-500 text-black font-semibold"
+                        className="px-2 py-1 text-[10px] rounded-lg bg-orange-500 text-black font-semibold"
                       >
                         Manage
                       </button>
                     </div>
                     {allApps.length === 0 ? (
-                      <p className="text-sm text-gray-400">No apps configured. Tap "Manage" to start tracking.</p>
+                      <p className="text-xs text-gray-400">No apps configured. Tap "Manage" to start tracking.</p>
                     ) : (
-                      <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                      <div className="space-y-1.5 overflow-y-auto pr-1 flex-1">
                         {allApps.map(({ app, addictionId }) => {
                           const remaining = Math.max(app.dailyLimit - app.currentUsage, 0);
                           const percent =
@@ -1099,21 +1099,21 @@ export default function AddictionsPage() {
                           return (
                             <div
                               key={`${addictionId}-${app.appName}`}
-                              className="bg-gray-900 rounded-lg p-3 border border-gray-800"
+                              className="bg-gray-900 rounded-lg p-2 border border-gray-800"
                             >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-white font-semibold text-sm">{app.appName}</span>
-                                <span className="text-xs text-gray-400">
+                              <div className="flex items-center justify-between mb-0.5">
+                                <span className="text-white font-semibold text-xs">{app.appName}</span>
+                                <span className="text-[10px] text-gray-400">
                                   {formatMinutes(app.currentUsage)} / {formatMinutes(app.dailyLimit)}
                                 </span>
                               </div>
-                              <div className="flex items-center justify-between mb-1 text-[11px]">
+                              <div className="flex items-center justify-between mb-0.5 text-[10px]">
                                 <span className={app.currentUsage >= app.dailyLimit ? "text-red-400" : "text-gray-400"}>
-                                  {app.currentUsage >= app.dailyLimit ? "Blocked" : `${formatMinutes(remaining)} remaining`}
+                                  {app.currentUsage >= app.dailyLimit ? "Blocked" : `${formatMinutes(remaining)} left`}
                                 </span>
                                 <button
                                   onClick={() => toggleAppBlock(addictionId, app.appName)}
-                                  className={`w-16 h-8 rounded-md text-xs font-semibold border flex items-center justify-center ${
+                                  className={`w-14 h-6 rounded text-[10px] font-semibold border flex items-center justify-center ${
                                     app.blocked
                                       ? "bg-green-700 border-green-500 text-white hover:bg-green-600"
                                       : "bg-red-700 border-red-500 text-white hover:bg-red-600"
@@ -1122,9 +1122,9 @@ export default function AddictionsPage() {
                                   {app.blocked ? "Unblock" : "Block"}
                                 </button>
                               </div>
-                              <div className="w-full bg-gray-700 rounded-full h-2">
+                              <div className="w-full bg-gray-700 rounded-full h-1">
                                 <div
-                                  className={`h-2 rounded-full ${
+                                  className={`h-1 rounded-full ${
                                     percent >= 100
                                       ? "bg-red-600"
                                       : percent >= 80
@@ -1141,30 +1141,30 @@ export default function AddictionsPage() {
                     )}
                   </div>
 
-                  <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 space-y-3">
-                    <h3 className="text-lg font-semibold text-white mb-2">Focus Insights</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
-                        <p className="text-xs text-gray-400">Avg per set</p>
-                        <p className="text-xl font-bold text-white">{formatMinutes(avgDailyUsage)}</p>
-                        <p className="text-[11px] text-gray-500">minutes/day</p>
+                  <div className="bg-gray-800 rounded-lg p-3 border border-gray-700 flex flex-col space-y-2 min-h-0">
+                    <h3 className="text-sm font-semibold text-white mb-1 flex-shrink-0">Focus Insights</h3>
+                    <div className="grid grid-cols-2 gap-2 flex-shrink-0">
+                      <div className="bg-gray-900 rounded-lg p-2 border border-gray-800">
+                        <p className="text-[10px] text-gray-400">Avg per day</p>
+                        <p className="text-base font-bold text-white">{formatMinutes(avgDailyUsage)}</p>
+                        <p className="text-[9px] text-gray-500">min/day</p>
                       </div>
-                      <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
-                        <p className="text-xs text-gray-400">Free time earned</p>
-                        <p className="text-xl font-bold text-white">{formatMinutes(projectedFreeTime)}</p>
-                        <p className="text-[11px] text-gray-500">stay off to win</p>
+                      <div className="bg-gray-900 rounded-lg p-2 border border-gray-800">
+                        <p className="text-[10px] text-gray-400">Free time</p>
+                        <p className="text-base font-bold text-white">{formatMinutes(projectedFreeTime)}</p>
+                        <p className="text-[9px] text-gray-500">earned</p>
                       </div>
                     </div>
-                    <div className="bg-gray-900 rounded-lg p-3 border border-gray-800">
-                      <p className="text-xs text-gray-400 mb-2">Quick actions</p>
-                      <div className="flex flex-wrap gap-2">
+                    <div className="bg-gray-900 rounded-lg p-2 border border-gray-800 flex-shrink-0">
+                      <p className="text-[10px] text-gray-400 mb-1.5">Quick actions</p>
+                      <div className="flex flex-wrap gap-1.5">
                         <button
                           onClick={() => {
                             phoneAddictions.forEach(addiction => {
                               updateAppUsage(addiction.id, "all", 5);
                             });
                           }}
-                          className="flex-1 bg-gray-800 hover:bg-gray-700 text-white px-3 py-2 rounded-lg text-xs transition-colors"
+                          className="flex-1 bg-gray-800 hover:bg-gray-700 text-white px-2 py-1.5 rounded text-[10px] transition-colors"
                         >
                           +5 min
                         </button>
@@ -1188,14 +1188,11 @@ export default function AddictionsPage() {
                               })
                             );
                           }}
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-xs transition-colors"
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 rounded text-[10px] transition-colors"
                         >
                           Reset day
                         </button>
                       </div>
-                      <p className="text-[11px] text-gray-500 mt-2">
-                        Tip: pair the sync button with the native bridge to keep these numbers live.
-                      </p>
                     </div>
                   </div>
                 </div>
