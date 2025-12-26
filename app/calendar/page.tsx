@@ -250,14 +250,14 @@ export default function CalendarPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-4">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <h1 className="text-4xl font-bold text-white">📅 Calendar & Reminders</h1>
+        <div className="mb-4">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-bold text-white">📅 Calendar & Reminders</h1>
             <button
               onClick={() => setShowAddForm(true)}
-              className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+              className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors self-start"
             >
               + Add Reminder
             </button>
@@ -472,8 +472,8 @@ export default function CalendarPage() {
         )}
 
         {/* Today's Reminders */}
-        <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 mb-6">
-          <h2 className="text-2xl font-semibold text-white mb-4">
+        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 mb-4">
+          <h2 className="text-lg font-semibold text-white mb-3">
             Today's Reminders ({getTodayReminders().length})
           </h2>
           {getTodayReminders().length === 0 ? (
@@ -533,35 +533,35 @@ export default function CalendarPage() {
         </div>
 
         {/* Stats */}
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="mb-4 grid grid-cols-3 gap-2">
           <button
             onClick={() => router.push("/calendar/all-reminders")}
-            className="bg-gray-900 rounded-2xl p-6 border border-gray-800 hover:border-orange-500/50 transition-all text-left cursor-pointer"
+            className="bg-gray-900 rounded-xl p-3 border border-gray-800 hover:border-orange-500/50 transition-all text-left cursor-pointer"
           >
-            <div className="text-3xl font-bold text-white mb-2">{reminders.length}</div>
-            <div className="text-gray-400">Total Reminders</div>
-            <div className="text-orange-400 text-sm mt-2">Click to manage all →</div>
+            <div className="text-xl font-bold text-white mb-1">{reminders.length}</div>
+            <div className="text-xs text-gray-400">Total</div>
+            <div className="text-orange-400 text-[10px] mt-1">View all →</div>
           </button>
-          <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-            <div className="text-3xl font-bold text-white mb-2">
+          <div className="bg-gray-900 rounded-xl p-3 border border-gray-800">
+            <div className="text-xl font-bold text-white mb-1">
               {reminders.filter((r) => r.completed).length}
             </div>
-            <div className="text-gray-400">Completed Today</div>
+            <div className="text-xs text-gray-400">Completed</div>
           </div>
-          <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-            <div className="text-3xl font-bold text-white mb-2">
+          <div className="bg-gray-900 rounded-xl p-3 border border-gray-800">
+            <div className="text-xl font-bold text-white mb-1">
               {Math.round(
                 (reminders.filter((r) => r.completed).length / Math.max(getTodayReminders().length, 1)) * 100
               )}%
             </div>
-            <div className="text-gray-400">Completion Rate</div>
+            <div className="text-xs text-gray-400">Rate</div>
           </div>
         </div>
 
         {/* Calendar */}
-        <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-semibold text-white">Calendar</h2>
+        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-white">Calendar</h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigateMonth("prev")}
@@ -582,9 +582,9 @@ export default function CalendarPage() {
           </div>
           
           {/* Week day headers */}
-          <div className="grid grid-cols-7 gap-1 mb-2">
+          <div className="grid grid-cols-7 gap-1 mb-1.5">
             {weekDays.map((day) => (
-              <div key={day} className="text-center text-gray-400 text-xs font-semibold py-2">
+              <div key={day} className="text-center text-gray-400 text-[10px] font-semibold py-1">
                 {day}
               </div>
             ))}
@@ -605,7 +605,7 @@ export default function CalendarPage() {
                 <button
                   key={date.toISOString()}
                   onClick={() => handleDateClick(date)}
-                  className={`aspect-square rounded-lg text-sm font-medium transition-colors ${
+                  className={`aspect-square rounded-lg text-xs font-medium transition-colors ${
                     isSelected
                       ? "bg-orange-500 text-black"
                       : isCurrentDay
@@ -616,7 +616,7 @@ export default function CalendarPage() {
                   <div className="flex flex-col items-center justify-center h-full">
                     <span>{date.getDate()}</span>
                     {hasReminder && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-orange-400 mt-0.5" />
+                      <div className="w-1 h-1 rounded-full bg-orange-400 mt-0.5" />
                     )}
                   </div>
                 </button>
@@ -627,8 +627,8 @@ export default function CalendarPage() {
 
         {/* Selected Date Reminders - Shows below calendar when date is clicked */}
         {!isSameDay(selectedDate, new Date()) && (
-          <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 mb-6">
-            <h2 className="text-2xl font-semibold text-white mb-4">
+          <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 mb-4">
+            <h2 className="text-lg font-semibold text-white mb-3">
               {selectedDate.toLocaleDateString("en-US", { 
                 weekday: "long", 
                 year: "numeric", 
