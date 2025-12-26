@@ -336,20 +336,20 @@ export default function NutritionPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-4">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex flex-col gap-3">
-            <h1 className="text-3xl font-bold text-white">🥗 Nutrition & Calories</h1>
+        <div className="mb-4">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-bold text-white">🥗 Nutrition & Calories</h1>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
                   setMacroSettings(dailyGoals);
                   setShowMacroSettings(true);
                 }}
-                className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                className="bg-gray-700 hover:bg-gray-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
               >
-                <Settings className="w-4 h-4" />
+                <Settings className="w-3.5 h-3.5" />
                 <span>Macros</span>
               </button>
               <button
@@ -357,14 +357,14 @@ export default function NutritionPage() {
                   setFoodToScan("");
                   setShowScanIntro(true);
                 }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
               >
-                <Camera className="w-4 h-4" />
+                <Camera className="w-3.5 h-3.5" />
                 <span>Scan Food</span>
               </button>
               <button
                 onClick={() => setShowAddMeal(true)}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="bg-orange-500 hover:bg-orange-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
               >
                 + Add Meal
               </button>
