@@ -337,7 +337,7 @@ export default function NutritionPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="px-4 py-3">
+      <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-4">
           <div className="flex flex-col gap-2">
@@ -654,22 +654,22 @@ export default function NutritionPage() {
           </div>
         )}
 
-        {/* Daily Goals & Progress - All macros visible - Full width */}
-        <div className="grid grid-cols-4 gap-2 mb-4 -mx-4 px-4">
+        {/* Daily Goals & Progress - All macros visible */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <button
             onClick={() => {
               setMacroSettings(dailyGoals);
               setShowMacroSettings(true);
             }}
-            className="bg-gray-900 rounded-lg p-3 border border-gray-800 hover:border-orange-500/50 transition-colors text-left"
+            className="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-orange-500/50 transition-colors text-left"
           >
-            <div className="text-[10px] text-gray-400 mb-0.5">Calories</div>
-            <div className="text-lg font-bold text-white mb-1">
+            <div className="text-xs text-gray-400 mb-1">Calories</div>
+            <div className="text-xl font-bold text-white mb-1.5">
               {totals.calories} / {dailyGoals.calories}
             </div>
-            <div className="w-full bg-gray-800 rounded-full h-1">
+            <div className="w-full bg-gray-800 rounded-full h-1.5">
               <div
-                className="bg-orange-500 h-1 rounded-full"
+                className="bg-orange-500 h-1.5 rounded-full"
                 style={{ width: `${Math.min((totals.calories / dailyGoals.calories) * 100, 100)}%` }}
               />
             </div>
@@ -679,15 +679,15 @@ export default function NutritionPage() {
               setMacroSettings(dailyGoals);
               setShowMacroSettings(true);
             }}
-            className="bg-gray-900 rounded-lg p-3 border border-gray-800 hover:border-blue-500/50 transition-colors text-left"
+            className="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-blue-500/50 transition-colors text-left"
           >
-            <div className="text-[10px] text-gray-400 mb-0.5">Protein</div>
-            <div className="text-lg font-bold text-white mb-1">
+            <div className="text-xs text-gray-400 mb-1">Protein</div>
+            <div className="text-xl font-bold text-white mb-1.5">
               {totals.protein}g / {dailyGoals.protein}g
             </div>
-            <div className="w-full bg-gray-800 rounded-full h-1">
+            <div className="w-full bg-gray-800 rounded-full h-1.5">
               <div
-                className="bg-blue-600 h-1 rounded-full"
+                className="bg-blue-600 h-1.5 rounded-full"
                 style={{ width: `${Math.min((totals.protein / dailyGoals.protein) * 100, 100)}%` }}
               />
             </div>
@@ -697,15 +697,15 @@ export default function NutritionPage() {
               setMacroSettings(dailyGoals);
               setShowMacroSettings(true);
             }}
-            className="bg-gray-900 rounded-lg p-3 border border-gray-800 hover:border-green-500/50 transition-colors text-left"
+            className="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-green-500/50 transition-colors text-left"
           >
-            <div className="text-[10px] text-gray-400 mb-0.5">Carbs</div>
-            <div className="text-lg font-bold text-white mb-1">
+            <div className="text-xs text-gray-400 mb-1">Carbs</div>
+            <div className="text-xl font-bold text-white mb-1.5">
               {totals.carbs}g / {dailyGoals.carbs}g
             </div>
-            <div className="w-full bg-gray-800 rounded-full h-1">
+            <div className="w-full bg-gray-800 rounded-full h-1.5">
               <div
-                className="bg-green-600 h-1 rounded-full"
+                className="bg-green-600 h-1.5 rounded-full"
                 style={{ width: `${Math.min((totals.carbs / dailyGoals.carbs) * 100, 100)}%` }}
               />
             </div>
@@ -715,15 +715,15 @@ export default function NutritionPage() {
               setMacroSettings(dailyGoals);
               setShowMacroSettings(true);
             }}
-            className="bg-gray-900 rounded-lg p-3 border border-gray-800 hover:border-yellow-500/50 transition-colors text-left"
+            className="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-yellow-500/50 transition-colors text-left"
           >
-            <div className="text-[10px] text-gray-400 mb-0.5">Fats</div>
-            <div className="text-lg font-bold text-white mb-1">
+            <div className="text-xs text-gray-400 mb-1">Fats</div>
+            <div className="text-xl font-bold text-white mb-1.5">
               {totals.fats}g / {dailyGoals.fats}g
             </div>
-            <div className="w-full bg-gray-800 rounded-full h-1">
+            <div className="w-full bg-gray-800 rounded-full h-1.5">
               <div
-                className="bg-yellow-600 h-1 rounded-full"
+                className="bg-yellow-600 h-1.5 rounded-full"
                 style={{ width: `${Math.min((totals.fats / dailyGoals.fats) * 100, 100)}%` }}
               />
             </div>
