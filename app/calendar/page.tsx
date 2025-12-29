@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
-import { Trash2 } from "lucide-react";
+import { Trash2, Sparkles } from "lucide-react";
 
 interface Reminder {
   id: string;
@@ -32,6 +32,11 @@ export default function CalendarPage() {
   });
 
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
+  const [aiPreferences, setAiPreferences] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedReminders, setGeneratedReminders] = useState<Reminder[]>([]);
+  const [showGeneratedPreview, setShowGeneratedPreview] = useState(false);
 
   // Load reminders from localStorage on mount
   useEffect(() => {
@@ -255,12 +260,21 @@ export default function CalendarPage() {
         <div className="mb-4">
           <div className="flex flex-col gap-2">
             <h1 className="text-2xl font-bold text-white">📅 Calendar & Reminders</h1>
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors self-start"
-            >
-              + Add Reminder
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                + Add Reminder
+              </button>
+              <button
+                onClick={() => setShowAIGenerator(true)}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4" />
+                AI Schedule
+              </button>
+            </div>
           </div>
         </div>
 
@@ -698,6 +712,171 @@ export default function CalendarPage() {
                   ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* AI Schedule Generator Modal */}
+        {showAIGenerator && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-900 rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto border border-gray-800">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <Sparkles className="w-6 h-6 text-purple-400" />
+                  AI Schedule Generator
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowAIGenerator(false);
+                    setAiPreferences("");
+                    setGeneratedReminders([]);
+                    setShowGeneratedPreview(false);
+                  }}
+                  className="text-gray-400 hover:text-white text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              {!showGeneratedPreview ? (
+                <div className="space-y-4">
+                  <p className="text-gray-300 text-sm">
+                    Let AI create a personalized monthly schedule for you! Tell us about your routine preferences, goals, and activities you want to track.
+                  </p>
+                  <div>
+                    <label className="block text-gray-300 mb-2">Your Preferences & Goals</label>
+                    <textarea
+                      value={aiPreferences}
+                      onChange={(e) => setAiPreferences(e.target.value)}
+                      placeholder="e.g., I want to workout 4 times a week, take vitamins daily at 8am, meal prep on Sundays, meditate every morning, drink water every 2 hours..."
+                      className="w-full bg-gray-800 text-white p-3 rounded-lg min-h-[120px] resize-none"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Be specific about times, frequencies, and activities you want included
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!aiPreferences.trim()) {
+                        alert("Please enter your preferences to generate a schedule");
+                        return;
+                      }
+                      setIsGenerating(true);
+                      try {
+                        const monthNames = [
+                          "January", "February", "March", "April", "May", "June",
+                          "July", "August", "September", "October", "November", "December"
+                        ];
+                        const month = monthNames[selectedDate.getMonth()];
+                        const year = selectedDate.getFullYear();
+
+                        const response = await fetch("/api/generate-schedule", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            preferences: aiPreferences,
+                            month,
+                            year,
+                            existingReminders: reminders,
+                          }),
+                        });
+
+                        if (!response.ok) {
+                          const errorData = await response.json();
+                          throw new Error(errorData.error || "Failed to generate schedule");
+                        }
+
+                        const data = await response.json();
+                        const newReminders: Reminder[] = data.reminders.map((r: any, index: number) => ({
+                          id: `ai-generated-${Date.now()}-${index}`,
+                          title: r.title,
+                          type: r.type || "task",
+                          time: r.time,
+                          date: r.date,
+                          completed: false,
+                          repeatFrequency: r.repeatFrequency || "",
+                        }));
+
+                        setGeneratedReminders(newReminders);
+                        setShowGeneratedPreview(true);
+                      } catch (error: any) {
+                        console.error("AI schedule generation error:", error);
+                        alert(error.message || "Failed to generate schedule. Please try again.");
+                      } finally {
+                        setIsGenerating(false);
+                      }
+                    }}
+                    disabled={isGenerating}
+                    className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  >
+                    {isGenerating ? "Generating Schedule..." : "Generate Monthly Schedule"}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+                    <p className="text-purple-300 text-sm font-semibold mb-1">
+                      ✨ Generated {generatedReminders.length} reminders for {monthNames[selectedDate.getMonth()]} {selectedDate.getFullYear()}
+                    </p>
+                    <p className="text-gray-400 text-xs">
+                      Review the schedule below and click "Add to Calendar" to apply it
+                    </p>
+                  </div>
+                  <div className="max-h-[400px] overflow-y-auto space-y-2">
+                    {generatedReminders.slice(0, 20).map((reminder, index) => (
+                      <div
+                        key={reminder.id}
+                        className="bg-gray-800 rounded-lg p-3 flex items-center gap-3"
+                      >
+                        <div className="text-xl">{getReminderIcon(reminder.type)}</div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-white font-semibold text-sm truncate">{reminder.title}</h3>
+                          <p className="text-gray-400 text-xs">
+                            {new Date(reminder.date).toLocaleDateString("en-US", { 
+                              month: "short", 
+                              day: "numeric" 
+                            })} at {reminder.time}
+                          </p>
+                          {reminder.repeatFrequency && (
+                            <p className="text-gray-500 text-[10px] mt-0.5">
+                              Repeats: {reminder.repeatFrequency}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {generatedReminders.length > 20 && (
+                      <p className="text-gray-400 text-xs text-center py-2">
+                        ... and {generatedReminders.length - 20} more reminders
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => {
+                        setReminders([...reminders, ...generatedReminders]);
+                        setShowAIGenerator(false);
+                        setAiPreferences("");
+                        setGeneratedReminders([]);
+                        setShowGeneratedPreview(false);
+                        alert(`Successfully added ${generatedReminders.length} reminders to your calendar!`);
+                      }}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                    >
+                      Add to Calendar
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowGeneratedPreview(false);
+                        setGeneratedReminders([]);
+                      }}
+                      className="flex-1 bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                    >
+                      Regenerate
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
