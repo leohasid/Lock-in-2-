@@ -562,6 +562,126 @@ export default function CalendarPage() {
           </div>
         )}
 
+        {/* Routine View - Weekly Schedule Grid */}
+        {activeView === "routine" && (
+          <div className="mb-4">
+            {/* Week Navigation */}
+            <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 mb-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">Weekly Routine</h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigateWeek("prev")}
+                    className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1 rounded-lg text-sm"
+                  >
+                    ←
+                  </button>
+                  <span className="text-white font-semibold min-w-[200px] text-center text-sm">
+                    {weekDays[0].toLocaleDateString("en-US", { month: "short", day: "numeric" })} - {weekDays[6].toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </span>
+                  <button
+                    onClick={() => navigateWeek("next")}
+                    className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1 rounded-lg text-sm"
+                  >
+                    →
+                  </button>
+                  <button
+                    onClick={() => setSelectedWeek(new Date())}
+                    className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded-lg text-sm font-medium"
+                  >
+                    Today
+                  </button>
+                </div>
+              </div>
+
+              {/* Weekly Schedule Grid - Days on left, Times on top */}
+              <div className="overflow-x-auto">
+                <div className="min-w-full">
+                  {/* Time header row */}
+                  <div className="grid gap-1 mb-1" style={{ gridTemplateColumns: `120px repeat(${timeSlots.length}, minmax(80px, 1fr))` }}>
+                    <div className="text-xs text-gray-400 font-semibold p-2"></div>
+                    {timeSlots.map((time) => (
+                      <div
+                        key={time}
+                        className="text-center text-xs font-semibold p-2 rounded text-gray-400"
+                      >
+                        {time}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Day rows */}
+                  <div className="space-y-1">
+                    {weekDays.map((day, dayIndex) => {
+                      const isTodaySlot = isToday(day);
+                      const dayName = weekDayNames[dayIndex];
+                      return (
+                        <div 
+                          key={dayIndex} 
+                          className="grid gap-1"
+                          style={{ gridTemplateColumns: `120px repeat(${timeSlots.length}, minmax(80px, 1fr))` }}
+                        >
+                          {/* Day label */}
+                          <div className={`text-xs font-semibold p-2 rounded flex flex-col justify-center ${
+                            isTodaySlot ? "bg-orange-500/20 text-orange-400" : "text-gray-400 bg-gray-800/50"
+                          }`}>
+                            <div className="font-bold">{dayName}</div>
+                            <div className="text-[10px] mt-0.5">{day.getDate()}</div>
+                          </div>
+                          {/* Time columns */}
+                          {timeSlots.map((time) => {
+                            const slotReminders = getRemindersForSlot(day, time);
+                            return (
+                              <div
+                                key={time}
+                                className={`min-h-[60px] p-1 rounded border ${
+                                  isTodaySlot
+                                    ? "bg-orange-500/5 border-orange-500/20"
+                                    : "bg-gray-800/50 border-gray-700/50"
+                                }`}
+                              >
+                                {slotReminders.map((reminder) => (
+                                  <div
+                                    key={reminder.id}
+                                    onClick={() => {
+                                      setSelectedDate(day);
+                                      setClickedDate(day);
+                                      setShowDateModal(true);
+                                    }}
+                                    className={`mb-1 p-1.5 rounded text-[10px] cursor-pointer transition-colors ${
+                                      reminder.completed
+                                        ? "opacity-50 line-through"
+                                        : ""
+                                    } ${
+                                      reminder.type === "supplement"
+                                        ? "bg-blue-500/30 border border-blue-500/50 text-blue-200"
+                                        : reminder.type === "task"
+                                        ? "bg-green-500/30 border border-green-500/50 text-green-200"
+                                        : "bg-purple-500/30 border border-purple-500/50 text-purple-200"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-1">
+                                      <span>{getReminderIcon(reminder.type)}</span>
+                                      <span className="truncate font-medium">{reminder.title}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Calendar View */}
+        {activeView === "calendar" && (
+          <>
         {/* Today's Reminders */}
         <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 mb-4">
           <h2 className="text-lg font-semibold text-white mb-3">
@@ -790,6 +910,8 @@ export default function CalendarPage() {
               </div>
             )}
           </div>
+        )}
+          </>
         )}
 
         {/* AI Schedule Generator Modal */}
