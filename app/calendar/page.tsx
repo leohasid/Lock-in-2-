@@ -284,22 +284,24 @@ export default function CalendarPage() {
     return days;
   };
 
-  // Generate time slots (every hour from 6 AM to 11 PM)
-  const timeSlots = Array.from({ length: 18 }, (_, i) => {
-    const hour = i + 6;
+  // Generate time slots (every 2 hours from 6 AM to 10 PM for better visibility)
+  const timeSlots = Array.from({ length: 9 }, (_, i) => {
+    const hour = i * 2 + 6;
     return `${hour.toString().padStart(2, "0")}:00`;
   });
 
-  // Get reminders for a specific day and time
+  // Get reminders for a specific day and time (within 2-hour window)
   const getRemindersForSlot = (date: Date, time: string) => {
     const dateStr = date.toISOString().split("T")[0];
     const timeHour = parseInt(time.split(":")[0]);
+    const nextHour = timeHour + 2;
     
     return reminders.filter((reminder) => {
       if (reminder.date !== dateStr) return false;
       
       const reminderHour = parseInt(reminder.time.split(":")[0]);
-      return reminderHour === timeHour;
+      // Include reminders within the 2-hour window
+      return reminderHour >= timeHour && reminderHour < nextHour;
     });
   };
 
@@ -595,38 +597,42 @@ export default function CalendarPage() {
               </div>
 
               {/* Weekly Schedule Grid - Days on left, Times on top */}
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto -mx-4 px-4">
                 <div className="min-w-full">
                   {/* Time header row */}
-                  <div className="grid gap-1 mb-1" style={{ gridTemplateColumns: `120px repeat(${timeSlots.length}, minmax(80px, 1fr))` }}>
+                  <div className="grid gap-2 mb-2" style={{ gridTemplateColumns: `100px repeat(${timeSlots.length}, minmax(100px, 1fr))` }}>
                     <div className="text-xs text-gray-400 font-semibold p-2"></div>
-                    {timeSlots.map((time) => (
-                      <div
-                        key={time}
-                        className="text-center text-xs font-semibold p-2 rounded text-gray-400"
-                      >
-                        {time}
-                      </div>
-                    ))}
+                    {timeSlots.map((time, idx) => {
+                      const nextTime = idx < timeSlots.length - 1 ? timeSlots[idx + 1] : "22:00";
+                      return (
+                        <div
+                          key={time}
+                          className="text-center text-xs font-semibold p-2 rounded text-gray-400"
+                        >
+                          <div>{time}</div>
+                          <div className="text-[9px] text-gray-500 mt-0.5">- {nextTime}</div>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {/* Day rows */}
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     {weekDays.map((day, dayIndex) => {
                       const isTodaySlot = isToday(day);
                       const dayName = weekDayNames[dayIndex];
                       return (
                         <div 
                           key={dayIndex} 
-                          className="grid gap-1"
-                          style={{ gridTemplateColumns: `120px repeat(${timeSlots.length}, minmax(80px, 1fr))` }}
+                          className="grid gap-2"
+                          style={{ gridTemplateColumns: `100px repeat(${timeSlots.length}, minmax(100px, 1fr))` }}
                         >
                           {/* Day label */}
-                          <div className={`text-xs font-semibold p-2 rounded flex flex-col justify-center ${
-                            isTodaySlot ? "bg-orange-500/20 text-orange-400" : "text-gray-400 bg-gray-800/50"
+                          <div className={`text-sm font-semibold p-3 rounded flex flex-col justify-center ${
+                            isTodaySlot ? "bg-orange-500/20 text-orange-400" : "text-gray-300 bg-gray-800/50"
                           }`}>
                             <div className="font-bold">{dayName}</div>
-                            <div className="text-[10px] mt-0.5">{day.getDate()}</div>
+                            <div className="text-xs mt-1 opacity-75">{day.getDate()}</div>
                           </div>
                           {/* Time columns */}
                           {timeSlots.map((time) => {
@@ -634,38 +640,49 @@ export default function CalendarPage() {
                             return (
                               <div
                                 key={time}
-                                className={`min-h-[60px] p-1 rounded border ${
+                                className={`min-h-[80px] p-2 rounded border ${
                                   isTodaySlot
                                     ? "bg-orange-500/5 border-orange-500/20"
                                     : "bg-gray-800/50 border-gray-700/50"
                                 }`}
                               >
-                                {slotReminders.map((reminder) => (
-                                  <div
-                                    key={reminder.id}
-                                    onClick={() => {
-                                      setSelectedDate(day);
-                                      setClickedDate(day);
-                                      setShowDateModal(true);
-                                    }}
-                                    className={`mb-1 p-1.5 rounded text-[10px] cursor-pointer transition-colors ${
-                                      reminder.completed
-                                        ? "opacity-50 line-through"
-                                        : ""
-                                    } ${
-                                      reminder.type === "supplement"
-                                        ? "bg-blue-500/30 border border-blue-500/50 text-blue-200"
-                                        : reminder.type === "task"
-                                        ? "bg-green-500/30 border border-green-500/50 text-green-200"
-                                        : "bg-purple-500/30 border border-purple-500/50 text-purple-200"
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-1">
-                                      <span>{getReminderIcon(reminder.type)}</span>
-                                      <span className="truncate font-medium">{reminder.title}</span>
-                                    </div>
+                                {slotReminders.length === 0 ? (
+                                  <div className="text-gray-600 text-[10px] opacity-50 h-full flex items-center justify-center">
+                                    -
                                   </div>
-                                ))}
+                                ) : (
+                                  <div className="space-y-1.5">
+                                    {slotReminders.map((reminder) => (
+                                      <div
+                                        key={reminder.id}
+                                        onClick={() => {
+                                          setSelectedDate(day);
+                                          setClickedDate(day);
+                                          setShowDateModal(true);
+                                        }}
+                                        className={`p-2 rounded text-xs cursor-pointer transition-colors ${
+                                          reminder.completed
+                                            ? "opacity-50 line-through"
+                                            : ""
+                                        } ${
+                                          reminder.type === "supplement"
+                                            ? "bg-blue-500/30 border border-blue-500/50 text-blue-200"
+                                            : reminder.type === "task"
+                                            ? "bg-green-500/30 border border-green-500/50 text-green-200"
+                                            : "bg-purple-500/30 border border-purple-500/50 text-purple-200"
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-sm">{getReminderIcon(reminder.type)}</span>
+                                          <span className="font-medium truncate flex-1">{reminder.title}</span>
+                                        </div>
+                                        <div className="text-[10px] opacity-75 mt-1">
+                                          {reminder.time}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
