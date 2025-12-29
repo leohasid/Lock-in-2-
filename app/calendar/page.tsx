@@ -37,6 +37,8 @@ export default function CalendarPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedReminders, setGeneratedReminders] = useState<Reminder[]>([]);
   const [showGeneratedPreview, setShowGeneratedPreview] = useState(false);
+  const [activeView, setActiveView] = useState<"calendar" | "routine">("calendar");
+  const [selectedWeek, setSelectedWeek] = useState(new Date());
 
   // Load reminders from localStorage on mount
   useEffect(() => {
@@ -239,7 +241,7 @@ export default function CalendarPage() {
     "July", "August", "September", "October", "November", "December"
   ];
 
-  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const weekDayNamesShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   const navigateMonth = (direction: "prev" | "next") => {
     setSelectedDate((prev) => {
@@ -252,6 +254,57 @@ export default function CalendarPage() {
       return newDate;
     });
   };
+
+  const navigateWeek = (direction: "prev" | "next") => {
+    setSelectedWeek((prev) => {
+      const newDate = new Date(prev);
+      if (direction === "prev") {
+        newDate.setDate(prev.getDate() - 7);
+      } else {
+        newDate.setDate(prev.getDate() + 7);
+      }
+      return newDate;
+    });
+  };
+
+  // Get the week's days (Monday to Sunday)
+  const getWeekDays = () => {
+    const days: Date[] = [];
+    const startOfWeek = new Date(selectedWeek);
+    // Get Monday (day 1)
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+    startOfWeek.setDate(diff);
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + i);
+      days.push(date);
+    }
+    return days;
+  };
+
+  // Generate time slots (every hour from 6 AM to 11 PM)
+  const timeSlots = Array.from({ length: 18 }, (_, i) => {
+    const hour = i + 6;
+    return `${hour.toString().padStart(2, "0")}:00`;
+  });
+
+  // Get reminders for a specific day and time
+  const getRemindersForSlot = (date: Date, time: string) => {
+    const dateStr = date.toISOString().split("T")[0];
+    const timeHour = parseInt(time.split(":")[0]);
+    
+    return reminders.filter((reminder) => {
+      if (reminder.date !== dateStr) return false;
+      
+      const reminderHour = parseInt(reminder.time.split(":")[0]);
+      return reminderHour === timeHour;
+    });
+  };
+
+  const weekDays = getWeekDays();
+  const weekDayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -276,6 +329,30 @@ export default function CalendarPage() {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* View Tabs */}
+        <div className="flex gap-2 mb-4 border-b border-gray-800">
+          <button
+            onClick={() => setActiveView("calendar")}
+            className={`px-4 py-2 font-semibold transition-colors ${
+              activeView === "calendar"
+                ? "text-orange-400 border-b-2 border-orange-400"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            Calendar
+          </button>
+          <button
+            onClick={() => setActiveView("routine")}
+            className={`px-4 py-2 font-semibold transition-colors ${
+              activeView === "routine"
+                ? "text-orange-400 border-b-2 border-orange-400"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            Routine
+          </button>
         </div>
 
         {/* Date Click Modal - Shows Reminders for Selected Date */}
@@ -597,7 +674,7 @@ export default function CalendarPage() {
           
           {/* Week day headers */}
           <div className="grid grid-cols-7 gap-1 mb-1.5">
-            {weekDays.map((day) => (
+            {weekDayNamesShort.map((day) => (
               <div key={day} className="text-center text-gray-400 text-[10px] font-semibold py-1">
                 {day}
               </div>
@@ -640,7 +717,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Selected Date Reminders - Shows below calendar when date is clicked */}
-        {!isSameDay(selectedDate, new Date()) && (
+        {activeView === "calendar" && !isSameDay(selectedDate, new Date()) && (
           <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 mb-4">
             <h2 className="text-lg font-semibold text-white mb-3">
               {selectedDate.toLocaleDateString("en-US", { 
