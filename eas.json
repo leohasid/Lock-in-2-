@@ -4,11 +4,17 @@
   },
   "build": {
     "production": {
+      "ios": {
+        "simulator": false
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "development": {
+      "ios": {
+        "simulator": true
+      },
       "android": {
         "buildType": "apk"
       }
