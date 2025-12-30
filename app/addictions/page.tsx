@@ -499,15 +499,25 @@ export default function AddictionsPage() {
 
   // Call native blocking API if available
   const blockAppNative = async (appName: string, block: boolean) => {
-    if (typeof window !== "undefined" && window.lockedInUsageBridge) {
-      try {
-        // If there's a native blocking function, call it
+    try {
+      // Try Capacitor plugin first (iOS native)
+      if (typeof window !== "undefined") {
+        // @ts-ignore - Capacitor plugin
+        const { AppBlocking } = await import('@capacitor/core').then(m => m.Plugins).catch(() => ({}));
+        if (AppBlocking?.blockApp) {
+          await AppBlocking.blockApp({ appName, block });
+          return;
+        }
+      }
+      
+      // Fallback to legacy bridge
+      if (typeof window !== "undefined" && window.lockedInUsageBridge) {
         if (window.lockedInUsageBridge.blockApp) {
           await window.lockedInUsageBridge.blockApp(appName, block);
         }
-      } catch (error) {
-        console.error("Failed to block app natively:", error);
       }
+    } catch (error) {
+      console.error("Failed to block app natively:", error);
     }
   };
 
