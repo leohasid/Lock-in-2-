@@ -161,9 +161,17 @@ export default function AddictionsPage() {
               blockAppNative(app.appName, true);
             }
             
-            // If app is blocked but usage is below limit (e.g., new day), unblock it
+            // Only unblock if it's a new day and usage is reset (automatic reset)
+            // Users cannot manually unblock - blocking is permanent until daily reset
             if (!shouldBeBlocked && isBlocked) {
-              blockAppNative(app.appName, false);
+              // Check if this is a new day (usage was reset)
+              const today = new Date().toISOString().split("T")[0];
+              const lastResetDate = localStorage.getItem(`lastResetDate-${phoneAddiction.id}`);
+              if (lastResetDate !== today) {
+                // New day - automatically unblock
+                blockAppNative(app.appName, false);
+                localStorage.setItem(`lastResetDate-${phoneAddiction.id}`, today);
+              }
             }
             
             return {
@@ -244,12 +252,21 @@ export default function AddictionsPage() {
               return { ...app, blocked: true };
             }
             
-            // If app is blocked but usage is below limit (e.g., new day), unblock it
+            // Only unblock if it's a new day (automatic daily reset)
+            // Users cannot manually unblock - blocking is permanent until daily reset
             if (!shouldBeBlocked && app.blocked) {
-              hasChanges = true;
-              blockAppNative(app.appName, false);
-              notificationShownRef.current.delete(`blocked-${app.appName}`);
-              return { ...app, blocked: false };
+              const today = new Date().toISOString().split("T")[0];
+              const lastResetDate = localStorage.getItem(`lastResetDate-${phoneAddiction.id}`);
+              if (lastResetDate !== today) {
+                // New day - automatically unblock
+                hasChanges = true;
+                blockAppNative(app.appName, false);
+                notificationShownRef.current.delete(`blocked-${app.appName}`);
+                localStorage.setItem(`lastResetDate-${phoneAddiction.id}`, today);
+                return { ...app, blocked: false };
+              }
+              // Same day - keep blocked (cannot unblock manually)
+              return app;
             }
             
             return app;
@@ -536,29 +553,9 @@ export default function AddictionsPage() {
     }
   };
 
-  const toggleAppBlock = async (addictionId: string, appName: string) => {
-    setAddictions((prev) =>
-      prev.map((a) => {
-        if (a.id === addictionId && "apps" in a) {
-          const phoneAddiction = a as PhoneAddiction;
-          const updatedApps = phoneAddiction.apps.map((app) => {
-            if (app.appName === appName) {
-              const newBlockedState = !app.blocked;
-              // Call native blocking API
-              blockAppNative(appName, newBlockedState);
-              return { ...app, blocked: newBlockedState };
-            }
-            return app;
-          });
-          return {
-            ...phoneAddiction,
-            apps: updatedApps,
-          };
-        }
-        return a;
-      })
-    );
-  };
+  // Apps are automatically blocked when limits are reached
+  // No manual toggle - blocking is permanent until next day reset
+  // Users cannot unblock apps manually
 
   const getCountdown = (startTime: string | undefined) => {
     if (!startTime) {
@@ -1132,19 +1129,14 @@ export default function AddictionsPage() {
                                 </span>
                               </div>
                               <div className="flex items-center justify-between mb-0.5 text-[10px]">
-                                <span className={app.currentUsage >= app.dailyLimit ? "text-red-400" : "text-gray-400"}>
-                                  {app.currentUsage >= app.dailyLimit ? "Blocked" : `${formatMinutes(remaining)} left`}
+                                <span className={app.currentUsage >= app.dailyLimit ? "text-red-400 font-semibold" : "text-gray-400"}>
+                                  {app.currentUsage >= app.dailyLimit ? "🚫 Blocked" : `${formatMinutes(remaining)} left`}
                                 </span>
-                                <button
-                                  onClick={() => toggleAppBlock(addictionId, app.appName)}
-                                  className={`w-14 h-6 rounded text-[10px] font-semibold border flex items-center justify-center ${
-                                    app.blocked
-                                      ? "bg-green-700 border-green-500 text-white hover:bg-green-600"
-                                      : "bg-red-700 border-red-500 text-white hover:bg-red-600"
-                                  }`}
-                                >
-                                  {app.blocked ? "Unblock" : "Block"}
-                                </button>
+                                {app.currentUsage >= app.dailyLimit && (
+                                  <span className="text-[9px] text-red-400 font-semibold">
+                                    Cannot unblock
+                                  </span>
+                                )}
                               </div>
                               <div className="w-full bg-gray-700 rounded-full h-1">
                                 <div
