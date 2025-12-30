@@ -500,24 +500,39 @@ export default function AddictionsPage() {
   // Call native blocking API if available
   const blockAppNative = async (appName: string, block: boolean) => {
     try {
-      // Try Capacitor plugin first (iOS native)
-      if (typeof window !== "undefined") {
-        // @ts-ignore - Capacitor plugin
-        const { AppBlocking } = await import('@capacitor/core').then(m => m.Plugins).catch(() => ({}));
-        if (AppBlocking?.blockApp) {
-          await AppBlocking.blockApp({ appName, block });
+      // Try Capacitor plugin first (iOS native) - only works in native app
+      if (typeof window !== "undefined" && window.Capacitor?.isNativePlatform()) {
+        try {
+          // @ts-ignore - Capacitor plugin
+          const { AppBlocking } = await import('@capacitor/core').then(m => m.Plugins).catch(() => ({}));
+          if (AppBlocking?.blockApp) {
+            await AppBlocking.blockApp({ appName, block });
+            console.log(`[Native] ${block ? 'Blocked' : 'Unblocked'} app: ${appName}`);
+            return;
+          }
+        } catch (e) {
+          console.log('[Web] Capacitor plugin not available, using fallback');
+        }
+      }
+      
+      // Fallback to legacy bridge or web notification
+      if (typeof window !== "undefined" && window.lockedInUsageBridge) {
+        if (window.lockedInUsageBridge.blockApp) {
+          await window.lockedInUsageBridge.blockApp(appName, block);
           return;
         }
       }
       
-      // Fallback to legacy bridge
-      if (typeof window !== "undefined" && window.lockedInUsageBridge) {
-        if (window.lockedInUsageBridge.blockApp) {
-          await window.lockedInUsageBridge.blockApp(appName, block);
-        }
+      // Web fallback: Show notification (for testing without native)
+      if (block && Notification.permission === "granted") {
+        new Notification(`🚫 ${appName} Blocked`, {
+          body: "Daily limit reached! (Native blocking requires iOS app)",
+          icon: "/favicon.ico"
+        });
       }
+      console.log(`[Web] ${block ? 'Would block' : 'Would unblock'} app: ${appName}`);
     } catch (error) {
-      console.error("Failed to block app natively:", error);
+      console.error("Failed to block app:", error);
     }
   };
 
@@ -1332,4 +1347,5 @@ export default function AddictionsPage() {
     </div>
   );
 }
+
 
