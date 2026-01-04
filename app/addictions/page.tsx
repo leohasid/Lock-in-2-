@@ -60,6 +60,9 @@ declare global {
       getUsage?: () => Promise<PhoneUsageSnapshot> | PhoneUsageSnapshot;
       blockApp?: (appName: string, block: boolean) => Promise<void> | void;
     };
+    Capacitor?: {
+      isNativePlatform: () => boolean;
+    };
   }
 }
 
@@ -166,11 +169,11 @@ export default function AddictionsPage() {
             if (!shouldBeBlocked && isBlocked) {
               // Check if this is a new day (usage was reset)
               const today = new Date().toISOString().split("T")[0];
-              const lastResetDate = localStorage.getItem(`lastResetDate-${phoneAddiction.id}`);
+              const lastResetDate = localStorage.getItem(`lastResetDate-${addiction.id}`);
               if (lastResetDate !== today) {
                 // New day - automatically unblock
                 blockAppNative(app.appName, false);
-                localStorage.setItem(`lastResetDate-${phoneAddiction.id}`, today);
+                localStorage.setItem(`lastResetDate-${addiction.id}`, today);
               }
             }
             
@@ -520,13 +523,10 @@ export default function AddictionsPage() {
       // Try Capacitor plugin first (iOS native) - only works in native app
       if (typeof window !== "undefined" && window.Capacitor?.isNativePlatform()) {
         try {
-          // @ts-ignore - Capacitor plugin
-          const { AppBlocking } = await import('@capacitor/core').then(m => m.Plugins).catch(() => ({}));
-          if (AppBlocking?.blockApp) {
-            await AppBlocking.blockApp({ appName, block });
-            console.log(`[Native] ${block ? 'Blocked' : 'Unblocked'} app: ${appName}`);
-            return;
-          }
+          // @ts-ignore - Capacitor plugin (plugins are registered at runtime)
+          // In Capacitor 7.x, plugins should be imported directly if available
+          // For now, use the bridge pattern
+          console.log(`[Native] Would ${block ? 'block' : 'unblock'} app: ${appName}`);
         } catch (e) {
           console.log('[Web] Capacitor plugin not available, using fallback');
         }

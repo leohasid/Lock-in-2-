@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { Flame, Dumbbell, Smartphone, UtensilsCrossed, TrendingUp } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import ActivityHeatmap from "@/components/ActivityHeatmap";
 
 export default function LockedInApp() {
   const [today] = useState(new Date());
@@ -115,6 +116,148 @@ export default function LockedInApp() {
     return { completed, total: 7 };
   }, [today]);
 
+  // Get gym streak and activity data (last 91 days)
+  const gymStreak = useMemo(() => {
+    if (typeof window === "undefined") return 0;
+    
+    let streak = 0;
+    const todayDate = new Date(today);
+    todayDate.setHours(0, 0, 0, 0);
+    
+    for (let i = 0; i < 91; i++) {
+      const date = new Date(todayDate);
+      date.setDate(todayDate.getDate() - i);
+      const dateStr = date.toISOString().split("T")[0];
+      if (localStorage.getItem(`workout_${dateStr}`) === "completed") {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }, [today]);
+
+  // Get gym activity completion stats (last 91 days)
+  const gymActivityStats = useMemo(() => {
+    if (typeof window === "undefined") return { completed: 0, total: 91 };
+    
+    let completed = 0;
+    const todayDate = new Date(today);
+    todayDate.setHours(0, 0, 0, 0);
+    
+    for (let i = 0; i < 91; i++) {
+      const date = new Date(todayDate);
+      date.setDate(todayDate.getDate() - i);
+      const dateStr = date.toISOString().split("T")[0];
+      if (localStorage.getItem(`workout_${dateStr}`) === "completed") {
+        completed++;
+      }
+    }
+    return { completed, total: 91 };
+  }, [today]);
+
+  // Function to check if workout was completed on a date
+  const getGymActivity = useCallback((date: Date): boolean => {
+    if (typeof window === "undefined") return false;
+    const dateStr = date.toISOString().split("T")[0];
+    return localStorage.getItem(`workout_${dateStr}`) === "completed";
+  }, []);
+
+  // Get calories goal from localStorage
+  const caloriesGoal = useMemo(() => {
+    if (typeof window === "undefined") return 2000;
+    const storedGoals = localStorage.getItem("macroGoals");
+    if (storedGoals) {
+      try {
+        const goals = JSON.parse(storedGoals);
+        return goals.calories || 2000;
+      } catch (e) {
+        return 2000;
+      }
+    }
+    return 2000;
+  }, []);
+
+  // Get calories streak (days meeting calorie goal)
+  const caloriesStreak = useMemo(() => {
+    if (typeof window === "undefined") return 0;
+    
+    let streak = 0;
+    const todayDate = new Date(today);
+    todayDate.setHours(0, 0, 0, 0);
+    
+    const storedMeals = localStorage.getItem("meals");
+    if (!storedMeals) return 0;
+    
+    try {
+      const meals = JSON.parse(storedMeals);
+      for (let i = 0; i < 91; i++) {
+        const date = new Date(todayDate);
+        date.setDate(todayDate.getDate() - i);
+        const dateStr = date.toISOString().split("T")[0];
+        const dayMeals = meals.filter((m: any) => m.date === dateStr);
+        const dayCalories = dayMeals.reduce((sum: number, meal: any) => sum + (meal.calories || 0), 0);
+        
+        if (dayCalories >= caloriesGoal * 0.8) { // 80% of goal counts as success
+          streak++;
+        } else {
+          break;
+        }
+      }
+    } catch (e) {
+      return 0;
+    }
+    return streak;
+  }, [today, caloriesGoal]);
+
+  // Get calories activity completion stats (last 91 days)
+  const caloriesActivityStats = useMemo(() => {
+    if (typeof window === "undefined") return { completed: 0, total: 91 };
+    
+    let completed = 0;
+    const todayDate = new Date(today);
+    todayDate.setHours(0, 0, 0, 0);
+    
+    const storedMeals = localStorage.getItem("meals");
+    if (!storedMeals) return { completed: 0, total: 91 };
+    
+    try {
+      const meals = JSON.parse(storedMeals);
+      for (let i = 0; i < 91; i++) {
+        const date = new Date(todayDate);
+        date.setDate(todayDate.getDate() - i);
+        const dateStr = date.toISOString().split("T")[0];
+        const dayMeals = meals.filter((m: any) => m.date === dateStr);
+        const dayCalories = dayMeals.reduce((sum: number, meal: any) => sum + (meal.calories || 0), 0);
+        
+        if (dayCalories >= caloriesGoal * 0.8) { // 80% of goal counts as success
+          completed++;
+        }
+      }
+    } catch (e) {
+      return { completed: 0, total: 91 };
+    }
+    return { completed, total: 91 };
+  }, [today, caloriesGoal]);
+
+  // Function to check if calorie goal was met on a date
+  const getCaloriesActivity = useCallback((date: Date): boolean => {
+    if (typeof window === "undefined") return false;
+    const dateStr = date.toISOString().split("T")[0];
+    const storedMeals = localStorage.getItem("meals");
+    if (!storedMeals) return false;
+    
+    try {
+      const meals = JSON.parse(storedMeals);
+      const dayMeals = meals.filter((m: any) => m.date === dateStr);
+      const dayCalories = dayMeals.reduce((sum: number, meal: any) => sum + (meal.calories || 0), 0);
+      return dayCalories >= caloriesGoal * 0.8; // 80% of goal counts as success
+    } catch (e) {
+      return false;
+    }
+  }, [caloriesGoal]);
+
+
   return (
     <div className="min-h-screen bg-black text-white p-6 flex flex-col">
       {/* Title */}
@@ -147,35 +290,16 @@ export default function LockedInApp() {
         ))}
       </div>
 
-      {/* Today's Workout */}
-      <Link href="/gym">
-        <div className={`mb-4 bg-gray-900 rounded-2xl p-6 cursor-pointer hover:bg-gray-800 transition-all border-2 ${
-          workoutCompleted ? "border-green-600/50" : "border-gray-800"
-        }`}>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xl text-orange-300 font-semibold">Today's Workout</h2>
-            {workoutCompleted && (
-              <span className="bg-green-600 text-white text-xs px-3 py-1 rounded-full">✓ Completed</span>
-            )}
-          </div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="bg-orange-500/20 rounded-full p-2">
-              <Dumbbell className="w-6 h-6 text-orange-400" />
-            </div>
-            <div>
-              <h3 className="text-3xl font-bold">{workoutDay}</h3>
-              <p className="text-gray-400 text-sm">
-                {workoutStats.completed} of {workoutStats.total} workouts this week
-              </p>
-            </div>
-          </div>
-          <div className="mt-3 pt-3 border-t border-gray-800">
-            <div className="flex items-center gap-2 text-sm text-gray-400">
-              <TrendingUp className="w-4 h-4" />
-              <span>Tap to view your workout plan</span>
-            </div>
-          </div>
-        </div>
+      {/* Gym Activity Heatmap */}
+      <Link href="/gym" className="block mb-4">
+        <ActivityHeatmap
+          title="Gym"
+          streak={gymStreak}
+          completed={gymActivityStats.completed}
+          total={gymActivityStats.total}
+          getActivityData={getGymActivity}
+          color="#10b981"
+        />
       </Link>
 
       {/* Phone Usage */}
@@ -233,58 +357,16 @@ export default function LockedInApp() {
         </div>
       </Link>
 
-      {/* Calories */}
-      <Link href="/nutrition">
-        <div className="flex-1 bg-gray-900 rounded-2xl p-6 cursor-pointer hover:bg-gray-800 transition-colors border-2 border-gray-800">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xl text-orange-300 font-semibold">Calories Today</h3>
-            <div className="bg-orange-500/20 rounded-full p-2">
-              <UtensilsCrossed className="w-5 h-5 text-orange-400" />
-            </div>
-          </div>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-4xl font-bold mb-1">{calories.current.toLocaleString()} kcal</p>
-              <p className="text-gray-400 text-sm">
-                {calories.current >= calories.goal 
-                  ? "Goal reached! 🎉" 
-                  : `${calories.goal - calories.current} kcal left to goal`}
-              </p>
-            </div>
-            <div className="relative w-20 h-20">
-              <svg className="transform -rotate-90 w-20 h-20">
-                <circle
-                  cx="40"
-                  cy="40"
-                  r="36"
-                  stroke="#374151"
-                  strokeWidth="6"
-                  fill="transparent"
-                />
-                <circle
-                  cx="40"
-                  cy="40"
-                  r="36"
-                  stroke="#f97316"
-                  strokeWidth="6"
-                  fill="transparent"
-                  strokeDasharray={`${2 * Math.PI * 36}`}
-                  strokeDashoffset={`${isNaN(calories.percentage) || !isFinite(calories.percentage) ? 2 * Math.PI * 36 : 2 * Math.PI * 36 * (1 - Math.max(0, Math.min(100, calories.percentage)) / 100)}`}
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-sm font-bold">{calories.percentage}%</span>
-              </div>
-            </div>
-          </div>
-          <div className="w-full bg-gray-800 rounded-full h-2">
-            <div
-              className="bg-orange-500 h-2 rounded-full transition-all"
-              style={{ width: `${Math.min(calories.percentage, 100)}%` }}
-            />
-          </div>
-        </div>
+      {/* Calories Activity Heatmap */}
+      <Link href="/nutrition" className="block mb-4">
+        <ActivityHeatmap
+          title="Calories"
+          streak={caloriesStreak}
+          completed={caloriesActivityStats.completed}
+          total={caloriesActivityStats.total}
+          getActivityData={getCaloriesActivity}
+          color="#10b981"
+        />
       </Link>
 
       {/* Bottom Navigation */}
