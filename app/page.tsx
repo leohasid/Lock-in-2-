@@ -13,11 +13,9 @@ export default function LockedInApp() {
   const [phoneUsage, setPhoneUsage] = useState({ current: 0, limit: 120, percentage: 0 });
   const [calories, setCalories] = useState({ current: 0, goal: 2000, percentage: 0 });
   const [workoutCompleted, setWorkoutCompleted] = useState(false);
-  const [habitsState, setHabitsState] = useState({
-    drinkWater: false,
-    run: false,
-    gym: false,
-  });
+  const [habitsState, setHabitsState] = useState<Record<string, boolean>>({});
+  const [allHabits, setAllHabits] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedHabits, setSelectedHabits] = useState<Array<{ id: string; name: string }>>([]);
 
   // Get today's workout day
   useEffect(() => {
@@ -32,13 +30,67 @@ export default function LockedInApp() {
     const todayStr = today.toISOString().split("T")[0];
     const completed = localStorage.getItem(`workout_${todayStr}`) === "completed";
     setWorkoutCompleted(completed);
+  }, [today]);
+
+  // Load habits and selected habits
+  useEffect(() => {
+    if (typeof window === "undefined") return;
     
-    // Check habit completion
-    setHabitsState({
-      drinkWater: localStorage.getItem(`habit_drink_water_${todayStr}`) === "completed",
-      run: localStorage.getItem(`habit_run_${todayStr}`) === "completed",
-      gym: completed,
+    // Load all habits
+    const storedHabits = localStorage.getItem("allHabits");
+    let habits: Array<{ id: string; name: string }> = [];
+    if (storedHabits) {
+      try {
+        habits = JSON.parse(storedHabits);
+      } catch (e) {
+        habits = [
+          { id: "drink_water", name: "Drink water" },
+          { id: "run", name: "Run" },
+          { id: "gym", name: "Gym" },
+        ];
+        localStorage.setItem("allHabits", JSON.stringify(habits));
+      }
+    } else {
+      habits = [
+        { id: "drink_water", name: "Drink water" },
+        { id: "run", name: "Run" },
+        { id: "gym", name: "Gym" },
+      ];
+      localStorage.setItem("allHabits", JSON.stringify(habits));
+    }
+    setAllHabits(habits);
+
+    // Load selected habits for home screen
+    const storedSelected = localStorage.getItem("selectedHabitsForHome");
+    let selectedIds: string[] = [];
+    if (storedSelected) {
+      try {
+        selectedIds = JSON.parse(storedSelected);
+      } catch (e) {
+        selectedIds = ["drink_water", "run", "gym"];
+        localStorage.setItem("selectedHabitsForHome", JSON.stringify(selectedIds));
+      }
+    } else {
+      selectedIds = ["drink_water", "run", "gym"];
+      localStorage.setItem("selectedHabitsForHome", JSON.stringify(selectedIds));
+    }
+
+    // Filter habits to show only selected ones (max 5)
+    const habitsToShow = habits.filter(h => selectedIds.includes(h.id)).slice(0, 5);
+    setSelectedHabits(habitsToShow);
+
+    // Check habit completion states
+    const todayStr = today.toISOString().split("T")[0];
+    const completed = localStorage.getItem(`workout_${todayStr}`) === "completed";
+    const states: Record<string, boolean> = {};
+    habitsToShow.forEach(habit => {
+      if (habit.id === "gym") {
+        states[habit.id] = completed;
+      } else {
+        states[habit.id] = localStorage.getItem(`habit_${habit.id}_${todayStr}`) === "completed";
+      }
     });
+    setHabitsState(states);
   }, [today]);
 
   // Get phone usage data
@@ -281,44 +333,41 @@ export default function LockedInApp() {
 
       {/* Habits Section */}
       <div className="mb-4">
-        <h2 className="text-xl font-bold text-white mb-4 uppercase">Habits</h2>
-        <div className="space-y-3">
-          <HabitCard
-            name="Drink water"
-            completed={habitsState.drinkWater}
-            onToggle={() => {
-              if (typeof window === "undefined") return;
-              const todayStr = today.toISOString().split("T")[0];
-              const habitKey = `habit_drink_water_${todayStr}`;
-              const isCompleted = localStorage.getItem(habitKey) === "completed";
-              localStorage.setItem(habitKey, isCompleted ? "" : "completed");
-              setHabitsState(prev => ({ ...prev, drinkWater: !isCompleted }));
-            }}
-          />
-          <HabitCard
-            name="Run"
-            completed={habitsState.run}
-            onToggle={() => {
-              if (typeof window === "undefined") return;
-              const todayStr = today.toISOString().split("T")[0];
-              const habitKey = `habit_run_${todayStr}`;
-              const isCompleted = localStorage.getItem(habitKey) === "completed";
-              localStorage.setItem(habitKey, isCompleted ? "" : "completed");
-              setHabitsState(prev => ({ ...prev, run: !isCompleted }));
-            }}
-          />
-          <HabitCard
-            name="Gym"
-            completed={habitsState.gym}
-            onToggle={() => {
-              if (typeof window === "undefined") return;
-              const todayStr = today.toISOString().split("T")[0];
-              const isCompleted = localStorage.getItem(`workout_${todayStr}`) === "completed";
-              localStorage.setItem(`workout_${todayStr}`, isCompleted ? "" : "completed");
-              setWorkoutCompleted(!isCompleted);
-              setHabitsState(prev => ({ ...prev, gym: !isCompleted }));
-            }}
-          />
+        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold text-white uppercase">Habits</h2>
+            <Link 
+              href="/habits"
+              className="text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              View all
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {selectedHabits.map((habit) => (
+              <HabitCard
+                key={habit.id}
+                name={habit.name}
+                completed={habitsState[habit.id] || false}
+                onToggle={() => {
+                  if (typeof window === "undefined") return;
+                  const todayStr = today.toISOString().split("T")[0];
+                  
+                  if (habit.id === "gym") {
+                    const isCompleted = localStorage.getItem(`workout_${todayStr}`) === "completed";
+                    localStorage.setItem(`workout_${todayStr}`, isCompleted ? "" : "completed");
+                    setWorkoutCompleted(!isCompleted);
+                    setHabitsState(prev => ({ ...prev, [habit.id]: !isCompleted }));
+                  } else {
+                    const habitKey = `habit_${habit.id}_${todayStr}`;
+                    const isCompleted = localStorage.getItem(habitKey) === "completed";
+                    localStorage.setItem(habitKey, isCompleted ? "" : "completed");
+                    setHabitsState(prev => ({ ...prev, [habit.id]: !isCompleted }));
+                  }
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
