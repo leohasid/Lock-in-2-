@@ -13,6 +13,7 @@ interface Goal {
   current: number;
   target: number;
   unit: string;
+  targetDate: string; // ISO date string
 }
 
 export default function GoalsPage() {
@@ -27,6 +28,7 @@ export default function GoalsPage() {
     current: 0,
     target: 0,
     unit: "",
+    targetDate: "",
   });
 
   // Load goals from localStorage
@@ -70,8 +72,8 @@ export default function GoalsPage() {
   };
 
   const handleAddGoal = () => {
-    if (!formData.title || !formData.target) {
-      alert("Please fill in title and target");
+    if (!formData.title || !formData.target || !formData.targetDate) {
+      alert("Please fill in title, target, and completion date");
       return;
     }
 
@@ -81,13 +83,14 @@ export default function GoalsPage() {
       current: formData.current || 0,
       target: formData.target,
       unit: formData.unit || "",
+      targetDate: formData.targetDate,
     };
 
     const updatedGoals = [...allGoals, newGoal];
     setAllGoals(updatedGoals);
     localStorage.setItem("goals", JSON.stringify(updatedGoals));
     
-    setFormData({ title: "", current: 0, target: 0, unit: "" });
+    setFormData({ title: "", current: 0, target: 0, unit: "", targetDate: "" });
     setShowAddForm(false);
   };
 
@@ -98,13 +101,14 @@ export default function GoalsPage() {
       current: goal.current,
       target: goal.target,
       unit: goal.unit,
+      targetDate: goal.targetDate || "",
     });
     setShowAddForm(true);
   };
 
   const handleUpdateGoal = () => {
-    if (!editingGoal || !formData.title || !formData.target) {
-      alert("Please fill in title and target");
+    if (!editingGoal || !formData.title || !formData.target || !formData.targetDate) {
+      alert("Please fill in title, target, and completion date");
       return;
     }
 
@@ -116,6 +120,7 @@ export default function GoalsPage() {
             current: formData.current || 0,
             target: formData.target,
             unit: formData.unit || "",
+            targetDate: formData.targetDate,
           }
         : g
     );
@@ -123,7 +128,7 @@ export default function GoalsPage() {
     setAllGoals(updatedGoals);
     localStorage.setItem("goals", JSON.stringify(updatedGoals));
     
-    setFormData({ title: "", current: 0, target: 0, unit: "" });
+    setFormData({ title: "", current: 0, target: 0, unit: "", targetDate: "" });
     setEditingGoal(null);
     setShowAddForm(false);
   };
@@ -162,7 +167,7 @@ export default function GoalsPage() {
                 onClick={() => {
                   setShowAddForm(!showAddForm);
                   setEditingGoal(null);
-                  setFormData({ title: "", current: 0, target: 0, unit: "" });
+                  setFormData({ title: "", current: 0, target: 0, unit: "", targetDate: "" });
                 }}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
               >
@@ -205,13 +210,23 @@ export default function GoalsPage() {
           </h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold mb-2">Title</label>
+              <label className="block text-sm font-semibold mb-2">What is the goal?</label>
               <input
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-gray-600"
                 placeholder="e.g., I will make 10k"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-2">When is it to be completed by?</label>
+              <input
+                type="date"
+                value={formData.targetDate}
+                onChange={(e) => setFormData(prev => ({ ...prev, targetDate: e.target.value }))}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-gray-600"
+                min={new Date().toISOString().split("T")[0]}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -237,13 +252,13 @@ export default function GoalsPage() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-semibold mb-2">Unit (optional)</label>
+              <label className="block text-sm font-semibold mb-2">Unit</label>
               <input
                 type="text"
                 value={formData.unit}
                 onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-gray-600"
-                placeholder="e.g., $, kg, lbs"
+                placeholder="e.g., $, k (for 10k), kg, lbs"
               />
             </div>
             <div className="flex gap-3">
@@ -257,7 +272,7 @@ export default function GoalsPage() {
                 onClick={() => {
                   setShowAddForm(false);
                   setEditingGoal(null);
-                  setFormData({ title: "", current: 0, target: 0, unit: "" });
+                  setFormData({ title: "", current: 0, target: 0, unit: "", targetDate: "" });
                 }}
                 className="flex-1 py-3 bg-gray-800 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
               >
@@ -282,6 +297,7 @@ export default function GoalsPage() {
                       current={goal.current}
                       target={goal.target}
                       unit={goal.unit}
+                      targetDate={goal.targetDate}
                       onClick={() => {
                         if (!isEditing) {
                           const newCurrent = prompt(`Update progress for "${goal.title}" (current: ${goal.current}${goal.unit}):`, goal.current.toString());

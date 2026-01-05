@@ -17,8 +17,8 @@ export default function LockedInApp() {
   const [habitsState, setHabitsState] = useState<Record<string, boolean>>({});
   const [allHabits, setAllHabits] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedHabits, setSelectedHabits] = useState<Array<{ id: string; name: string }>>([]);
-  const [goals, setGoals] = useState<Array<{ id: string; title: string; current: number; target: number; unit: string }>>([]);
-  const [selectedGoals, setSelectedGoals] = useState<Array<{ id: string; title: string; current: number; target: number; unit: string }>>([]);
+  const [goals, setGoals] = useState<Array<{ id: string; title: string; current: number; target: number; unit: string; targetDate: string }>>([]);
+  const [selectedGoals, setSelectedGoals] = useState<Array<{ id: string; title: string; current: number; target: number; unit: string; targetDate: string }>>([]);
   const [showDeleteMode, setShowDeleteMode] = useState(false);
 
   // Get today's workout day
@@ -444,6 +444,7 @@ export default function LockedInApp() {
                   current={goal.current}
                   target={goal.target}
                   unit={goal.unit}
+                  targetDate={goal.targetDate}
                   showDelete={showDeleteMode}
                   onClick={() => {
                     if (showDeleteMode) return;

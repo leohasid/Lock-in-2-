@@ -7,6 +7,7 @@ interface GoalProgressCardProps {
   current: number;
   target: number;
   unit?: string;
+  targetDate?: string;
   onClick?: () => void;
   onDelete?: () => void;
   showDelete?: boolean;
@@ -17,6 +18,7 @@ export default function GoalProgressCard({
   current,
   target,
   unit = "",
+  targetDate,
   onClick,
   onDelete,
   showDelete = false,
@@ -53,10 +55,17 @@ export default function GoalProgressCard({
           style={{ width: `${percentage}%` }}
         />
       </div>
-      <div className="text-xs text-gray-400">
-        {current.toLocaleString()}
-        {unit} / {target.toLocaleString()}
-        {unit}
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-gray-400">
+          {current.toLocaleString()}
+          {unit} / {target.toLocaleString()}
+          {unit}
+        </div>
+        {targetDate && (
+          <div className="text-xs text-gray-500">
+            {new Date(targetDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </div>
+        )}
       </div>
     </div>
   );
