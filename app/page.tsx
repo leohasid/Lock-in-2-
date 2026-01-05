@@ -79,8 +79,8 @@ export default function LockedInApp() {
       localStorage.setItem("selectedHabitsForHome", JSON.stringify(selectedIds));
     }
 
-    // Filter habits to show only selected ones (max 5)
-    const habitsToShow = habits.filter(h => selectedIds.includes(h.id)).slice(0, 5);
+    // Filter habits to show only selected ones
+    const habitsToShow = habits.filter(h => selectedIds.includes(h.id));
     setSelectedHabits(habitsToShow);
 
     // Check habit completion states

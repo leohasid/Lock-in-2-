@@ -65,9 +65,7 @@ export default function GoalsPage() {
     if (selectedGoalIds.includes(goalId)) {
       setSelectedGoalIds(prev => prev.filter(id => id !== goalId));
     } else {
-      if (selectedGoalIds.length < 5) {
-        setSelectedGoalIds(prev => [...prev, goalId]);
-      }
+      setSelectedGoalIds(prev => [...prev, goalId]);
     }
   };
 
@@ -277,48 +275,46 @@ export default function GoalsPage() {
           {allGoals.length > 0 ? (
             allGoals.map((goal) => (
               <div key={goal.id} className="relative">
-                <GoalProgressCard
-                  title={goal.title}
-                  current={goal.current}
-                  target={goal.target}
-                  unit={goal.unit}
-                  onClick={() => {
-                    if (!isEditing) {
-                      const newCurrent = prompt(`Update progress for "${goal.title}" (current: ${goal.current}${goal.unit}):`, goal.current.toString());
-                      if (newCurrent !== null) {
-                        handleUpdateProgress(goal.id, Number(newCurrent));
-                      }
-                    }
-                  }}
-                />
-                {isEditing && (
-                  <div className="absolute right-2 top-2 flex items-center gap-2">
-                    <button
-                      onClick={() => handleEditGoal(goal)}
-                      className="p-1.5 bg-gray-800 rounded hover:bg-gray-700 transition-colors"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteGoal(goal.id)}
-                      className="p-1.5 bg-red-600 rounded hover:bg-red-700 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleToggleSelection(goal.id)}
-                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                        selectedGoalIds.includes(goal.id)
-                          ? "bg-green-500 border-green-500"
-                          : "border-gray-500"
-                      }`}
-                    >
-                      {selectedGoalIds.includes(goal.id) && (
-                        <Check className="w-4 h-4 text-white" />
-                      )}
-                    </button>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <GoalProgressCard
+                      title={goal.title}
+                      current={goal.current}
+                      target={goal.target}
+                      unit={goal.unit}
+                      onClick={() => {
+                        if (!isEditing) {
+                          const newCurrent = prompt(`Update progress for "${goal.title}" (current: ${goal.current}${goal.unit}):`, goal.current.toString());
+                          if (newCurrent !== null) {
+                            handleUpdateProgress(goal.id, Number(newCurrent));
+                          }
+                        }
+                      }}
+                    />
                   </div>
-                )}
+                  {isEditing && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleSelection(goal.id)}
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          selectedGoalIds.includes(goal.id)
+                            ? "bg-green-500 border-green-500"
+                            : "border-gray-500"
+                        }`}
+                      >
+                        {selectedGoalIds.includes(goal.id) && (
+                          <Check className="w-4 h-4 text-white" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteGoal(goal.id)}
+                        className="p-2 bg-red-600 rounded hover:bg-red-700 transition-colors flex-shrink-0"
+                      >
+                        <Trash2 className="w-4 h-4 text-white" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             ))
           ) : (
@@ -327,7 +323,7 @@ export default function GoalsPage() {
         </div>
         {isEditing && (
           <p className="text-sm text-gray-400 mt-4">
-            Select up to 5 goals to show on the home screen ({selectedGoalIds.length}/5 selected)
+            Select goals to show on the home screen ({selectedGoalIds.length} selected)
           </p>
         )}
       </div>

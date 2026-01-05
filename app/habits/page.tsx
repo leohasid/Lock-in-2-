@@ -114,9 +114,7 @@ export default function HabitsPage() {
     if (selectedHabitIds.includes(habitId)) {
       setSelectedHabitIds(prev => prev.filter(id => id !== habitId));
     } else {
-      if (selectedHabitIds.length < 5) {
-        setSelectedHabitIds(prev => [...prev, habitId]);
-      }
+      setSelectedHabitIds(prev => [...prev, habitId]);
     }
   };
 
@@ -303,33 +301,49 @@ export default function HabitsPage() {
       <div className="mb-6">
         <h2 className="text-xl font-bold text-white mb-4 uppercase">Habits</h2>
         <div className="space-y-2">
-          {allHabits.map((habit) => (
-            <div key={habit.id} className="relative">
-              <HabitCard
-                name={habit.name}
-                completed={habitsState[habit.id] || false}
-                onToggle={() => !isEditing && handleToggleHabit(habit.id)}
-              />
-              {isEditing && (
-                <button
-                  onClick={() => handleToggleSelection(habit.id)}
-                  className={`absolute right-16 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                    selectedHabitIds.includes(habit.id)
-                      ? "bg-green-500 border-green-500"
-                      : "border-gray-500"
-                  }`}
-                >
-                  {selectedHabitIds.includes(habit.id) && (
-                    <Check className="w-4 h-4 text-white" />
+          {allHabits.length > 0 ? (
+            allHabits.map((habit) => (
+              <div key={habit.id} className="relative">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <HabitCard
+                      name={habit.name}
+                      completed={habitsState[habit.id] || false}
+                      onToggle={() => !isEditing && handleToggleHabit(habit.id)}
+                    />
+                  </div>
+                  {isEditing && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleSelection(habit.id)}
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          selectedHabitIds.includes(habit.id)
+                            ? "bg-green-500 border-green-500"
+                            : "border-gray-500"
+                        }`}
+                      >
+                        {selectedHabitIds.includes(habit.id) && (
+                          <Check className="w-4 h-4 text-white" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteHabit(habit.id)}
+                        className="p-2 bg-red-600 rounded hover:bg-red-700 transition-colors flex-shrink-0"
+                      >
+                        <Trash2 className="w-4 h-4 text-white" />
+                      </button>
+                    </div>
                   )}
-                </button>
-              )}
-            </div>
-          ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-500 text-center py-8">No habits yet. Click "Add" to create one.</p>
+          )}
         </div>
         {isEditing && (
           <p className="text-sm text-gray-400 mt-4">
-            Select up to 5 habits to show on the home screen ({selectedHabitIds.length}/5 selected)
+            Select habits to show on the home screen ({selectedHabitIds.length} selected)
           </p>
         )}
       </div>
