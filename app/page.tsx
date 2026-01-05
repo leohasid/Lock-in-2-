@@ -13,32 +13,6 @@ export default function LockedInApp() {
   const [calories, setCalories] = useState({ current: 0, goal: 2000, percentage: 0 });
   const [workoutCompleted, setWorkoutCompleted] = useState(false);
 
-  // Generate dynamic week calendar
-  const weekDays = useMemo(() => {
-    const days = [];
-    const dayNames = ["S", "M", "T", "W", "T", "F", "S"];
-    
-    // Get the start of the week (Sunday)
-    const startOfWeek = new Date(today);
-    const day = startOfWeek.getDay();
-    startOfWeek.setDate(startOfWeek.getDate() - day);
-    
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek);
-      date.setDate(startOfWeek.getDate() + i);
-      const isToday = date.toDateString() === today.toDateString();
-      
-      days.push({
-        day: dayNames[i],
-        date: date.getDate(),
-        fullDate: date,
-        active: isToday,
-      });
-    }
-    
-    return days;
-  }, [today]);
-
   // Get today's workout day
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -266,28 +240,6 @@ export default function LockedInApp() {
         <p className="text-gray-400 text-sm">
           {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </p>
-      </div>
-
-      {/* Week Calendar */}
-      <div className="flex justify-between mb-8 px-2">
-        {weekDays.map((item, index) => (
-          <div key={index} className="flex flex-col items-center">
-            <span
-              className={`text-sm mb-2 ${item.active ? "text-orange-400 font-semibold" : "text-gray-500"}`}
-            >
-              {item.day}
-            </span>
-            <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-semibold transition-all ${
-                item.active
-                  ? "bg-orange-500 text-black scale-110"
-                  : "bg-gray-900 text-gray-400 border border-gray-800"
-              }`}
-            >
-              {item.date}
-            </div>
-          </div>
-        ))}
       </div>
 
       {/* Gym Activity Heatmap */}
