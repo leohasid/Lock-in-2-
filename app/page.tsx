@@ -309,7 +309,7 @@ export default function LockedInApp() {
 
       {/* Activity Heatmaps - Combined in one box, side by side */}
       <div className="bg-gray-900 rounded-xl p-3 border border-gray-800 mb-3">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-3 mb-2">
           <Link href="/gym" className="block">
             <ActivityHeatmap
               title="Gym"
@@ -318,6 +318,7 @@ export default function LockedInApp() {
               total={gymActivityStats.total}
               getActivityData={getGymActivity}
               color="#10b981"
+              showLegend={false}
             />
           </Link>
           
@@ -329,8 +330,23 @@ export default function LockedInApp() {
               total={caloriesActivityStats.total}
               getActivityData={getCaloriesActivity}
               color="#10b981"
+              showLegend={false}
             />
           </Link>
+        </div>
+        {/* Shared Legend */}
+        <div className="flex items-center justify-center gap-2 text-[9px] text-gray-500 pt-2 border-t border-gray-800">
+          <div className="flex items-center gap-0.5">
+            <div className="w-2 h-2 rounded-sm bg-gray-700 opacity-20" />
+            <span>Incomplete</span>
+          </div>
+          <div className="flex items-center gap-0.5">
+            <div
+              className="w-2 h-2 rounded-sm"
+              style={{ backgroundColor: "#10b981" }}
+            />
+            <span>Completed</span>
+          </div>
         </div>
       </div>
 

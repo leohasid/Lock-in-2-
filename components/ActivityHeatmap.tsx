@@ -9,6 +9,7 @@ interface ActivityHeatmapProps {
   total: number;
   getActivityData: (date: Date) => boolean; // Function to check if activity was done on a date
   color?: string;
+  showLegend?: boolean; // Whether to show the legend
 }
 
 export default function ActivityHeatmap({
@@ -18,6 +19,7 @@ export default function ActivityHeatmap({
   total,
   getActivityData,
   color = "#10b981", // Default green
+  showLegend = true, // Default to showing legend
 }: ActivityHeatmapProps) {
   // Generate 13 weeks of data (91 days)
   const heatmapData = useMemo(() => {
@@ -131,19 +133,21 @@ export default function ActivityHeatmap({
         <div className="text-[9px] text-gray-400">
           {percentage}% ({completed}/{total})
         </div>
-        <div className="flex items-center gap-1 text-[9px] text-gray-500">
-          <div className="flex items-center gap-0.5">
-            <div className="w-2 h-2 rounded-sm bg-gray-700 opacity-20" />
-            <span>Incomplete</span>
+        {showLegend && (
+          <div className="flex items-center gap-1 text-[9px] text-gray-500">
+            <div className="flex items-center gap-0.5">
+              <div className="w-2 h-2 rounded-sm bg-gray-700 opacity-20" />
+              <span>Incomplete</span>
+            </div>
+            <div className="flex items-center gap-0.5">
+              <div
+                className="w-2 h-2 rounded-sm"
+                style={{ backgroundColor: color }}
+              />
+              <span>Completed</span>
+            </div>
           </div>
-          <div className="flex items-center gap-0.5">
-            <div
-              className="w-2 h-2 rounded-sm"
-              style={{ backgroundColor: color }}
-            />
-            <span>Completed</span>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
