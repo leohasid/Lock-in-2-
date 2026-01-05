@@ -67,10 +67,10 @@ export default function ActivityHeatmap({
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
-    <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 cursor-pointer hover:bg-gray-800/50 transition-colors flex flex-col">
+    <div className="bg-gray-900 rounded-2xl p-3 border border-gray-800 cursor-pointer hover:bg-gray-800/50 transition-colors flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-xl font-bold" style={{ color }}>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-lg font-bold" style={{ color }}>
           {title}
         </h2>
         <div className="flex items-center gap-1 text-gray-400">
@@ -86,13 +86,13 @@ export default function ActivityHeatmap({
       </div>
 
       {/* Heatmap Grid - Takes up most of the space */}
-      <div className="flex gap-3 flex-1 min-h-0 mb-8 w-full">
+      <div className="flex gap-2 mb-3 w-full">
         {/* Day labels on the left */}
-        <div className="flex flex-col gap-1.5 flex-shrink-0 justify-between py-0.5">
+        <div className="flex flex-col gap-1 flex-shrink-0 justify-between">
           {weekLayout.dayNames.map((day, idx) => (
             <div
               key={idx}
-              className="text-xs text-gray-400 w-5 h-5 flex items-center justify-center font-medium"
+              className="text-[10px] text-gray-400 w-3 h-3 flex items-center justify-center font-medium"
             >
               {day}
             </div>
@@ -100,16 +100,16 @@ export default function ActivityHeatmap({
         </div>
 
         {/* Weeks (columns) - scrollable */}
-        <div className="flex gap-1.5 flex-1 overflow-x-auto min-w-0">
+        <div className="flex gap-1 flex-1 overflow-x-auto min-w-0">
           {Array.from({ length: weekLayout.numWeeks }).map((_, weekIdx) => (
-            <div key={weekIdx} className="flex flex-col gap-1.5 flex-shrink-0">
+            <div key={weekIdx} className="flex flex-col gap-1 flex-shrink-0">
               {weekLayout.dayRows.map((dayRow, dayIdx) => {
                 const day = dayRow[weekIdx];
                 if (!day) return null;
                 return (
                   <div
                     key={dayIdx}
-                    className={`w-5 h-5 rounded-sm transition-all flex-shrink-0 ${
+                    className={`w-3 h-3 rounded-sm transition-all flex-shrink-0 ${
                       day.active
                         ? "opacity-100"
                         : "opacity-20"
@@ -127,18 +127,18 @@ export default function ActivityHeatmap({
       </div>
 
       {/* Footer Stats - Pushed to bottom */}
-      <div className="flex items-center justify-between mt-auto">
-        <div className="text-sm text-gray-400">
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-gray-400">
           {percentage}% ({completed}/{total})
         </div>
-        <div className="flex items-center gap-3 text-xs text-gray-500">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm bg-gray-700 opacity-20" />
-            <span>Not been</span>
+        <div className="flex items-center gap-2 text-[10px] text-gray-500">
+          <div className="flex items-center gap-1">
+            <div className="w-2.5 h-2.5 rounded-sm bg-gray-700 opacity-20" />
+            <span>Incomplete</span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <div
-              className="w-3 h-3 rounded-sm"
+              className="w-2.5 h-2.5 rounded-sm"
               style={{ backgroundColor: color }}
             />
             <span>Completed</span>

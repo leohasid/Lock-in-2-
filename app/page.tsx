@@ -262,7 +262,7 @@ export default function LockedInApp() {
     <div className="min-h-screen bg-black text-white p-6 flex flex-col">
       {/* Title */}
       <div className="text-center mb-8">
-        <h1 className="text-5xl font-bold mb-2">Locked In</h1>
+        <h1 className="text-5xl font-bold mb-2">Mogifi AI</h1>
         <p className="text-gray-400 text-sm">
           {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </p>

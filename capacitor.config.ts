@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.lockedin.app',
-  appName: 'Locked In',
+  appName: 'Mogifi AI',
   webDir: 'out'
 };
 

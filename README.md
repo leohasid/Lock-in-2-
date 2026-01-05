@@ -1,4 +1,4 @@
-# 🔒 Locked In - All-in-One Self-Improvement App
+# 🔒 Mogifi AI - All-in-One Self-Improvement App
 
 A comprehensive self-improvement platform that helps users improve different areas of their life in one place.
 
