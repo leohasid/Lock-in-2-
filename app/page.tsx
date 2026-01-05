@@ -335,7 +335,7 @@ export default function LockedInApp() {
           </Link>
         </div>
         {/* Shared Legend */}
-        <div className="flex items-center justify-center gap-2 text-[9px] text-gray-500 pt-2 border-t border-gray-800">
+        <div className="flex items-center justify-end gap-2 text-[9px] text-gray-500 pt-2 border-t border-gray-800">
           <div className="flex items-center gap-0.5">
             <div className="w-2 h-2 rounded-sm bg-gray-700 opacity-20" />
             <span>Incomplete</span>
