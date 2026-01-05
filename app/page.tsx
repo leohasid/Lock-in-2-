@@ -6,6 +6,7 @@ import { Flame, Dumbbell, UtensilsCrossed, TrendingUp } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import ActivityHeatmap from "@/components/ActivityHeatmap";
 import HabitCard from "@/components/HabitCard";
+import GoalProgressCard from "@/components/GoalProgressCard";
 
 export default function LockedInApp() {
   const [today] = useState(new Date());
@@ -16,6 +17,7 @@ export default function LockedInApp() {
   const [habitsState, setHabitsState] = useState<Record<string, boolean>>({});
   const [allHabits, setAllHabits] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedHabits, setSelectedHabits] = useState<Array<{ id: string; name: string }>>([]);
+  const [goals, setGoals] = useState<Array<{ id: string; title: string; current: number; target: number; unit: string }>>([]);
 
   // Get today's workout day
   useEffect(() => {
@@ -91,6 +93,19 @@ export default function LockedInApp() {
       }
     });
     setHabitsState(states);
+
+    // Load goals
+    const storedGoals = localStorage.getItem("goals");
+    if (storedGoals) {
+      try {
+        const parsedGoals = JSON.parse(storedGoals);
+        setGoals(parsedGoals);
+      } catch (e) {
+        setGoals([]);
+      }
+    } else {
+      setGoals([]);
+    }
   }, [today]);
 
   // Get phone usage data
@@ -299,12 +314,20 @@ export default function LockedInApp() {
 
   return (
     <div className="min-h-screen bg-black text-white p-6 flex flex-col">
-      {/* Title - Top Left */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-1">Mogifi AI</h1>
-        <p className="text-gray-400 text-xs">
-          {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-        </p>
+      {/* Title - Top Left and Daily Reflections Button - Top Right */}
+      <div className="flex items-start justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold mb-1">Mogifi AI</h1>
+          <p className="text-gray-400 text-xs">
+            {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+          </p>
+        </div>
+        <Link 
+          href="/reflections"
+          className="px-3 py-1.5 bg-gray-800 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
+        >
+          Daily Reflections
+        </Link>
       </div>
 
       {/* Activity Heatmaps - Combined in one box, side by side */}
@@ -351,18 +374,18 @@ export default function LockedInApp() {
       </div>
 
       {/* Habits Section */}
-      <div className="mb-4">
-        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-white uppercase">Habits</h2>
+      <div className="mb-3">
+        <div className="bg-gray-900 rounded-xl p-2.5 border border-gray-800">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-bold text-white uppercase">Habits</h2>
             <Link 
               href="/habits"
-              className="text-sm text-gray-400 hover:text-white transition-colors"
+              className="text-xs text-gray-400 hover:text-white transition-colors"
             >
               View all
             </Link>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {selectedHabits.map((habit) => (
               <HabitCard
                 key={habit.id}
@@ -389,6 +412,26 @@ export default function LockedInApp() {
           </div>
         </div>
       </div>
+
+      {/* Goals Section */}
+      {goals.length > 0 && (
+        <div className="mb-3">
+          <div className="bg-gray-900 rounded-xl p-2.5 border border-gray-800">
+            <h2 className="text-sm font-bold text-white uppercase mb-2">Goals</h2>
+            <div className="space-y-2">
+              {goals.map((goal) => (
+                <GoalProgressCard
+                  key={goal.id}
+                  title={goal.title}
+                  current={goal.current}
+                  target={goal.target}
+                  unit={goal.unit}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom Navigation */}
       <div className="pb-20">

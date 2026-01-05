@@ -218,18 +218,6 @@ export default function HabitsPage() {
         )}
       </div>
 
-      {/* Goals Section */}
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-white mb-4 uppercase">Goals</h2>
-        <GoalCard
-          title={`${calories.goal} Calories`}
-          targetDate={new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-          current={calories.current}
-          target={calories.goal}
-          unit=" kcal"
-          color="#3b82f6"
-        />
-      </div>
 
       {/* Bottom Navigation */}
       <div className="pb-20">
