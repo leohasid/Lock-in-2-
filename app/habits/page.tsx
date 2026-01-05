@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import HabitCard from "@/components/HabitCard";
 import GoalCard from "@/components/GoalCard";
-import { ArrowLeft, Edit2, Check, X } from "lucide-react";
+import { ArrowLeft, Edit2, Check, X, Plus, Trash2 } from "lucide-react";
 
 interface Habit {
   id: string;
@@ -20,6 +20,9 @@ export default function HabitsPage() {
   const [allHabits, setAllHabits] = useState<Habit[]>([]);
   const [selectedHabitIds, setSelectedHabitIds] = useState<string[]>([]);
   const [habitsState, setHabitsState] = useState<Record<string, boolean>>({});
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+  const [formData, setFormData] = useState({ name: "" });
 
   // Load habits from localStorage
   useEffect(() => {
@@ -123,6 +126,60 @@ export default function HabitsPage() {
     setIsEditing(false);
   };
 
+  const handleAddHabit = () => {
+    if (!formData.name.trim()) {
+      alert("Please enter a habit name");
+      return;
+    }
+
+    const newHabit: Habit = {
+      id: `habit_${Date.now()}`,
+      name: formData.name.trim(),
+    };
+
+    const updatedHabits = [...allHabits, newHabit];
+    setAllHabits(updatedHabits);
+    localStorage.setItem("allHabits", JSON.stringify(updatedHabits));
+    
+    setFormData({ name: "" });
+    setShowAddForm(false);
+  };
+
+  const handleEditHabit = (habit: Habit) => {
+    setEditingHabit(habit);
+    setFormData({ name: habit.name });
+    setShowAddForm(true);
+  };
+
+  const handleUpdateHabit = () => {
+    if (!editingHabit || !formData.name.trim()) {
+      alert("Please enter a habit name");
+      return;
+    }
+
+    const updatedHabits = allHabits.map(h =>
+      h.id === editingHabit.id ? { ...h, name: formData.name.trim() } : h
+    );
+
+    setAllHabits(updatedHabits);
+    localStorage.setItem("allHabits", JSON.stringify(updatedHabits));
+    
+    setFormData({ name: "" });
+    setEditingHabit(null);
+    setShowAddForm(false);
+  };
+
+  const handleDeleteHabit = (habitId: string) => {
+    if (confirm("Are you sure you want to delete this habit?")) {
+      const updatedHabits = allHabits.filter(h => h.id !== habitId);
+      setAllHabits(updatedHabits);
+      localStorage.setItem("allHabits", JSON.stringify(updatedHabits));
+      
+      // Remove from selected if it was selected
+      setSelectedHabitIds(prev => prev.filter(id => id !== habitId));
+    }
+  };
+
   // Get calories data for goals
   const [calories, setCalories] = useState({ current: 0, goal: 2000 });
 
@@ -156,32 +213,91 @@ export default function HabitsPage() {
           <ArrowLeft className="w-5 h-5" />
           <span>Back</span>
         </Link>
-        {!isEditing && (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            <Edit2 className="w-4 h-4" />
-            <span>Edit</span>
-          </button>
-        )}
-        {isEditing && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsEditing(false)}
-              className="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            <button
-              onClick={handleSaveSelection}
-              className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <Check className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {!isEditing && (
+            <>
+              <button
+                onClick={() => {
+                  setShowAddForm(!showAddForm);
+                  setEditingHabit(null);
+                  setFormData({ name: "" });
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add</span>
+              </button>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                <Edit2 className="w-4 h-4" />
+                <span>Edit</span>
+              </button>
+            </>
+          )}
+          {isEditing && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleSaveSelection}
+                className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Add/Edit Form */}
+      {showAddForm && (
+        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 mb-6">
+          <h3 className="text-lg font-bold mb-4">
+            {editingHabit ? "Edit Habit" : "Add New Habit"}
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold mb-2">Habit Name</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-gray-600"
+                placeholder="e.g., Drink water"
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    editingHabit ? handleUpdateHabit() : handleAddHabit();
+                  }
+                }}
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={editingHabit ? handleUpdateHabit : handleAddHabit}
+                className="flex-1 py-3 bg-green-600 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+              >
+                {editingHabit ? "Update" : "Add Habit"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddForm(false);
+                  setEditingHabit(null);
+                  setFormData({ name: "" });
+                }}
+                className="flex-1 py-3 bg-gray-800 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Habits Section */}
       <div className="mb-6">

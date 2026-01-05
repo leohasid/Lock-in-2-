@@ -18,6 +18,7 @@ export default function LockedInApp() {
   const [allHabits, setAllHabits] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedHabits, setSelectedHabits] = useState<Array<{ id: string; name: string }>>([]);
   const [goals, setGoals] = useState<Array<{ id: string; title: string; current: number; target: number; unit: string }>>([]);
+  const [selectedGoals, setSelectedGoals] = useState<Array<{ id: string; title: string; current: number; target: number; unit: string }>>([]);
 
   // Get today's workout day
   useEffect(() => {
@@ -414,12 +415,20 @@ export default function LockedInApp() {
       </div>
 
       {/* Goals Section */}
-      {goals.length > 0 && (
-        <div className="mb-3">
-          <div className="bg-gray-900 rounded-xl p-2.5 border border-gray-800">
-            <h2 className="text-sm font-bold text-white uppercase mb-2">Goals</h2>
-            <div className="space-y-2">
-              {goals.map((goal) => (
+      <div className="mb-3">
+        <div className="bg-gray-900 rounded-xl p-2.5 border border-gray-800">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-bold text-white uppercase">Goals</h2>
+            <Link 
+              href="/goals"
+              className="text-xs text-gray-400 hover:text-white transition-colors"
+            >
+              View all
+            </Link>
+          </div>
+          <div className="space-y-1.5">
+            {selectedGoals.length > 0 ? (
+              selectedGoals.map((goal) => (
                 <GoalProgressCard
                   key={goal.id}
                   title={goal.title}
@@ -427,11 +436,13 @@ export default function LockedInApp() {
                   target={goal.target}
                   unit={goal.unit}
                 />
-              ))}
-            </div>
+              ))
+            ) : (
+              <p className="text-xs text-gray-500 text-center py-2">No goals yet. Add some in View all.</p>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Bottom Navigation */}
       <div className="pb-20">
