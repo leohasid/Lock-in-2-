@@ -192,17 +192,18 @@ export default function LockedInApp() {
     return data;
   }, [today]);
 
-  // Get weekly calories data (last 7 days)
+  // Get weekly calories data (last 10 days for graph)
   const weeklyCaloriesData = useMemo(() => {
-    if (typeof window === "undefined") return [0, 0, 0, 0, 0, 0, 0];
+    if (typeof window === "undefined") return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     
     const storedMeals = localStorage.getItem("meals");
-    if (!storedMeals) return [0, 0, 0, 0, 0, 0, 0];
+    if (!storedMeals) return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     
     try {
       const meals = JSON.parse(storedMeals);
       const data: number[] = [];
-      for (let i = 6; i >= 0; i--) {
+      // Get last 10 days of data
+      for (let i = 9; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split("T")[0];
@@ -212,7 +213,7 @@ export default function LockedInApp() {
       }
       return data;
     } catch (e) {
-      return [0, 0, 0, 0, 0, 0, 0];
+      return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     }
   }, [today]);
 
