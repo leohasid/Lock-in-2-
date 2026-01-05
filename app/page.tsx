@@ -308,7 +308,7 @@ export default function LockedInApp() {
       </div>
 
       {/* Gym Activity Heatmap */}
-      <Link href="/gym" className="block mb-4">
+      <Link href="/gym" className="block mb-3">
         <ActivityHeatmap
           title="Gym"
           streak={gymStreak}
@@ -320,7 +320,7 @@ export default function LockedInApp() {
       </Link>
 
       {/* Calories Activity Heatmap */}
-      <Link href="/nutrition" className="block mb-4">
+      <Link href="/nutrition" className="block mb-3">
         <ActivityHeatmap
           title="Calories"
           streak={caloriesStreak}

@@ -67,32 +67,32 @@ export default function ActivityHeatmap({
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
-    <div className="bg-gray-900 rounded-2xl p-3 border border-gray-800 cursor-pointer hover:bg-gray-800/50 transition-colors flex flex-col">
+    <div className="bg-gray-900 rounded-xl p-2 border border-gray-800 cursor-pointer hover:bg-gray-800/50 transition-colors flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <h2 className="text-lg font-bold" style={{ color }}>
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-sm font-bold" style={{ color }}>
           {title}
         </h2>
         <div className="flex items-center gap-1 text-gray-400">
           <svg
-            className="w-4 h-4"
+            className="w-3 h-3"
             fill="currentColor"
             viewBox="0 0 20 20"
           >
             <path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" />
           </svg>
-          <span className="text-sm font-semibold">{streak}</span>
+          <span className="text-xs font-semibold">{streak}</span>
         </div>
       </div>
 
       {/* Heatmap Grid - Takes up most of the space */}
-      <div className="flex gap-2 mb-3 w-full">
+      <div className="flex gap-0.5 mb-1.5 w-full">
         {/* Day labels on the left */}
-        <div className="flex flex-col gap-1 flex-shrink-0 justify-between">
+        <div className="flex flex-col gap-0.5 flex-shrink-0 justify-between py-0.5">
           {weekLayout.dayNames.map((day, idx) => (
             <div
               key={idx}
-              className="text-[10px] text-gray-400 w-3 h-3 flex items-center justify-center font-medium"
+              className="text-[8px] text-gray-400 w-2 h-2 flex items-center justify-center font-medium"
             >
               {day}
             </div>
@@ -100,16 +100,16 @@ export default function ActivityHeatmap({
         </div>
 
         {/* Weeks (columns) - scrollable */}
-        <div className="flex gap-1 flex-1 overflow-x-auto min-w-0">
+        <div className="flex gap-0.5 flex-1 overflow-x-auto min-w-0">
           {Array.from({ length: weekLayout.numWeeks }).map((_, weekIdx) => (
-            <div key={weekIdx} className="flex flex-col gap-1 flex-shrink-0">
+            <div key={weekIdx} className="flex flex-col gap-0.5 flex-shrink-0">
               {weekLayout.dayRows.map((dayRow, dayIdx) => {
                 const day = dayRow[weekIdx];
                 if (!day) return null;
                 return (
                   <div
                     key={dayIdx}
-                    className={`w-3 h-3 rounded-sm transition-all flex-shrink-0 ${
+                    className={`w-2 h-2 rounded-sm transition-all flex-shrink-0 ${
                       day.active
                         ? "opacity-100"
                         : "opacity-20"
@@ -128,17 +128,17 @@ export default function ActivityHeatmap({
 
       {/* Footer Stats - Pushed to bottom */}
       <div className="flex items-center justify-between">
-        <div className="text-xs text-gray-400">
+        <div className="text-[9px] text-gray-400">
           {percentage}% ({completed}/{total})
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-gray-500">
-          <div className="flex items-center gap-1">
-            <div className="w-2.5 h-2.5 rounded-sm bg-gray-700 opacity-20" />
+        <div className="flex items-center gap-1 text-[9px] text-gray-500">
+          <div className="flex items-center gap-0.5">
+            <div className="w-2 h-2 rounded-sm bg-gray-700 opacity-20" />
             <span>Incomplete</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <div
-              className="w-2.5 h-2.5 rounded-sm"
+              className="w-2 h-2 rounded-sm"
               style={{ backgroundColor: color }}
             />
             <span>Completed</span>
