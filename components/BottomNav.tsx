@@ -26,7 +26,7 @@ export default function BottomNav() {
               key={item.href}
               href={item.href}
               className={`flex flex-col items-center transition-colors ${
-                isActive ? "text-amber-400" : "text-gray-500 hover:text-amber-400"
+                isActive ? "text-teal-400" : "text-gray-500 hover:text-teal-400"
               }`}
             >
               <Icon className="w-6 h-6 mb-1" />

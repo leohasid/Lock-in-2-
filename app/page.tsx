@@ -415,7 +415,7 @@ export default function LockedInApp() {
             <h2 className="text-sm font-bold text-white">Goals</h2>
             <Link 
               href="/goals"
-              className="text-xs text-gray-400 hover:text-green-400 transition-colors"
+              className="text-xs text-gray-400 hover:text-teal-400 transition-colors"
             >
               View all &gt;
             </Link>

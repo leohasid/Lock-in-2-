@@ -65,8 +65,8 @@ export default function WorkoutCard({
     <div className="bg-gray-900 rounded-xl p-3 border border-gray-800 h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-bold text-green-400">Gym</h3>
-        <div className="flex items-center gap-1 text-green-400">
+        <h3 className="text-sm font-bold text-teal-400">Gym</h3>
+        <div className="flex items-center gap-1 text-teal-400">
           <Flame className="w-3 h-3" />
           <span className="text-xs font-semibold">{streak}</span>
         </div>
@@ -102,7 +102,7 @@ export default function WorkoutCard({
                         : "opacity-20"
                     }`}
                     style={{
-                      backgroundColor: day.active ? "#10b981" : "#374151",
+                      backgroundColor: day.active ? "#2dd4bf" : "#374151",
                     }}
                     title={day.date.toLocaleDateString()}
                   />
@@ -126,7 +126,7 @@ export default function WorkoutCard({
           <div className="flex items-center gap-0.5">
             <div
               className="w-2 h-2 rounded-sm"
-              style={{ backgroundColor: "#10b981" }}
+              style={{ backgroundColor: "#2dd4bf" }}
             />
             <span>More</span>
           </div>
