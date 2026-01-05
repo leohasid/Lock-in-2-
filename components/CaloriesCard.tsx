@@ -17,11 +17,14 @@ export default function CaloriesCard({
   weeklyData,
 }: CaloriesCardProps) {
   const percentage = goal > 0 ? Math.round((current / goal) * 100) : 0;
-  const maxValue = Math.max(...weeklyData, goal, 1);
-  const minValue = Math.min(...weeklyData.filter(v => v > 0), goal) || 0;
+  // Ensure we have a valid range for the graph
+  const allValues = [...weeklyData, goal].filter(v => v > 0);
+  const maxValue = allValues.length > 0 ? Math.max(...allValues) : goal || 2000;
+  const minValue = allValues.length > 0 ? Math.min(...allValues) : 0;
+  const range = maxValue - minValue || 1;
 
   return (
-    <div className="bg-gray-900 rounded-xl p-3 border border-gray-800">
+    <div className="bg-gray-900 rounded-xl p-3 border border-gray-800 h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-bold text-teal-400">Calories</h3>
@@ -39,35 +42,35 @@ export default function CaloriesCard({
       </div>
 
       {/* Line Graph */}
-      <div className="mb-2 h-12 relative">
+      <div className="mb-2 h-14 relative bg-gray-800/30 rounded">
         <svg className="w-full h-full" viewBox="0 0 100 40" preserveAspectRatio="none">
           <polyline
             fill="none"
             stroke="#2dd4bf"
-            strokeWidth="2"
+            strokeWidth="2.5"
             points={weeklyData
               .map((value, idx) => {
-                const x = (idx / (weeklyData.length - 1)) * 100;
-                const normalizedValue = maxValue > minValue 
-                  ? ((value - minValue) / (maxValue - minValue)) * 35
+                const x = weeklyData.length > 1 ? (idx / (weeklyData.length - 1)) * 100 : 50;
+                const normalizedValue = range > 0 
+                  ? ((value - minValue) / range) * 35
                   : 20;
-                const y = 40 - normalizedValue;
+                const y = 40 - Math.max(2, Math.min(normalizedValue, 38));
                 return `${x},${y}`;
               })
               .join(" ")}
           />
           {weeklyData.map((value, idx) => {
-            const x = (idx / (weeklyData.length - 1)) * 100;
-            const normalizedValue = maxValue > minValue 
-              ? ((value - minValue) / (maxValue - minValue)) * 35
+            const x = weeklyData.length > 1 ? (idx / (weeklyData.length - 1)) * 100 : 50;
+            const normalizedValue = range > 0 
+              ? ((value - minValue) / range) * 35
               : 20;
-            const y = 40 - normalizedValue;
+            const y = 40 - Math.max(2, Math.min(normalizedValue, 38));
             return (
               <circle
                 key={idx}
                 cx={x}
                 cy={y}
-                r="2"
+                r="2.5"
                 fill="#2dd4bf"
               />
             );
@@ -76,7 +79,7 @@ export default function CaloriesCard({
       </div>
 
       {/* Today Stats */}
-      <div className="space-y-1">
+      <div className="space-y-1 mt-auto">
         <div className="text-xs text-gray-400">
           Today{" "}
           <span className="text-white font-semibold">

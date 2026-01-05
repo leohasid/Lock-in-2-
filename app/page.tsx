@@ -388,7 +388,7 @@ export default function LockedInApp() {
       </div>
 
       {/* Workouts and Calories Cards - Smaller for iPhone */}
-      <div className="grid grid-cols-2 gap-2 mb-3">
+      <div className="grid grid-cols-2 gap-2 mb-3 items-stretch">
         <Link href="/gym" className="block">
           <WorkoutCard
             streak={gymStreak}

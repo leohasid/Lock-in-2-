@@ -62,7 +62,7 @@ export default function WorkoutCard({
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
-    <div className="bg-gray-900 rounded-xl p-3 border border-gray-800">
+    <div className="bg-gray-900 rounded-xl p-3 border border-gray-800 h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-bold text-green-400">Gym</h3>
