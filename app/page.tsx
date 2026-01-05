@@ -228,7 +228,7 @@ export default function LockedInApp() {
     return sum > 0 ? Math.round(sum / weeklyCaloriesData.length) : 0;
   }, [weeklyCaloriesData]);
 
-  // Get gym streak and activity data (last 91 days)
+  // Get gym streak and activity data (last 70 days for 10 weeks)
   const gymStreak = useMemo(() => {
     if (typeof window === "undefined") return 0;
     
@@ -236,7 +236,7 @@ export default function LockedInApp() {
     const todayDate = new Date(today);
     todayDate.setHours(0, 0, 0, 0);
     
-    for (let i = 0; i < 91; i++) {
+    for (let i = 0; i < 70; i++) {
       const date = new Date(todayDate);
       date.setDate(todayDate.getDate() - i);
       const dateStr = date.toISOString().split("T")[0];
@@ -249,58 +249,178 @@ export default function LockedInApp() {
     return streak;
   }, [today]);
 
+  // Get gym activity completion stats (last 70 days)
+  const gymActivityStats = useMemo(() => {
+    if (typeof window === "undefined") return { completed: 0, total: 70 };
+    
+    let completed = 0;
+    const todayDate = new Date(today);
+    todayDate.setHours(0, 0, 0, 0);
+    
+    for (let i = 0; i < 70; i++) {
+      const date = new Date(todayDate);
+      date.setDate(todayDate.getDate() - i);
+      const dateStr = date.toISOString().split("T")[0];
+      if (localStorage.getItem(`workout_${dateStr}`) === "completed") {
+        completed++;
+      }
+    }
+    return { completed, total: 70 };
+  }, [today]);
+
+  // Function to check if workout was completed on a date
+  const getGymActivity = useCallback((date: Date): boolean => {
+    if (typeof window === "undefined") return false;
+    const dateStr = date.toISOString().split("T")[0];
+    return localStorage.getItem(`workout_${dateStr}`) === "completed";
+  }, []);
+
+  // Get calories goal from localStorage
+  const caloriesGoal = useMemo(() => {
+    if (typeof window === "undefined") return 2000;
+    const storedGoals = localStorage.getItem("macroGoals");
+    if (storedGoals) {
+      try {
+        const goals = JSON.parse(storedGoals);
+        return goals.calories || 2000;
+      } catch (e) {
+        return 2000;
+      }
+    }
+    return 2000;
+  }, []);
+
+  // Get calories streak (days meeting calorie goal)
+  const caloriesStreak = useMemo(() => {
+    if (typeof window === "undefined") return 0;
+    
+    let streak = 0;
+    const todayDate = new Date(today);
+    todayDate.setHours(0, 0, 0, 0);
+    
+    const storedMeals = localStorage.getItem("meals");
+    if (!storedMeals) return 0;
+    
+    try {
+      const meals = JSON.parse(storedMeals);
+      for (let i = 0; i < 70; i++) {
+        const date = new Date(todayDate);
+        date.setDate(todayDate.getDate() - i);
+        const dateStr = date.toISOString().split("T")[0];
+        const dayMeals = meals.filter((m: any) => m.date === dateStr);
+        const dayCalories = dayMeals.reduce((sum: number, meal: any) => sum + (meal.calories || 0), 0);
+        
+        if (dayCalories >= caloriesGoal * 0.8) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+    } catch (e) {
+      return 0;
+    }
+    return streak;
+  }, [today, caloriesGoal]);
+
+  // Get calories activity completion stats (last 70 days)
+  const caloriesActivityStats = useMemo(() => {
+    if (typeof window === "undefined") return { completed: 0, total: 70 };
+    
+    let completed = 0;
+    const todayDate = new Date(today);
+    todayDate.setHours(0, 0, 0, 0);
+    
+    const storedMeals = localStorage.getItem("meals");
+    if (!storedMeals) return { completed: 0, total: 70 };
+    
+    try {
+      const meals = JSON.parse(storedMeals);
+      for (let i = 0; i < 70; i++) {
+        const date = new Date(todayDate);
+        date.setDate(todayDate.getDate() - i);
+        const dateStr = date.toISOString().split("T")[0];
+        const dayMeals = meals.filter((m: any) => m.date === dateStr);
+        const dayCalories = dayMeals.reduce((sum: number, meal: any) => sum + (meal.calories || 0), 0);
+        
+        if (dayCalories >= caloriesGoal * 0.8) {
+          completed++;
+        }
+      }
+    } catch (e) {
+      return { completed: 0, total: 70 };
+    }
+    return { completed, total: 70 };
+  }, [today, caloriesGoal]);
+
+  // Function to check if calorie goal was met on a date
+  const getCaloriesActivity = useCallback((date: Date): boolean => {
+    if (typeof window === "undefined") return false;
+    const dateStr = date.toISOString().split("T")[0];
+    const storedMeals = localStorage.getItem("meals");
+    if (!storedMeals) return false;
+    
+    try {
+      const meals = JSON.parse(storedMeals);
+      const dayMeals = meals.filter((m: any) => m.date === dateStr);
+      const dayCalories = dayMeals.reduce((sum: number, meal: any) => sum + (meal.calories || 0), 0);
+      return dayCalories >= caloriesGoal * 0.8;
+    } catch (e) {
+      return false;
+    }
+  }, [caloriesGoal]);
+
   return (
-    <div className="min-h-screen bg-black text-white p-6 flex flex-col">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+    <div className="min-h-screen bg-black text-white p-4 flex flex-col">
+      {/* Header - Smaller for iPhone */}
+      <div className="flex items-start justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold mb-1 text-white">Mogifi AI</h1>
-          <p className="text-gray-400 text-sm">
+          <h1 className="text-lg font-bold mb-0.5 text-white">Mogifi AI</h1>
+          <p className="text-gray-400 text-xs">
             {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
           </p>
         </div>
         <Link 
           href="/reflections"
-          className="px-3 py-1.5 bg-gray-800 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors"
+          className="px-2 py-1 bg-gray-800 rounded-lg text-xs font-medium hover:bg-gray-700 transition-colors"
         >
           Daily Reflections
         </Link>
       </div>
 
-      {/* Workouts and Calories Cards */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      {/* Workouts and Calories Cards - Smaller for iPhone */}
+      <div className="grid grid-cols-2 gap-2 mb-3">
         <Link href="/gym" className="block">
           <WorkoutCard
-            current={workoutStats.completed}
-            goal={workoutStats.goal}
             streak={gymStreak}
-            weeklyData={weeklyWorkoutData}
+            completed={gymActivityStats.completed}
+            total={gymActivityStats.total}
+            getActivityData={getGymActivity}
           />
         </Link>
         
         <Link href="/nutrition" className="block">
           <CaloriesCard
-            current={calories.current}
-            goal={calories.goal}
-            average={averageCalories}
-            weeklyData={weeklyCaloriesData}
+            streak={caloriesStreak}
+            completed={caloriesActivityStats.completed}
+            total={caloriesActivityStats.total}
+            getActivityData={getCaloriesActivity}
           />
         </Link>
       </div>
 
-      {/* Goals Section */}
+      {/* Goals Section - Smaller for iPhone */}
       <div className="mb-3">
-        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-bold text-white">Goals</h2>
+        <div className="bg-gray-900 rounded-xl p-3 border border-gray-800">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-bold text-white">Goals</h2>
             <Link 
               href="/goals"
-              className="text-sm text-gray-400 hover:text-teal-400 transition-colors"
+              className="text-xs text-gray-400 hover:text-green-400 transition-colors"
             >
               View all &gt;
             </Link>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {selectedGoals.length > 0 ? (
               selectedGoals.map((goal) => {
                 const isCompleted = goal.current >= goal.target;

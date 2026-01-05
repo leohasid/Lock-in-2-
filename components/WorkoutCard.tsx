@@ -1,89 +1,136 @@
 "use client";
 
-import { Dumbbell, Zap } from "lucide-react";
+import { useMemo } from "react";
+import { Flame } from "lucide-react";
 
 interface WorkoutCardProps {
-  current: number;
-  goal: number;
   streak: number;
-  weeklyData: number[]; // Array of 7 numbers for the week
+  completed: number;
+  total: number;
+  getActivityData: (date: Date) => boolean;
 }
 
 export default function WorkoutCard({
-  current,
-  goal,
   streak,
-  weeklyData,
+  completed,
+  total,
+  getActivityData,
 }: WorkoutCardProps) {
-  const percentage = goal > 0 ? Math.round((current / goal) * 100) : 0;
-  const maxValue = Math.max(...weeklyData, 1);
+  // Generate 10 weeks of data (70 days) for iPhone view
+  const heatmapData = useMemo(() => {
+    const today = new Date();
+    const data: Array<{ date: Date; active: boolean }> = [];
+    
+    // Start from 69 days ago (approximately 10 weeks)
+    for (let i = 69; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - i);
+      data.push({
+        date,
+        active: getActivityData(date),
+      });
+    }
+    
+    return data;
+  }, [getActivityData]);
+
+  // Group data by weeks (columns) and days (rows)
+  const weekLayout = useMemo(() => {
+    const dayNames = ["S", "M", "T", "W", "T", "F", "S"];
+    const numWeeks = Math.ceil(heatmapData.length / 7);
+    
+    // Create rows for each day of the week (7 rows)
+    const dayRows: Array<Array<{ date: Date; active: boolean }>> = [[], [], [], [], [], [], []];
+    
+    // Fill each day's row with data from that day of the week across all weeks
+    for (let i = 0; i < heatmapData.length; i++) {
+      const date = heatmapData[i].date;
+      const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      dayRows[dayOfWeek].push(heatmapData[i]);
+    }
+    
+    // Pad rows to have the same length (numWeeks)
+    dayRows.forEach((row) => {
+      while (row.length < numWeeks) {
+        row.push({ date: new Date(), active: false });
+      }
+    });
+    
+    return { dayRows, dayNames, numWeeks };
+  }, [heatmapData]);
+
+  const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
-    <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
+    <div className="bg-gray-900 rounded-xl p-3 border border-gray-800">
       {/* Header */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Dumbbell className="w-5 h-5 text-teal-400" />
-          <h3 className="text-base font-bold text-white">Workouts</h3>
-        </div>
-        <div className="flex items-center gap-1 text-teal-400">
-          <Zap className="w-4 h-4" />
-          <span className="text-sm font-semibold">{streak}</span>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-bold text-green-400">Gym</h3>
+        <div className="flex items-center gap-1 text-green-400">
+          <Flame className="w-3 h-3" />
+          <span className="text-xs font-semibold">{streak}</span>
         </div>
       </div>
 
-      {/* Current/Goal */}
-      <div className="mb-3">
-        <div className="text-2xl font-bold text-white mb-1">{current}</div>
-        <div className="text-sm text-gray-400">Goal: {goal}</div>
-      </div>
-
-      {/* Bar Chart */}
-      <div className="mb-3">
-        <div className="flex items-end gap-1 h-16">
-          {weeklyData.map((value, idx) => {
-            const height = (value / maxValue) * 100;
-            const isToday = idx === weeklyData.length - 1;
-            return (
-              <div key={idx} className="flex-1 flex flex-col items-center">
-                <div
-                  className={`w-full rounded-t transition-all ${
-                    isToday ? "bg-teal-400" : "bg-teal-500"
-                  }`}
-                  style={{ height: `${Math.max(height, 5)}%` }}
-                />
-                {isToday && (
-                  <svg
-                    className="w-3 h-3 text-teal-400 mt-0.5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M5.293 7.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L6.707 7.707a1 1 0 01-1.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                )}
-              </div>
-            );
-          })}
+      {/* Heatmap Grid - Compact for iPhone */}
+      <div className="flex gap-0.5 mb-2">
+        {/* Day labels on the left */}
+        <div className="flex flex-col gap-0.5 flex-shrink-0 justify-between py-0.5">
+          {weekLayout.dayNames.map((day, idx) => (
+            <div
+              key={idx}
+              className="text-[8px] text-gray-400 w-2.5 h-2.5 flex items-center justify-center font-medium"
+            >
+              {day}
+            </div>
+          ))}
         </div>
-        <div className="flex justify-between text-[10px] text-gray-500 mt-1">
-          <span>Tue</span>
-          <span>T</span>
-          <span>T</span>
-          <span>W</span>
-          <span>T</span>
-          <span>F</span>
-          <span className="text-teal-400 font-semibold">Today</span>
+
+        {/* Weeks (columns) */}
+        <div className="flex gap-0.5 flex-1 overflow-x-auto min-w-0">
+          {Array.from({ length: weekLayout.numWeeks }).map((_, weekIdx) => (
+            <div key={weekIdx} className="flex flex-col gap-0.5 flex-shrink-0">
+              {weekLayout.dayRows.map((dayRow, dayIdx) => {
+                const day = dayRow[weekIdx];
+                if (!day) return null;
+                return (
+                  <div
+                    key={dayIdx}
+                    className={`w-2.5 h-2.5 rounded-sm transition-all flex-shrink-0 ${
+                      day.active
+                        ? "opacity-100"
+                        : "opacity-20"
+                    }`}
+                    style={{
+                      backgroundColor: day.active ? "#10b981" : "#374151",
+                    }}
+                    title={day.date.toLocaleDateString()}
+                  />
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* This Week Stats */}
-      <div className="text-sm text-gray-400">
-        This Week <span className="text-white font-semibold">{current} / {goal}</span>{" "}
-        <span className="text-teal-400">{percentage}%</span>
+      {/* Footer Stats */}
+      <div className="flex items-center justify-between text-[9px]">
+        <div className="text-gray-400">
+          {percentage}% ({completed}/{total})
+        </div>
+        <div className="flex items-center gap-1.5 text-gray-500">
+          <div className="flex items-center gap-0.5">
+            <div className="w-2 h-2 rounded-sm bg-gray-700 opacity-20" />
+            <span>Less</span>
+          </div>
+          <div className="flex items-center gap-0.5">
+            <div
+              className="w-2 h-2 rounded-sm"
+              style={{ backgroundColor: "#10b981" }}
+            />
+            <span>More</span>
+          </div>
+        </div>
       </div>
     </div>
   );

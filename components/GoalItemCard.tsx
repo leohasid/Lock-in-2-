@@ -22,33 +22,33 @@ export default function GoalItemCard({
   const percentage = target > 0 ? Math.round((current / target) * 100) : 0;
 
   return (
-    <div className="bg-gray-900 rounded-lg p-3 border border-gray-800 flex items-center gap-3">
+    <div className="bg-gray-900 rounded-lg p-2 border border-gray-800 flex items-center gap-2">
       {/* Icon */}
-      <div className="text-teal-400 flex-shrink-0">{icon}</div>
+      <div className="text-green-400 flex-shrink-0">{icon}</div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-1">
-          <h4 className="text-sm font-semibold text-white truncate">{title}</h4>
+        <div className="flex items-center justify-between mb-0.5">
+          <h4 className="text-xs font-semibold text-white truncate">{title}</h4>
           {completed && (
-            <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 ml-2" />
+            <CheckCircle2 className="w-3 h-3 text-green-500 flex-shrink-0 ml-1" />
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-gray-400">
             {current.toLocaleString()}
             {unit} / {target.toLocaleString()}
             {unit}
           </span>
           {title.includes("10k") && (
             <>
-              <div className="w-full bg-gray-800 rounded-full h-1 flex-1 max-w-24">
+              <div className="w-full bg-gray-800 rounded-full h-0.5 flex-1 max-w-20">
                 <div
-                  className="h-1 rounded-full bg-teal-400 transition-all"
+                  className="h-0.5 rounded-full bg-green-400 transition-all"
                   style={{ width: `${Math.min(percentage, 100)}%` }}
                 />
               </div>
-              <span className="text-xs text-teal-400">{percentage}%</span>
+              <span className="text-[10px] text-green-400">{percentage}%</span>
             </>
           )}
         </div>
