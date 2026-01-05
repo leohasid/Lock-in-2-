@@ -307,29 +307,32 @@ export default function LockedInApp() {
         </p>
       </div>
 
-      {/* Gym Activity Heatmap */}
-      <Link href="/gym" className="block mb-3">
-        <ActivityHeatmap
-          title="Gym"
-          streak={gymStreak}
-          completed={gymActivityStats.completed}
-          total={gymActivityStats.total}
-          getActivityData={getGymActivity}
-          color="#10b981"
-        />
-      </Link>
-
-      {/* Calories Activity Heatmap */}
-      <Link href="/nutrition" className="block mb-3">
-        <ActivityHeatmap
-          title="Calories"
-          streak={caloriesStreak}
-          completed={caloriesActivityStats.completed}
-          total={caloriesActivityStats.total}
-          getActivityData={getCaloriesActivity}
-          color="#10b981"
-        />
-      </Link>
+      {/* Activity Heatmaps - Combined in one box */}
+      <div className="bg-gray-900 rounded-xl p-3 border border-gray-800 mb-3">
+        <Link href="/gym" className="block mb-3">
+          <ActivityHeatmap
+            title="Gym"
+            streak={gymStreak}
+            completed={gymActivityStats.completed}
+            total={gymActivityStats.total}
+            getActivityData={getGymActivity}
+            color="#10b981"
+          />
+        </Link>
+        
+        <div className="border-t border-gray-800 my-2"></div>
+        
+        <Link href="/nutrition" className="block">
+          <ActivityHeatmap
+            title="Calories"
+            streak={caloriesStreak}
+            completed={caloriesActivityStats.completed}
+            total={caloriesActivityStats.total}
+            getActivityData={getCaloriesActivity}
+            color="#10b981"
+          />
+        </Link>
+      </div>
 
       {/* Habits Section */}
       <div className="mb-4">

@@ -67,7 +67,7 @@ export default function ActivityHeatmap({
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
-    <div className="bg-gray-900 rounded-xl p-2 border border-gray-800 cursor-pointer hover:bg-gray-800/50 transition-colors flex flex-col">
+    <div className="cursor-pointer hover:opacity-80 transition-opacity flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-sm font-bold" style={{ color }}>
