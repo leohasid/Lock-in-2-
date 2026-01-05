@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { Flame, Dumbbell, Smartphone, UtensilsCrossed, TrendingUp } from "lucide-react";
+import { Flame, Dumbbell, UtensilsCrossed, TrendingUp } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import ActivityHeatmap from "@/components/ActivityHeatmap";
 
@@ -300,61 +300,6 @@ export default function LockedInApp() {
           getActivityData={getGymActivity}
           color="#10b981"
         />
-      </Link>
-
-      {/* Phone Usage */}
-      <Link href="/addictions">
-        <div className={`mb-4 bg-gray-900 rounded-2xl p-6 cursor-pointer hover:bg-gray-800 transition-all border-2 ${
-          phoneUsage.percentage >= 100 ? "border-red-600/50" : phoneUsage.percentage >= 80 ? "border-yellow-600/50" : "border-gray-800"
-        }`}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xl text-orange-300 font-semibold">Phone Usage</h3>
-            {phoneUsage.percentage >= 100 && (
-              <span className="bg-red-600 text-white text-xs px-3 py-1 rounded-full">Blocked</span>
-            )}
-          </div>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="bg-blue-500/20 rounded-full p-2">
-              <Smartphone className="w-6 h-6 text-blue-400" />
-            </div>
-            <div className="flex-1">
-              <p className="text-4xl font-bold mb-1">
-                {Math.floor(phoneUsage.current / 60)}h {phoneUsage.current % 60}m
-              </p>
-              <p className="text-sm text-gray-400 mb-1">
-                {(() => {
-                  const hours = Math.floor(phoneUsage.current / 60);
-                  const minutes = phoneUsage.current % 60;
-                  if (hours === 0) {
-                    return `You were on your phone ${minutes} ${minutes === 1 ? 'minute' : 'minutes'} today`;
-                  } else if (minutes === 0) {
-                    return `You were on your phone ${hours} ${hours === 1 ? 'hour' : 'hours'} today`;
-                  } else {
-                    return `You were on your phone ${hours} ${hours === 1 ? 'hour' : 'hours'} and ${minutes} ${minutes === 1 ? 'minute' : 'minutes'} today`;
-                  }
-                })()}
-              </p>
-              <p className="text-sm text-gray-400 mb-2">
-                You have used {phoneUsage.current} out of {phoneUsage.limit} minutes
-              </p>
-            </div>
-          </div>
-          <div className="w-full bg-gray-800 rounded-full h-2 mb-2">
-            <div
-              className={`h-2 rounded-full transition-all ${
-                phoneUsage.percentage >= 100
-                  ? "bg-red-600"
-                  : phoneUsage.percentage >= 80
-                  ? "bg-yellow-600"
-                  : "bg-blue-600"
-              }`}
-              style={{ width: `${Math.min(phoneUsage.percentage, 100)}%` }}
-            />
-          </div>
-          {phoneUsage.percentage >= 80 && phoneUsage.percentage < 100 && (
-            <p className="text-yellow-400 text-xs">⚠️ Warning: {phoneUsage.percentage}% limit reached</p>
-          )}
-        </div>
       </Link>
 
       {/* Calories Activity Heatmap */}
