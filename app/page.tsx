@@ -19,6 +19,7 @@ export default function LockedInApp() {
   const [selectedHabits, setSelectedHabits] = useState<Array<{ id: string; name: string }>>([]);
   const [goals, setGoals] = useState<Array<{ id: string; title: string; current: number; target: number; unit: string }>>([]);
   const [selectedGoals, setSelectedGoals] = useState<Array<{ id: string; title: string; current: number; target: number; unit: string }>>([]);
+  const [showDeleteMode, setShowDeleteMode] = useState(false);
 
   // Get today's workout day
   useEffect(() => {
@@ -419,12 +420,20 @@ export default function LockedInApp() {
         <div className="bg-gray-900 rounded-xl p-2.5 border border-gray-800">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-sm font-bold text-white uppercase">Goals</h2>
-            <Link 
-              href="/goals"
-              className="text-xs text-gray-400 hover:text-white transition-colors"
-            >
-              View all
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowDeleteMode(!showDeleteMode)}
+                className="text-xs text-gray-400 hover:text-white transition-colors"
+              >
+                {showDeleteMode ? "Done" : "Delete"}
+              </button>
+              <Link 
+                href="/goals"
+                className="text-xs text-gray-400 hover:text-white transition-colors"
+              >
+                View all
+              </Link>
+            </div>
           </div>
           <div className="space-y-1.5">
             {selectedGoals.length > 0 ? (
@@ -435,6 +444,48 @@ export default function LockedInApp() {
                   current={goal.current}
                   target={goal.target}
                   unit={goal.unit}
+                  showDelete={showDeleteMode}
+                  onClick={() => {
+                    if (showDeleteMode) return;
+                    if (typeof window === "undefined") return;
+                    const newCurrent = prompt(`Update progress for "${goal.title}" (current: ${goal.current}${goal.unit}):`, goal.current.toString());
+                    if (newCurrent !== null && !isNaN(Number(newCurrent))) {
+                      const updatedGoals = goals.map(g =>
+                        g.id === goal.id ? { ...g, current: Math.max(0, Math.min(Number(newCurrent), g.target)) } : g
+                      );
+                      setGoals(updatedGoals);
+                      localStorage.setItem("goals", JSON.stringify(updatedGoals));
+                      
+                      // Update selected goals
+                      const updatedSelected = selectedGoals.map(g =>
+                        g.id === goal.id ? { ...g, current: Math.max(0, Math.min(Number(newCurrent), g.target)) } : g
+                      );
+                      setSelectedGoals(updatedSelected);
+                    }
+                  }}
+                  onDelete={() => {
+                    if (typeof window === "undefined") return;
+                    // Remove from all goals
+                    const updatedGoals = goals.filter(g => g.id !== goal.id);
+                    setGoals(updatedGoals);
+                    localStorage.setItem("goals", JSON.stringify(updatedGoals));
+                    
+                    // Remove from selected
+                    const updatedSelected = selectedGoals.filter(g => g.id !== goal.id);
+                    setSelectedGoals(updatedSelected);
+                    
+                    // Remove from selected goals for home
+                    const storedSelected = localStorage.getItem("selectedGoalsForHome");
+                    if (storedSelected) {
+                      try {
+                        const selectedIds = JSON.parse(storedSelected);
+                        const updatedIds = selectedIds.filter((id: string) => id !== goal.id);
+                        localStorage.setItem("selectedGoalsForHome", JSON.stringify(updatedIds));
+                      } catch (e) {
+                        // Ignore
+                      }
+                    }
+                  }}
                 />
               ))
             ) : (
