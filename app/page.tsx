@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Flame, Dumbbell, UtensilsCrossed, TrendingUp } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import ActivityHeatmap from "@/components/ActivityHeatmap";
+import HabitCard from "@/components/HabitCard";
 
 export default function LockedInApp() {
   const [today] = useState(new Date());
@@ -12,6 +13,11 @@ export default function LockedInApp() {
   const [phoneUsage, setPhoneUsage] = useState({ current: 0, limit: 120, percentage: 0 });
   const [calories, setCalories] = useState({ current: 0, goal: 2000, percentage: 0 });
   const [workoutCompleted, setWorkoutCompleted] = useState(false);
+  const [habitsState, setHabitsState] = useState({
+    drinkWater: false,
+    run: false,
+    gym: false,
+  });
 
   // Get today's workout day
   useEffect(() => {
@@ -26,6 +32,13 @@ export default function LockedInApp() {
     const todayStr = today.toISOString().split("T")[0];
     const completed = localStorage.getItem(`workout_${todayStr}`) === "completed";
     setWorkoutCompleted(completed);
+    
+    // Check habit completion
+    setHabitsState({
+      drinkWater: localStorage.getItem(`habit_drink_water_${todayStr}`) === "completed",
+      run: localStorage.getItem(`habit_run_${todayStr}`) === "completed",
+      gym: completed,
+    });
   }, [today]);
 
   // Get phone usage data
@@ -234,10 +247,10 @@ export default function LockedInApp() {
 
   return (
     <div className="min-h-screen bg-black text-white p-6 flex flex-col">
-      {/* Title */}
-      <div className="text-center mb-8">
-        <h1 className="text-5xl font-bold mb-2">Mogifi AI</h1>
-        <p className="text-gray-400 text-sm">
+      {/* Title - Top Left */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold mb-1">Mogifi AI</h1>
+        <p className="text-gray-400 text-xs">
           {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </p>
       </div>
@@ -265,6 +278,49 @@ export default function LockedInApp() {
           color="#10b981"
         />
       </Link>
+
+      {/* Habits Section */}
+      <div className="mb-4">
+        <h2 className="text-xl font-bold text-white mb-4 uppercase">Habits</h2>
+        <div className="space-y-3">
+          <HabitCard
+            name="Drink water"
+            completed={habitsState.drinkWater}
+            onToggle={() => {
+              if (typeof window === "undefined") return;
+              const todayStr = today.toISOString().split("T")[0];
+              const habitKey = `habit_drink_water_${todayStr}`;
+              const isCompleted = localStorage.getItem(habitKey) === "completed";
+              localStorage.setItem(habitKey, isCompleted ? "" : "completed");
+              setHabitsState(prev => ({ ...prev, drinkWater: !isCompleted }));
+            }}
+          />
+          <HabitCard
+            name="Run"
+            completed={habitsState.run}
+            onToggle={() => {
+              if (typeof window === "undefined") return;
+              const todayStr = today.toISOString().split("T")[0];
+              const habitKey = `habit_run_${todayStr}`;
+              const isCompleted = localStorage.getItem(habitKey) === "completed";
+              localStorage.setItem(habitKey, isCompleted ? "" : "completed");
+              setHabitsState(prev => ({ ...prev, run: !isCompleted }));
+            }}
+          />
+          <HabitCard
+            name="Gym"
+            completed={habitsState.gym}
+            onToggle={() => {
+              if (typeof window === "undefined") return;
+              const todayStr = today.toISOString().split("T")[0];
+              const isCompleted = localStorage.getItem(`workout_${todayStr}`) === "completed";
+              localStorage.setItem(`workout_${todayStr}`, isCompleted ? "" : "completed");
+              setWorkoutCompleted(!isCompleted);
+              setHabitsState(prev => ({ ...prev, gym: !isCompleted }));
+            }}
+          />
+        </div>
+      </div>
 
       {/* Bottom Navigation */}
       <div className="pb-20">
