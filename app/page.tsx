@@ -400,10 +400,10 @@ export default function LockedInApp() {
         
         <Link href="/nutrition" className="block">
           <CaloriesCard
-            streak={caloriesStreak}
-            completed={caloriesActivityStats.completed}
-            total={caloriesActivityStats.total}
-            getActivityData={getCaloriesActivity}
+            current={calories.current}
+            goal={calories.goal}
+            average={averageCalories}
+            weeklyData={weeklyCaloriesData}
           />
         </Link>
       </div>
