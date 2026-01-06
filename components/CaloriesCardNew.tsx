@@ -34,7 +34,7 @@ export default function CaloriesCardNew({
   const maxValue = allValues.length > 0 ? Math.max(...allValues, goal || 2000) : goal || 2000;
   const minValue = 0; // Always start from 0 for better visualization
   const range = maxValue - minValue || 1;
-  const goalY = range > 0 ? 60 - ((goal - minValue) / range) * 55 : 30;
+  const goalY = range > 0 ? 40 - ((goal - minValue) / range) * 35 : 20;
 
   return (
     <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1422] to-black p-3 h-full flex flex-col">
@@ -49,12 +49,12 @@ export default function CaloriesCardNew({
         +{average.toLocaleString()} Avg.
       </p>
 
-      {/* Chart - increased height */}
-      <div className="mb-2 flex-1 min-h-[60px] rounded bg-white/5 relative overflow-hidden">
+      {/* Chart */}
+      <div className="mb-2 h-8 rounded bg-white/5 relative overflow-hidden">
         <svg 
           key={`graph-${current}-${weeklyData.join(',')}`}
           className="w-full h-full" 
-          viewBox="0 0 100 60" 
+          viewBox="0 0 100 40" 
           preserveAspectRatio="none"
         >
           {/* Dashed goal line */}
@@ -78,9 +78,9 @@ export default function CaloriesCardNew({
               .map((value, idx) => {
                 const x = graphData.length > 1 ? (idx / (graphData.length - 1)) * 100 : (idx * 10);
                 const normalizedValue = range > 0 
-                  ? ((value - minValue) / range) * 55
-                  : 30;
-                const y = 60 - Math.max(2, Math.min(normalizedValue, 58));
+                  ? ((value - minValue) / range) * 35
+                  : 20;
+                const y = 40 - Math.max(2, Math.min(normalizedValue, 38));
                 return `${x},${y}`;
               })
               .join(" ")}
@@ -90,9 +90,9 @@ export default function CaloriesCardNew({
           {graphData.map((value, idx) => {
             const x = graphData.length > 1 ? (idx / (graphData.length - 1)) * 100 : (idx * 10);
             const normalizedValue = range > 0 
-              ? ((value - minValue) / range) * 55
-              : 30;
-            const y = 60 - Math.max(2, Math.min(normalizedValue, 58));
+              ? ((value - minValue) / range) * 35
+              : 20;
+            const y = 40 - Math.max(2, Math.min(normalizedValue, 38));
             return (
               <circle
                 key={idx}
