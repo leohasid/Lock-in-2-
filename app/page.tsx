@@ -134,15 +134,15 @@ export default function Home() {
     return streak;
   }, [today]);
 
-  // Get gym activity completion stats (last 28 days)
+  // Get gym activity completion stats (last 31 days)
   const gymActivityStats = useMemo(() => {
-    if (typeof window === "undefined") return { completed: 0, total: 28 };
+    if (typeof window === "undefined") return { completed: 0, total: 31 };
     
     let completed = 0;
-    const todayDate = new Date(today);
+    const todayDate = new Date();
     todayDate.setHours(0, 0, 0, 0);
     
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < 31; i++) {
       const date = new Date(todayDate);
       date.setDate(todayDate.getDate() - i);
       const dateStr = date.toISOString().split("T")[0];
@@ -150,8 +150,8 @@ export default function Home() {
         completed++;
       }
     }
-    return { completed, total: 28 };
-  }, [today]);
+    return { completed, total: 31 };
+  }, []);
 
   // Function to check if workout was completed on a date
   const getGymActivity = useCallback((date: Date): boolean => {
@@ -222,8 +222,8 @@ export default function Home() {
       </header>
 
       {/* Top Cards */}
-      <section className="grid grid-cols-2 gap-3 mb-5">
-        <Link href="/gym" className="block">
+      <section className="grid grid-cols-2 gap-3 mb-5 items-stretch">
+        <Link href="/gym" className="block h-full">
           <GymCard
             streak={gymStreak}
             completed={gymActivityStats.completed}
@@ -231,7 +231,7 @@ export default function Home() {
             getActivityData={getGymActivity}
           />
         </Link>
-        <Link href="/nutrition" className="block">
+        <Link href="/nutrition" className="block h-full">
           <CaloriesCardNew
             key={`calories-${refreshTrigger}-${calories.current}`}
             current={calories.current}

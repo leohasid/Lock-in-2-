@@ -37,7 +37,7 @@ export default function CaloriesCardNew({
   const goalY = range > 0 ? 40 - ((goal - minValue) / range) * 35 : 20;
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1422] to-black p-3">
+    <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1422] to-black p-3 h-full flex flex-col">
       <div className="mb-1 flex items-center justify-between">
         <h2 className="text-xs font-medium text-teal-400">Calories</h2>
         <span className="text-xs text-teal-400">⚡</span>
