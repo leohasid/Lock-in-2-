@@ -9,7 +9,7 @@ import CaloriesCardNew from "@/components/CaloriesCardNew";
 import GoalsCard from "@/components/GoalsCard";
 
 export default function Home() {
-  const [today] = useState(new Date());
+  const [today, setToday] = useState(new Date());
   const [calories, setCalories] = useState({ current: 0, goal: 2000, percentage: 0 });
   const [goals, setGoals] = useState<Array<{ id: string; title: string; current: number; target: number; unit: string; targetDate: string }>>([]);
   const [selectedGoals, setSelectedGoals] = useState<Array<{ id: string; title: string; current: number; target: number; unit: string; targetDate: string }>>([]);
@@ -50,11 +50,14 @@ export default function Home() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     
+    // Always use current date
+    const currentDate = new Date();
+    const todayStr = currentDate.toISOString().split("T")[0];
+    
     const storedMeals = localStorage.getItem("meals");
     if (storedMeals) {
       try {
         const meals = JSON.parse(storedMeals);
-        const todayStr = today.toISOString().split("T")[0];
         const todayMeals = meals.filter((m: any) => m.date === todayStr);
         const totalCalories = todayMeals.reduce((sum: number, meal: any) => sum + (meal.calories || 0), 0);
         const storedGoals = localStorage.getItem("macroGoals");
@@ -67,12 +70,22 @@ export default function Home() {
       } catch (e) {
         // Use defaults
       }
+    } else {
+      // Reset if no meals
+      setCalories({
+        current: 0,
+        goal: 2000,
+        percentage: 0,
+      });
     }
-  }, [today, refreshTrigger]);
+  }, [refreshTrigger]);
 
   // Get weekly calories data (last 10 days for graph) - refresh when trigger changes
   const weeklyCaloriesData = useMemo(() => {
     if (typeof window === "undefined") return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    
+    // Always use current date
+    const currentDate = new Date();
     
     const storedMeals = localStorage.getItem("meals");
     if (!storedMeals) return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -81,8 +94,8 @@ export default function Home() {
       const meals = JSON.parse(storedMeals);
       const data: number[] = [];
       for (let i = 9; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
+        const date = new Date(currentDate);
+        date.setDate(currentDate.getDate() - i);
         const dateStr = date.toISOString().split("T")[0];
         const dayMeals = meals.filter((m: any) => m.date === dateStr);
         const dayCalories = dayMeals.reduce((sum: number, meal: any) => sum + (meal.calories || 0), 0);
@@ -92,7 +105,7 @@ export default function Home() {
     } catch (e) {
       return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     }
-  }, [today, refreshTrigger]);
+  }, [refreshTrigger]);
 
   // Get average calories - recalculate when data changes
   const averageCalories = useMemo(() => {

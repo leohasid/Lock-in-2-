@@ -29,10 +29,10 @@ export default function CaloriesCardNew({
     return padded;
   }, [weeklyData]);
 
-  // Calculate graph range
-  const allValues = [...graphData, goal, current].filter(v => v > 0);
-  const maxValue = allValues.length > 0 ? Math.max(...allValues) : goal || 2000;
-  const minValue = allValues.length > 0 ? Math.min(...allValues) : 0;
+  // Calculate graph range - ensure we have a visible range
+  const allValues = [...graphData, goal, current].filter(v => v >= 0);
+  const maxValue = allValues.length > 0 ? Math.max(...allValues, goal || 2000) : goal || 2000;
+  const minValue = 0; // Always start from 0 for better visualization
   const range = maxValue - minValue || 1;
   const goalY = range > 0 ? 40 - ((goal - minValue) / range) * 35 : 20;
 
@@ -50,7 +50,12 @@ export default function CaloriesCardNew({
 
       {/* Chart */}
       <div className="mb-2 h-8 rounded bg-white/5 relative overflow-hidden">
-        <svg className="w-full h-full" viewBox="0 0 100 40" preserveAspectRatio="none">
+        <svg 
+          key={`graph-${current}-${weeklyData.join(',')}`}
+          className="w-full h-full" 
+          viewBox="0 0 100 40" 
+          preserveAspectRatio="none"
+        >
           {/* Dashed goal line */}
           <line
             x1="0"
