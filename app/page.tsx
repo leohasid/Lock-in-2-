@@ -233,6 +233,7 @@ export default function Home() {
         </Link>
         <Link href="/nutrition" className="block">
           <CaloriesCardNew
+            key={`calories-${refreshTrigger}-${calories.current}`}
             current={calories.current}
             goal={calories.goal}
             average={averageCalories}
