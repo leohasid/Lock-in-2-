@@ -222,7 +222,7 @@ export default function Home() {
       </header>
 
       {/* Top Cards */}
-      <section className="grid grid-cols-2 gap-3 mb-5 items-stretch">
+      <section className="grid grid-cols-[45%_1fr] gap-3 mb-5 items-stretch">
         <Link href="/gym" className="block h-full">
           <GymCard
             streak={gymStreak}

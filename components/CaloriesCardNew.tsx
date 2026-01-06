@@ -34,26 +34,27 @@ export default function CaloriesCardNew({
   const maxValue = allValues.length > 0 ? Math.max(...allValues, goal || 2000) : goal || 2000;
   const minValue = 0; // Always start from 0 for better visualization
   const range = maxValue - minValue || 1;
-  const goalY = range > 0 ? 40 - ((goal - minValue) / range) * 35 : 20;
+  const goalY = range > 0 ? 60 - ((goal - minValue) / range) * 55 : 30;
 
   return (
     <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1422] to-black p-3 h-full flex flex-col">
+      {/* Header - moved to top, smaller text */}
       <div className="mb-1 flex items-center justify-between">
-        <h2 className="text-xs font-medium text-teal-400">Calories</h2>
-        <span className="text-xs text-teal-400">⚡</span>
+        <h2 className="text-[10px] font-medium text-teal-400">Calories</h2>
+        <span className="text-[10px] text-teal-400">⚡</span>
       </div>
 
-      <p className="text-xl font-semibold leading-none">{current.toLocaleString()}</p>
-      <p className="mb-2 text-[11px] text-gray-400">
+      <p className="text-lg font-semibold leading-none mb-0.5">{current.toLocaleString()}</p>
+      <p className="mb-2 text-[10px] text-gray-400">
         +{average.toLocaleString()} Avg.
       </p>
 
-      {/* Chart */}
-      <div className="mb-2 h-8 rounded bg-white/5 relative overflow-hidden">
+      {/* Chart - increased height */}
+      <div className="mb-2 flex-1 min-h-[60px] rounded bg-white/5 relative overflow-hidden">
         <svg 
           key={`graph-${current}-${weeklyData.join(',')}`}
           className="w-full h-full" 
-          viewBox="0 0 100 40" 
+          viewBox="0 0 100 60" 
           preserveAspectRatio="none"
         >
           {/* Dashed goal line */}
@@ -77,9 +78,9 @@ export default function CaloriesCardNew({
               .map((value, idx) => {
                 const x = graphData.length > 1 ? (idx / (graphData.length - 1)) * 100 : (idx * 10);
                 const normalizedValue = range > 0 
-                  ? ((value - minValue) / range) * 35
-                  : 20;
-                const y = 40 - Math.max(2, Math.min(normalizedValue, 38));
+                  ? ((value - minValue) / range) * 55
+                  : 30;
+                const y = 60 - Math.max(2, Math.min(normalizedValue, 58));
                 return `${x},${y}`;
               })
               .join(" ")}
@@ -89,9 +90,9 @@ export default function CaloriesCardNew({
           {graphData.map((value, idx) => {
             const x = graphData.length > 1 ? (idx / (graphData.length - 1)) * 100 : (idx * 10);
             const normalizedValue = range > 0 
-              ? ((value - minValue) / range) * 35
-              : 20;
-            const y = 40 - Math.max(2, Math.min(normalizedValue, 38));
+              ? ((value - minValue) / range) * 55
+              : 30;
+            const y = 60 - Math.max(2, Math.min(normalizedValue, 58));
             return (
               <circle
                 key={idx}
@@ -105,21 +106,20 @@ export default function CaloriesCardNew({
         </svg>
       </div>
 
-      <div className="mb-1 flex justify-between text-[11px] text-gray-400">
-        <span>Today</span>
-        <span>{current.toLocaleString()} / {goal.toLocaleString()}</span>
-      </div>
+      {/* Progress section - moved to bottom */}
+      <div className="mt-auto">
+        <div className="mb-1 flex justify-between text-[10px] text-gray-400">
+          <span>{current.toLocaleString()} / {goal.toLocaleString()}</span>
+          <span className="text-teal-400 font-semibold">{percentage}%</span>
+        </div>
 
-      <div className="h-1.5 w-full rounded-full bg-white/10">
-        <div
-          className="h-1.5 rounded-full bg-teal-400"
-          style={{ width: `${Math.min(percentage, 100)}%` }}
-        />
+        <div className="h-1.5 w-full rounded-full bg-white/10">
+          <div
+            className="h-1.5 rounded-full bg-teal-400"
+            style={{ width: `${Math.min(percentage, 100)}%` }}
+          />
+        </div>
       </div>
-
-      <p className="mt-1 text-right text-[11px] text-teal-400">
-        {percentage}%
-      </p>
     </div>
   );
 }
