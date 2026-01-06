@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Upload, Camera, X, Settings, ArrowRight, ChevronRight } from "lucide-react";
+import { Upload, Camera, X, Settings } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
 interface Meal {
@@ -25,7 +25,6 @@ export default function NutritionPage() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [foodToScan, setFoodToScan] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [showAllMeals, setShowAllMeals] = useState(false);
   const [aiEstimate, setAiEstimate] = useState<{
     name: string;
     calories: number;
@@ -74,7 +73,6 @@ export default function NutritionPage() {
         const today = new Date().toISOString().split("T")[0];
         const todayMeals = parsedMeals.filter((m: Meal & { date?: string }) => {
           if (m.date) return m.date === today;
-          // If no date, assume it's today (for backward compatibility)
           return true;
         });
         setMeals(todayMeals);
@@ -146,20 +144,41 @@ export default function NutritionPage() {
     window.dispatchEvent(new CustomEvent("mealsUpdated"));
   }, [meals, isLoaded]);
 
-  const totals = meals.reduce(
-    (acc, meal) => ({
-      calories: acc.calories + meal.calories,
-      protein: acc.protein + meal.protein,
-      carbs: acc.carbs + meal.carbs,
-      fats: acc.fats + meal.fats,
-    }),
-    { calories: 0, protein: 0, carbs: 0, fats: 0 }
-  );
+  const totals = useMemo(() => {
+    return meals.reduce(
+      (acc, meal) => ({
+        calories: acc.calories + meal.calories,
+        protein: acc.protein + meal.protein,
+        carbs: acc.carbs + meal.carbs,
+        fats: acc.fats + meal.fats,
+      }),
+      { calories: 0, protein: 0, carbs: 0, fats: 0 }
+    );
+  }, [meals]);
+
+  // Calculate average calories (for display)
+  const averageCalories = useMemo(() => {
+    if (meals.length === 0) return 0;
+    const storedMeals = localStorage.getItem("meals");
+    if (!storedMeals) return 0;
+    try {
+      const allMeals = JSON.parse(storedMeals);
+      const last10Days = allMeals.slice(-10);
+      const sum = last10Days.reduce((acc: number, meal: Meal) => acc + (meal.calories || 0), 0);
+      return Math.round(sum / Math.max(last10Days.length, 1));
+    } catch (e) {
+      return 0;
+    }
+  }, [meals]);
+
+  const handleDeleteMeal = (mealId: string) => {
+    setMeals(meals.filter(m => m.id !== mealId));
+  };
 
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }, // Use back camera on mobile
+        video: { facingMode: "environment" },
       });
       streamRef.current = stream;
       if (videoRef.current) {
@@ -233,10 +252,10 @@ export default function NutritionPage() {
           const compressed = canvas.toDataURL("image/jpeg", quality);
           resolve(compressed);
         } else {
-          resolve(dataUrl); // Fallback to original if canvas fails
+          resolve(dataUrl);
         }
       };
-      img.onerror = () => resolve(dataUrl); // Fallback to original on error
+      img.onerror = () => resolve(dataUrl);
       img.src = dataUrl;
     });
   };
@@ -245,7 +264,6 @@ export default function NutritionPage() {
     setIsAnalyzing(true);
     setAiEstimate(null);
     try {
-      // Compress image before sending to reduce size
       const compressedImage = await compressImage(imageData, 1024, 0.8);
       
       const response = await fetch("/api/food-estimate", {
@@ -257,32 +275,18 @@ export default function NutritionPage() {
         }),
       });
 
-      // Check if response is JSON
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         const text = await response.text();
-        console.error("Non-JSON response from API:", text.substring(0, 200));
-        
-        // Check for common error scenarios
         if (text.includes("OPENAI_API_KEY") || text.includes("API key")) {
-          throw new Error("OpenAI API key is not configured. Please add OPENAI_API_KEY to your Vercel environment variables.");
-        } else if (text.includes("404") || text.includes("Not Found")) {
-          throw new Error("API endpoint not found. Please check your deployment.");
-        } else if (text.includes("500") || text.includes("Internal Server Error")) {
-          throw new Error("Server error. Please check your API configuration and try again.");
-        } else {
-          throw new Error("Server returned an invalid response. Please check your API configuration.");
+          throw new Error("OpenAI API key is not configured.");
         }
+        throw new Error("Server returned an invalid response.");
       }
 
       const data = await response.json();
       if (!response.ok) {
-        const errorMsg = data.error || "Unable to analyze food";
-        console.error("Food estimate API error:", errorMsg);
-        alert(errorMsg);
-        setCapturedImage(null);
-        setAiEstimate(null);
-        return;
+        throw new Error(data.error || "Unable to analyze food");
       }
       
       if (!data.estimate) {
@@ -292,8 +296,7 @@ export default function NutritionPage() {
       setAiEstimate(data.estimate);
     } catch (error: any) {
       console.error("AI food analysis failed", error);
-      const errorMsg = error?.message || "Unable to analyze this photo right now. Please try again.";
-      alert(errorMsg);
+      alert(error?.message || "Unable to analyze this photo right now. Please try again.");
       setCapturedImage(null);
       setAiEstimate(null);
     } finally {
@@ -327,7 +330,7 @@ export default function NutritionPage() {
           protein: parseInt(newMeal.protein) || 0,
           carbs: parseInt(newMeal.carbs) || 0,
           fats: parseInt(newMeal.fats) || 0,
-          time: new Date().toLocaleTimeString(),
+          time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
           imageUrl: capturedImage || undefined,
         },
       ]);
@@ -338,39 +341,319 @@ export default function NutritionPage() {
     }
   };
 
+  const caloriesPercentage = dailyGoals.calories > 0 
+    ? Math.min(Math.round((totals.calories / dailyGoals.calories) * 100), 100) 
+    : 0;
+  const proteinPercentage = dailyGoals.protein > 0 
+    ? Math.min(Math.round((totals.protein / dailyGoals.protein) * 100), 100) 
+    : 0;
+  const carbsPercentage = dailyGoals.carbs > 0 
+    ? Math.min(Math.round((totals.carbs / dailyGoals.carbs) * 100), 100) 
+    : 0;
+  const fatsPercentage = dailyGoals.fats > 0 
+    ? Math.min(Math.round((totals.fats / dailyGoals.fats) * 100), 100) 
+    : 0;
+
+  const remainingCalories = Math.max(0, dailyGoals.calories - totals.calories);
+
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-4">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-bold text-white">🥗 Nutrition & Calories</h1>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setMacroSettings(dailyGoals);
-                  setShowMacroSettings(true);
-                }}
-                className="bg-gray-700 hover:bg-gray-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
+    <div className="min-h-screen bg-[#050607] text-white px-5 pt-6 pb-28">
+      {/* HEADER */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold">Calories</h1>
+        <p className="text-sm text-[#9aa7ad]">Today • AI tracked</p>
+      </div>
+
+      {/* HERO CALORIES RING */}
+      <div className="relative flex items-center justify-center mb-8">
+        <div className="w-56 h-56 rounded-full border-[10px] border-[#0ddfc8]/20 flex items-center justify-center">
+          <div className="w-48 h-48 rounded-full border-[10px] border-[#14f1d9] flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-4xl font-bold">{totals.calories.toLocaleString()}</p>
+              <p className="text-sm text-[#9aa7ad]">of {dailyGoals.calories.toLocaleString()} kcal</p>
+              <p className="text-xs mt-1 text-[#14f1d9]">
+                {averageCalories > totals.calories ? "↑" : "↓"} {Math.abs(averageCalories - totals.calories)} avg
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* MACROS INLINE */}
+      <div className="space-y-4 mb-8">
+        {[
+          { 
+            label: "Protein", 
+            value: `${totals.protein} / ${dailyGoals.protein}g`, 
+            percent: `${proteinPercentage}%`,
+            current: totals.protein,
+            target: dailyGoals.protein
+          },
+          { 
+            label: "Carbs", 
+            value: `${totals.carbs} / ${dailyGoals.carbs}g`, 
+            percent: `${carbsPercentage}%`,
+            current: totals.carbs,
+            target: dailyGoals.carbs
+          },
+          { 
+            label: "Fats", 
+            value: `${totals.fats} / ${dailyGoals.fats}g`, 
+            percent: `${fatsPercentage}%`,
+            current: totals.fats,
+            target: dailyGoals.fats
+          }
+        ].map((m) => (
+          <div key={m.label}>
+            <div className="flex justify-between text-sm mb-1">
+              <span className="text-[#9aa7ad]">{m.label}</span>
+              <span>{m.value}</span>
+            </div>
+            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+              <div
+                className="h-full bg-[#14f1d9]"
+                style={{ width: m.percent }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* MEALS TIMELINE */}
+      <div className="mb-10">
+        <h2 className="text-lg font-semibold mb-4">Today's Meals</h2>
+
+        <div className="space-y-4">
+          {meals.length > 0 ? (
+            meals.map((meal) => (
+              <div
+                key={meal.id}
+                className="flex justify-between items-center bg-[rgba(20,30,35,0.85)] rounded-xl p-4 border border-white/5"
               >
-                <Settings className="w-3.5 h-3.5" />
-                <span>Macros</span>
-              </button>
+                <div>
+                  <p className="font-medium">{meal.name}</p>
+                  <p className="text-xs text-[#9aa7ad]">{meal.time}</p>
+                  <p className="text-sm mt-1">{meal.calories} kcal</p>
+                  <p className="text-xs text-[#9aa7ad]">
+                    P{meal.protein}g • C{meal.carbs}g • F{meal.fats}g
+                  </p>
+                </div>
+                <button 
+                  onClick={() => handleDeleteMeal(meal.id)}
+                  className="text-white/40 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-[#9aa7ad] text-center py-4">No meals logged today</p>
+          )}
+        </div>
+      </div>
+
+      {/* AI PLAN */}
+      <div className="bg-[rgba(20,30,35,0.6)] rounded-2xl p-5 border border-white/5">
+        <p className="text-sm text-[#9aa7ad] mb-1">AI Plan</p>
+        <p className="text-lg font-semibold mb-2">
+          {remainingCalories.toLocaleString()} kcal remaining
+        </p>
+        <p className="text-sm text-[#9aa7ad]">
+          Suggested: High-protein dinner + carb-based snack post workout
+        </p>
+        <button 
+          onClick={() => setShowAddMeal(true)}
+          className="mt-4 w-full rounded-xl bg-[#14f1d9] text-black py-3 font-medium hover:bg-[#0ddfc8] transition-colors"
+        >
+          Log AI Suggestion
+        </button>
+      </div>
+
+      {/* FLOATING ADD BUTTON */}
+      <button 
+        onClick={() => setShowAddMeal(true)}
+        className="fixed bottom-24 right-6 w-16 h-16 rounded-full bg-[#14f1d9] text-black text-3xl shadow-lg shadow-[#14f1d9]/30 hover:bg-[#0ddfc8] transition-colors flex items-center justify-center"
+      >
+        +
+      </button>
+
+      {/* ADD MEAL MODAL */}
+      {showAddMeal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Add Meal</h2>
               <button
                 onClick={() => {
+                  setShowAddMeal(false);
+                  setNewMeal({ name: "", calories: "", protein: "", carbs: "", fats: "" });
+                  setCapturedImage(null);
+                  setAiEstimate(null);
+                }}
+                className="text-white/40 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {aiEstimate && (
+              <div className="mb-4 p-3 bg-[#0ddfc8]/10 rounded-lg border border-[#14f1d9]/20">
+                <p className="text-sm text-[#14f1d9] mb-2">AI Estimate Available</p>
+                <button
+                  onClick={useAiEstimate}
+                  className="text-sm text-[#14f1d9] hover:underline"
+                >
+                  Use AI Estimate →
+                </button>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Food Name</label>
+                <input
+                  type="text"
+                  value={newMeal.name}
+                  onChange={(e) => setNewMeal({ ...newMeal, name: e.target.value })}
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                  placeholder="e.g., Grilled chicken"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Calories</label>
+                  <input
+                    type="number"
+                    value={newMeal.calories}
+                    onChange={(e) => setNewMeal({ ...newMeal, calories: e.target.value })}
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    placeholder="200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Protein (g)</label>
+                  <input
+                    type="number"
+                    value={newMeal.protein}
+                    onChange={(e) => setNewMeal({ ...newMeal, protein: e.target.value })}
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    placeholder="20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Carbs (g)</label>
+                  <input
+                    type="number"
+                    value={newMeal.carbs}
+                    onChange={(e) => setNewMeal({ ...newMeal, carbs: e.target.value })}
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    placeholder="30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Fats (g)</label>
+                  <input
+                    type="number"
+                    value={newMeal.fats}
+                    onChange={(e) => setNewMeal({ ...newMeal, fats: e.target.value })}
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    placeholder="10"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setFoodToScan("");
+                    setShowScanIntro(true);
+                    setShowAddMeal(false);
+                  }}
+                  className="flex-1 py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2"
+                >
+                  <Camera className="w-4 h-4" />
+                  Scan
+                </button>
+                <button
+                  onClick={handleAddMeal}
+                  className="flex-1 py-3 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors"
+                >
+                  Add Meal
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SCAN INTRO MODAL */}
+      {showScanIntro && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10">
+            <h2 className="text-xl font-semibold mb-2">Confirm Food</h2>
+            <p className="text-sm text-[#9aa7ad] mb-4">
+              Let me know what food you're about to scan so I can label it correctly.
+            </p>
+            <input
+              type="text"
+              value={foodToScan}
+              onChange={(e) => setFoodToScan(e.target.value)}
+              placeholder="e.g., Grilled chicken salad"
+              className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm mb-4 focus:outline-none focus:border-[#14f1d9]"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowScanIntro(false);
                   setFoodToScan("");
-                  setShowScanIntro(true);
                 }}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
+                className="flex-1 py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
               >
-                <Camera className="w-3.5 h-3.5" />
-                <span>Scan Food</span>
+                Cancel
               </button>
               <button
-                onClick={() => setShowAddMeal(true)}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                onClick={() => {
+                  setShowScanOptions(true);
+                  setShowScanIntro(false);
+                }}
+                className="flex-1 py-3 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors"
               >
-                + Add Meal
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SCAN OPTIONS MODAL */}
+      {showScanOptions && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Scan Food</h2>
+              <button
+                onClick={() => {
+                  setShowScanOptions(false);
+                  setFoodToScan("");
+                }}
+                className="text-white/40 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <button
+                onClick={startCamera}
+                className="w-full py-4 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2"
+              >
+                <Camera className="w-5 h-5" />
+                Use Camera
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full py-4 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2"
+              >
+                <Upload className="w-5 h-5" />
+                Upload Photo
               </button>
             </div>
             <input
@@ -382,617 +665,112 @@ export default function NutritionPage() {
             />
           </div>
         </div>
+      )}
 
-        {/* Scan Intro Modal */}
-        {showScanIntro && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full border border-gray-800">
-              <h2 className="text-2xl font-bold text-white mb-2">⚠️ Confirm Food</h2>
-              <p className="text-gray-400 text-sm mb-4">
-                Let me know what food you&apos;re about to scan so I can label it correctly.
-              </p>
-              <input
-                type="text"
-                value={foodToScan}
-                onChange={(e) => setFoodToScan(e.target.value)}
-                placeholder="e.g., Grilled chicken salad"
-                className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700 mb-4"
-              />
-              {foodToScan.trim().length > 0 && (
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm text-gray-300 mb-4">
-                  <p className="text-orange-400 font-semibold mb-1">About to scan:</p>
-                  <p>{foodToScan}</p>
-                </div>
-              )}
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => {
-                    if (!foodToScan.trim()) {
-                      alert("Please enter a food description before scanning.");
-                      return;
-                    }
-                    setShowScanIntro(false);
-                    setShowScanOptions(true);
-                  }}
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-black px-6 py-3 rounded-lg font-semibold transition-colors"
-                >
-                  Continue
-                </button>
-                <button
-                  onClick={() => {
-                    setShowScanIntro(false);
-                    setFoodToScan("");
-                  }}
-                  className="w-full bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Scan Options Modal */}
-        {showScanOptions && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full border border-gray-800">
-              <h2 className="text-2xl font-bold text-white mb-2">Scan Your Food</h2>
-              {foodToScan.trim().length > 0 && (
-                <p className="text-sm text-gray-400 mb-4">
-                  Scanning: <span className="text-white font-semibold">{foodToScan}</span>
-                </p>
-              )}
-              <div className="space-y-4">
-                <button
-                  onClick={startCamera}
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-black px-6 py-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-3"
-                >
-                  <Camera className="w-6 h-6" />
-                  Take Photo
-                </button>
-                <button
-                  onClick={() => {
-                    fileInputRef.current?.click();
-                    setShowScanOptions(false);
-                    setShowScanIntro(false);
-                  }}
-                  className="w-full bg-gray-800 hover:bg-gray-700 text-white px-6 py-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-3"
-                >
-                  <Upload className="w-6 h-6" />
-                  Upload from Gallery
-                </button>
-                <button
-                  onClick={() => {
-                    setShowScanOptions(false);
-                    setShowScanIntro(false);
-                  }}
-                  className="w-full bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Camera Modal */}
-        {showCamera && (
-          <div className="fixed inset-0 bg-black z-50 flex flex-col">
-            <div className="flex-1 relative">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
-              />
+      {/* CAMERA VIEW */}
+      {showCamera && (
+        <div className="fixed inset-0 bg-black z-50">
+          <div className="relative w-full h-full">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-4">
               <button
                 onClick={stopCamera}
-                className="absolute top-4 right-4 bg-gray-900/80 text-white p-3 rounded-full"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="bg-gray-900 p-6 border-t border-gray-800">
-              <button
-                onClick={capturePhoto}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-black py-4 rounded-lg font-semibold text-lg mb-3"
-              >
-                Capture Photo
-              </button>
-              <button
-                onClick={() => {
-                  stopCamera();
-                  setShowScanOptions(true);
-                }}
-                className="w-full bg-gray-800 hover:bg-gray-700 text-white py-3 rounded-lg font-semibold"
-              >
-                Back to Options
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* AI Analysis Result */}
-        {capturedImage && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-2xl p-6 max-w-md w-full border border-gray-800">
-              {isAnalyzing ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-                  <p className="text-white text-lg">Analyzing food with AI...</p>
-                  <p className="text-gray-400 text-sm mt-2">Estimating macros...</p>
-                </div>
-              ) : aiEstimate ? (
-                <div>
-                  <div className="mb-4">
-                    <img
-                      src={capturedImage}
-                      alt="Captured food"
-                      className="w-full h-48 object-cover rounded-lg mb-4"
-                    />
-                    <h3 className="text-xl font-bold text-white mb-2">AI Analysis</h3>
-                    <p className="text-gray-300 mb-4">{aiEstimate.name}</p>
-                    <div className="bg-gray-800 rounded-lg p-4 space-y-2">
-                      <div className="flex justify-between text-gray-300">
-                        <span>Calories:</span>
-                        <span className="text-white font-semibold">{aiEstimate.calories} kcal</span>
-                      </div>
-                      <div className="flex justify-between text-gray-300">
-                        <span>Protein:</span>
-                        <span className="text-white font-semibold">{aiEstimate.protein}g</span>
-                      </div>
-                      <div className="flex justify-between text-gray-300">
-                        <span>Carbs:</span>
-                        <span className="text-white font-semibold">{aiEstimate.carbs}g</span>
-                      </div>
-                      <div className="flex justify-between text-gray-300">
-                        <span>Fats:</span>
-                        <span className="text-white font-semibold">{aiEstimate.fats}g</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={useAiEstimate}
-                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-                    >
-                      Use Estimate
-                    </button>
-                    <button
-                      onClick={() => {
-                        setCapturedImage(null);
-                        setAiEstimate(null);
-                      }}
-                      className="flex-1 bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-                    >
-                      Retake
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        )}
-
-        {/* Add Meal Modal */}
-        {showAddMeal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto border border-gray-800">
-              <h2 className="text-2xl font-bold text-white mb-6">Add Meal</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-300 mb-2">Meal Name</label>
-                  <input
-                    type="text"
-                    value={newMeal.name}
-                    onChange={(e) => setNewMeal({ ...newMeal, name: e.target.value })}
-                    placeholder="e.g., Grilled Chicken Breast"
-                    className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-300 mb-2">Calories</label>
-                  <input
-                    type="number"
-                    value={newMeal.calories}
-                    onChange={(e) => setNewMeal({ ...newMeal, calories: e.target.value })}
-                    placeholder="0"
-                    className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                  />
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-gray-300 mb-2 text-sm">Protein (g)</label>
-                    <input
-                      type="number"
-                      value={newMeal.protein}
-                      onChange={(e) => setNewMeal({ ...newMeal, protein: e.target.value })}
-                      placeholder="0"
-                      className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-300 mb-2 text-sm">Carbs (g)</label>
-                    <input
-                      type="number"
-                      value={newMeal.carbs}
-                      onChange={(e) => setNewMeal({ ...newMeal, carbs: e.target.value })}
-                      placeholder="0"
-                      className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-gray-300 mb-2 text-sm">Fats (g)</label>
-                    <input
-                      type="number"
-                      value={newMeal.fats}
-                      onChange={(e) => setNewMeal({ ...newMeal, fats: e.target.value })}
-                      placeholder="0"
-                      className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-4 pt-4">
-                  <button
-                    onClick={handleAddMeal}
-                    className="flex-1 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-                  >
-                    Add Meal
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowAddMeal(false);
-                      setNewMeal({ name: "", calories: "", protein: "", carbs: "", fats: "" });
-                    }}
-                    className="flex-1 bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-                <p className="text-sm text-gray-400 text-center">
-                  💡 Tip: Use the camera to scan your food for automatic macro estimation
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Daily Goals & Progress - All macros visible */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <button
-            onClick={() => {
-              setMacroSettings(dailyGoals);
-              setShowMacroSettings(true);
-            }}
-            className="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-orange-500/50 transition-colors text-left"
-          >
-            <div className="text-xs text-gray-400 mb-1">Calories</div>
-            <div className="text-xl font-bold text-white mb-1.5">
-              {totals.calories} / {dailyGoals.calories}
-            </div>
-            <div className="w-full bg-gray-800 rounded-full h-1.5">
-              <div
-                className="bg-orange-500 h-1.5 rounded-full"
-                style={{ width: `${Math.min((totals.calories / dailyGoals.calories) * 100, 100)}%` }}
-              />
-            </div>
-          </button>
-          <button
-            onClick={() => {
-              setMacroSettings(dailyGoals);
-              setShowMacroSettings(true);
-            }}
-            className="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-blue-500/50 transition-colors text-left"
-          >
-            <div className="text-xs text-gray-400 mb-1">Protein</div>
-            <div className="text-xl font-bold text-white mb-1.5">
-              {totals.protein}g / {dailyGoals.protein}g
-            </div>
-            <div className="w-full bg-gray-800 rounded-full h-1.5">
-              <div
-                className="bg-blue-600 h-1.5 rounded-full"
-                style={{ width: `${Math.min((totals.protein / dailyGoals.protein) * 100, 100)}%` }}
-              />
-            </div>
-          </button>
-          <button
-            onClick={() => {
-              setMacroSettings(dailyGoals);
-              setShowMacroSettings(true);
-            }}
-            className="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-green-500/50 transition-colors text-left"
-          >
-            <div className="text-xs text-gray-400 mb-1">Carbs</div>
-            <div className="text-xl font-bold text-white mb-1.5">
-              {totals.carbs}g / {dailyGoals.carbs}g
-            </div>
-            <div className="w-full bg-gray-800 rounded-full h-1.5">
-              <div
-                className="bg-green-600 h-1.5 rounded-full"
-                style={{ width: `${Math.min((totals.carbs / dailyGoals.carbs) * 100, 100)}%` }}
-              />
-            </div>
-          </button>
-          <button
-            onClick={() => {
-              setMacroSettings(dailyGoals);
-              setShowMacroSettings(true);
-            }}
-            className="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:border-yellow-500/50 transition-colors text-left"
-          >
-            <div className="text-xs text-gray-400 mb-1">Fats</div>
-            <div className="text-xl font-bold text-white mb-1.5">
-              {totals.fats}g / {dailyGoals.fats}g
-            </div>
-            <div className="w-full bg-gray-800 rounded-full h-1.5">
-              <div
-                className="bg-yellow-600 h-1.5 rounded-full"
-                style={{ width: `${Math.min((totals.fats / dailyGoals.fats) * 100, 100)}%` }}
-              />
-            </div>
-          </button>
-        </div>
-
-        {/* Meals List */}
-        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-white">Today&apos;s Meals</h2>
-            {meals.length > 0 && (
-              <button
-                onClick={() => setShowAllMeals(true)}
-                className="text-xs text-gray-400 hover:text-white flex items-center gap-1 transition-colors"
-              >
-                View All
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-          {meals.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-400 text-sm mb-3">No meals logged today</p>
-              <div className="flex gap-2 justify-center">
-                <button
-                  onClick={() => {
-                    setFoodToScan("");
-                    setShowScanIntro(true);
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
-                >
-                  <Camera className="w-4 h-4" />
-                  Scan Food
-                </button>
-                <button
-                  onClick={() => setShowAddMeal(true)}
-                  className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
-                >
-                  Add Manually
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {(showAllMeals ? meals : meals.slice(0, 2)).map((meal) => (
-                <div key={meal.id} className="bg-gray-800 rounded-lg p-3">
-                  {meal.imageUrl && (
-                    <img
-                      src={meal.imageUrl}
-                      alt={meal.name}
-                      className="w-full h-24 object-cover rounded-lg mb-2"
-                    />
-                  )}
-                  <div className="flex justify-between items-start mb-1.5">
-                    <div>
-                      <h3 className="text-white font-semibold text-sm">{meal.name}</h3>
-                      <p className="text-gray-400 text-xs">{meal.time}</p>
-                    </div>
-                    <button
-                      onClick={() => setMeals(meals.filter((m) => m.id !== meal.id))}
-                      className="text-red-400 hover:text-red-300 text-lg"
-                    >
-                      ×
-                    </button>
-                  </div>
-                  <div className="flex gap-3 text-xs text-gray-300">
-                    <span>{meal.calories} cal</span>
-                    <span>P: {meal.protein}g</span>
-                    <span>C: {meal.carbs}g</span>
-                    <span>F: {meal.fats}g</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* View All Meals Modal */}
-        {showAllMeals && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-xl p-4 max-w-md w-full max-h-[90vh] overflow-y-auto border border-gray-800">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-white">Today&apos;s Meals</h2>
-                <button
-                  onClick={() => setShowAllMeals(false)}
-                  className="text-gray-400 hover:text-white"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              {/* Total Summary */}
-              {meals.length > 0 && (
-                <div className="bg-gray-800 rounded-lg p-3 mb-4 border border-gray-700">
-                  <h3 className="text-sm font-semibold text-white mb-2">Total Today</h3>
-                  <div className="grid grid-cols-4 gap-2 text-center">
-                    <div>
-                      <div className="text-lg font-bold text-orange-400">{totals.calories}</div>
-                      <div className="text-[10px] text-gray-400">Calories</div>
-                    </div>
-                    <div>
-                      <div className="text-lg font-bold text-blue-400">{totals.protein}g</div>
-                      <div className="text-[10px] text-gray-400">Protein</div>
-                    </div>
-                    <div>
-                      <div className="text-lg font-bold text-green-400">{totals.carbs}g</div>
-                      <div className="text-[10px] text-gray-400">Carbs</div>
-                    </div>
-                    <div>
-                      <div className="text-lg font-bold text-yellow-400">{totals.fats}g</div>
-                      <div className="text-[10px] text-gray-400">Fats</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              <div className="space-y-3">
-                {meals.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-400">No meals logged today</p>
-                  </div>
-                ) : (
-                  meals.map((meal) => (
-                    <div key={meal.id} className="bg-gray-800 rounded-lg p-3">
-                      {meal.imageUrl && (
-                        <img
-                          src={meal.imageUrl}
-                          alt={meal.name}
-                          className="w-full h-32 object-cover rounded-lg mb-3"
-                        />
-                      )}
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h3 className="text-white font-semibold">{meal.name}</h3>
-                          <p className="text-gray-400 text-sm">{meal.time}</p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setMeals(meals.filter((m) => m.id !== meal.id));
-                            if (meals.length === 1) setShowAllMeals(false);
-                          }}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          ×
-                        </button>
-                      </div>
-                      <div className="flex gap-4 text-sm text-gray-300">
-                        <span>{meal.calories} cal</span>
-                        <span>P: {meal.protein}g</span>
-                        <span>C: {meal.carbs}g</span>
-                        <span>F: {meal.fats}g</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-      <div className="pb-20">
-        {/* Spacer for bottom navigation */}
-      </div>
-      <BottomNav />
-
-      {/* Macro Settings Modal */}
-      {showMacroSettings && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-2xl p-6 max-w-md w-full border border-gray-800">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">Edit Macro Targets</h2>
-              <button
-                onClick={() => setShowMacroSettings(false)}
-                className="text-gray-400 hover:text-white text-2xl"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Daily Calories</label>
-                <input
-                  type="number"
-                  value={macroSettings.calories}
-                  onChange={(e) =>
-                    setMacroSettings({
-                      ...macroSettings,
-                      calories: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-orange-500 focus:outline-none"
-                  min="0"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Protein (grams)</label>
-                <input
-                  type="number"
-                  value={macroSettings.protein}
-                  onChange={(e) =>
-                    setMacroSettings({
-                      ...macroSettings,
-                      protein: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-orange-500 focus:outline-none"
-                  min="0"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Carbs (grams)</label>
-                <input
-                  type="number"
-                  value={macroSettings.carbs}
-                  onChange={(e) =>
-                    setMacroSettings({
-                      ...macroSettings,
-                      carbs: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-orange-500 focus:outline-none"
-                  min="0"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Fats (grams)</label>
-                <input
-                  type="number"
-                  value={macroSettings.fats}
-                  onChange={(e) =>
-                    setMacroSettings({
-                      ...macroSettings,
-                      fats: parseInt(e.target.value) || 0,
-                    })
-                  }
-                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-orange-500 focus:outline-none"
-                  min="0"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setShowMacroSettings(false)}
-                className="flex-1 p-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-semibold transition-colors"
+                className="px-6 py-3 bg-red-600 rounded-lg font-medium"
               >
                 Cancel
               </button>
+              <button
+                onClick={capturePhoto}
+                className="px-6 py-3 bg-[#14f1d9] text-black rounded-lg font-medium"
+              >
+                Capture
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI ESTIMATE MODAL */}
+      {isAnalyzing && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-[#141e23] rounded-2xl p-6 border border-white/10">
+            <p className="text-lg font-semibold mb-2">Analyzing food...</p>
+            <p className="text-sm text-[#9aa7ad]">Please wait</p>
+          </div>
+        </div>
+      )}
+
+      {/* MACRO SETTINGS MODAL */}
+      {showMacroSettings && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Macro Goals</h2>
+              <button
+                onClick={() => setShowMacroSettings(false)}
+                className="text-white/40 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Calories</label>
+                <input
+                  type="number"
+                  value={macroSettings.calories}
+                  onChange={(e) => setMacroSettings({ ...macroSettings, calories: parseInt(e.target.value) || 0 })}
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Protein (g)</label>
+                <input
+                  type="number"
+                  value={macroSettings.protein}
+                  onChange={(e) => setMacroSettings({ ...macroSettings, protein: parseInt(e.target.value) || 0 })}
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Carbs (g)</label>
+                <input
+                  type="number"
+                  value={macroSettings.carbs}
+                  onChange={(e) => setMacroSettings({ ...macroSettings, carbs: parseInt(e.target.value) || 0 })}
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Fats (g)</label>
+                <input
+                  type="number"
+                  value={macroSettings.fats}
+                  onChange={(e) => setMacroSettings({ ...macroSettings, fats: parseInt(e.target.value) || 0 })}
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                />
+              </div>
               <button
                 onClick={() => {
                   setDailyGoals(macroSettings);
                   localStorage.setItem("macroGoals", JSON.stringify(macroSettings));
                   setShowMacroSettings(false);
                 }}
-                className="flex-1 p-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold transition-colors"
+                className="w-full py-3 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors"
               >
-                Save
+                Save Goals
               </button>
             </div>
           </div>
         </div>
       )}
+
+      <BottomNav />
     </div>
   );
 }
