@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Upload, Camera, X, Settings } from "lucide-react";
+import { Upload, Camera, X, Settings, MessageSquare } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
 interface Meal {
@@ -25,6 +25,10 @@ export default function NutritionPage() {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [foodToScan, setFoodToScan] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showAIConsultation, setShowAIConsultation] = useState(false);
+  const [aiConsultationMessage, setAiConsultationMessage] = useState("");
+  const [aiConsultationResponse, setAiConsultationResponse] = useState("");
+  const [isConsultingAI, setIsConsultingAI] = useState(false);
   const [aiEstimate, setAiEstimate] = useState<{
     name: string;
     calories: number;
@@ -69,7 +73,6 @@ export default function NutritionPage() {
     if (storedMeals) {
       try {
         const parsedMeals = JSON.parse(storedMeals);
-        // Filter meals for today
         const today = new Date().toISOString().split("T")[0];
         const todayMeals = parsedMeals.filter((m: Meal & { date?: string }) => {
           if (m.date) return m.date === today;
@@ -92,7 +95,6 @@ export default function NutritionPage() {
         console.error("Error loading macro goals:", e);
       }
     } else {
-      // Check if there's a custom nutrition plan from onboarding
       const nutritionPlan = localStorage.getItem("customNutritionPlan");
       if (nutritionPlan) {
         try {
@@ -117,30 +119,24 @@ export default function NutritionPage() {
     setIsLoaded(true);
   }, []);
 
-  // Save meals to localStorage whenever meals change (but only after initial load)
+  // Save meals to localStorage whenever meals change
   useEffect(() => {
     if (typeof window === "undefined" || !isLoaded) return;
     const today = new Date().toISOString().split("T")[0];
     const mealsWithDate = meals.map(meal => ({ ...meal, date: today }));
     
-    // Get all meals from localStorage
     const storedMeals = localStorage.getItem("meals");
     let allMeals: (Meal & { date: string })[] = [];
     if (storedMeals) {
       try {
         allMeals = JSON.parse(storedMeals);
-      } catch (e) {
-        // If parsing fails, start fresh
-      }
+      } catch (e) {}
     }
     
-    // Remove today's meals and add new ones
     allMeals = allMeals.filter((m: Meal & { date?: string }) => m.date !== today);
     allMeals = [...allMeals, ...mealsWithDate];
     
     localStorage.setItem("meals", JSON.stringify(allMeals));
-    
-    // Dispatch custom event to notify other components
     window.dispatchEvent(new CustomEvent("mealsUpdated"));
   }, [meals, isLoaded]);
 
@@ -156,20 +152,18 @@ export default function NutritionPage() {
     );
   }, [meals]);
 
-  // Calculate average calories (for display)
-  const averageCalories = useMemo(() => {
-    if (meals.length === 0) return 0;
-    const storedMeals = localStorage.getItem("meals");
-    if (!storedMeals) return 0;
-    try {
-      const allMeals = JSON.parse(storedMeals);
-      const last10Days = allMeals.slice(-10);
-      const sum = last10Days.reduce((acc: number, meal: Meal) => acc + (meal.calories || 0), 0);
-      return Math.round(sum / Math.max(last10Days.length, 1));
-    } catch (e) {
-      return 0;
-    }
-  }, [meals]);
+  const caloriesPercentage = dailyGoals.calories > 0 
+    ? Math.min(Math.round((totals.calories / dailyGoals.calories) * 100), 100) 
+    : 0;
+  const proteinPercentage = dailyGoals.protein > 0 
+    ? Math.min(Math.round((totals.protein / dailyGoals.protein) * 100), 100) 
+    : 0;
+  const carbsPercentage = dailyGoals.carbs > 0 
+    ? Math.min(Math.round((totals.carbs / dailyGoals.carbs) * 100), 100) 
+    : 0;
+  const fatsPercentage = dailyGoals.fats > 0 
+    ? Math.min(Math.round((totals.fats / dailyGoals.fats) * 100), 100) 
+    : 0;
 
   const handleDeleteMeal = (mealId: string) => {
     setMeals(meals.filter(m => m.id !== mealId));
@@ -341,148 +335,188 @@ export default function NutritionPage() {
     }
   };
 
-  const caloriesPercentage = dailyGoals.calories > 0 
-    ? Math.min(Math.round((totals.calories / dailyGoals.calories) * 100), 100) 
-    : 0;
-  const proteinPercentage = dailyGoals.protein > 0 
-    ? Math.min(Math.round((totals.protein / dailyGoals.protein) * 100), 100) 
-    : 0;
-  const carbsPercentage = dailyGoals.carbs > 0 
-    ? Math.min(Math.round((totals.carbs / dailyGoals.carbs) * 100), 100) 
-    : 0;
-  const fatsPercentage = dailyGoals.fats > 0 
-    ? Math.min(Math.round((totals.fats / dailyGoals.fats) * 100), 100) 
-    : 0;
+  const handleAIConsultation = async () => {
+    if (!aiConsultationMessage.trim()) return;
+    setIsConsultingAI(true);
+    setAiConsultationResponse("");
+    
+    try {
+      const response = await fetch("/api/consultation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: aiConsultationMessage,
+          context: {
+            currentCalories: totals.calories,
+            currentGoals: dailyGoals,
+            currentMacros: {
+              protein: totals.protein,
+              carbs: totals.carbs,
+              fats: totals.fats,
+            },
+          },
+        }),
+      });
 
-  const remainingCalories = Math.max(0, dailyGoals.calories - totals.calories);
+      const data = await response.json();
+      if (response.ok && data.response) {
+        setAiConsultationResponse(data.response);
+      } else {
+        throw new Error(data.error || "Failed to get AI response");
+      }
+    } catch (error: any) {
+      console.error("AI consultation failed", error);
+      alert(error?.message || "Unable to get AI consultation. Please try again.");
+    } finally {
+      setIsConsultingAI(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#050607] text-white px-5 pt-6 pb-28">
+    <div className="min-h-screen bg-[#050607] text-white px-4 pt-4 pb-28">
       {/* HEADER */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Calories</h1>
-        <p className="text-sm text-[#9aa7ad]">Today • AI tracked</p>
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">Calories</h1>
+          <p className="text-xs text-[#9aa7ad]">Today • AI tracked</p>
+        </div>
+        <button
+          onClick={() => setShowAddMeal(true)}
+          className="px-3 py-1.5 bg-[#14f1d9] text-black rounded-lg text-xs font-medium hover:bg-[#0ddfc8] transition-colors flex items-center gap-1.5"
+        >
+          <Camera className="w-3.5 h-3.5" />
+          Add/Scan
+        </button>
       </div>
 
-      {/* HERO CALORIES RING */}
-      <div className="relative flex items-center justify-center mb-8">
-        <div className="w-56 h-56 rounded-full border-[10px] border-[#0ddfc8]/20 flex items-center justify-center">
-          <div className="w-48 h-48 rounded-full border-[10px] border-[#14f1d9] flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-4xl font-bold">{totals.calories.toLocaleString()}</p>
-              <p className="text-sm text-[#9aa7ad]">of {dailyGoals.calories.toLocaleString()} kcal</p>
-              <p className="text-xs mt-1 text-[#14f1d9]">
-                {averageCalories > totals.calories ? "↑" : "↓"} {Math.abs(averageCalories - totals.calories)} avg
-              </p>
+      {/* CALORIES CIRCLE + MACROS - Compact horizontal layout */}
+      <div className="mb-4 flex items-center gap-4">
+        {/* Small Calories Circle - Top Left */}
+        <div className="flex-shrink-0">
+          <div className="w-24 h-24 rounded-full border-[6px] border-[#0ddfc8]/20 flex items-center justify-center">
+            <div className="w-20 h-20 rounded-full border-[6px] border-[#14f1d9] flex items-center justify-center">
+              <div className="text-center">
+                <p className="text-lg font-bold leading-none">{totals.calories.toLocaleString()}</p>
+                <p className="text-[9px] text-[#9aa7ad] mt-0.5">/{dailyGoals.calories.toLocaleString()}</p>
+                <p className="text-[8px] text-[#14f1d9] mt-0.5">{caloriesPercentage}%</p>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Macros Progress Bars - Next to circle */}
+        <div className="flex-1 space-y-2">
+          {[
+            { label: "P", value: totals.protein, target: dailyGoals.protein, percent: proteinPercentage },
+            { label: "C", value: totals.carbs, target: dailyGoals.carbs, percent: carbsPercentage },
+            { label: "F", value: totals.fats, target: dailyGoals.fats, percent: fatsPercentage },
+          ].map((m) => (
+            <div key={m.label} className="flex items-center gap-2">
+              <span className="text-[10px] text-[#9aa7ad] w-3">{m.label}</span>
+              <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div
+                  className="h-full bg-[#14f1d9]"
+                  style={{ width: `${m.percent}%` }}
+                />
+              </div>
+              <span className="text-[9px] text-[#9aa7ad] w-12 text-right">
+                {m.value}/{m.target}g
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* MACROS INLINE */}
-      <div className="space-y-4 mb-8">
-        {[
-          { 
-            label: "Protein", 
-            value: `${totals.protein} / ${dailyGoals.protein}g`, 
-            percent: `${proteinPercentage}%`,
-            current: totals.protein,
-            target: dailyGoals.protein
-          },
-          { 
-            label: "Carbs", 
-            value: `${totals.carbs} / ${dailyGoals.carbs}g`, 
-            percent: `${carbsPercentage}%`,
-            current: totals.carbs,
-            target: dailyGoals.carbs
-          },
-          { 
-            label: "Fats", 
-            value: `${totals.fats} / ${dailyGoals.fats}g`, 
-            percent: `${fatsPercentage}%`,
-            current: totals.fats,
-            target: dailyGoals.fats
-          }
-        ].map((m) => (
-          <div key={m.label}>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-[#9aa7ad]">{m.label}</span>
-              <span>{m.value}</span>
-            </div>
-            <div className="h-2 rounded-full bg-white/10 overflow-hidden">
-              <div
-                className="h-full bg-[#14f1d9]"
-                style={{ width: m.percent }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* MEALS TIMELINE */}
-      <div className="mb-10">
-        <h2 className="text-lg font-semibold mb-4">Today's Meals</h2>
-
-        <div className="space-y-4">
+      {/* MEALS BOX - Compact */}
+      <div className="mb-4 bg-[rgba(20,30,35,0.85)] rounded-xl p-3 border border-white/5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold">Today's Meals</h2>
+          <button
+            onClick={() => setShowMacroSettings(true)}
+            className="text-[10px] text-[#9aa7ad] hover:text-[#14f1d9] transition-colors"
+          >
+            Edit Goals
+          </button>
+        </div>
+        <div className="space-y-2 max-h-[200px] overflow-y-auto">
           {meals.length > 0 ? (
             meals.map((meal) => (
               <div
                 key={meal.id}
-                className="flex justify-between items-center bg-[rgba(20,30,35,0.85)] rounded-xl p-4 border border-white/5"
+                className="flex justify-between items-start bg-[rgba(10,15,20,0.6)] rounded-lg p-2.5 border border-white/5"
               >
-                <div>
-                  <p className="font-medium">{meal.name}</p>
-                  <p className="text-xs text-[#9aa7ad]">{meal.time}</p>
-                  <p className="text-sm mt-1">{meal.calories} kcal</p>
-                  <p className="text-xs text-[#9aa7ad]">
-                    P{meal.protein}g • C{meal.carbs}g • F{meal.fats}g
-                  </p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-medium text-sm truncate">{meal.name}</p>
+                    <span className="text-[10px] text-[#9aa7ad]">{meal.time}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] text-[#9aa7ad]">
+                    <span className="font-semibold text-white">{meal.calories} kcal</span>
+                    <span>•</span>
+                    <span>P{meal.protein}g</span>
+                    <span>C{meal.carbs}g</span>
+                    <span>F{meal.fats}g</span>
+                  </div>
                 </div>
                 <button 
                   onClick={() => handleDeleteMeal(meal.id)}
-                  className="text-white/40 hover:text-white transition-colors"
+                  className="text-white/30 hover:text-white transition-colors ml-2 flex-shrink-0"
                 >
-                  ✕
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             ))
           ) : (
-            <p className="text-sm text-[#9aa7ad] text-center py-4">No meals logged today</p>
+            <p className="text-xs text-[#9aa7ad] text-center py-3">No meals logged today</p>
           )}
         </div>
       </div>
 
-      {/* AI PLAN */}
-      <div className="bg-[rgba(20,30,35,0.6)] rounded-2xl p-5 border border-white/5">
-        <p className="text-sm text-[#9aa7ad] mb-1">AI Plan</p>
-        <p className="text-lg font-semibold mb-2">
-          {remainingCalories.toLocaleString()} kcal remaining
-        </p>
-        <p className="text-sm text-[#9aa7ad]">
-          Suggested: High-protein dinner + carb-based snack post workout
-        </p>
-        <button 
-          onClick={() => setShowAddMeal(true)}
-          className="mt-4 w-full rounded-xl bg-[#14f1d9] text-black py-3 font-medium hover:bg-[#0ddfc8] transition-colors"
-        >
-          Log AI Suggestion
-        </button>
+      {/* AI CONSULTATION BOX */}
+      <div className="bg-[rgba(20,30,35,0.6)] rounded-xl p-3 border border-white/5">
+        <div className="flex items-center gap-2 mb-2">
+          <MessageSquare className="w-4 h-4 text-[#14f1d9]" />
+          <p className="text-xs font-semibold">AI Nutrition Coach</p>
+        </div>
+        {!aiConsultationResponse ? (
+          <div>
+            <textarea
+              value={aiConsultationMessage}
+              onChange={(e) => setAiConsultationMessage(e.target.value)}
+              placeholder="Ask: How should I change my calorie plan now that I've lost weight?"
+              className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-2 text-xs mb-2 focus:outline-none focus:border-[#14f1d9] resize-none"
+              rows={2}
+            />
+            <button
+              onClick={handleAIConsultation}
+              disabled={isConsultingAI || !aiConsultationMessage.trim()}
+              className="w-full py-2 bg-[#14f1d9] text-black rounded-lg text-xs font-medium hover:bg-[#0ddfc8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isConsultingAI ? "Consulting AI..." : "Ask AI"}
+            </button>
+          </div>
+        ) : (
+          <div>
+            <p className="text-xs text-[#9aa7ad] mb-2 whitespace-pre-wrap">{aiConsultationResponse}</p>
+            <button
+              onClick={() => {
+                setAiConsultationResponse("");
+                setAiConsultationMessage("");
+              }}
+              className="w-full py-2 bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg text-xs font-medium hover:bg-[rgba(10,15,20,0.8)] transition-colors"
+            >
+              New Question
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* FLOATING ADD BUTTON */}
-      <button 
-        onClick={() => setShowAddMeal(true)}
-        className="fixed bottom-24 right-6 w-16 h-16 rounded-full bg-[#14f1d9] text-black text-3xl shadow-lg shadow-[#14f1d9]/30 hover:bg-[#0ddfc8] transition-colors flex items-center justify-center"
-      >
-        +
-      </button>
 
       {/* ADD MEAL MODAL */}
       {showAddMeal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10">
+          <div className="bg-[#141e23] rounded-2xl p-5 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Add Meal</h2>
+              <h2 className="text-lg font-semibold">Add Meal</h2>
               <button
                 onClick={() => {
                   setShowAddMeal(false);
@@ -508,74 +542,74 @@ export default function NutritionPage() {
               </div>
             )}
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-2">Food Name</label>
+                <label className="block text-sm font-medium mb-1.5">Food Name</label>
                 <input
                   type="text"
                   value={newMeal.name}
                   onChange={(e) => setNewMeal({ ...newMeal, name: e.target.value })}
-                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                   placeholder="e.g., Grilled chicken"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Calories</label>
+                  <label className="block text-sm font-medium mb-1.5">Calories</label>
                   <input
                     type="number"
                     value={newMeal.calories}
                     onChange={(e) => setNewMeal({ ...newMeal, calories: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="200"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Protein (g)</label>
+                  <label className="block text-sm font-medium mb-1.5">Protein (g)</label>
                   <input
                     type="number"
                     value={newMeal.protein}
                     onChange={(e) => setNewMeal({ ...newMeal, protein: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="20"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Carbs (g)</label>
+                  <label className="block text-sm font-medium mb-1.5">Carbs (g)</label>
                   <input
                     type="number"
                     value={newMeal.carbs}
                     onChange={(e) => setNewMeal({ ...newMeal, carbs: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="30"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">Fats (g)</label>
+                  <label className="block text-sm font-medium mb-1.5">Fats (g)</label>
                   <input
                     type="number"
                     value={newMeal.fats}
                     onChange={(e) => setNewMeal({ ...newMeal, fats: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="10"
                   />
                 </div>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-2 pt-2">
                 <button
                   onClick={() => {
                     setFoodToScan("");
                     setShowScanIntro(true);
                     setShowAddMeal(false);
                   }}
-                  className="flex-1 py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 py-2.5 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   <Camera className="w-4 h-4" />
                   Scan
                 </button>
                 <button
                   onClick={handleAddMeal}
-                  className="flex-1 py-3 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors"
+                  className="flex-1 py-2.5 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors text-sm"
                 >
                   Add Meal
                 </button>
@@ -588,8 +622,8 @@ export default function NutritionPage() {
       {/* SCAN INTRO MODAL */}
       {showScanIntro && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10">
-            <h2 className="text-xl font-semibold mb-2">Confirm Food</h2>
+          <div className="bg-[#141e23] rounded-2xl p-5 max-w-md w-full border border-white/10">
+            <h2 className="text-lg font-semibold mb-2">Confirm Food</h2>
             <p className="text-sm text-[#9aa7ad] mb-4">
               Let me know what food you're about to scan so I can label it correctly.
             </p>
@@ -598,15 +632,15 @@ export default function NutritionPage() {
               value={foodToScan}
               onChange={(e) => setFoodToScan(e.target.value)}
               placeholder="e.g., Grilled chicken salad"
-              className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm mb-4 focus:outline-none focus:border-[#14f1d9]"
+              className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm mb-4 focus:outline-none focus:border-[#14f1d9]"
             />
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
                 onClick={() => {
                   setShowScanIntro(false);
                   setFoodToScan("");
                 }}
-                className="flex-1 py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
+                className="flex-1 py-2.5 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors text-sm"
               >
                 Cancel
               </button>
@@ -615,7 +649,7 @@ export default function NutritionPage() {
                   setShowScanOptions(true);
                   setShowScanIntro(false);
                 }}
-                className="flex-1 py-3 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors"
+                className="flex-1 py-2.5 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors text-sm"
               >
                 Continue
               </button>
@@ -627,9 +661,9 @@ export default function NutritionPage() {
       {/* SCAN OPTIONS MODAL */}
       {showScanOptions && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10">
+          <div className="bg-[#141e23] rounded-2xl p-5 max-w-md w-full border border-white/10">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Scan Food</h2>
+              <h2 className="text-lg font-semibold">Scan Food</h2>
               <button
                 onClick={() => {
                   setShowScanOptions(false);
@@ -640,19 +674,19 @@ export default function NutritionPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               <button
                 onClick={startCamera}
-                className="w-full py-4 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
               >
-                <Camera className="w-5 h-5" />
+                <Camera className="w-4 h-4" />
                 Use Camera
               </button>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full py-4 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
               >
-                <Upload className="w-5 h-5" />
+                <Upload className="w-4 h-4" />
                 Upload Photo
               </button>
             </div>
@@ -680,13 +714,13 @@ export default function NutritionPage() {
             <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-4">
               <button
                 onClick={stopCamera}
-                className="px-6 py-3 bg-red-600 rounded-lg font-medium"
+                className="px-6 py-3 bg-red-600 rounded-lg font-medium text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={capturePhoto}
-                className="px-6 py-3 bg-[#14f1d9] text-black rounded-lg font-medium"
+                className="px-6 py-3 bg-[#14f1d9] text-black rounded-lg font-medium text-sm"
               >
                 Capture
               </button>
@@ -708,9 +742,9 @@ export default function NutritionPage() {
       {/* MACRO SETTINGS MODAL */}
       {showMacroSettings && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10">
+          <div className="bg-[#141e23] rounded-2xl p-5 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Macro Goals</h2>
+              <h2 className="text-lg font-semibold">Edit Macro Goals</h2>
               <button
                 onClick={() => setShowMacroSettings(false)}
                 className="text-white/40 hover:text-white"
@@ -718,41 +752,41 @@ export default function NutritionPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium mb-2">Calories</label>
+                <label className="block text-sm font-medium mb-1.5">Calories</label>
                 <input
                   type="number"
                   value={macroSettings.calories}
                   onChange={(e) => setMacroSettings({ ...macroSettings, calories: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Protein (g)</label>
+                <label className="block text-sm font-medium mb-1.5">Protein (g)</label>
                 <input
                   type="number"
                   value={macroSettings.protein}
                   onChange={(e) => setMacroSettings({ ...macroSettings, protein: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Carbs (g)</label>
+                <label className="block text-sm font-medium mb-1.5">Carbs (g)</label>
                 <input
                   type="number"
                   value={macroSettings.carbs}
                   onChange={(e) => setMacroSettings({ ...macroSettings, carbs: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-2">Fats (g)</label>
+                <label className="block text-sm font-medium mb-1.5">Fats (g)</label>
                 <input
                   type="number"
                   value={macroSettings.fats}
                   onChange={(e) => setMacroSettings({ ...macroSettings, fats: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-[#14f1d9]"
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                 />
               </div>
               <button
@@ -761,7 +795,7 @@ export default function NutritionPage() {
                   localStorage.setItem("macroGoals", JSON.stringify(macroSettings));
                   setShowMacroSettings(false);
                 }}
-                className="w-full py-3 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors"
+                className="w-full py-2.5 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors text-sm"
               >
                 Save Goals
               </button>
