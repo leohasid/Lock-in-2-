@@ -113,15 +113,15 @@ export default function Home() {
     return sum > 0 ? Math.round(sum / weeklyCaloriesData.length) : 0;
   }, [weeklyCaloriesData]);
 
-  // Get gym streak and activity data (last 28 days)
+  // Get gym streak and activity data (last 31 days)
   const gymStreak = useMemo(() => {
     if (typeof window === "undefined") return 0;
     
     let streak = 0;
-    const todayDate = new Date(today);
+    const todayDate = new Date();
     todayDate.setHours(0, 0, 0, 0);
     
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < 31; i++) {
       const date = new Date(todayDate);
       date.setDate(todayDate.getDate() - i);
       const dateStr = date.toISOString().split("T")[0];
@@ -132,7 +132,7 @@ export default function Home() {
       }
     }
     return streak;
-  }, [today]);
+  }, []);
 
   // Get gym activity completion stats (last 31 days)
   const gymActivityStats = useMemo(() => {
