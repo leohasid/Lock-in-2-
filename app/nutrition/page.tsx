@@ -141,6 +141,9 @@ export default function NutritionPage() {
     allMeals = [...allMeals, ...mealsWithDate];
     
     localStorage.setItem("meals", JSON.stringify(allMeals));
+    
+    // Dispatch custom event to notify other components
+    window.dispatchEvent(new CustomEvent("mealsUpdated"));
   }, [meals, isLoaded]);
 
   const totals = meals.reduce(

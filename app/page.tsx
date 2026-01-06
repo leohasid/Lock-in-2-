@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import GymCard from "@/components/GymCard";
 import CaloriesCardNew from "@/components/CaloriesCardNew";
@@ -12,8 +13,40 @@ export default function Home() {
   const [calories, setCalories] = useState({ current: 0, goal: 2000, percentage: 0 });
   const [goals, setGoals] = useState<Array<{ id: string; title: string; current: number; target: number; unit: string; targetDate: string }>>([]);
   const [selectedGoals, setSelectedGoals] = useState<Array<{ id: string; title: string; current: number; target: number; unit: string; targetDate: string }>>([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Get calories data
+  // Function to refresh data
+  const refreshData = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  // Poll for changes and listen for storage events
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    
+    const handleStorageChange = () => {
+      refreshData();
+    };
+    
+    // Listen for storage events (works across tabs)
+    window.addEventListener("storage", handleStorageChange);
+    
+    // Listen for custom events (works in same window)
+    window.addEventListener("mealsUpdated", handleStorageChange);
+    
+    // Poll localStorage every 2 seconds to catch changes
+    const interval = setInterval(() => {
+      refreshData();
+    }, 2000);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("mealsUpdated", handleStorageChange);
+      clearInterval(interval);
+    };
+  }, [refreshData]);
+
+  // Get calories data - refresh when trigger changes
   useEffect(() => {
     if (typeof window === "undefined") return;
     
@@ -35,9 +68,9 @@ export default function Home() {
         // Use defaults
       }
     }
-  }, [today]);
+  }, [today, refreshTrigger]);
 
-  // Get weekly calories data (last 10 days for graph)
+  // Get weekly calories data (last 10 days for graph) - refresh when trigger changes
   const weeklyCaloriesData = useMemo(() => {
     if (typeof window === "undefined") return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     
@@ -59,9 +92,9 @@ export default function Home() {
     } catch (e) {
       return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     }
-  }, [today]);
+  }, [today, refreshTrigger]);
 
-  // Get average calories
+  // Get average calories - recalculate when data changes
   const averageCalories = useMemo(() => {
     const sum = weeklyCaloriesData.reduce((a, b) => a + b, 0);
     return sum > 0 ? Math.round(sum / weeklyCaloriesData.length) : 0;
