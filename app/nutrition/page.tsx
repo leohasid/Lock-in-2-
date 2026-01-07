@@ -142,14 +142,14 @@ export default function NutritionPage() {
 
   const totals = useMemo(() => {
     return meals.reduce(
-      (acc, meal) => ({
-        calories: acc.calories + meal.calories,
-        protein: acc.protein + meal.protein,
-        carbs: acc.carbs + meal.carbs,
-        fats: acc.fats + meal.fats,
-      }),
-      { calories: 0, protein: 0, carbs: 0, fats: 0 }
-    );
+    (acc, meal) => ({
+      calories: acc.calories + meal.calories,
+      protein: acc.protein + meal.protein,
+      carbs: acc.carbs + meal.carbs,
+      fats: acc.fats + meal.fats,
+    }),
+    { calories: 0, protein: 0, carbs: 0, fats: 0 }
+  );
   }, [meals]);
 
   const caloriesPercentage = dailyGoals.calories > 0 
@@ -380,13 +380,22 @@ export default function NutritionPage() {
           <h1 className="text-xl font-semibold">Calories</h1>
           <p className="text-xs text-[#9aa7ad]">Today • AI tracked</p>
         </div>
-        <button
-          onClick={() => setShowAddMeal(true)}
-          className="px-3 py-1.5 bg-[#14f1d9] text-black rounded-lg text-xs font-medium hover:bg-[#0ddfc8] transition-colors flex items-center gap-1.5"
-        >
-          <Camera className="w-3.5 h-3.5" />
-          Add/Scan
-        </button>
+            <div className="flex items-center gap-2">
+              <button
+            onClick={() => setShowAIConsultation(true)}
+            className="px-3 py-1.5 bg-[rgba(20,30,35,0.85)] border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center gap-1.5"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            AI Coach
+              </button>
+              <button
+            onClick={() => setShowAddMeal(true)}
+            className="px-3 py-1.5 bg-[#14f1d9] text-black rounded-lg text-xs font-medium hover:bg-[#0ddfc8] transition-colors flex items-center gap-1.5"
+              >
+                <Camera className="w-3.5 h-3.5" />
+            Add/Scan
+              </button>
+            </div>
       </div>
 
       {/* CALORIES CIRCLE + MACROS - Compact horizontal layout */}
@@ -418,25 +427,25 @@ export default function NutritionPage() {
                   className="h-full bg-[#14f1d9]"
                   style={{ width: `${m.percent}%` }}
                 />
-              </div>
+                </div>
               <span className="text-[9px] text-[#9aa7ad] w-12 text-right">
                 {m.value}/{m.target}g
               </span>
-            </div>
+              </div>
           ))}
-        </div>
-      </div>
+            </div>
+          </div>
 
       {/* MEALS BOX - Compact */}
       <div className="mb-4 bg-[rgba(20,30,35,0.85)] rounded-xl p-3 border border-white/5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold">Today's Meals</h2>
-          <button
+                <button
             onClick={() => setShowMacroSettings(true)}
             className="text-[10px] text-[#9aa7ad] hover:text-[#14f1d9] transition-colors"
-          >
+                >
             Edit Goals
-          </button>
+                </button>
         </div>
         <div className="space-y-2 max-h-[200px] overflow-y-auto">
           {meals.length > 0 ? (
@@ -449,86 +458,48 @@ export default function NutritionPage() {
                   <div className="flex items-center gap-2 mb-1">
                     <p className="font-medium text-sm truncate">{meal.name}</p>
                     <span className="text-[10px] text-[#9aa7ad]">{meal.time}</span>
-                  </div>
+              </div>
                   <div className="flex items-center gap-2 text-[10px] text-[#9aa7ad]">
                     <span className="font-semibold text-white">{meal.calories} kcal</span>
                     <span>•</span>
                     <span>P{meal.protein}g</span>
                     <span>C{meal.carbs}g</span>
                     <span>F{meal.fats}g</span>
-                  </div>
-                </div>
-                <button 
+            </div>
+          </div>
+              <button
                   onClick={() => handleDeleteMeal(meal.id)}
                   className="text-white/30 hover:text-white transition-colors ml-2 flex-shrink-0"
-                >
+              >
                   <X className="w-4 h-4" />
-                </button>
-              </div>
+              </button>
+            </div>
             ))
           ) : (
             <p className="text-xs text-[#9aa7ad] text-center py-3">No meals logged today</p>
           )}
-        </div>
-      </div>
+            </div>
+          </div>
 
-      {/* AI CONSULTATION BOX */}
-      <div className="bg-[rgba(20,30,35,0.6)] rounded-xl p-3 border border-white/5">
-        <div className="flex items-center gap-2 mb-2">
-          <MessageSquare className="w-4 h-4 text-[#14f1d9]" />
-          <p className="text-xs font-semibold">AI Nutrition Coach</p>
-        </div>
-        {!aiConsultationResponse ? (
-          <div>
-            <textarea
-              value={aiConsultationMessage}
-              onChange={(e) => setAiConsultationMessage(e.target.value)}
-              placeholder="Ask: How should I change my calorie plan now that I've lost weight?"
-              className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-2 text-xs mb-2 focus:outline-none focus:border-[#14f1d9] resize-none"
-              rows={2}
-            />
-            <button
-              onClick={handleAIConsultation}
-              disabled={isConsultingAI || !aiConsultationMessage.trim()}
-              className="w-full py-2 bg-[#14f1d9] text-black rounded-lg text-xs font-medium hover:bg-[#0ddfc8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isConsultingAI ? "Consulting AI..." : "Ask AI"}
-            </button>
-          </div>
-        ) : (
-          <div>
-            <p className="text-xs text-[#9aa7ad] mb-2 whitespace-pre-wrap">{aiConsultationResponse}</p>
-            <button
-              onClick={() => {
-                setAiConsultationResponse("");
-                setAiConsultationMessage("");
-              }}
-              className="w-full py-2 bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg text-xs font-medium hover:bg-[rgba(10,15,20,0.8)] transition-colors"
-            >
-              New Question
-            </button>
-          </div>
-        )}
-      </div>
 
       {/* ADD MEAL MODAL */}
       {showAddMeal && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-[#141e23] rounded-2xl p-5 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Add Meal</h2>
-              <button
-                onClick={() => {
+                    <button
+                      onClick={() => {
                   setShowAddMeal(false);
                   setNewMeal({ name: "", calories: "", protein: "", carbs: "", fats: "" });
-                  setCapturedImage(null);
-                  setAiEstimate(null);
-                }}
+                        setCapturedImage(null);
+                        setAiEstimate(null);
+                      }}
                 className="text-white/40 hover:text-white"
-              >
+                    >
                 <X className="w-5 h-5" />
-              </button>
-            </div>
+                    </button>
+                  </div>
 
             {aiEstimate && (
               <div className="mb-4 p-3 bg-[#0ddfc8]/10 rounded-lg border border-[#14f1d9]/20">
@@ -539,20 +510,20 @@ export default function NutritionPage() {
                 >
                   Use AI Estimate →
                 </button>
-              </div>
-            )}
+          </div>
+        )}
 
             <div className="space-y-3">
-              <div>
+                <div>
                 <label className="block text-sm font-medium mb-1.5">Food Name</label>
-                <input
-                  type="text"
-                  value={newMeal.name}
-                  onChange={(e) => setNewMeal({ ...newMeal, name: e.target.value })}
+                  <input
+                    type="text"
+                    value={newMeal.name}
+                    onChange={(e) => setNewMeal({ ...newMeal, name: e.target.value })}
                   className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                   placeholder="e.g., Grilled chicken"
-                />
-              </div>
+                  />
+                </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-sm font-medium mb-1.5">Calories</label>
@@ -564,43 +535,43 @@ export default function NutritionPage() {
                     placeholder="200"
                   />
                 </div>
-                <div>
+                  <div>
                   <label className="block text-sm font-medium mb-1.5">Protein (g)</label>
-                  <input
-                    type="number"
-                    value={newMeal.protein}
-                    onChange={(e) => setNewMeal({ ...newMeal, protein: e.target.value })}
+                    <input
+                      type="number"
+                      value={newMeal.protein}
+                      onChange={(e) => setNewMeal({ ...newMeal, protein: e.target.value })}
                     className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="20"
-                  />
-                </div>
-                <div>
+                    />
+                  </div>
+                  <div>
                   <label className="block text-sm font-medium mb-1.5">Carbs (g)</label>
-                  <input
-                    type="number"
-                    value={newMeal.carbs}
-                    onChange={(e) => setNewMeal({ ...newMeal, carbs: e.target.value })}
+                    <input
+                      type="number"
+                      value={newMeal.carbs}
+                      onChange={(e) => setNewMeal({ ...newMeal, carbs: e.target.value })}
                     className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="30"
-                  />
-                </div>
-                <div>
+                    />
+                  </div>
+                  <div>
                   <label className="block text-sm font-medium mb-1.5">Fats (g)</label>
-                  <input
-                    type="number"
-                    value={newMeal.fats}
-                    onChange={(e) => setNewMeal({ ...newMeal, fats: e.target.value })}
+                    <input
+                      type="number"
+                      value={newMeal.fats}
+                      onChange={(e) => setNewMeal({ ...newMeal, fats: e.target.value })}
                     className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="10"
-                  />
+                    />
+                  </div>
                 </div>
-              </div>
               <div className="flex gap-2 pt-2">
-                <button
-                  onClick={() => {
+                  <button
+                    onClick={() => {
                     setFoodToScan("");
                     setShowScanIntro(true);
-                    setShowAddMeal(false);
+                      setShowAddMeal(false);
                   }}
                   className="flex-1 py-2.5 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
                 >
@@ -612,12 +583,12 @@ export default function NutritionPage() {
                   className="flex-1 py-2.5 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors text-sm"
                 >
                   Add Meal
-                </button>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* SCAN INTRO MODAL */}
       {showScanIntro && (
@@ -635,26 +606,26 @@ export default function NutritionPage() {
               className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm mb-4 focus:outline-none focus:border-[#14f1d9]"
             />
             <div className="flex gap-2">
-              <button
-                onClick={() => {
+          <button
+            onClick={() => {
                   setShowScanIntro(false);
                   setFoodToScan("");
                 }}
                 className="flex-1 py-2.5 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors text-sm"
               >
                 Cancel
-              </button>
-              <button
-                onClick={() => {
+          </button>
+          <button
+            onClick={() => {
                   setShowScanOptions(true);
                   setShowScanIntro(false);
                 }}
                 className="flex-1 py-2.5 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors text-sm"
               >
                 Continue
-              </button>
+          </button>
             </div>
-          </div>
+            </div>
         </div>
       )}
 
@@ -665,31 +636,31 @@ export default function NutritionPage() {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Scan Food</h2>
               <button
-                onClick={() => {
+                  onClick={() => {
                   setShowScanOptions(false);
-                  setFoodToScan("");
+                    setFoodToScan("");
                 }}
                 className="text-white/40 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
-            </div>
+          </div>
             <div className="space-y-2">
-              <button
+                <button
                 onClick={startCamera}
                 className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
-              >
-                <Camera className="w-4 h-4" />
+                >
+                  <Camera className="w-4 h-4" />
                 Use Camera
-              </button>
-              <button
+                </button>
+                <button
                 onClick={() => fileInputRef.current?.click()}
                 className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
-              >
+                >
                 <Upload className="w-4 h-4" />
                 Upload Photo
-              </button>
-            </div>
+                </button>
+              </div>
             <input
               ref={fileInputRef}
               type="file"
@@ -697,10 +668,10 @@ export default function NutritionPage() {
               onChange={handleFileUpload}
               className="hidden"
             />
-          </div>
-        </div>
-      )}
-
+                    </div>
+                </div>
+              )}
+              
       {/* CAMERA VIEW */}
       {showCamera && (
         <div className="fixed inset-0 bg-black z-50">
@@ -712,7 +683,7 @@ export default function NutritionPage() {
               className="w-full h-full object-cover"
             />
             <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-4">
-              <button
+                    <button
                 onClick={stopCamera}
                 className="px-6 py-3 bg-red-600 rounded-lg font-medium text-sm"
               >
@@ -723,11 +694,11 @@ export default function NutritionPage() {
                 className="px-6 py-3 bg-[#14f1d9] text-black rounded-lg font-medium text-sm"
               >
                 Capture
-              </button>
+                    </button>
+                  </div>
+                  </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
       {/* AI ESTIMATE MODAL */}
       {isAnalyzing && (
@@ -735,9 +706,64 @@ export default function NutritionPage() {
           <div className="bg-[#141e23] rounded-2xl p-6 border border-white/10">
             <p className="text-lg font-semibold mb-2">Analyzing food...</p>
             <p className="text-sm text-[#9aa7ad]">Please wait</p>
-          </div>
         </div>
-      )}
+          </div>
+        )}
+
+      {/* AI CONSULTATION MODAL */}
+      {showAIConsultation && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141e23] rounded-2xl p-5 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-[#14f1d9]" />
+                <h2 className="text-lg font-semibold">AI Nutrition Coach</h2>
+              </div>
+                <button
+                onClick={() => {
+                  setShowAIConsultation(false);
+                  setAiConsultationResponse("");
+                  setAiConsultationMessage("");
+                }}
+                className="text-white/40 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            {!aiConsultationResponse ? (
+                    <div>
+                <textarea
+                  value={aiConsultationMessage}
+                  onChange={(e) => setAiConsultationMessage(e.target.value)}
+                  placeholder="Ask: How should I change my calorie plan now that I've lost weight?"
+                  className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm mb-3 focus:outline-none focus:border-[#14f1d9] resize-none"
+                  rows={4}
+                />
+                <button
+                  onClick={handleAIConsultation}
+                  disabled={isConsultingAI || !aiConsultationMessage.trim()}
+                  className="w-full py-2.5 bg-[#14f1d9] text-black rounded-lg text-sm font-medium hover:bg-[#0ddfc8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isConsultingAI ? "Consulting AI..." : "Ask AI"}
+                </button>
+                  </div>
+                ) : (
+                        <div>
+                <p className="text-sm text-[#9aa7ad] mb-4 whitespace-pre-wrap">{aiConsultationResponse}</p>
+                        <button
+                          onClick={() => {
+                    setAiConsultationResponse("");
+                    setAiConsultationMessage("");
+                          }}
+                  className="w-full py-2.5 bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg text-sm font-medium hover:bg-[rgba(10,15,20,0.8)] transition-colors"
+                        >
+                  New Question
+                        </button>
+                      </div>
+            )}
+            </div>
+          </div>
+        )}
 
       {/* MACRO SETTINGS MODAL */}
       {showMacroSettings && (

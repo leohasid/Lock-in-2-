@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { Shield, Clock, AlertTriangle, Lock, Unlock, Settings, X } from "lucide-react";
+import { Shield, Clock, AlertTriangle, Lock, Unlock, Settings, X, Zap, ChevronRight, PiggyBank, Star, CheckCircle2 } from "lucide-react";
 
 interface AppBlock {
   appName: string;
@@ -20,6 +20,7 @@ interface PhoneAddiction {
   totalDailyLimit: number;
   totalCurrentUsage: number;
   blocked: boolean;
+  bestStreak?: number; // Best streak in days
 }
 
 interface OtherAddiction {
@@ -29,6 +30,7 @@ interface OtherAddiction {
   startDate: string;
   startTime: string; // ISO timestamp for precise countdown
   weeklySpend?: number;
+  bestStreak?: number; // Best streak in days
 }
 
 type Addiction = PhoneAddiction | OtherAddiction;
@@ -98,90 +100,34 @@ export default function AddictionsPage() {
     ES: { code: "EUR", symbol: "€" },
     IT: { code: "EUR", symbol: "€" },
     SG: { code: "SGD", symbol: "S$" },
-    HK: { code: "HKD", symbol: "HK$" },
-    JP: { code: "JPY", symbol: "¥" },
-    CN: { code: "CNY", symbol: "¥" },
-    IN: { code: "INR", symbol: "₹" },
-    KR: { code: "KRW", symbol: "₩" },
-    TH: { code: "THB", symbol: "฿" },
-    PH: { code: "PHP", symbol: "₱" },
-    BR: { code: "BRL", symbol: "R$" },
-    MX: { code: "MXN", symbol: "MX$" },
-    ZA: { code: "ZAR", symbol: "R" },
-    AE: { code: "AED", symbol: "د.إ" },
-    SA: { code: "SAR", symbol: "﷼" },
-    CH: { code: "CHF", symbol: "CHF" },
-  };
-
-  const resolveCurrency = (locale: string | undefined) => {
-    if (!locale) return null;
-    const parts = locale.split(/[-_]/);
-    const region = parts[1]?.toUpperCase();
-    if (region && currencyMap[region]) {
-      return currencyMap[region];
-    }
-    const base = parts[0]?.toUpperCase();
-    if (base && currencyMap[base]) {
-      return currencyMap[base];
-    }
-    return null;
   };
 
   const determineCurrency = (): CurrencyInfo => {
-    const fallback = { code: "USD", symbol: "$" };
-    if (typeof window === "undefined") return fallback;
-    const locales = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]).filter(Boolean);
-    for (const locale of locales) {
-      const match = resolveCurrency(locale);
-      if (match) return match;
+    if (typeof window === "undefined") return { code: "USD", symbol: "$" };
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    for (const [key, value] of Object.entries(currencyMap)) {
+      if (timezone.includes(key)) {
+        return value;
+      }
     }
-    const intlLocale = Intl.DateTimeFormat().resolvedOptions().locale;
-    const intlMatch = resolveCurrency(intlLocale);
-    if (intlMatch) return intlMatch;
-    return fallback;
+    return { code: "USD", symbol: "$" };
   };
 
-  const applySyncedUsage = (snapshot?: PhoneUsageSnapshot | null) => {
-    if (!snapshot || !snapshot.apps || snapshot.apps.length === 0) return;
-
+  const applySyncedUsage = (snapshot: PhoneUsageSnapshot) => {
     setAddictions((prev) =>
       prev.map((addiction) => {
         if ("apps" in addiction) {
-          const updatedApps = addiction.apps.map((app) => {
-            const match = snapshot.apps.find(
-              (synced) => synced.appName.toLowerCase() === app.appName.toLowerCase()
-            );
-            if (!match) return app;
-            const minutes = Math.max(0, Math.round(match.minutes));
-            // Only block if usage has actually reached or exceeded the limit
-            const shouldBeBlocked = minutes >= app.dailyLimit;
-            
-            // Use native blocked state if available, otherwise determine from usage
-            const isBlocked = match.blocked !== undefined ? match.blocked : shouldBeBlocked;
-            
-            // If app should be blocked based on usage, call native blocking
-            if (shouldBeBlocked && !isBlocked) {
-              blockAppNative(app.appName, true);
-            }
-            
-            // Only unblock if it's a new day and usage is reset (automatic reset)
-            // Users cannot manually unblock - blocking is permanent until daily reset
-            if (!shouldBeBlocked && isBlocked) {
-              // Check if this is a new day (usage was reset)
-              const today = new Date().toISOString().split("T")[0];
-              const lastResetDate = localStorage.getItem(`lastResetDate-${addiction.id}`);
-              if (lastResetDate !== today) {
-                // New day - automatically unblock
-                blockAppNative(app.appName, false);
-                localStorage.setItem(`lastResetDate-${addiction.id}`, today);
-              }
-            }
-            
+          const phoneAddiction = addiction as PhoneAddiction;
+          const updatedApps = phoneAddiction.apps.map((app) => {
+            const syncedApp = snapshot.apps?.find((a) => a.appName === app.appName);
+            if (syncedApp) {
             return {
               ...app,
-              currentUsage: minutes,
-              blocked: shouldBeBlocked, // Only block when usage >= limit
+                currentUsage: syncedApp.minutes || 0,
+                blocked: syncedApp.blocked || false,
             };
+            }
+            return app;
           });
 
           const totalCurrentUsage = updatedApps.reduce(
@@ -209,14 +155,11 @@ export default function AddictionsPage() {
     return () => clearInterval(timer);
   }, []);
 
-
   // Check if limits are exceeded and automatically block apps
-  // Use a ref to track if we've already shown notifications to prevent spam
   const notificationShownRef = useRef<Set<string>>(new Set());
   const prevUsageRef = useRef<Record<string, number>>({});
   
   useEffect(() => {
-    // Only check and update if there are actual changes needed
     setAddictions((prev) => {
       let hasChanges = false;
       const updated = prev.map((addiction) => {
@@ -226,28 +169,24 @@ export default function AddictionsPage() {
           const totalLimit = phoneAddiction.totalDailyLimit;
           const usagePercent = totalLimit > 0 ? (totalUsage / totalLimit) * 100 : 0;
 
-          // Check each app individually and block if limit reached
           const updatedApps = phoneAddiction.apps.map((app) => {
             const shouldBeBlocked = app.currentUsage >= app.dailyLimit;
             const usageKey = `${phoneAddiction.id}-${app.appName}`;
             const prevUsage = prevUsageRef.current[usageKey] || 0;
             
-            // Only update if usage changed or blocking status needs to change
             const usageChanged = app.currentUsage !== prevUsage;
             if (usageChanged) {
               prevUsageRef.current[usageKey] = app.currentUsage;
             }
             
-            // If app should be blocked but isn't, block it now
             if (shouldBeBlocked && !app.blocked) {
               hasChanges = true;
               blockAppNative(app.appName, true);
               
-              // Show notification for individual app blocking (only once)
               const notificationKey = `blocked-${app.appName}`;
               if (Notification.permission === "granted" && !notificationShownRef.current.has(notificationKey)) {
                 new Notification(`🚫 ${app.appName} Blocked`, {
-                  body: `Daily limit of ${app.dailyLimit} minutes reached!`,
+                  body: "Daily limit reached!",
                 });
                 notificationShownRef.current.add(notificationKey);
               }
@@ -255,27 +194,20 @@ export default function AddictionsPage() {
               return { ...app, blocked: true };
             }
             
-            // Only unblock if it's a new day (automatic daily reset)
-            // Users cannot manually unblock - blocking is permanent until daily reset
-            if (!shouldBeBlocked && app.blocked) {
+            // Check if it's a new day and unblock
               const today = new Date().toISOString().split("T")[0];
               const lastResetDate = localStorage.getItem(`lastResetDate-${phoneAddiction.id}`);
-              if (lastResetDate !== today) {
-                // New day - automatically unblock
+            if (lastResetDate !== today && app.blocked) {
                 hasChanges = true;
                 blockAppNative(app.appName, false);
                 notificationShownRef.current.delete(`blocked-${app.appName}`);
                 localStorage.setItem(`lastResetDate-${phoneAddiction.id}`, today);
                 return { ...app, blocked: false };
-              }
-              // Same day - keep blocked (cannot unblock manually)
-              return app;
             }
             
             return app;
           });
 
-          // Show warning at 80% usage (only once)
           const warningKey = `warning-${phoneAddiction.id}`;
           if (usagePercent >= 80 && usagePercent < 100 && !phoneAddiction.blocked && !notificationShownRef.current.has(warningKey)) {
             if (Notification.permission === "granted") {
@@ -286,13 +218,11 @@ export default function AddictionsPage() {
             }
           }
 
-          // Block all if total limit exceeded
           const shouldBlockAll = usagePercent >= 100;
           const allBlocked = updatedApps.every((app) => app.blocked) || shouldBlockAll;
 
           if (shouldBlockAll && !phoneAddiction.blocked) {
             hasChanges = true;
-            // Block all apps that aren't already blocked
             updatedApps.forEach((app) => {
               if (!app.blocked) {
                 blockAppNative(app.appName, true);
@@ -317,10 +247,9 @@ export default function AddictionsPage() {
         return addiction;
       });
       
-      // Only return updated state if there were actual changes
       return hasChanges ? updated : prev;
     });
-  }, [currentTime]); // Only depend on currentTime which updates every second
+  }, [currentTime]);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -346,17 +275,13 @@ export default function AddictionsPage() {
       }
     };
 
-    // Event listener for phone usage updates
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<PhoneUsageSnapshot>).detail;
       applySyncedUsage(detail);
     };
     window.addEventListener("phoneUsageUpdate", handler);
 
-    // Initial sync
     syncPhoneData();
-
-    // Sync every 30 seconds to get latest usage data from phone
     const syncInterval = setInterval(syncPhoneData, 30000);
 
     return () => {
@@ -382,12 +307,29 @@ export default function AddictionsPage() {
     setIsLoaded(true);
   }, []);
 
-  // Save addictions to localStorage whenever they change (but only after initial load)
+  // Update best streak for each addiction
+  useEffect(() => {
+    if (typeof window === "undefined" || !isLoaded) return;
+    
+    setAddictions((prev) => {
+      return prev.map((addiction) => {
+        const daysClean = getDaysClean(addiction.startDate);
+        const currentBestStreak = addiction.bestStreak || 0;
+        const newBestStreak = Math.max(currentBestStreak, daysClean);
+        
+        if (newBestStreak !== currentBestStreak) {
+          return { ...addiction, bestStreak: newBestStreak };
+        }
+        return addiction;
+      });
+    });
+  }, [currentTime, isLoaded]);
+
+  // Save addictions to localStorage whenever they change
   useEffect(() => {
     if (typeof window === "undefined" || !isLoaded) return;
     localStorage.setItem("addictions", JSON.stringify(addictions));
     
-    // Also save phone addiction data separately for home page
     const phoneAddiction = addictions.find((a): a is PhoneAddiction => "apps" in a);
     if (phoneAddiction) {
       localStorage.setItem("phoneAddictionData", JSON.stringify({
@@ -415,11 +357,9 @@ export default function AddictionsPage() {
         }
       }
       if (newAddiction.type === "phone") {
-        // Check if phone addiction already exists
         const existingPhone = addictions.find((a) => "apps" in a) as PhoneAddiction | undefined;
         
         if (existingPhone) {
-          // Update existing phone addiction instead of creating new one
           setAddictions((prev) =>
             prev.map((a) => {
               if (a.id === existingPhone.id && "apps" in a) {
@@ -434,7 +374,6 @@ export default function AddictionsPage() {
             })
           );
         } else {
-          // Create new phone addiction
           const phoneAddiction: PhoneAddiction = {
             id: Date.now().toString(),
             name: "Phone & Social Media",
@@ -447,7 +386,6 @@ export default function AddictionsPage() {
           setAddictions([...addictions, phoneAddiction]);
         }
       } else {
-        // Auto-set name for vape and goon types
         let addictionName = newAddiction.name;
         if (newAddiction.type === "vape") {
           addictionName = "Vape/Nicotine";
@@ -460,7 +398,7 @@ export default function AddictionsPage() {
           type: newAddiction.type,
           name: addictionName,
           startDate: new Date().toISOString().split("T")[0],
-          startTime: new Date().toISOString(), // Store precise timestamp
+          startTime: new Date().toISOString(),
           weeklySpend: needsWeeklySpend ? weeklySpendValue : undefined,
         };
         setAddictions([...addictions, otherAddiction]);
@@ -517,22 +455,12 @@ export default function AddictionsPage() {
     );
   };
 
-  // Call native blocking API if available
   const blockAppNative = async (appName: string, block: boolean) => {
     try {
-      // Try Capacitor plugin first (iOS native) - only works in native app
       if (typeof window !== "undefined" && window.Capacitor?.isNativePlatform()) {
-        try {
-          // @ts-ignore - Capacitor plugin (plugins are registered at runtime)
-          // In Capacitor 7.x, plugins should be imported directly if available
-          // For now, use the bridge pattern
-          console.log(`[Native] Would ${block ? 'block' : 'unblock'} app: ${appName}`);
-        } catch (e) {
-          console.log('[Web] Capacitor plugin not available, using fallback');
-        }
+        console.log(`[Native] Would ${block ? 'block' : 'unblock'} app: ${appName}`);
       }
       
-      // Fallback to legacy bridge or web notification
       if (typeof window !== "undefined" && window.lockedInUsageBridge) {
         if (window.lockedInUsageBridge.blockApp) {
           await window.lockedInUsageBridge.blockApp(appName, block);
@@ -540,7 +468,6 @@ export default function AddictionsPage() {
         }
       }
       
-      // Web fallback: Show notification (for testing without native)
       if (block && Notification.permission === "granted") {
         new Notification(`🚫 ${appName} Blocked`, {
           body: "Daily limit reached! (Native blocking requires iOS app)",
@@ -553,35 +480,25 @@ export default function AddictionsPage() {
     }
   };
 
-  // Apps are automatically blocked when limits are reached
-  // No manual toggle - blocking is permanent until next day reset
-  // Users cannot unblock apps manually
-
   const getCountdown = (startTime: string | undefined) => {
     if (!startTime) {
       return { days: 0, hours: 0, minutes: 0, seconds: 0 };
     }
 
-    // Handle both timestamp strings and date strings
     let start: Date;
     if (/^\d+$/.test(startTime)) {
-      // It's a timestamp string, convert to number
       start = new Date(parseInt(startTime, 10));
     } else {
-      // It's a date string
       start = new Date(startTime);
     }
 
     const now = currentTime;
     
-    // Check if date is valid
     if (isNaN(start.getTime())) {
       return { days: 0, hours: 0, minutes: 0, seconds: 0 };
     }
 
     const diff = now.getTime() - start.getTime();
-
-    // Ensure diff is not negative and values are valid numbers
     const safeDiff = Math.max(0, diff);
     const days = Math.floor(safeDiff / (1000 * 60 * 60 * 24)) || 0;
     const hours = Math.floor((safeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)) || 0;
@@ -643,45 +560,6 @@ export default function AddictionsPage() {
     };
   };
 
-  const CircularProgress = ({ percentage, size = 120 }: { percentage: number; size?: number }) => {
-    const radius = (size - 20) / 2;
-    const circumference = 2 * Math.PI * radius;
-    const safePercentage = isNaN(percentage) || !isFinite(percentage) ? 0 : Math.max(0, Math.min(100, percentage));
-    const offset = circumference - (safePercentage / 100) * circumference;
-    const color = safePercentage >= 100 ? "#dc2626" : safePercentage >= 80 ? "#eab308" : "#22c55e";
-
-    return (
-      <div className="relative" style={{ width: size, height: size }}>
-        <svg width={size} height={size} className="transform -rotate-90">
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke="#1f2937"
-            strokeWidth="12"
-            fill="none"
-          />
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke={color}
-            strokeWidth="12"
-            fill="none"
-            strokeDasharray={circumference}
-            strokeDashoffset={isNaN(offset) || !isFinite(offset) ? circumference : offset}
-            strokeLinecap="round"
-            className="transition-all duration-300"
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-2xl font-bold text-white">{Math.round(safePercentage)}%</div>
-          <div className="text-xs text-gray-400">used</div>
-        </div>
-      </div>
-    );
-  };
-
   const phoneAddictions = addictions.filter((a) => "apps" in a) as PhoneAddiction[];
   const otherAddictions = addictions.filter((a) => !("apps" in a)) as OtherAddiction[];
 
@@ -694,44 +572,240 @@ export default function AddictionsPage() {
     return `${hours}h ${minutes}m`;
   };
 
+  const formatTimeUntilBlock = (remainingMinutes: number) => {
+    if (remainingMinutes <= 0) return "Blocked";
+    const hours = Math.floor(remainingMinutes / 60);
+    const minutes = remainingMinutes % 60;
+    if (hours === 0) return `${minutes}m left`;
+    if (minutes === 0) return `${hours}h left`;
+    return `${hours}h ${minutes}m left`;
+  };
+
+  // Format countdown as 00:00:00:00 (days:hours:minutes:seconds)
+  const formatCountdownTime = (elapsed: { days: number; hours: number; minutes: number; seconds: number }) => {
+    const pad = (num: number) => String(num).padStart(2, '0');
+    return `${pad(elapsed.days)}:${pad(elapsed.hours)}:${pad(elapsed.minutes)}:${pad(elapsed.seconds)}`;
+  };
+
+  // Calculate total saved across all addictions
+  const totalSaved = useMemo(() => {
+    return otherAddictions.reduce((sum, addiction) => {
+      const daysClean = getDaysClean(addiction.startDate);
+      const money = calculateMoneySaved(addiction, daysClean);
+      return sum + money.total;
+    }, 0);
+  }, [otherAddictions, currentTime, currencyInfo]);
+
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="container mx-auto px-4 py-4">
-        {/* Header */}
-        <div className="mb-4">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-bold text-white">🛡️ Addiction Recovery</h1>
-            <div className="flex items-center gap-2">
-              <Link
-                href="/addictions/support"
-                className="bg-blue-500 hover:bg-blue-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
-              >
-                💬 Support
-              </Link>
+    <div className="min-h-screen bg-[#050607] text-white px-5 pt-6 pb-28">
+      {/* HEADER */}
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Your Addictions</h1>
               <button
                 onClick={() => setShowAddForm(true)}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
+          className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
               >
-                + Track New
+          <span className="text-sm">+</span>
+          Track New
               </button>
             </div>
+
+      {/* ADDICTIONS LIST */}
+      <div className="space-y-4">
+        {/* Phone & Social Media */}
+        {phoneAddictions.length > 0 && (() => {
+          const phoneAddiction = phoneAddictions[0];
+          const daysClean = getDaysClean(phoneAddiction.startDate);
+          const bestStreak = phoneAddiction.bestStreak || daysClean;
+          const totalRemaining = Math.max(phoneAddiction.totalDailyLimit - phoneAddiction.totalCurrentUsage, 0);
+          const totalRemainingMinutes = totalRemaining;
+          const totalPercent = phoneAddiction.totalDailyLimit > 0 
+            ? Math.min((phoneAddiction.totalCurrentUsage / phoneAddiction.totalDailyLimit) * 100, 100)
+            : 0;
+
+          return (
+            <button
+              onClick={() => setShowPhoneDetail(true)}
+              className="w-full bg-[rgba(20,30,35,0.85)] rounded-xl p-4 border border-white/5 flex items-center gap-3 hover:bg-[rgba(20,30,35,1)] transition-colors"
+            >
+              {/* Icon */}
+              <div className="text-3xl flex-shrink-0">📱</div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-semibold text-white mb-1">Phone & Social Media</h3>
+                <p className="text-xs text-gray-400 mb-2">
+                  Best streak is {bestStreak} Day{bestStreak !== 1 ? 's' : ''}
+                </p>
+                <p className="text-sm text-gray-400 mb-2">
+                  {formatMinutes(phoneAddiction.totalCurrentUsage)} / {formatMinutes(phoneAddiction.totalDailyLimit)} Today
+                </p>
+                
+                {/* Progress bar showing time until block */}
+                <div className="mb-2">
+                  <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-2 rounded-full transition-all ${
+                        totalPercent >= 100
+                          ? "bg-red-500"
+                          : totalPercent >= 80
+                          ? "bg-yellow-500"
+                          : "bg-[#14f1d9]"
+                      }`}
+                      style={{ width: `${totalPercent}%` }}
+                    />
           </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {formatTimeUntilBlock(totalRemainingMinutes)} until block
+                  </p>
         </div>
 
-        {/* Add Addiction Modal */}
+                {/* App-specific progress bars */}
+                {phoneAddiction.apps.length > 0 && (
+                  <div className="space-y-1.5 mt-2">
+                    {phoneAddiction.apps.slice(0, 3).map((app) => {
+                      const remaining = Math.max(app.dailyLimit - app.currentUsage, 0);
+                      const percent = app.dailyLimit > 0 
+                        ? Math.min((app.currentUsage / app.dailyLimit) * 100, 100)
+                        : 0;
+                      return (
+                        <div key={app.appName} className="flex items-center gap-2">
+                          <span className="text-[10px] text-gray-400 w-16 truncate">{app.appName}</span>
+                          <div className="flex-1 bg-white/10 rounded-full h-1">
+                            <div
+                              className={`h-1 rounded-full ${
+                                percent >= 100 ? "bg-red-500" : percent >= 80 ? "bg-yellow-500" : "bg-[#14f1d9]"
+                              }`}
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-gray-400 w-16 text-right">
+                            {formatTimeUntilBlock(remaining)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {phoneAddiction.apps.length > 3 && (
+                      <p className="text-[10px] text-gray-500">+{phoneAddiction.apps.length - 3} more apps</p>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2 mt-2">
+                  <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                  <span className="text-xs text-gray-400">Current: {daysClean} Days</span>
+                </div>
+              </div>
+
+              {/* Lightning bolt and arrow */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Zap className="w-5 h-5 text-yellow-400" />
+                <ChevronRight className="w-5 h-5 text-gray-400" />
+              </div>
+            </button>
+          );
+        })()}
+
+        {/* Other Addictions */}
+        {otherAddictions.map((addiction) => {
+          const elapsed = getCountdown(addiction.startTime);
+          const daysClean = getDaysClean(addiction.startDate);
+          const money = calculateMoneySaved(addiction, daysClean);
+          const bestStreak = addiction.bestStreak || daysClean;
+
+          return (
+            <button
+              key={addiction.id}
+              onClick={() => setShowOtherDetail(addiction.id)}
+              className="w-full bg-[rgba(20,30,35,0.85)] rounded-xl p-4 border border-white/5 flex items-center gap-3 hover:bg-[rgba(20,30,35,1)] transition-colors"
+            >
+              {/* Icon */}
+              <div className="text-3xl flex-shrink-0">{getAddictionIcon(addiction)}</div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-semibold text-white mb-1">{addiction.name}</h3>
+                
+                {/* Best Streak */}
+                <p className="text-xs text-gray-400 mb-2">
+                  Best streak is {bestStreak} Day{bestStreak !== 1 ? 's' : ''}
+                </p>
+
+                {/* Countdown Display in 00:00:00:00 format */}
+                <div className="mb-2">
+                  <div className="text-2xl font-bold text-white font-mono tracking-wider">
+                    {formatCountdownTime(elapsed)}
+                  </div>
+                </div>
+
+                {/* Additional info based on type */}
+                <div className="flex items-center gap-2 mt-2">
+                  {addiction.type === "goon" && (
+                    <>
+                      <PiggyBank className="w-3.5 h-3.5 text-[#14f1d9]" />
+                      <span className="text-xs text-gray-400">Saved: {currencyInfo.symbol}{money.total.toFixed(2)}</span>
+                    </>
+                  )}
+                  {addiction.type === "vape" && (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#14f1d9]" />
+                      <span className="text-xs text-gray-400">Challenge: {daysClean + 1} Days</span>
+                    </>
+                  )}
+                  {addiction.type === "other" && (
+                    <>
+                      <Star className="w-3.5 h-3.5 text-[#14f1d9]" />
+                      <span className="text-xs text-gray-400">Current: {daysClean} Days</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Lightning bolt and arrow */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Zap className="w-5 h-5 text-yellow-400" />
+                <ChevronRight className="w-5 h-5 text-gray-400" />
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Total Saved Summary */}
+      {otherAddictions.length > 0 && totalSaved > 0 && (
+        <div className="mt-6 flex items-center gap-2 text-sm text-gray-400">
+          <PiggyBank className="w-4 h-4" />
+          <span>Total Saved So Far {currencyInfo.symbol}{totalSaved.toFixed(2)}</span>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {addictions.length === 0 && (
+        <div className="bg-[rgba(20,30,35,0.85)] rounded-xl p-8 border border-white/5 text-center">
+          <p className="text-gray-300 text-base mb-4">Start tracking your recovery journey</p>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold transition-colors"
+          >
+            Track Your First Addiction
+          </button>
+        </div>
+      )}
+
+      {/* ADD ADDICTION MODAL */}
         {showAddForm && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full border border-gray-800">
-              <h2 className="text-2xl font-bold text-white mb-6">Track New Addiction</h2>
+          <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10">
+            <h2 className="text-xl font-semibold mb-4">Track New Addiction</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-gray-300 mb-2">Addiction Type</label>
+                <label className="block text-sm font-medium mb-2">Addiction Type</label>
                   <select
                     value={newAddiction.type}
                     onChange={(e) =>
                       setNewAddiction({ ...newAddiction, type: e.target.value as any })
                     }
-                    className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 text-white p-3 rounded-lg text-sm"
                   >
                     <option value="phone">📱 Phone/Social Media</option>
                     <option value="vape">💨 Vape/Nicotine</option>
@@ -741,7 +815,7 @@ export default function AddictionsPage() {
                 </div>
                 {newAddiction.type === "phone" ? (
                   <div>
-                    <label className="block text-gray-300 mb-2">Total Daily Limit (minutes)</label>
+                  <label className="block text-sm font-medium mb-2">Total Daily Limit (minutes)</label>
                     <input
                       type="number"
                       value={newAddiction.dailyLimit}
@@ -749,47 +823,40 @@ export default function AddictionsPage() {
                         setNewAddiction({ ...newAddiction, dailyLimit: e.target.value })
                       }
                       placeholder="e.g., 120 (2 hours)"
-                      className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 text-white p-3 rounded-lg text-sm"
                     />
-                    <p className="text-sm text-gray-400 mt-2">
-                      You can set individual app limits after creating
-                    </p>
                   </div>
                 ) : newAddiction.type === "other" ? (
                   <div>
-                    <label className="block text-gray-300 mb-2">Name</label>
+                  <label className="block text-sm font-medium mb-2">Name</label>
                     <input
                       type="text"
                       value={newAddiction.name}
                       onChange={(e) => setNewAddiction({ ...newAddiction, name: e.target.value })}
-                      placeholder="e.g., Gambling, etc..."
-                      className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
+                    placeholder="e.g., Gambling"
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 text-white p-3 rounded-lg text-sm"
                     />
                   </div>
                 ) : null}
                 {(newAddiction.type === "vape" || newAddiction.type === "goon" || newAddiction.type === "other") && (
                   <div>
-                    <label className="block text-gray-300 mb-2">
-                      {newAddiction.type === "goon"
-                        ? `How much do you spend per week on alcohol? (${currencyInfo.symbol})`
-                        : newAddiction.type === "vape"
-                        ? `How much do you spend per week on vaping? (${currencyInfo.symbol})`
-                        : `How much do you spend per week on this addiction? (${currencyInfo.symbol})`}
+                  <label className="block text-sm font-medium mb-2">
+                    Weekly Spend ({currencyInfo.symbol})
                     </label>
                     <input
                       type="number"
                       value={newAddiction.weeklySpend}
                       onChange={(e) => setNewAddiction({ ...newAddiction, weeklySpend: e.target.value })}
                       placeholder="e.g., 150"
-                      className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 text-white p-3 rounded-lg text-sm"
                       min="0"
                     />
                   </div>
                 )}
-                <div className="flex gap-4 pt-4">
+              <div className="flex gap-3 pt-2">
                   <button
                     onClick={handleAddAddiction}
-                    className="flex-1 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
                   >
                     Start Tracking
                   </button>
@@ -798,7 +865,7 @@ export default function AddictionsPage() {
                       setShowAddForm(false);
                       setNewAddiction({ type: "phone", name: "", dailyLimit: "", weeklySpend: "" });
                     }}
-                    className="flex-1 bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  className="flex-1 bg-[rgba(20,30,35,0.85)] border border-white/10 hover:bg-[rgba(20,30,35,1)] text-white px-6 py-3 rounded-lg font-semibold transition-colors"
                   >
                     Cancel
                   </button>
@@ -808,212 +875,47 @@ export default function AddictionsPage() {
           </div>
         )}
 
-        {/* All Addictions - List Format */}
-        {(phoneAddictions.length > 0 || otherAddictions.length > 0) && (
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-white mb-3">Your Addictions</h2>
-            <div className="space-y-3">
-              {/* Phone Addiction Card */}
-              {phoneAddictions.length > 0 && (() => {
-          // Combine all phone addictions into one unified display
-          const earliestStartDate = phoneAddictions.reduce((earliest, addiction) => {
-            return new Date(addiction.startDate) < new Date(earliest) ? addiction.startDate : earliest;
-          }, phoneAddictions[0].startDate);
-          
-          const daysClean = getDaysClean(earliestStartDate);
-          const totalDailyLimit = phoneAddictions.reduce((sum, a) => sum + a.totalDailyLimit, 0);
-          const totalCurrentUsage = phoneAddictions.reduce((sum, a) => sum + a.totalCurrentUsage, 0);
-          const totalUsagePercent = totalDailyLimit > 0 ? (totalCurrentUsage / totalDailyLimit) * 100 : 0;
-          const isBlocked = phoneAddictions.some(a => a.blocked);
-          
-          // Combine all apps from all phone addictions
-          const allApps: Array<{ app: AppBlock; addictionId: string }> = [];
-          phoneAddictions.forEach(addiction => {
-            addiction.apps.forEach(app => {
-              allApps.push({ app, addictionId: addiction.id });
-            });
-          });
-
-                return (
-                  <div
-                    className={`bg-gray-900 rounded-xl p-4 border-2 text-left transition-all hover:border-orange-500/50 ${
-                      isBlocked
-                        ? "border-red-500/50"
-                        : totalUsagePercent >= 80
-                        ? "border-yellow-500/50"
-                        : "border-gray-800"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className="text-3xl">📱</div>
-                        <div>
-                          <h3 className="text-lg font-semibold text-white">Phone & Social Media</h3>
-                          <p className="text-xs text-gray-500">{daysClean} days tracking</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-800 rounded-lg p-2.5 border border-gray-700 mb-2.5">
-                      <div className="flex items-center justify-between text-xs text-gray-300 mb-1.5">
-                        <span>Today's usage</span>
-                        <span>{formatMinutes(totalCurrentUsage)} / {formatMinutes(totalDailyLimit)}</span>
-                      </div>
-                      <div className="space-y-1.5 max-h-28 overflow-y-auto pr-1">
-                        {allApps.length === 0 && (
-                          <p className="text-[10px] text-gray-500">No apps configured yet.</p>
-                        )}
-                        {allApps.map(({ app }) => {
-                          const remaining = Math.max(app.dailyLimit - app.currentUsage, 0);
-                          const percent =
-                            app.dailyLimit > 0
-                              ? Math.min((app.currentUsage / app.dailyLimit) * 100, 100)
-                              : 0;
-                          return (
-                            <div key={app.appName}>
-                              <div className="flex items-center justify-between text-[10px] text-gray-400 mb-0.5">
-                                <span className="font-medium text-white">{app.appName}</span>
-                                <span className={remaining === 0 ? "text-red-400" : "text-gray-300"}>
-                                  {remaining === 0 ? "Blocked" : `${formatMinutes(remaining)} left`}
-                                </span>
-                              </div>
-                              <div className="w-full bg-gray-700 rounded-full h-1">
-                                <div
-                                  className={`h-1 rounded-full ${
-                                    percent >= 100
-                                      ? "bg-red-600"
-                                      : percent >= 80
-                                      ? "bg-yellow-500"
-                                      : "bg-blue-500"
-                                  }`}
-                                  style={{ width: `${percent}%` }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div className="mt-2 flex flex-col gap-1.5 text-xs text-gray-400">
+      {/* APP SETTINGS MODAL */}
+      {showAppSettings && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Manage Apps</h2>
                       <button
-                        onClick={() => setShowPhoneDetail(true)}
-                        className="w-full bg-orange-500 hover:bg-orange-600 text-black px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-                      >
-                        View detailed analysis
+                onClick={() => {
+                  setShowAppSettings(null);
+                  setNewApp({ appName: "", dailyLimit: "" });
+                }}
+                className="text-white/40 hover:text-white"
+              >
+                <X className="w-5 h-5" />
                       </button>
-                      <p className="text-[10px] text-gray-500">
-                        Live usage updates when the phone sync bridge is connected.
-                      </p>
                     </div>
-                    {isBlocked && (
-                      <span className="inline-block mt-1.5 bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-semibold">
-                        BLOCKED
-                      </span>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* Other Addictions - List Format */}
-              {otherAddictions.map((addiction) => {
-                const elapsed = getCountdown(addiction.startTime);
-                const daysClean = getDaysClean(addiction.startDate);
-                const money = calculateMoneySaved(addiction, daysClean);
-
-                return (
-                  <button
-                    key={addiction.id}
-                    onClick={() => setShowOtherDetail(addiction.id)}
-                    className="bg-gray-900 rounded-xl p-4 border-2 border-gray-800 text-left transition-all hover:border-orange-500/50 w-full"
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="text-3xl">{getAddictionIcon(addiction)}</div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-white mb-1">{addiction.name}</h3>
-                        <p className="text-xs text-gray-400">{daysClean} days clean</p>
-                      </div>
-                    </div>
-                    
-                    {/* Live Countdown Timer */}
-                    <div className="bg-gray-800 rounded-lg p-3 mb-3">
-                      <div className="flex items-center justify-center gap-1.5 mb-1.5">
-                        <Clock className="w-3.5 h-3.5 text-orange-400" />
-                        <span className="text-xs text-gray-400 font-semibold">Time Clean</span>
-                      </div>
-                      <div className="grid grid-cols-4 gap-1.5 text-center">
-                        <div>
-                          <div className="text-lg font-bold text-white">{elapsed.days ?? 0}</div>
-                          <div className="text-[10px] text-gray-400">Days</div>
-                        </div>
-                        <div>
-                          <div className="text-lg font-bold text-white">{elapsed.hours ?? 0}</div>
-                          <div className="text-[10px] text-gray-400">Hours</div>
-                        </div>
-                        <div>
-                          <div className="text-lg font-bold text-white">{elapsed.minutes ?? 0}</div>
-                          <div className="text-[10px] text-gray-400">Mins</div>
-                        </div>
-                        <div>
-                          <div className="text-lg font-bold text-white">{elapsed.seconds ?? 0}</div>
-                          <div className="text-[10px] text-gray-400">Secs</div>
-                        </div>
-                      </div>
-                    </div>
-                    {money && (
-                      <div className="text-xs text-green-400 font-semibold text-center">
-                        Saved so far: {money.currency}
-                        {money.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {addictions.length === 0 && (
-          <div className="bg-gray-900 rounded-2xl p-12 border border-gray-800 text-center">
-            <p className="text-gray-300 text-lg mb-4">Start tracking your recovery journey</p>
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-lg font-semibold transition-colors"
-            >
-              Track Your First Addiction
-            </button>
-          </div>
-        )}
-
-        {/* App Settings Modal */}
-        {showAppSettings && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full border border-gray-800">
-              <h2 className="text-2xl font-bold text-white mb-6">Manage Apps</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-gray-300 mb-2">App Name</label>
+                <label className="block text-sm font-medium mb-2">App Name</label>
                   <input
                     type="text"
                     value={newApp.appName}
                     onChange={(e) => setNewApp({ ...newApp, appName: e.target.value })}
-                    placeholder="e.g., Instagram, TikTok, Twitter..."
-                    className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
+                  placeholder="e.g., Instagram, TikTok..."
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 text-white p-3 rounded-lg text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-300 mb-2">Daily Limit (minutes)</label>
+                <label className="block text-sm font-medium mb-2">Daily Limit (minutes)</label>
                   <input
                     type="number"
                     value={newApp.dailyLimit}
                     onChange={(e) => setNewApp({ ...newApp, dailyLimit: e.target.value })}
                     placeholder="e.g., 30"
-                    className="w-full bg-gray-800 text-white p-3 rounded-lg border border-gray-700"
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 text-white p-3 rounded-lg text-sm"
                   />
                 </div>
-                <div className="flex gap-4 pt-4">
+              <div className="flex gap-3 pt-2">
                   <button
                     onClick={() => handleAddApp(showAppSettings)}
-                    className="flex-1 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
                   >
                     Add App
                   </button>
@@ -1022,7 +924,7 @@ export default function AddictionsPage() {
                       setShowAppSettings(null);
                       setNewApp({ appName: "", dailyLimit: "" });
                     }}
-                    className="flex-1 bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  className="flex-1 bg-[rgba(20,30,35,0.85)] border border-white/10 hover:bg-[rgba(20,30,35,1)] text-white px-6 py-3 rounded-lg font-semibold transition-colors"
                   >
                     Done
                   </button>
@@ -1032,312 +934,161 @@ export default function AddictionsPage() {
           </div>
         )}
 
-        {/* Phone Detail Modal */}
+      {/* PHONE DETAIL MODAL */}
         {showPhoneDetail && phoneAddictions.length > 0 && (() => {
-          const earliestStartDate = phoneAddictions.reduce((earliest, addiction) => {
-            return new Date(addiction.startDate) < new Date(earliest) ? addiction.startDate : earliest;
-          }, phoneAddictions[0].startDate);
-          
-          const daysClean = getDaysClean(earliestStartDate);
-          const totalDailyLimit = phoneAddictions.reduce((sum, a) => sum + a.totalDailyLimit, 0);
-          const totalCurrentUsage = phoneAddictions.reduce((sum, a) => sum + a.totalCurrentUsage, 0);
-          const totalUsagePercent = totalDailyLimit > 0 ? (totalCurrentUsage / totalDailyLimit) * 100 : 0;
-          const isBlocked = phoneAddictions.some(a => a.blocked);
-          
-          const avgDailyUsage = totalCurrentUsage;
-          const projectedFreeTime = Math.max(totalDailyLimit - totalCurrentUsage, 0);
-          
-          const allApps: Array<{ app: AppBlock; addictionId: string }> = [];
-          phoneAddictions.forEach(addiction => {
-            addiction.apps.forEach(app => {
-              allApps.push({ app, addictionId: addiction.id });
-            });
-          });
+        const phoneAddiction = phoneAddictions[0];
+        const daysClean = getDaysClean(phoneAddiction.startDate);
+        const totalRemaining = Math.max(phoneAddiction.totalDailyLimit - phoneAddiction.totalCurrentUsage, 0);
 
           return (
             <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-              <div className="bg-gray-900 rounded-xl p-4 max-w-2xl w-full max-h-[95vh] border border-gray-800 overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                  <div>
-                    <h2 className="text-xl font-bold text-white">📱 Phone & Social Media</h2>
-                    <p className="text-xs text-gray-400">Live insights synced from your device</p>
-                  </div>
+            <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">Phone & Social Media</h2>
                   <button
                     onClick={() => setShowPhoneDetail(false)}
-                    className="text-gray-400 hover:text-white"
+                  className="text-white/40 hover:text-white"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-4 gap-2 mb-3 flex-shrink-0">
-                  <div className="bg-gray-800 rounded-lg p-2 border border-gray-700">
-                    <p className="text-[10px] text-gray-400 mb-0.5">Usage Today</p>
-                    <p className="text-base font-bold text-white">{formatMinutes(totalCurrentUsage)}</p>
-                    <p className="text-[9px] text-gray-500">of {formatMinutes(totalDailyLimit)}</p>
-                  </div>
-                  <div className="bg-gray-800 rounded-lg p-2 border border-gray-700">
-                    <p className="text-[10px] text-gray-400 mb-0.5">Remaining</p>
-                    <p className="text-base font-bold text-white">{formatMinutes(projectedFreeTime)}</p>
-                    <p className="text-[9px] text-gray-500">before block</p>
-                  </div>
-                  <div className="bg-gray-800 rounded-lg p-2 border border-gray-700">
-                    <p className="text-[10px] text-gray-400 mb-0.5">Apps</p>
-                    <p className="text-base font-bold text-white">{allApps.length}</p>
-                    <p className="text-[9px] text-gray-500">tracked</p>
-                  </div>
-                  <div className="bg-gray-800 rounded-lg p-2 border border-gray-700">
-                    <p className="text-[10px] text-gray-400 mb-0.5">Days</p>
-                    <p className="text-base font-bold text-white">{daysClean}</p>
-                    <p className="text-[9px] text-gray-500">streak</p>
-                  </div>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">Today's Usage</p>
+                  <p className="text-2xl font-bold">
+                    {formatMinutes(phoneAddiction.totalCurrentUsage)} / {formatMinutes(phoneAddiction.totalDailyLimit)}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {formatTimeUntilBlock(totalRemaining)} until block
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 flex-1 min-h-0 overflow-hidden">
-                  <div className="bg-gray-800 rounded-lg p-3 border border-gray-700 flex flex-col min-h-0">
-                    <div className="flex items-center justify-between mb-2 flex-shrink-0">
-                      <h3 className="text-sm font-semibold text-white">Tracked Apps</h3>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-semibold">Apps</p>
                       <button
                         onClick={() => {
                           setShowPhoneDetail(false);
-                          setShowAppSettings(phoneAddictions[0].id);
+                        setShowAppSettings(phoneAddiction.id);
                         }}
-                        className="px-2 py-1 text-[10px] rounded-lg bg-orange-500 text-black font-semibold"
+                      className="text-xs text-blue-400 hover:text-blue-300"
                       >
                         Manage
                       </button>
                     </div>
-                    {allApps.length === 0 ? (
-                      <p className="text-xs text-gray-400">No apps configured. Tap "Manage" to start tracking.</p>
+                  <div className="space-y-2">
+                    {phoneAddiction.apps.length === 0 ? (
+                      <p className="text-xs text-gray-400">No apps configured</p>
                     ) : (
-                      <div className="space-y-1.5 overflow-y-auto pr-1 flex-1">
-                        {allApps.map(({ app, addictionId }) => {
+                      phoneAddiction.apps.map((app) => {
                           const remaining = Math.max(app.dailyLimit - app.currentUsage, 0);
-                          const percent =
-                            app.dailyLimit > 0
+                        const percent = app.dailyLimit > 0 
                               ? Math.min((app.currentUsage / app.dailyLimit) * 100, 100)
                               : 0;
                           return (
-                            <div
-                              key={`${addictionId}-${app.appName}`}
-                              className="bg-gray-900 rounded-lg p-2 border border-gray-800"
-                            >
-                              <div className="flex items-center justify-between mb-0.5">
-                                <span className="text-white font-semibold text-xs">{app.appName}</span>
-                                <span className="text-[10px] text-gray-400">
+                          <div key={app.appName} className="bg-[rgba(20,30,35,0.6)] rounded-lg p-3 border border-white/5">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium">{app.appName}</span>
+                              <span className="text-xs text-gray-400">
                                   {formatMinutes(app.currentUsage)} / {formatMinutes(app.dailyLimit)}
                                 </span>
                               </div>
-                              <div className="flex items-center justify-between mb-0.5 text-[10px]">
-                                <span className={app.currentUsage >= app.dailyLimit ? "text-red-400 font-semibold" : "text-gray-400"}>
-                                  {app.currentUsage >= app.dailyLimit ? "🚫 Blocked" : `${formatMinutes(remaining)} left`}
-                                </span>
-                                {app.currentUsage >= app.dailyLimit && (
-                                  <span className="text-[9px] text-red-400 font-semibold">
-                                    Cannot unblock
-                                  </span>
-                                )}
-                              </div>
-                              <div className="w-full bg-gray-700 rounded-full h-1">
-                                <div
-                                  className={`h-1 rounded-full ${
-                                    percent >= 100
-                                      ? "bg-red-600"
-                                      : percent >= 80
-                                      ? "bg-yellow-500"
-                                      : "bg-blue-500"
+                            <div className="w-full bg-white/10 rounded-full h-2 mb-1">
+                              <div
+                                className={`h-2 rounded-full ${
+                                  percent >= 100 ? "bg-red-500" : percent >= 80 ? "bg-yellow-500" : "bg-[#14f1d9]"
                                   }`}
                                   style={{ width: `${percent}%` }}
                                 />
                               </div>
+                            <p className="text-xs text-gray-400">
+                              {formatTimeUntilBlock(remaining)}
+                            </p>
                             </div>
                           );
-                        })}
-                      </div>
+                      })
                     )}
                   </div>
-
-                  <div className="bg-gray-800 rounded-lg p-3 border border-gray-700 flex flex-col space-y-2 min-h-0">
-                    <h3 className="text-sm font-semibold text-white mb-1 flex-shrink-0">Focus Insights</h3>
-                    <div className="grid grid-cols-2 gap-2 flex-shrink-0">
-                      <div className="bg-gray-900 rounded-lg p-2 border border-gray-800">
-                        <p className="text-[10px] text-gray-400">Avg per day</p>
-                        <p className="text-base font-bold text-white">{formatMinutes(avgDailyUsage)}</p>
-                        <p className="text-[9px] text-gray-500">min/day</p>
-                      </div>
-                      <div className="bg-gray-900 rounded-lg p-2 border border-gray-800">
-                        <p className="text-[10px] text-gray-400">Free time</p>
-                        <p className="text-base font-bold text-white">{formatMinutes(projectedFreeTime)}</p>
-                        <p className="text-[9px] text-gray-500">earned</p>
-                      </div>
-                    </div>
-                    <div className="bg-gray-900 rounded-lg p-2 border border-gray-800 flex-shrink-0">
-                      <p className="text-[10px] text-gray-400 mb-1.5">Quick actions</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        <button
-                          onClick={() => {
-                            phoneAddictions.forEach(addiction => {
-                              updateAppUsage(addiction.id, "all", 5);
-                            });
-                          }}
-                          className="flex-1 bg-gray-800 hover:bg-gray-700 text-white px-2 py-1.5 rounded text-[10px] transition-colors"
-                        >
-                          +5 min
-                        </button>
-                        <button
-                          onClick={() => {
-                            setAddictions((prev) =>
-                              prev.map((a) => {
-                                if ("apps" in a) {
-                                  return {
-                                    ...a,
-                                    totalCurrentUsage: 0,
-                                    blocked: false,
-                                    apps: (a as PhoneAddiction).apps.map((app) => ({
-                                      ...app,
-                                      currentUsage: 0,
-                                      blocked: false,
-                                    })),
-                                  };
-                                }
-                                return a;
-                              })
-                            );
-                          }}
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white px-2 py-1.5 rounded text-[10px] transition-colors"
-                        >
-                          Reset day
-                        </button>
-                      </div>
-                    </div>
                   </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <Zap className="w-4 h-4 text-yellow-400" />
+                  <span className="text-sm text-gray-400">Streak: {daysClean} Days</span>
+                      </div>
                 </div>
               </div>
             </div>
           );
         })()}
 
-        {/* Other Addiction Detail Modal */}
+      {/* OTHER ADDICTION DETAIL MODAL */}
         {showOtherDetail && (() => {
           const addiction = otherAddictions.find(a => a.id === showOtherDetail);
           if (!addiction) return null;
           
           const elapsed = getCountdown(addiction.startTime);
           const daysClean = getDaysClean(addiction.startDate);
-          
+        const bestStreak = addiction.bestStreak || daysClean;
           const money = calculateMoneySaved(addiction, daysClean);
-          
-          // Calculate other stats
-          const hoursSaved = daysClean * 24;
-          const cigarettesAvoided = addiction.type === "vape" ? daysClean * 20 : 0; // Assuming 20 cigarettes/day
-          const drinksAvoided = addiction.type === "goon" ? daysClean * 6 : 0; // Assuming 6 drinks/day
 
           return (
-            <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
-              <div className="bg-gray-900 rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-800 my-8">
-                <div className="flex items-center justify-between mb-6">
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
                   <div>
-                    <div className="text-4xl mb-2">{getAddictionIcon(addiction)}</div>
-                    <h2 className="text-2xl font-bold text-white">{addiction.name}</h2>
+                  <div className="text-3xl mb-2">{getAddictionIcon(addiction)}</div>
+                  <h2 className="text-xl font-semibold">{addiction.name}</h2>
                   </div>
                   <button
                     onClick={() => setShowOtherDetail(null)}
-                    className="text-gray-400 hover:text-white"
+                  className="text-white/40 hover:text-white"
                   >
-                    <X className="w-6 h-6" />
+                  <X className="w-5 h-5" />
                   </button>
                 </div>
 
-                {/* Money Saved */}
-                <div className="bg-gray-800 rounded-xl p-6 mb-6">
-                  <h3 className="text-xl font-semibold text-white mb-4">💰 Money Saved</h3>
-                  <div className="text-center">
-                    <p className="text-5xl font-bold text-green-400 mb-2">
-                      {money.currency}
-                      {money.total.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </p>
-                    <p className="text-gray-400">Total saved in {daysClean} days</p>
-                    <p className="text-gray-500 text-sm mt-2">
-                      ~{money.currency}{money.daily.toLocaleString()} per day
-                    </p>
-                    {money.hourly !== undefined && (
-                      <p className="text-gray-500 text-xs mt-1">
-                        ~{money.currency}{money.hourly.toFixed(2)} per hour (updates every hour)
-                      </p>
-                    )}
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-400 mb-1">Best Streak</p>
+                  <p className="text-lg font-semibold text-white mb-3">
+                    {bestStreak} Day{bestStreak !== 1 ? 's' : ''}
+                  </p>
                   </div>
-                </div>
+                    <div>
+                  <p className="text-sm text-gray-400 mb-1">Time Clean</p>
+                  <div className="text-2xl font-bold text-white font-mono tracking-wider">
+                    {formatCountdownTime(elapsed)}
+                    </div>
+                    </div>
 
-                {/* Time Clean */}
-                <div className="bg-gray-800 rounded-xl p-6 mb-6">
-                  <h3 className="text-xl font-semibold text-white mb-4">⏱️ Time Clean</h3>
-                  <div className="grid grid-cols-4 gap-4 text-center">
+                {money && money.total > 0 && (
                     <div>
-                      <div className="text-3xl font-bold text-white">{elapsed.days ?? 0}</div>
-                      <div className="text-gray-400 text-sm">Days</div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <PiggyBank className="w-4 h-4 text-[#14f1d9]" />
+                      <p className="text-sm text-gray-400">Saved</p>
                     </div>
-                    <div>
-                      <div className="text-3xl font-bold text-white">{elapsed.hours ?? 0}</div>
-                      <div className="text-gray-400 text-sm">Hours</div>
-                    </div>
-                    <div>
-                      <div className="text-3xl font-bold text-white">{elapsed.minutes ?? 0}</div>
-                      <div className="text-gray-400 text-sm">Minutes</div>
-                    </div>
-                    <div>
-                      <div className="text-3xl font-bold text-white">{elapsed.seconds ?? 0}</div>
-                      <div className="text-gray-400 text-sm">Seconds</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Stats */}
-                <div className="bg-gray-800 rounded-xl p-6 mb-6">
-                  <h3 className="text-xl font-semibold text-white mb-4">📊 Additional Stats</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gray-900 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-white">{daysClean}</div>
-                      <div className="text-gray-400 text-sm">Days Clean</div>
-                    </div>
-                    <div className="bg-gray-900 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-white">{hoursSaved}</div>
-                      <div className="text-gray-400 text-sm">Hours Saved</div>
-                    </div>
-                    {cigarettesAvoided > 0 && (
-                      <div className="bg-gray-900 rounded-lg p-4 text-center">
-                        <div className="text-2xl font-bold text-white">{cigarettesAvoided.toLocaleString()}</div>
-                        <div className="text-gray-400 text-sm">Cigarettes Avoided</div>
+                    <p className="text-xl font-bold text-[#14f1d9]">
+                      {currencyInfo.symbol}{money.total.toFixed(2)}
+                    </p>
                       </div>
                     )}
-                    {drinksAvoided > 0 && (
-                      <div className="bg-gray-900 rounded-lg p-4 text-center">
-                        <div className="text-2xl font-bold text-white">{drinksAvoided.toLocaleString()}</div>
-                        <div className="text-gray-400 text-sm">Drinks Avoided</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
 
                 <button
                   onClick={() =>
                     setAddictions(addictions.filter((a) => a.id !== addiction.id))
                   }
-                  className="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg text-sm transition-colors"
                 >
                   Remove This Addiction
                 </button>
+              </div>
               </div>
             </div>
           );
         })()}
 
-      </div>
-      <div className="pb-20">
-        {/* Spacer for bottom navigation */}
-      </div>
       <BottomNav />
     </div>
   );
 }
-
-
