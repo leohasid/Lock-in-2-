@@ -597,13 +597,13 @@ export default function AddictionsPage() {
   }, [otherAddictions, currentTime, currencyInfo]);
 
   return (
-    <div className="min-h-screen bg-[#050607] text-white px-5 pt-6 pb-28">
+    <div className="min-h-screen bg-black text-white px-5 pt-6 pb-28">
       {/* HEADER */}
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Your Addictions</h1>
               <button
                 onClick={() => setShowAddForm(true)}
-          className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+          className="px-3 py-1.5 bg-teal-400 hover:bg-teal-500 text-black rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
               >
           <span className="text-sm">+</span>
           Track New
@@ -660,36 +660,65 @@ export default function AddictionsPage() {
                   </p>
         </div>
 
-                {/* App-specific progress bars */}
-                {phoneAddiction.apps.length > 0 && (
-                  <div className="space-y-1.5 mt-2">
-                    {phoneAddiction.apps.slice(0, 3).map((app) => {
-                      const remaining = Math.max(app.dailyLimit - app.currentUsage, 0);
-                      const percent = app.dailyLimit > 0 
-                        ? Math.min((app.currentUsage / app.dailyLimit) * 100, 100)
-                        : 0;
-                      return (
-                        <div key={app.appName} className="flex items-center gap-2">
-                          <span className="text-[10px] text-gray-400 w-16 truncate">{app.appName}</span>
-                          <div className="flex-1 bg-white/10 rounded-full h-1">
-                            <div
-                              className={`h-1 rounded-full ${
-                                percent >= 100 ? "bg-red-500" : percent >= 80 ? "bg-yellow-500" : "bg-[#14f1d9]"
-                              }`}
-                              style={{ width: `${percent}%` }}
-                            />
+                {/* App-specific progress bars - sorted by closest to being blocked */}
+                {phoneAddiction.apps.length > 0 && (() => {
+                  // Sort apps by remaining time (closest to block first)
+                  const sortedApps = [...phoneAddiction.apps].sort((a, b) => {
+                    const remainingA = Math.max(a.dailyLimit - a.currentUsage, 0);
+                    const remainingB = Math.max(b.dailyLimit - b.currentUsage, 0);
+                    return remainingA - remainingB; // Sort ascending (lowest remaining first)
+                  });
+
+                  return (
+                    <div className="space-y-1.5 mt-2">
+                      {sortedApps.slice(0, 3).map((app) => {
+                        const remaining = Math.max(app.dailyLimit - app.currentUsage, 0);
+                        const percent = app.dailyLimit > 0 
+                          ? Math.min((app.currentUsage / app.dailyLimit) * 100, 100)
+                          : 0;
+                        const isCloseToBlock = percent >= 80 && percent < 100;
+                        const isBlocked = percent >= 100;
+                        
+                        return (
+                          <div 
+                            key={app.appName} 
+                            className={`flex items-center gap-2 p-1.5 rounded ${
+                              isBlocked ? "bg-red-500/10 border border-red-500/20" :
+                              isCloseToBlock ? "bg-yellow-500/10 border border-yellow-500/20" :
+                              "bg-transparent"
+                            }`}
+                          >
+                            <span className={`text-[10px] w-16 truncate ${
+                              isBlocked ? "text-red-400 font-semibold" :
+                              isCloseToBlock ? "text-yellow-400 font-medium" :
+                              "text-gray-400"
+                            }`}>
+                              {app.appName}
+                            </span>
+                            <div className="flex-1 bg-white/10 rounded-full h-1">
+                              <div
+                                className={`h-1 rounded-full ${
+                                  percent >= 100 ? "bg-red-500" : percent >= 80 ? "bg-yellow-500" : "bg-[#14f1d9]"
+                                }`}
+                                style={{ width: `${percent}%` }}
+                              />
+                            </div>
+                            <span className={`text-[10px] w-16 text-right ${
+                              isBlocked ? "text-red-400 font-semibold" :
+                              isCloseToBlock ? "text-yellow-400 font-medium" :
+                              "text-gray-400"
+                            }`}>
+                              {formatTimeUntilBlock(remaining)}
+                            </span>
                           </div>
-                          <span className="text-[10px] text-gray-400 w-16 text-right">
-                            {formatTimeUntilBlock(remaining)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                    {phoneAddiction.apps.length > 3 && (
-                      <p className="text-[10px] text-gray-500">+{phoneAddiction.apps.length - 3} more apps</p>
-                    )}
-                  </div>
-                )}
+                        );
+                      })}
+                      {phoneAddiction.apps.length > 3 && (
+                        <p className="text-[10px] text-gray-500">+{phoneAddiction.apps.length - 3} more apps</p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="flex items-center gap-2 mt-2">
                   <Zap className="w-3.5 h-3.5 text-yellow-400" />
@@ -785,7 +814,7 @@ export default function AddictionsPage() {
           <p className="text-gray-300 text-base mb-4">Start tracking your recovery journey</p>
           <button
             onClick={() => setShowAddForm(true)}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold transition-colors"
+            className="bg-teal-400 hover:bg-teal-500 text-black px-6 py-2.5 rounded-lg font-semibold transition-colors"
           >
             Track Your First Addiction
           </button>
@@ -795,7 +824,7 @@ export default function AddictionsPage() {
       {/* ADD ADDICTION MODAL */}
         {showAddForm && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full border border-white/10">
             <h2 className="text-xl font-semibold mb-4">Track New Addiction</h2>
               <div className="space-y-4">
                 <div>
@@ -856,7 +885,7 @@ export default function AddictionsPage() {
               <div className="flex gap-3 pt-2">
                   <button
                     onClick={handleAddAddiction}
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  className="flex-1 bg-teal-400 hover:bg-teal-500 text-black px-6 py-3 rounded-lg font-semibold transition-colors"
                   >
                     Start Tracking
                   </button>
@@ -878,7 +907,7 @@ export default function AddictionsPage() {
       {/* APP SETTINGS MODAL */}
       {showAppSettings && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full border border-white/10">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Manage Apps</h2>
                       <button
@@ -915,7 +944,7 @@ export default function AddictionsPage() {
               <div className="flex gap-3 pt-2">
                   <button
                     onClick={() => handleAddApp(showAppSettings)}
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  className="flex-1 bg-teal-400 hover:bg-teal-500 text-black px-6 py-3 rounded-lg font-semibold transition-colors"
                   >
                     Add App
                   </button>
@@ -942,7 +971,7 @@ export default function AddictionsPage() {
 
           return (
             <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold">Phone & Social Media</h2>
                   <button
@@ -972,7 +1001,7 @@ export default function AddictionsPage() {
                           setShowPhoneDetail(false);
                         setShowAppSettings(phoneAddiction.id);
                         }}
-                      className="text-xs text-blue-400 hover:text-blue-300"
+                      className="text-xs text-teal-400 hover:text-teal-300"
                       >
                         Manage
                       </button>
@@ -980,17 +1009,44 @@ export default function AddictionsPage() {
                   <div className="space-y-2">
                     {phoneAddiction.apps.length === 0 ? (
                       <p className="text-xs text-gray-400">No apps configured</p>
-                    ) : (
-                      phoneAddiction.apps.map((app) => {
+                    ) : (() => {
+                      // Sort apps by remaining time (closest to block first)
+                      const sortedApps = [...phoneAddiction.apps].sort((a, b) => {
+                        const remainingA = Math.max(a.dailyLimit - a.currentUsage, 0);
+                        const remainingB = Math.max(b.dailyLimit - b.currentUsage, 0);
+                        return remainingA - remainingB; // Sort ascending (lowest remaining first)
+                      });
+
+                      return sortedApps.map((app) => {
                           const remaining = Math.max(app.dailyLimit - app.currentUsage, 0);
                         const percent = app.dailyLimit > 0 
                               ? Math.min((app.currentUsage / app.dailyLimit) * 100, 100)
                               : 0;
+                        const isCloseToBlock = percent >= 80 && percent < 100;
+                        const isBlocked = percent >= 100;
+                        
                           return (
-                          <div key={app.appName} className="bg-[rgba(20,30,35,0.6)] rounded-lg p-3 border border-white/5">
+                            <div
+                            key={app.appName} 
+                            className={`rounded-lg p-3 border ${
+                              isBlocked ? "bg-red-500/10 border-red-500/30" :
+                              isCloseToBlock ? "bg-yellow-500/10 border-yellow-500/30" :
+                              "bg-[rgba(20,30,35,0.6)] border-white/5"
+                            }`}
+                          >
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm font-medium">{app.appName}</span>
-                              <span className="text-xs text-gray-400">
+                              <span className={`text-sm font-medium ${
+                                isBlocked ? "text-red-400" :
+                                isCloseToBlock ? "text-yellow-400" :
+                                "text-white"
+                              }`}>
+                                {app.appName}
+                              </span>
+                              <span className={`text-xs ${
+                                isBlocked ? "text-red-400" :
+                                isCloseToBlock ? "text-yellow-400" :
+                                "text-gray-400"
+                              }`}>
                                   {formatMinutes(app.currentUsage)} / {formatMinutes(app.dailyLimit)}
                                 </span>
                               </div>
@@ -1002,14 +1058,18 @@ export default function AddictionsPage() {
                                   style={{ width: `${percent}%` }}
                                 />
                               </div>
-                            <p className="text-xs text-gray-400">
+                            <p className={`text-xs ${
+                              isBlocked ? "text-red-400 font-semibold" :
+                              isCloseToBlock ? "text-yellow-400 font-medium" :
+                              "text-gray-400"
+                            }`}>
                               {formatTimeUntilBlock(remaining)}
                             </p>
                             </div>
                           );
-                      })
-                    )}
-                  </div>
+                      });
+                    })()}
+                      </div>
                   </div>
 
                 <div className="flex items-center gap-2 pt-2">
@@ -1034,7 +1094,7 @@ export default function AddictionsPage() {
 
           return (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-[#141e23] rounded-2xl p-6 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                   <div>
                   <div className="text-3xl mb-2">{getAddictionIcon(addiction)}</div>

@@ -373,7 +373,7 @@ export default function NutritionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050607] text-white px-4 pt-4 pb-28">
+    <div className="min-h-screen bg-black text-white px-4 pt-4 pb-28">
       {/* HEADER */}
       <div className="mb-4 flex items-start justify-between">
         <div>
@@ -485,7 +485,7 @@ export default function NutritionPage() {
       {/* ADD MEAL MODAL */}
       {showAddMeal && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#141e23] rounded-2xl p-5 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-5 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Add Meal</h2>
                     <button
@@ -593,7 +593,7 @@ export default function NutritionPage() {
       {/* SCAN INTRO MODAL */}
       {showScanIntro && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#141e23] rounded-2xl p-5 max-w-md w-full border border-white/10">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-5 max-w-md w-full border border-white/10">
             <h2 className="text-lg font-semibold mb-2">Confirm Food</h2>
             <p className="text-sm text-[#9aa7ad] mb-4">
               Let me know what food you're about to scan so I can label it correctly.
@@ -632,7 +632,7 @@ export default function NutritionPage() {
       {/* SCAN OPTIONS MODAL */}
       {showScanOptions && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#141e23] rounded-2xl p-5 max-w-md w-full border border-white/10">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-5 max-w-md w-full border border-white/10">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Scan Food</h2>
               <button
@@ -703,7 +703,7 @@ export default function NutritionPage() {
       {/* AI ESTIMATE MODAL */}
       {isAnalyzing && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-[#141e23] rounded-2xl p-6 border border-white/10">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 border border-white/10">
             <p className="text-lg font-semibold mb-2">Analyzing food...</p>
             <p className="text-sm text-[#9aa7ad]">Please wait</p>
         </div>
@@ -713,7 +713,7 @@ export default function NutritionPage() {
       {/* AI CONSULTATION MODAL */}
       {showAIConsultation && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#141e23] rounded-2xl p-5 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-5 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 text-[#14f1d9]" />
@@ -768,7 +768,7 @@ export default function NutritionPage() {
       {/* MACRO SETTINGS MODAL */}
       {showMacroSettings && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#141e23] rounded-2xl p-5 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-5 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Edit Macro Goals</h2>
               <button

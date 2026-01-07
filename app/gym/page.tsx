@@ -631,7 +631,7 @@ export default function GymPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white px-4 pt-5 pb-28">
       <div className="container mx-auto px-4 py-4">
         {/* Missed Workout Alert */}
         {showMissedWorkoutAlert && missedWorkoutDate && (
@@ -645,13 +645,13 @@ export default function GymPage() {
               <div className="flex gap-2">
                 <button
                   onClick={handleSkipMissedWorkout}
-                  className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                  className="bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
                 >
                   Skip for Now
                 </button>
                 <button
                   onClick={handleReschedulePlan}
-                  className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                  className="bg-teal-400 hover:bg-teal-500 text-black px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
                 >
                   Reschedule & Adjust Plan
                 </button>
@@ -675,7 +675,7 @@ export default function GymPage() {
             onClick={() => setActiveExerciseId(null)}
           >
             <div
-              className="bg-gray-900 rounded-2xl p-6 w-full max-w-xl border border-gray-800 max-h-[90vh] overflow-y-auto"
+              className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 w-full max-w-xl border border-white/10 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
@@ -701,7 +701,7 @@ export default function GymPage() {
                   <div
                     key={i}
                     className={`flex items-center gap-3 p-3 rounded-lg border text-sm ${
-                      s.completed ? "border-green-600 bg-gray-800" : "border-gray-700 bg-gray-900"
+                      s.completed ? "border-green-600 bg-[rgba(20,30,35,0.85)]" : "border-white/10 bg-gradient-to-b from-[#0c1422] to-black"
                     }`}
                   >
                     <span className="text-gray-400 w-6 text-xs">Set {i + 1}</span>
@@ -711,7 +711,7 @@ export default function GymPage() {
                       onChange={(e) =>
                         updateSet(activeExercise.id, i, { reps: Number(e.target.value) || 0 })
                       }
-                      className="w-16 bg-black border border-gray-700 rounded px-2 py-1 text-right text-xs"
+                      className="w-16 bg-black border border-white/10 rounded px-2 py-1 text-right text-xs"
                     />
                     <span className="text-gray-500 text-xs">reps</span>
                     <input
@@ -720,7 +720,7 @@ export default function GymPage() {
                       onChange={(e) =>
                         updateSet(activeExercise.id, i, { weight: Number(e.target.value) || 0 })
                       }
-                      className="w-20 bg-black border border-gray-700 rounded px-2 py-1 text-right text-xs"
+                      className="w-20 bg-black border border-white/10 rounded px-2 py-1 text-right text-xs"
                     />
                     <span className="text-gray-400 text-xs">kg</span>
                     <button
@@ -730,7 +730,7 @@ export default function GymPage() {
                       className={`ml-auto px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
                         s.completed
                           ? "bg-green-600 text-white"
-                          : "bg-gray-700 text-gray-200 hover:bg-gray-600"
+                          : "bg-[rgba(20,30,35,1)] text-gray-200 hover:bg-gray-600"
                       }`}
                     >
                       {s.completed ? "Done" : "Mark"}
@@ -744,7 +744,7 @@ export default function GymPage() {
                   saveExercise(activeExercise.id);
                   setActiveExerciseId(null);
                 }}
-                className="w-full mt-4 bg-orange-500 text-black px-4 py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-semibold hover:bg-orange-600 transition-colors"
+                className="w-full mt-4 bg-teal-400 text-black px-4 py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-semibold hover:bg-teal-500 transition-colors"
               >
                 <Save className="w-4 h-4" />
                 Save Exercise
@@ -771,10 +771,10 @@ export default function GymPage() {
                   onClick={() => setSelectedDate(day)}
                   className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-lg text-xs font-medium transition-all min-w-[3.5rem] ${
                     isSelected
-                      ? "bg-gradient-to-br from-orange-500 to-orange-600 text-black shadow-lg scale-105"
+                      ? "bg-gradient-to-br from-teal-400 to-teal-500 text-black shadow-lg scale-105"
                       : isToday
-                      ? "bg-gray-800 text-white border-2 border-orange-500/50"
-                      : "bg-gray-900 text-gray-300 hover:bg-gray-800 border border-gray-700"
+                      ? "bg-[rgba(20,30,35,0.85)] text-white border-2 border-teal-400/50"
+                      : "bg-gradient-to-b from-[#0c1422] to-black text-gray-300 hover:bg-[rgba(20,30,35,0.85)] border border-white/10"
                   }`}
                 >
                   <span className="text-[9px] uppercase tracking-wide opacity-70 mb-0.5">{dayName}</span>
@@ -788,10 +788,10 @@ export default function GymPage() {
 
         {/* Header */}
         <header className="mb-4">
-          <div className="bg-gradient-to-r from-orange-500/20 to-orange-600/20 border border-orange-500/30 rounded-xl p-4 mb-3">
+          <div className="bg-gradient-to-r from-teal-400/20 to-teal-500/20 border border-teal-400/30 rounded-xl p-4 mb-3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2.5">
-                <div className="bg-orange-500 text-black rounded-lg p-2 shadow-lg">
+                <div className="bg-teal-400 text-black rounded-lg p-2 shadow-lg">
                   <Dumbbell className="w-5 h-5" />
                 </div>
                 <div>
@@ -803,22 +803,22 @@ export default function GymPage() {
               </div>
             </div>
             {currentDayWorkoutName !== "Rest Day" && (
-              <div className="flex items-center gap-3 pt-2 border-t border-orange-500/20">
+              <div className="flex items-center gap-3 pt-2 border-t border-teal-400/20">
                 <div className="flex-1">
                   <p className="text-[10px] text-gray-400 mb-0.5">Progress</p>
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                    <div className="flex-1 bg-[rgba(20,30,35,0.85)] rounded-full h-1.5 overflow-hidden">
                       <div 
-                        className="bg-gradient-to-r from-orange-500 to-orange-600 h-full transition-all duration-300 rounded-full"
+                        className="bg-gradient-to-r from-teal-400 to-teal-500 h-full transition-all duration-300 rounded-full"
                         style={{ width: `${totals.progress}%` }}
                       />
                     </div>
-                    <span className="text-orange-400 font-bold text-xs min-w-[2.5rem] text-right">{totals.progress}%</span>
+                    <span className="text-teal-400 font-bold text-xs min-w-[2.5rem] text-right">{totals.progress}%</span>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] text-gray-400 mb-0.5">Volume</p>
-                  <p className="text-orange-400 font-bold text-base">{totals.totalVolume} kg</p>
+                  <p className="text-teal-400 font-bold text-base">{totals.totalVolume} kg</p>
                 </div>
               </div>
             )}
@@ -827,13 +827,13 @@ export default function GymPage() {
 
         {/* Workout Cards - Grid Layout */}
         {currentDayWorkoutName === "Rest Day" ? (
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-8 border border-gray-700 text-center mb-4 shadow-xl">
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-8 border border-white/10 text-center mb-4 shadow-xl">
             <div className="text-5xl mb-3">😴</div>
             <p className="text-xl font-bold text-gray-300 mb-1">Rest Day</p>
             <p className="text-gray-400 text-sm">Take a break and recover!</p>
           </div>
         ) : currentDayExercises.length === 0 ? (
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-8 border border-gray-700 text-center mb-4 shadow-xl">
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-8 border border-white/10 text-center mb-4 shadow-xl">
             <div className="text-5xl mb-3">💪</div>
             <p className="text-lg font-bold text-gray-300 mb-1">No exercises for {currentDayWorkoutName}</p>
             <p className="text-gray-400 text-xs">Add your own workout plan or get an AI consultation to get started!</p>
@@ -854,7 +854,7 @@ export default function GymPage() {
                   className={`bg-gradient-to-br ${
                     isComplete 
                       ? "from-green-900/30 to-green-800/20 border-green-600/50" 
-                      : "from-gray-900 to-gray-800 border-gray-700"
+                      : "from-gray-900 to-gray-800 border-white/10"
                   } border rounded-lg p-3 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl shadow-lg`}
                   onClick={() => setActiveExerciseId(ex.id)}
                 >
@@ -876,16 +876,16 @@ export default function GymPage() {
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-gray-400">Progress</span>
-                      <span className={`text-xs font-bold ${isComplete ? "text-green-400" : "text-orange-400"}`}>
+                      <span className={`text-xs font-bold ${isComplete ? "text-green-400" : "text-teal-400"}`}>
                         {completedSets}/{totalSets}
                       </span>
                     </div>
-                    <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                    <div className="w-full bg-[rgba(20,30,35,0.85)] rounded-full h-1.5 overflow-hidden">
                       <div 
                         className={`h-full transition-all duration-300 rounded-full ${
                           isComplete 
                             ? "bg-gradient-to-r from-green-500 to-green-600" 
-                            : "bg-gradient-to-r from-orange-500 to-orange-600"
+                            : "bg-gradient-to-r from-teal-400 to-teal-500"
                         }`}
                         style={{ width: `${progressPercent}%` }}
                       />
@@ -924,7 +924,7 @@ export default function GymPage() {
               });
               setShowCustomWorkoutModal(true);
             }}
-            className="flex-1 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white px-4 py-3 rounded-xl font-semibold transition-all text-sm shadow-lg hover:shadow-xl"
+            className="flex-1 bg-gradient-to-b from-[#0c1422] to-black hover:bg-[rgba(20,30,35,0.85)] border border-white/10 text-white px-4 py-3 rounded-xl font-semibold transition-all text-sm shadow-lg hover:shadow-xl"
           >
             {workoutPlan.pushDay.length > 0 || workoutPlan.pullDay.length > 0 || workoutPlan.legsDay.length > 0
               ? "Edit Workout Plan"
@@ -934,39 +934,39 @@ export default function GymPage() {
             onClick={() => {
               router.push("/consultation");
             }}
-            className="flex-1 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-black px-4 py-3 rounded-xl font-semibold transition-all text-sm shadow-lg hover:shadow-xl"
+            className="flex-1 bg-gradient-to-r from-teal-400 to-teal-500 hover:from-teal-500 hover:to-teal-600 text-black px-4 py-3 rounded-xl font-semibold transition-all text-sm shadow-lg hover:shadow-xl"
           >
             AI Consultation & Evaluation
           </button>
         </div>
 
         {/* Strength Progress Section */}
-        <section className="mt-8 bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-6 mb-6 shadow-xl">
+        <section className="mt-8 bg-gradient-to-br from-gray-900 to-gray-800 border border-white/10 rounded-2xl p-6 mb-6 shadow-xl">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-xl font-bold text-white">Strength Progress Overview</h2>
-            <TrendingUp className="w-5 h-5 text-orange-400" />
+            <TrendingUp className="w-5 h-5 text-teal-400" />
           </div>
           <div className="grid grid-cols-2 gap-4 mb-5">
-            <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-              <p className="text-2xl font-bold text-orange-400 mb-1">+12%</p>
+            <div className="bg-[rgba(20,30,35,0.85)]/50 rounded-xl p-4 border border-white/10">
+              <p className="text-2xl font-bold text-teal-400 mb-1">+12%</p>
               <p className="text-xs text-gray-400">Total Volume</p>
             </div>
-            <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-              <p className="text-2xl font-bold text-orange-400 mb-1">+5 kg</p>
+            <div className="bg-[rgba(20,30,35,0.85)]/50 rounded-xl p-4 border border-white/10">
+              <p className="text-2xl font-bold text-teal-400 mb-1">+5 kg</p>
               <p className="text-xs text-gray-400">Bench Press PB</p>
             </div>
-            <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-              <p className="text-2xl font-bold text-orange-400 mb-1">+8%</p>
+            <div className="bg-[rgba(20,30,35,0.85)]/50 rounded-xl p-4 border border-white/10">
+              <p className="text-2xl font-bold text-teal-400 mb-1">+8%</p>
               <p className="text-xs text-gray-400">Avg Set Volume</p>
             </div>
-            <div className="bg-gray-800/50 rounded-xl p-4 border border-gray-700">
-              <p className="text-2xl font-bold text-orange-400 mb-1">7 days</p>
+            <div className="bg-[rgba(20,30,35,0.85)]/50 rounded-xl p-4 border border-white/10">
+              <p className="text-2xl font-bold text-teal-400 mb-1">7 days</p>
               <p className="text-xs text-gray-400">Active Streak</p>
             </div>
           </div>
           <Link
             href="/gym/stats"
-            className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-black px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-semibold transition-all shadow-lg hover:shadow-xl"
+            className="w-full bg-gradient-to-r from-teal-400 to-teal-500 hover:from-teal-500 hover:to-teal-600 text-black px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-semibold transition-all shadow-lg hover:shadow-xl"
           >
             <TrendingUp className="w-5 h-5" />
             View All Stats & Charts
@@ -976,7 +976,7 @@ export default function GymPage() {
         {/* Custom Workout Plan Modal */}
         {showCustomWorkoutModal && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-800">
+            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-white/10">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-white">
                   {workoutPlan.pushDay.length > 0 || workoutPlan.pullDay.length > 0 || workoutPlan.legsDay.length > 0
@@ -1000,11 +1000,11 @@ export default function GymPage() {
 
               <div className="space-y-6 mb-6">
                 {/* Push Day Section */}
-                <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                  <h3 className="text-xl font-bold text-orange-400 mb-4">💪 Push Day</h3>
+                <div className="bg-[rgba(20,30,35,0.85)] rounded-lg p-4 border border-white/10">
+                  <h3 className="text-xl font-bold text-teal-400 mb-4">💪 Push Day</h3>
                   <div className="space-y-3">
                     {customWorkoutPlan.pushDay.length === 0 ? (
-                      <div className="bg-gray-900 rounded-lg p-4 border border-gray-700 text-center">
+                      <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-lg p-4 border border-white/10 text-center">
                         <p className="text-gray-400 text-sm mb-3">No exercises added yet</p>
                         <button
                           type="button"
@@ -1014,7 +1014,7 @@ export default function GymPage() {
                               pushDay: [{ name: "", sets: 3, reps: 10 }],
                             });
                           }}
-                          className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center justify-center gap-1 mx-auto"
+                          className="bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center justify-center gap-1 mx-auto"
                         >
                           <Plus className="w-4 h-4" />
                           Add Exercise
@@ -1022,7 +1022,7 @@ export default function GymPage() {
                       </div>
                     ) : (
                       customWorkoutPlan.pushDay.map((exercise, index) => (
-                      <div key={index} className="bg-gray-900 rounded-lg p-3 border border-gray-700">
+                      <div key={index} className="bg-gradient-to-b from-[#0c1422] to-black rounded-lg p-3 border border-white/10">
                         <div className="flex items-center justify-end mb-2">
                           <button
                             type="button"
@@ -1051,7 +1051,7 @@ export default function GymPage() {
                               setCustomWorkoutPlan({ ...customWorkoutPlan, pushDay: updated });
                             }}
                             placeholder="Exercise name"
-                            className="col-span-3 bg-black text-white p-2 rounded border border-gray-700 focus:outline-none focus:border-orange-500 text-sm"
+                            className="col-span-3 bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
                           />
                           <div>
                             <label className="block text-gray-400 mb-1 text-xs">Sets</label>
@@ -1064,7 +1064,7 @@ export default function GymPage() {
                                 setCustomWorkoutPlan({ ...customWorkoutPlan, pushDay: updated });
                               }}
                               min="1"
-                              className="w-full bg-black text-white p-2 rounded border border-gray-700 focus:outline-none focus:border-orange-500 text-sm"
+                              className="w-full bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
                             />
                           </div>
                           <div>
@@ -1078,7 +1078,7 @@ export default function GymPage() {
                                 setCustomWorkoutPlan({ ...customWorkoutPlan, pushDay: updated });
                               }}
                               min="1"
-                              className="w-full bg-black text-white p-2 rounded border border-gray-700 focus:outline-none focus:border-orange-500 text-sm"
+                              className="w-full bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
                             />
                           </div>
                           <div className="flex items-end">
@@ -1097,7 +1097,7 @@ export default function GymPage() {
                             pushDay: [...customWorkoutPlan.pushDay, { name: "", sets: 3, reps: 10 }],
                           });
                         }}
-                        className="w-full bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center justify-center gap-1"
+                        className="w-full bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center justify-center gap-1"
                       >
                         <Plus className="w-4 h-4" />
                         Add Exercise
@@ -1107,11 +1107,11 @@ export default function GymPage() {
                 </div>
 
                 {/* Pull Day Section */}
-                <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div className="bg-[rgba(20,30,35,0.85)] rounded-lg p-4 border border-white/10">
                   <h3 className="text-xl font-bold text-blue-400 mb-4">🏋️ Pull Day</h3>
                   <div className="space-y-3">
                     {customWorkoutPlan.pullDay.length === 0 ? (
-                      <div className="bg-gray-900 rounded-lg p-4 border border-gray-700 text-center">
+                      <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-lg p-4 border border-white/10 text-center">
                         <p className="text-gray-400 text-sm mb-3">No exercises added yet</p>
                         <button
                           type="button"
@@ -1121,7 +1121,7 @@ export default function GymPage() {
                               pullDay: [{ name: "", sets: 3, reps: 10 }],
                             });
                           }}
-                          className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center justify-center gap-1 mx-auto"
+                          className="bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center justify-center gap-1 mx-auto"
                         >
                           <Plus className="w-4 h-4" />
                           Add Exercise
@@ -1129,7 +1129,7 @@ export default function GymPage() {
                       </div>
                     ) : (
                       customWorkoutPlan.pullDay.map((exercise, index) => (
-                      <div key={index} className="bg-gray-900 rounded-lg p-3 border border-gray-700">
+                      <div key={index} className="bg-gradient-to-b from-[#0c1422] to-black rounded-lg p-3 border border-white/10">
                         <div className="flex items-center justify-end mb-2">
                           <button
                             type="button"
@@ -1158,7 +1158,7 @@ export default function GymPage() {
                               setCustomWorkoutPlan({ ...customWorkoutPlan, pullDay: updated });
                             }}
                             placeholder="Exercise name"
-                            className="col-span-3 bg-black text-white p-2 rounded border border-gray-700 focus:outline-none focus:border-orange-500 text-sm"
+                            className="col-span-3 bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
                           />
                           <div>
                             <label className="block text-gray-400 mb-1 text-xs">Sets</label>
@@ -1171,7 +1171,7 @@ export default function GymPage() {
                                 setCustomWorkoutPlan({ ...customWorkoutPlan, pullDay: updated });
                               }}
                               min="1"
-                              className="w-full bg-black text-white p-2 rounded border border-gray-700 focus:outline-none focus:border-orange-500 text-sm"
+                              className="w-full bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
                             />
                           </div>
                           <div>
@@ -1185,7 +1185,7 @@ export default function GymPage() {
                                 setCustomWorkoutPlan({ ...customWorkoutPlan, pullDay: updated });
                               }}
                               min="1"
-                              className="w-full bg-black text-white p-2 rounded border border-gray-700 focus:outline-none focus:border-orange-500 text-sm"
+                              className="w-full bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
                             />
                           </div>
                           <div className="flex items-end">
@@ -1204,7 +1204,7 @@ export default function GymPage() {
                             pullDay: [...customWorkoutPlan.pullDay, { name: "", sets: 3, reps: 10 }],
                           });
                         }}
-                        className="w-full bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center justify-center gap-1"
+                        className="w-full bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center justify-center gap-1"
                       >
                         <Plus className="w-4 h-4" />
                         Add Exercise
@@ -1214,11 +1214,11 @@ export default function GymPage() {
                 </div>
 
                 {/* Legs Day Section */}
-                <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <div className="bg-[rgba(20,30,35,0.85)] rounded-lg p-4 border border-white/10">
                   <h3 className="text-xl font-bold text-green-400 mb-4">🦵 Legs Day</h3>
                   <div className="space-y-3">
                     {customWorkoutPlan.legsDay.length === 0 ? (
-                      <div className="bg-gray-900 rounded-lg p-4 border border-gray-700 text-center">
+                      <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-lg p-4 border border-white/10 text-center">
                         <p className="text-gray-400 text-sm mb-3">No exercises added yet</p>
                         <button
                           type="button"
@@ -1228,7 +1228,7 @@ export default function GymPage() {
                               legsDay: [{ name: "", sets: 3, reps: 10 }],
                             });
                           }}
-                          className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center justify-center gap-1 mx-auto"
+                          className="bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center justify-center gap-1 mx-auto"
                         >
                           <Plus className="w-4 h-4" />
                           Add Exercise
@@ -1236,7 +1236,7 @@ export default function GymPage() {
                       </div>
                     ) : (
                       customWorkoutPlan.legsDay.map((exercise, index) => (
-                      <div key={index} className="bg-gray-900 rounded-lg p-3 border border-gray-700">
+                      <div key={index} className="bg-gradient-to-b from-[#0c1422] to-black rounded-lg p-3 border border-white/10">
                         <div className="flex items-center justify-end mb-2">
                           <button
                             type="button"
@@ -1265,7 +1265,7 @@ export default function GymPage() {
                               setCustomWorkoutPlan({ ...customWorkoutPlan, legsDay: updated });
                             }}
                             placeholder="Exercise name"
-                            className="col-span-3 bg-black text-white p-2 rounded border border-gray-700 focus:outline-none focus:border-orange-500 text-sm"
+                            className="col-span-3 bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
                           />
                           <div>
                             <label className="block text-gray-400 mb-1 text-xs">Sets</label>
@@ -1278,7 +1278,7 @@ export default function GymPage() {
                                 setCustomWorkoutPlan({ ...customWorkoutPlan, legsDay: updated });
                               }}
                               min="1"
-                              className="w-full bg-black text-white p-2 rounded border border-gray-700 focus:outline-none focus:border-orange-500 text-sm"
+                              className="w-full bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
                             />
                           </div>
                           <div>
@@ -1292,7 +1292,7 @@ export default function GymPage() {
                                 setCustomWorkoutPlan({ ...customWorkoutPlan, legsDay: updated });
                               }}
                               min="1"
-                              className="w-full bg-black text-white p-2 rounded border border-gray-700 focus:outline-none focus:border-orange-500 text-sm"
+                              className="w-full bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
                             />
                           </div>
                           <div className="flex items-end">
@@ -1311,7 +1311,7 @@ export default function GymPage() {
                             legsDay: [...customWorkoutPlan.legsDay, { name: "", sets: 3, reps: 10 }],
                           });
                         }}
-                        className="w-full bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center justify-center gap-1"
+                        className="w-full bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-4 py-2 rounded text-sm font-semibold transition-colors flex items-center justify-center gap-1"
                       >
                         <Plus className="w-4 h-4" />
                         Add Exercise
@@ -1331,7 +1331,7 @@ export default function GymPage() {
                       legsDay: [{ name: "", sets: 3, reps: 10 }],
                     });
                   }}
-                  className="flex-1 bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  className="flex-1 bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-6 py-3 rounded-lg font-semibold transition-colors"
                 >
                   Cancel
                 </button>
@@ -1372,7 +1372,7 @@ export default function GymPage() {
                       legsDay: [{ name: "", sets: 3, reps: 10 }],
                     });
                   }}
-                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-black px-6 py-3 rounded-lg font-semibold transition-colors"
+                  className="flex-1 bg-teal-400 hover:bg-teal-500 text-black px-6 py-3 rounded-lg font-semibold transition-colors"
                 >
                   Save Workout Plan
                 </button>

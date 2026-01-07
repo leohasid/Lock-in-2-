@@ -308,7 +308,7 @@ export default function CalendarPage() {
   const weekDayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white px-4 pt-5 pb-28">
       <div className="container mx-auto px-4 py-4">
         {/* Header */}
         <div className="mb-4">
@@ -317,13 +317,13 @@ export default function CalendarPage() {
             <div className="flex gap-2">
               <button
                 onClick={() => setShowAddForm(true)}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="bg-teal-400 hover:bg-teal-500 text-black px-3 py-2 rounded-lg text-sm font-medium transition-colors"
               >
                 + Add Reminder
               </button>
               <button
                 onClick={() => setShowAIGenerator(true)}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
+                className="bg-teal-400 hover:bg-teal-500 text-black px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
               >
                 <Sparkles className="w-4 h-4" />
                 AI Schedule
@@ -333,12 +333,12 @@ export default function CalendarPage() {
         </div>
 
         {/* View Tabs */}
-        <div className="flex gap-2 mb-4 border-b border-gray-800">
+        <div className="flex gap-2 mb-4 border-b border-white/10">
           <button
             onClick={() => setActiveView("calendar")}
             className={`px-4 py-2 font-semibold transition-colors ${
               activeView === "calendar"
-                ? "text-orange-400 border-b-2 border-orange-400"
+                ? "text-teal-400 border-b-2 border-teal-400"
                 : "text-gray-400 hover:text-white"
             }`}
           >
@@ -348,7 +348,7 @@ export default function CalendarPage() {
             onClick={() => setActiveView("routine")}
             className={`px-4 py-2 font-semibold transition-colors ${
               activeView === "routine"
-                ? "text-orange-400 border-b-2 border-orange-400"
+                ? "text-teal-400 border-b-2 border-teal-400"
                 : "text-gray-400 hover:text-white"
             }`}
           >
@@ -359,7 +359,7 @@ export default function CalendarPage() {
         {/* Date Click Modal - Shows Reminders for Selected Date */}
         {showDateModal && clickedDate && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto border border-gray-800">
+            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto border border-white/10">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-white">
                   {clickedDate.toLocaleDateString("en-US", { 
@@ -393,7 +393,7 @@ export default function CalendarPage() {
                       setShowDateModal(false);
                       setClickedDate(null);
                     }}
-                    className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                    className="bg-teal-400 hover:bg-teal-500 text-black px-6 py-3 rounded-lg font-semibold transition-colors"
                   >
                     Add Reminder
                   </button>
@@ -405,7 +405,7 @@ export default function CalendarPage() {
                     .map((reminder) => (
                       <div
                         key={reminder.id}
-                        className={`bg-gray-800 rounded-lg p-4 flex items-center justify-between ${
+                        className={`bg-[rgba(20,30,35,0.85)] rounded-lg p-4 flex items-center justify-between ${
                           reminder.completed ? "opacity-50" : ""
                         }`}
                       >
@@ -432,7 +432,7 @@ export default function CalendarPage() {
                             onClick={() => toggleComplete(reminder.id)}
                             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
                               reminder.completed
-                                ? "bg-gray-700 text-gray-300"
+                                ? "bg-[rgba(20,30,35,1)] text-gray-300"
                                 : "bg-green-600 hover:bg-green-700 text-white"
                             }`}
                           >
@@ -462,7 +462,7 @@ export default function CalendarPage() {
                     setShowDateModal(false);
                     setClickedDate(null);
                   }}
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  className="w-full bg-teal-400 hover:bg-teal-500 text-black px-6 py-3 rounded-lg font-semibold transition-colors"
                 >
                   + Add Another Reminder
                 </button>
@@ -474,7 +474,7 @@ export default function CalendarPage() {
         {/* Add Reminder Modal */}
         {showAddForm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
               <h2 className="text-2xl font-bold text-white mb-6">Add Reminder</h2>
               <div className="space-y-4">
                 <div>
@@ -484,7 +484,7 @@ export default function CalendarPage() {
                     value={newReminder.title}
                     onChange={(e) => setNewReminder({ ...newReminder, title: e.target.value })}
                     placeholder="e.g., Take Vitamin D, Drink Water..."
-                    className="w-full bg-gray-800 text-white p-3 rounded-lg"
+                    className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
                   />
                 </div>
                 <div>
@@ -494,7 +494,7 @@ export default function CalendarPage() {
                     onChange={(e) =>
                       setNewReminder({ ...newReminder, type: e.target.value as Reminder["type"] })
                     }
-                    className="w-full bg-gray-800 text-white p-3 rounded-lg"
+                    className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
                   >
                     <option value="supplement">💊 Supplement</option>
                     <option value="task">✅ Task</option>
@@ -507,7 +507,7 @@ export default function CalendarPage() {
                     type="time"
                     value={newReminder.time}
                     onChange={(e) => setNewReminder({ ...newReminder, time: e.target.value })}
-                    className="w-full bg-gray-800 text-white p-3 rounded-lg"
+                    className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
                   />
                 </div>
                 <div>
@@ -516,7 +516,7 @@ export default function CalendarPage() {
                     type="date"
                     value={newReminder.date}
                     onChange={(e) => setNewReminder({ ...newReminder, date: e.target.value })}
-                    className="w-full bg-gray-800 text-white p-3 rounded-lg"
+                    className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
                     min={new Date().toISOString().split("T")[0]}
                   />
                 </div>
@@ -527,7 +527,7 @@ export default function CalendarPage() {
                     value={newReminder.repeatFrequency}
                     onChange={(e) => setNewReminder({ ...newReminder, repeatFrequency: e.target.value })}
                     placeholder="e.g., daily, weekly, every 3 days, 2 weeks"
-                    className="w-full bg-gray-800 text-white p-3 rounded-lg"
+                    className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
                   />
                   <p className="text-xs text-gray-400 mt-1">
                     Examples: "daily", "weekly", "every 3 days", "2 weeks", or leave empty for one-time reminder
@@ -536,7 +536,7 @@ export default function CalendarPage() {
                 <div className="flex gap-4 pt-4">
                   <button
                     onClick={handleAddReminder}
-                    className="flex-1 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                    className="flex-1 bg-teal-400 hover:bg-teal-500 text-black px-6 py-3 rounded-lg font-semibold transition-colors"
                   >
                     Add Reminder
                   </button>
@@ -553,7 +553,7 @@ export default function CalendarPage() {
                         repeatFrequency: "",
                       });
                     }}
-                    className="flex-1 bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                    className="flex-1 bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-6 py-3 rounded-lg font-semibold transition-colors"
                   >
                     Cancel
                   </button>
@@ -567,13 +567,13 @@ export default function CalendarPage() {
         {activeView === "routine" && (
           <div className="mb-4">
             {/* Week Navigation */}
-            <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 mb-4">
+            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-xl p-4 border border-white/10 mb-4">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-white">Weekly Routine</h2>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => navigateWeek("prev")}
-                    className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1 rounded-lg text-sm"
+                    className="bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-3 py-1 rounded-lg text-sm"
                   >
                     ←
                   </button>
@@ -582,13 +582,13 @@ export default function CalendarPage() {
                   </span>
                   <button
                     onClick={() => navigateWeek("next")}
-                    className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1 rounded-lg text-sm"
+                    className="bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-3 py-1 rounded-lg text-sm"
                   >
                     →
                   </button>
                   <button
                     onClick={() => setSelectedWeek(new Date())}
-                    className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded-lg text-sm font-medium"
+                    className="bg-teal-400 hover:bg-teal-500 text-black px-3 py-1 rounded-lg text-sm font-medium"
                   >
                     Today
                   </button>
@@ -624,7 +624,7 @@ export default function CalendarPage() {
                         >
                           {/* Day label */}
                           <div className={`text-xs font-semibold p-2 rounded flex flex-col justify-center ${
-                            isTodaySlot ? "bg-orange-500/20 text-orange-400" : "text-gray-300 bg-gray-800/50"
+                            isTodaySlot ? "bg-teal-400/20 text-teal-400" : "text-gray-300 bg-[rgba(20,30,35,0.85)]/50"
                           }`}>
                             <div className="font-bold">{dayName}</div>
                             <div className="text-[10px] mt-0.5 opacity-75">{day.getDate()}</div>
@@ -637,8 +637,8 @@ export default function CalendarPage() {
                                 key={time}
                                 className={`min-h-[70px] p-1.5 rounded border ${
                                   isTodaySlot
-                                    ? "bg-orange-500/5 border-orange-500/20"
-                                    : "bg-gray-800/50 border-gray-700/50"
+                                    ? "bg-teal-400/5 border-teal-400/20"
+                                    : "bg-[rgba(20,30,35,0.85)]/50 border-white/10/50"
                                 }`}
                               >
                                 {slotReminders.length === 0 ? (
@@ -664,7 +664,7 @@ export default function CalendarPage() {
                                             ? "bg-blue-500/30 border border-blue-500/50 text-blue-200"
                                             : reminder.type === "task"
                                             ? "bg-green-500/30 border border-green-500/50 text-green-200"
-                                            : "bg-purple-500/30 border border-purple-500/50 text-purple-200"
+                                            : "bg-teal-400/30 border border-teal-400/50 text-teal-200"
                                         }`}
                                         title={`${reminder.title} at ${reminder.time}`}
                                       >
@@ -698,7 +698,7 @@ export default function CalendarPage() {
         {activeView === "calendar" && (
           <>
         {/* Today's Reminders */}
-        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 mb-4">
+        <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-xl p-4 border border-white/10 mb-4">
           <h2 className="text-lg font-semibold text-white mb-3">
             Today's Reminders ({getTodayReminders().length})
           </h2>
@@ -711,7 +711,7 @@ export default function CalendarPage() {
                 .map((reminder) => (
                   <div
                     key={reminder.id}
-                    className={`bg-gray-800 rounded-lg p-4 flex items-center justify-between ${
+                    className={`bg-[rgba(20,30,35,0.85)] rounded-lg p-4 flex items-center justify-between ${
                       reminder.completed ? "opacity-50" : ""
                     }`}
                   >
@@ -738,7 +738,7 @@ export default function CalendarPage() {
                         onClick={() => toggleComplete(reminder.id)}
                         className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
                           reminder.completed
-                            ? "bg-gray-800 text-gray-300"
+                            ? "bg-[rgba(20,30,35,0.85)] text-gray-300"
                             : "bg-green-600 hover:bg-green-700 text-white"
                         }`}
                       >
@@ -762,19 +762,19 @@ export default function CalendarPage() {
         <div className="mb-4 grid grid-cols-3 gap-2">
           <button
             onClick={() => router.push("/calendar/all-reminders")}
-            className="bg-gray-900 rounded-xl p-3 border border-gray-800 hover:border-orange-500/50 transition-all text-left cursor-pointer"
+            className="bg-gradient-to-b from-[#0c1422] to-black rounded-xl p-3 border border-white/10 hover:border-teal-400/50 transition-all text-left cursor-pointer"
           >
             <div className="text-xl font-bold text-white mb-1">{reminders.length}</div>
             <div className="text-xs text-gray-400">Total</div>
-            <div className="text-orange-400 text-[10px] mt-1">View all →</div>
+            <div className="text-teal-400 text-[10px] mt-1">View all →</div>
           </button>
-          <div className="bg-gray-900 rounded-xl p-3 border border-gray-800">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-xl p-3 border border-white/10">
             <div className="text-xl font-bold text-white mb-1">
               {reminders.filter((r) => r.completed).length}
             </div>
             <div className="text-xs text-gray-400">Completed</div>
           </div>
-          <div className="bg-gray-900 rounded-xl p-3 border border-gray-800">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-xl p-3 border border-white/10">
             <div className="text-xl font-bold text-white mb-1">
               {Math.round(
                 (reminders.filter((r) => r.completed).length / Math.max(getTodayReminders().length, 1)) * 100
@@ -785,13 +785,13 @@ export default function CalendarPage() {
         </div>
 
         {/* Calendar */}
-        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 mb-4">
+        <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-xl p-4 border border-white/10 mb-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold text-white">Calendar</h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigateMonth("prev")}
-                className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1 rounded-lg text-sm"
+                className="bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-3 py-1 rounded-lg text-sm"
               >
                 ←
               </button>
@@ -800,7 +800,7 @@ export default function CalendarPage() {
               </span>
               <button
                 onClick={() => navigateMonth("next")}
-                className="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1 rounded-lg text-sm"
+                className="bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-3 py-1 rounded-lg text-sm"
               >
                 →
               </button>
@@ -833,16 +833,16 @@ export default function CalendarPage() {
                   onClick={() => handleDateClick(date)}
                   className={`aspect-square rounded-lg text-xs font-medium transition-colors ${
                     isSelected
-                      ? "bg-orange-500 text-black"
+                      ? "bg-teal-400 text-black"
                       : isCurrentDay
-                      ? "bg-gray-800 text-white border-2 border-orange-500"
-                      : "bg-gray-800 text-white hover:bg-gray-700"
+                      ? "bg-[rgba(20,30,35,0.85)] text-white border-2 border-teal-400"
+                      : "bg-[rgba(20,30,35,0.85)] text-white hover:bg-[rgba(20,30,35,1)]"
                   }`}
                 >
                   <div className="flex flex-col items-center justify-center h-full">
                     <span>{date.getDate()}</span>
                     {hasReminder && (
-                      <div className="w-1 h-1 rounded-full bg-orange-400 mt-0.5" />
+                      <div className="w-1 h-1 rounded-full bg-teal-400 mt-0.5" />
                     )}
                   </div>
                 </button>
@@ -853,7 +853,7 @@ export default function CalendarPage() {
 
         {/* Selected Date Reminders - Shows below calendar when date is clicked */}
         {activeView === "calendar" && !isSameDay(selectedDate, new Date()) && (
-          <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 mb-4">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-xl p-4 border border-white/10 mb-4">
             <h2 className="text-lg font-semibold text-white mb-3">
               {selectedDate.toLocaleDateString("en-US", { 
                 weekday: "long", 
@@ -867,7 +867,7 @@ export default function CalendarPage() {
                 <p className="text-gray-400 text-lg mb-4">No reminders for this date!</p>
                 <button
                   onClick={() => setShowAddForm(true)}
-                  className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  className="bg-teal-400 hover:bg-teal-500 text-black px-6 py-3 rounded-lg font-semibold transition-colors"
                 >
                   Add Reminder
                 </button>
@@ -879,7 +879,7 @@ export default function CalendarPage() {
                   .map((reminder) => (
                     <div
                       key={reminder.id}
-                      className={`bg-gray-800 rounded-lg p-4 flex items-center justify-between ${
+                      className={`bg-[rgba(20,30,35,0.85)] rounded-lg p-4 flex items-center justify-between ${
                         reminder.completed ? "opacity-50" : ""
                       }`}
                     >
@@ -906,7 +906,7 @@ export default function CalendarPage() {
                           onClick={() => toggleComplete(reminder.id)}
                           className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
                             reminder.completed
-                              ? "bg-gray-800 text-gray-300"
+                              ? "bg-[rgba(20,30,35,0.85)] text-gray-300"
                               : "bg-green-600 hover:bg-green-700 text-white"
                           }`}
                         >
@@ -932,10 +932,10 @@ export default function CalendarPage() {
         {/* AI Schedule Generator Modal */}
         {showAIGenerator && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto border border-gray-800">
+            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto border border-white/10">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                  <Sparkles className="w-6 h-6 text-purple-400" />
+                  <Sparkles className="w-6 h-6 text-teal-400" />
                   AI Schedule Generator
                 </h2>
                 <button
@@ -962,7 +962,7 @@ export default function CalendarPage() {
                       value={aiPreferences}
                       onChange={(e) => setAiPreferences(e.target.value)}
                       placeholder="e.g., I want to workout 4 times a week, take vitamins daily at 8am, meal prep on Sundays, meditate every morning, drink water every 2 hours..."
-                      className="w-full bg-gray-800 text-white p-3 rounded-lg min-h-[120px] resize-none"
+                      className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg min-h-[120px] resize-none"
                     />
                     <p className="text-xs text-gray-400 mt-1">
                       Be specific about times, frequencies, and activities you want included
@@ -1020,15 +1020,15 @@ export default function CalendarPage() {
                       }
                     }}
                     disabled={isGenerating}
-                    className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                    className="w-full bg-teal-400 hover:bg-teal-500 disabled:bg-[rgba(20,30,35,1)] disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-semibold transition-colors"
                   >
                     {isGenerating ? "Generating Schedule..." : "Generate Monthly Schedule"}
                   </button>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
-                    <p className="text-purple-300 text-sm font-semibold mb-1">
+                  <div className="bg-teal-400/10 border border-teal-400/30 rounded-lg p-4">
+                    <p className="text-teal-300 text-sm font-semibold mb-1">
                       ✨ Generated {generatedReminders.length} reminders for {monthNames[selectedDate.getMonth()]} {selectedDate.getFullYear()}
                     </p>
                     <p className="text-gray-400 text-xs">
@@ -1039,7 +1039,7 @@ export default function CalendarPage() {
                     {generatedReminders.slice(0, 20).map((reminder, index) => (
                       <div
                         key={reminder.id}
-                        className="bg-gray-800 rounded-lg p-3 flex items-center gap-3"
+                        className="bg-[rgba(20,30,35,0.85)] rounded-lg p-3 flex items-center gap-3"
                       >
                         <div className="text-xl">{getReminderIcon(reminder.type)}</div>
                         <div className="flex-1 min-w-0">
@@ -1083,7 +1083,7 @@ export default function CalendarPage() {
                         setShowGeneratedPreview(false);
                         setGeneratedReminders([]);
                       }}
-                      className="flex-1 bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                      className="flex-1 bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-6 py-3 rounded-lg font-semibold transition-colors"
                     >
                       Regenerate
                     </button>
