@@ -12,6 +12,9 @@ interface Meal {
   protein: number;
   carbs: number;
   fats: number;
+  sugar: number;
+  sodium: number;
+  fiber: number;
   time: string;
   imageUrl?: string;
 }
@@ -45,6 +48,9 @@ export default function NutritionPage() {
     protein: "",
     carbs: "",
     fats: "",
+    sugar: "",
+    sodium: "",
+    fiber: "",
   });
 
   const [dailyGoals, setDailyGoals] = useState({
@@ -52,6 +58,9 @@ export default function NutritionPage() {
     protein: 150,
     carbs: 250,
     fats: 65,
+    sugar: 50,
+    sodium: 2300,
+    fiber: 30,
   });
 
   const [showMacroSettings, setShowMacroSettings] = useState(false);
@@ -60,6 +69,9 @@ export default function NutritionPage() {
     protein: 150,
     carbs: 250,
     fats: 65,
+    sugar: 50,
+    sodium: 2300,
+    fiber: 30,
   });
 
   const [isLoaded, setIsLoaded] = useState(false);
@@ -105,6 +117,9 @@ export default function NutritionPage() {
               protein: plan.macros.protein || 150,
               carbs: plan.macros.carbs || 250,
               fats: plan.macros.fats || 65,
+              sugar: 50,
+              sodium: 2300,
+              fiber: 30,
             };
             setDailyGoals(goals);
             setMacroSettings(goals);
@@ -144,11 +159,14 @@ export default function NutritionPage() {
     return meals.reduce(
     (acc, meal) => ({
       calories: acc.calories + meal.calories,
-      protein: acc.protein + meal.protein,
-      carbs: acc.carbs + meal.carbs,
-      fats: acc.fats + meal.fats,
+      protein: acc.protein + (meal.protein || 0),
+      carbs: acc.carbs + (meal.carbs || 0),
+      fats: acc.fats + (meal.fats || 0),
+      sugar: acc.sugar + (meal.sugar || 0),
+      sodium: acc.sodium + (meal.sodium || 0),
+      fiber: acc.fiber + (meal.fiber || 0),
     }),
-    { calories: 0, protein: 0, carbs: 0, fats: 0 }
+    { calories: 0, protein: 0, carbs: 0, fats: 0, sugar: 0, sodium: 0, fiber: 0 }
   );
   }, [meals]);
 
@@ -163,6 +181,15 @@ export default function NutritionPage() {
     : 0;
   const fatsPercentage = dailyGoals.fats > 0 
     ? Math.min(Math.round((totals.fats / dailyGoals.fats) * 100), 100) 
+    : 0;
+  const sugarPercentage = dailyGoals.sugar > 0 
+    ? Math.min(Math.round((totals.sugar / dailyGoals.sugar) * 100), 100) 
+    : 0;
+  const sodiumPercentage = dailyGoals.sodium > 0 
+    ? Math.min(Math.round((totals.sodium / dailyGoals.sodium) * 100), 100) 
+    : 0;
+  const fiberPercentage = dailyGoals.fiber > 0 
+    ? Math.min(Math.round((totals.fiber / dailyGoals.fiber) * 100), 100) 
     : 0;
 
   const handleDeleteMeal = (mealId: string) => {
@@ -306,6 +333,9 @@ export default function NutritionPage() {
         protein: aiEstimate.protein.toString(),
         carbs: aiEstimate.carbs.toString(),
         fats: aiEstimate.fats.toString(),
+        sugar: "",
+        sodium: "",
+        fiber: "",
       });
       setCapturedImage(null);
       setAiEstimate(null);
@@ -324,11 +354,14 @@ export default function NutritionPage() {
           protein: parseInt(newMeal.protein) || 0,
           carbs: parseInt(newMeal.carbs) || 0,
           fats: parseInt(newMeal.fats) || 0,
+          sugar: parseInt(newMeal.sugar) || 0,
+          sodium: parseInt(newMeal.sodium) || 0,
+          fiber: parseInt(newMeal.fiber) || 0,
           time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
           imageUrl: capturedImage || undefined,
         },
       ]);
-      setNewMeal({ name: "", calories: "", protein: "", carbs: "", fats: "" });
+      setNewMeal({ name: "", calories: "", protein: "", carbs: "", fats: "", sugar: "", sodium: "", fiber: "" });
       setShowAddMeal(false);
       setCapturedImage(null);
       setAiEstimate(null);
@@ -373,99 +406,162 @@ export default function NutritionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white px-4 pt-4 pb-28">
+    <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-4 pt-4 pb-28">
       {/* HEADER */}
-      <div className="mb-4 flex items-start justify-between">
+      <div className="mb-5 flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Calories</h1>
-          <p className="text-xs text-[#9aa7ad]">Today • AI tracked</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent">
+            Nutrition
+          </h1>
+          <p className="text-xs text-gray-400 mt-1">Track your macros & fuel your goals</p>
         </div>
-            <div className="flex items-center gap-2">
-              <button
+        <div className="flex items-center gap-2">
+          <button
             onClick={() => setShowAIConsultation(true)}
-            className="px-3 py-1.5 bg-[rgba(20,30,35,0.85)] border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-xl text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 flex items-center gap-1.5 shadow-lg"
           >
-            <MessageSquare className="w-3.5 h-3.5" />
+            <MessageSquare className="w-3.5 h-3.5 text-teal-400" />
             AI Coach
-              </button>
-              <button
+          </button>
+          <button
             onClick={() => setShowAddMeal(true)}
-            className="px-3 py-1.5 bg-[#14f1d9] text-black rounded-lg text-xs font-medium hover:bg-[#0ddfc8] transition-colors flex items-center gap-1.5"
-              >
-                <Camera className="w-3.5 h-3.5" />
+            className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-xl text-xs font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 flex items-center gap-1.5"
+          >
+            <Camera className="w-3.5 h-3.5" />
             Add/Scan
-              </button>
-            </div>
+          </button>
+        </div>
       </div>
 
-      {/* CALORIES CIRCLE + MACROS - Compact horizontal layout */}
-      <div className="mb-4 flex items-center gap-4">
-        {/* Small Calories Circle - Top Left */}
-        <div className="flex-shrink-0">
-          <div className="w-24 h-24 rounded-full border-[6px] border-[#0ddfc8]/20 flex items-center justify-center">
-            <div className="w-20 h-20 rounded-full border-[6px] border-[#14f1d9] flex items-center justify-center">
-              <div className="text-center">
-                <p className="text-lg font-bold leading-none">{totals.calories.toLocaleString()}</p>
-                <p className="text-[9px] text-[#9aa7ad] mt-0.5">/{dailyGoals.calories.toLocaleString()}</p>
-                <p className="text-[8px] text-[#14f1d9] mt-0.5">{caloriesPercentage}%</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Macros Progress Bars - Next to circle */}
-        <div className="flex-1 space-y-2">
+      {/* CALORIES CIRCLE + MACROS - No box, on hard background */}
+      <div className="mb-5 flex items-center gap-6">
+        {/* Left Macros - 3 macros */}
+        <div className="flex-1 space-y-3">
           {[
-            { label: "P", value: totals.protein, target: dailyGoals.protein, percent: proteinPercentage },
-            { label: "C", value: totals.carbs, target: dailyGoals.carbs, percent: carbsPercentage },
-            { label: "F", value: totals.fats, target: dailyGoals.fats, percent: fatsPercentage },
+            { label: "Protein", value: totals.protein, target: dailyGoals.protein, percent: proteinPercentage, color: "from-blue-400 to-cyan-500", unit: "g" },
+            { label: "Carbs", value: totals.carbs, target: dailyGoals.carbs, percent: carbsPercentage, color: "from-purple-400 to-pink-500", unit: "g" },
+            { label: "Fats", value: totals.fats, target: dailyGoals.fats, percent: fatsPercentage, color: "from-yellow-400 to-orange-500", unit: "g" },
           ].map((m) => (
-            <div key={m.label} className="flex items-center gap-2">
-              <span className="text-[10px] text-[#9aa7ad] w-3">{m.label}</span>
-              <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+            <div key={m.label} className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-300">{m.label}</span>
+                <span className="text-xs text-gray-400">{m.value}/{m.target}{m.unit}</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-white/10 overflow-hidden shadow-inner">
                 <div
-                  className="h-full bg-[#14f1d9]"
+                  className={`h-2.5 rounded-full bg-gradient-to-r ${m.color} transition-all duration-500 shadow-lg`}
                   style={{ width: `${m.percent}%` }}
                 />
-                </div>
-              <span className="text-[9px] text-[#9aa7ad] w-12 text-right">
-                {m.value}/{m.target}g
-              </span>
               </div>
+            </div>
           ))}
+        </div>
+
+        {/* Calories Circle - Center - Much Bigger */}
+        <div className="flex-shrink-0 relative">
+          <div className="w-40 h-40 rounded-full border-4 border-teal-500/30 flex items-center justify-center bg-gradient-to-br from-teal-900/20 to-cyan-900/20 shadow-lg">
+            <div className="w-36 h-36 rounded-full border-4 border-transparent flex items-center justify-center relative">
+              <svg className="w-36 h-36 transform -rotate-90 absolute inset-0">
+                <circle
+                  cx="72"
+                  cy="72"
+                  r="66"
+                  fill="none"
+                  stroke="rgba(20, 241, 217, 0.2)"
+                  strokeWidth="8"
+                />
+                <circle
+                  cx="72"
+                  cy="72"
+                  r="66"
+                  fill="none"
+                  stroke="url(#caloriesGradient)"
+                  strokeWidth="8"
+                  strokeDasharray={2 * Math.PI * 66}
+                  strokeDashoffset={2 * Math.PI * 66 - (2 * Math.PI * 66 * caloriesPercentage) / 100}
+                  strokeLinecap="round"
+                  className="transition-all duration-500"
+                />
+                <defs>
+                  <linearGradient id="caloriesGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#14f1d9" />
+                    <stop offset="100%" stopColor="#0ddfc8" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div className="text-center z-10">
+                <p className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent leading-none">
+                  {totals.calories.toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">/{dailyGoals.calories.toLocaleString()}</p>
+                <p className="text-sm font-bold text-teal-400 mt-1.5">{caloriesPercentage}%</p>
+              </div>
             </div>
           </div>
-
-      {/* MEALS BOX - Compact */}
-      <div className="mb-4 bg-[rgba(20,30,35,0.85)] rounded-xl p-3 border border-white/5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold">Today's Meals</h2>
-                <button
-            onClick={() => setShowMacroSettings(true)}
-            className="text-[10px] text-[#9aa7ad] hover:text-[#14f1d9] transition-colors"
-                >
-            Edit Goals
-                </button>
         </div>
-        <div className="space-y-2 max-h-[200px] overflow-y-auto">
-          {meals.length > 0 ? (
-            meals.map((meal) => (
-              <div
-                key={meal.id}
-                className="flex justify-between items-start bg-[rgba(10,15,20,0.6)] rounded-lg p-2.5 border border-white/5"
-              >
+
+        {/* Right Macros - 3 macros */}
+        <div className="flex-1 space-y-3">
+          {[
+            { label: "Sugar", value: totals.sugar, target: dailyGoals.sugar, percent: sugarPercentage, color: "from-pink-400 to-rose-500", unit: "g" },
+            { label: "Sodium", value: totals.sodium, target: dailyGoals.sodium, percent: sodiumPercentage, color: "from-indigo-400 to-purple-500", unit: "mg" },
+            { label: "Fiber", value: totals.fiber, target: dailyGoals.fiber, percent: fiberPercentage, color: "from-green-400 to-emerald-500", unit: "g" },
+          ].map((m) => (
+            <div key={m.label} className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-300">{m.label}</span>
+                <span className="text-xs text-gray-400">{m.value}/{m.target}{m.unit}</span>
+              </div>
+              <div className="h-2.5 rounded-full bg-white/10 overflow-hidden shadow-inner">
+                <div
+                  className={`h-2.5 rounded-full bg-gradient-to-r ${m.color} transition-all duration-500 shadow-lg`}
+                  style={{ width: `${m.percent}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* MEALS BOX - Fun design */}
+      <div className="mb-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Today's Meals</h2>
+            <button
+              onClick={() => setShowMacroSettings(true)}
+              className="text-[10px] text-teal-400 hover:text-teal-300 transition-colors font-medium"
+            >
+              Edit Goals
+            </button>
+          </div>
+          <div className="space-y-2 max-h-[200px] overflow-y-auto">
+            {meals.length > 0 ? (
+              meals.map((meal) => (
+                <div
+                  key={meal.id}
+                  className="flex justify-between items-start bg-gradient-to-br from-[rgba(10,15,20,0.8)] to-[rgba(5,10,15,0.8)] rounded-xl p-3 border border-teal-500/20 hover:border-teal-400/40 transition-all hover:shadow-lg hover:shadow-teal-500/10"
+                >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <p className="font-medium text-sm truncate">{meal.name}</p>
                     <span className="text-[10px] text-[#9aa7ad]">{meal.time}</span>
               </div>
-                  <div className="flex items-center gap-2 text-[10px] text-[#9aa7ad]">
-                    <span className="font-semibold text-white">{meal.calories} kcal</span>
-                    <span>•</span>
-                    <span>P{meal.protein}g</span>
-                    <span>C{meal.carbs}g</span>
-                    <span>F{meal.fats}g</span>
-            </div>
+                          <div className="flex items-center gap-2 text-[10px] text-[#9aa7ad] flex-wrap">
+                            <span className="font-semibold text-white">{meal.calories} kcal</span>
+                            <span>•</span>
+                            <span>Protein: {meal.protein || 0}g</span>
+                            <span>Carbs: {meal.carbs || 0}g</span>
+                            <span>Fats: {meal.fats || 0}g</span>
+                            {(meal.sugar || meal.sodium || meal.fiber) && (
+                              <>
+                                {meal.sugar > 0 && <span>Sugar: {meal.sugar}g</span>}
+                                {meal.sodium > 0 && <span>Sodium: {meal.sodium}mg</span>}
+                                {meal.fiber > 0 && <span>Fiber: {meal.fiber}g</span>}
+                              </>
+                            )}
+                          </div>
           </div>
               <button
                   onClick={() => handleDeleteMeal(meal.id)}
@@ -476,11 +572,15 @@ export default function NutritionPage() {
             </div>
             ))
           ) : (
-            <p className="text-xs text-[#9aa7ad] text-center py-3">No meals logged today</p>
-          )}
+            <div className="text-center py-6">
+              <div className="text-4xl mb-2 animate-bounce">🍽️</div>
+              <p className="text-sm text-gray-400">No meals logged today</p>
+              <p className="text-xs text-gray-500 mt-1">Start tracking your nutrition!</p>
             </div>
+          )}
           </div>
-
+        </div>
+      </div>
 
       {/* ADD MEAL MODAL */}
       {showAddMeal && (
@@ -491,7 +591,7 @@ export default function NutritionPage() {
                     <button
                       onClick={() => {
                   setShowAddMeal(false);
-                  setNewMeal({ name: "", calories: "", protein: "", carbs: "", fats: "" });
+                  setNewMeal({ name: "", calories: "", protein: "", carbs: "", fats: "", sugar: "", sodium: "", fiber: "" });
                         setCapturedImage(null);
                         setAiEstimate(null);
                       }}
@@ -563,6 +663,36 @@ export default function NutritionPage() {
                       onChange={(e) => setNewMeal({ ...newMeal, fats: e.target.value })}
                     className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="10"
+                    />
+                  </div>
+                  <div>
+                  <label className="block text-sm font-medium mb-1.5">Sugar (g)</label>
+                    <input
+                      type="number"
+                      value={newMeal.sugar}
+                      onChange={(e) => setNewMeal({ ...newMeal, sugar: e.target.value })}
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    placeholder="5"
+                    />
+                  </div>
+                  <div>
+                  <label className="block text-sm font-medium mb-1.5">Sodium (mg)</label>
+                    <input
+                      type="number"
+                      value={newMeal.sodium}
+                      onChange={(e) => setNewMeal({ ...newMeal, sodium: e.target.value })}
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    placeholder="500"
+                    />
+                  </div>
+                  <div>
+                  <label className="block text-sm font-medium mb-1.5">Fiber (g)</label>
+                    <input
+                      type="number"
+                      value={newMeal.fiber}
+                      onChange={(e) => setNewMeal({ ...newMeal, fiber: e.target.value })}
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    placeholder="5"
                     />
                   </div>
                 </div>
@@ -812,6 +942,33 @@ export default function NutritionPage() {
                   type="number"
                   value={macroSettings.fats}
                   onChange={(e) => setMacroSettings({ ...macroSettings, fats: parseInt(e.target.value) || 0 })}
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Sugar (g)</label>
+                <input
+                  type="number"
+                  value={macroSettings.sugar}
+                  onChange={(e) => setMacroSettings({ ...macroSettings, sugar: parseInt(e.target.value) || 0 })}
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Sodium (mg)</label>
+                <input
+                  type="number"
+                  value={macroSettings.sodium}
+                  onChange={(e) => setMacroSettings({ ...macroSettings, sodium: parseInt(e.target.value) || 0 })}
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Fiber (g)</label>
+                <input
+                  type="number"
+                  value={macroSettings.fiber}
+                  onChange={(e) => setMacroSettings({ ...macroSettings, fiber: parseInt(e.target.value) || 0 })}
                   className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                 />
               </div>

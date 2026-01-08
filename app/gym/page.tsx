@@ -899,7 +899,7 @@ export default function GymPage() {
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-3 mb-6">
+        <div className="flex gap-3 mb-6 flex-wrap">
           <button
             onClick={() => {
               // Load existing workout plan into the modal
@@ -924,7 +924,7 @@ export default function GymPage() {
               });
               setShowCustomWorkoutModal(true);
             }}
-            className="flex-1 bg-gradient-to-b from-[#0c1422] to-black hover:bg-[rgba(20,30,35,0.85)] border border-white/10 text-white px-4 py-3 rounded-xl font-semibold transition-all text-sm shadow-lg hover:shadow-xl"
+            className="flex-1 bg-gradient-to-b from-[#0c1422] to-black hover:bg-[rgba(20,30,35,0.85)] border border-white/10 text-white px-4 py-3 rounded-xl font-semibold transition-all text-sm shadow-lg hover:shadow-xl min-w-[140px]"
           >
             {workoutPlan.pushDay.length > 0 || workoutPlan.pullDay.length > 0 || workoutPlan.legsDay.length > 0
               ? "Edit Workout Plan"
@@ -934,7 +934,7 @@ export default function GymPage() {
             onClick={() => {
               router.push("/consultation");
             }}
-            className="flex-1 bg-gradient-to-r from-teal-400 to-teal-500 hover:from-teal-500 hover:to-teal-600 text-black px-4 py-3 rounded-xl font-semibold transition-all text-sm shadow-lg hover:shadow-xl"
+            className="flex-1 bg-gradient-to-r from-teal-400 to-teal-500 hover:from-teal-500 hover:to-teal-600 text-black px-4 py-3 rounded-xl font-semibold transition-all text-sm shadow-lg hover:shadow-xl min-w-[140px]"
           >
             AI Consultation & Evaluation
           </button>
@@ -1381,7 +1381,273 @@ export default function GymPage() {
           </div>
         )}
       </div>
+
       <BottomNav />
+    </div>
+  );
+}
+
+// Muscle Recovery Component
+function MuscleRecoveryView({ 
+  workoutSchedule, 
+  workoutPlan 
+}: { 
+  workoutSchedule: WorkoutSchedule[]; 
+  workoutPlan: WorkoutPlanByDay;
+}) {
+  // Map workout types to muscle groups
+  const workoutToMuscles: Record<string, string[]> = {
+    "Push Day": ["Chest", "Shoulders", "Triceps", "Abs"],
+    "Pull Day": ["Upper Back", "Lower Back", "Shoulders", "Triceps"],
+    "Legs Day": ["Quadriceps", "Hamstrings", "Glutes", "Calves"],
+  };
+
+  // Get muscle recovery status
+  const getMuscleRecoveryStatus = useMemo(() => {
+    const muscleStatus: Record<string, { lastTrained: Date | null; status: "ready" | "recovering"; hoursLeft?: number; daysLeft?: number }> = {
+      "Chest": { lastTrained: null, status: "ready" },
+      "Shoulders": { lastTrained: null, status: "ready" },
+      "Triceps": { lastTrained: null, status: "ready" },
+      "Upper Back": { lastTrained: null, status: "ready" },
+      "Lower Back": { lastTrained: null, status: "ready" },
+      "Biceps": { lastTrained: null, status: "ready" },
+      "Abs": { lastTrained: null, status: "ready" },
+      "Quadriceps": { lastTrained: null, status: "ready" },
+      "Hamstrings": { lastTrained: null, status: "ready" },
+      "Glutes": { lastTrained: null, status: "ready" },
+      "Calves": { lastTrained: null, status: "ready" },
+    };
+
+    const now = new Date();
+    const recoveryTimeHours = 48; // 48 hours recovery time
+
+    // Check completed workouts from schedule
+    workoutSchedule.forEach((workout) => {
+      if (workout.completed && workout.workoutName !== "Rest Day") {
+        const workoutDate = new Date(workout.date);
+        const muscles = workoutToMuscles[workout.workoutName] || [];
+        
+        muscles.forEach((muscle) => {
+          if (muscleStatus[muscle]) {
+            const hoursSinceWorkout = (now.getTime() - workoutDate.getTime()) / (1000 * 60 * 60);
+            
+            // If this muscle was trained more recently, update it
+            if (!muscleStatus[muscle].lastTrained || 
+                workoutDate > (muscleStatus[muscle].lastTrained || new Date(0))) {
+              muscleStatus[muscle].lastTrained = workoutDate;
+              
+              if (hoursSinceWorkout < recoveryTimeHours) {
+                const hoursRemaining = recoveryTimeHours - hoursSinceWorkout;
+                const daysRemaining = Math.floor(hoursRemaining / 24);
+                const hoursLeft = Math.ceil(hoursRemaining % 24);
+                
+                muscleStatus[muscle].status = "recovering";
+                muscleStatus[muscle].hoursLeft = hoursLeft;
+                muscleStatus[muscle].daysLeft = daysRemaining;
+              } else {
+                muscleStatus[muscle].status = "ready";
+              }
+            }
+          }
+        });
+      }
+    });
+
+    return muscleStatus;
+  }, [workoutSchedule]);
+
+  const recoveringMuscles = Object.entries(getMuscleRecoveryStatus)
+    .filter(([_, status]) => status.status === "recovering")
+    .sort((a, b) => (a[1].hoursLeft || 0) - (b[1].hoursLeft || 0));
+
+  const readyMuscles = Object.entries(getMuscleRecoveryStatus)
+    .filter(([_, status]) => status.status === "ready")
+    .sort();
+
+  // Muscle paths from provided design - exact paths
+  const getMuscleColor = (muscleId: string, isRecovering: boolean) => {
+    if (isRecovering) return "#FF4D4F";
+    return "#2F80FF";
+  };
+
+  const musclePaths: Record<string, { front?: string; back?: string }> = {
+    chest: {
+      front: "M90 80 C60 130,60 200,150 210 C240 200,240 130,210 80 Z"
+    },
+    abs: {
+      front: "M120 210 L180 210 L190 360 L110 360 Z"
+    },
+    delts_left: {
+      front: "M40 90 C10 120,10 160,50 190 C80 170,80 120,70 90 Z"
+    },
+    delts_right: {
+      front: "M260 90 C290 120,290 160,250 190 C220 170,220 120,230 90 Z"
+    },
+    biceps_left: {
+      front: "M50 190 C30 260,40 330,70 350 C100 330,95 250,80 190 Z"
+    },
+    biceps_right: {
+      front: "M250 190 C270 260,260 330,230 350 C200 330,205 250,220 190 Z"
+    },
+    quads_left: {
+      front: "M120 360 C90 470,100 620,140 650 C180 620,180 470,160 360 Z"
+    },
+    quads_right: {
+      front: "M160 360 C180 470,180 620,220 650 C260 620,250 470,200 360 Z"
+    },
+    traps: {
+      back: "M90 60 C50 110,50 160,150 170 C250 160,250 110,210 60 Z"
+    },
+    lats: {
+      back: "M60 170 C30 280,60 380,150 390 C240 380,270 280,240 170 Z"
+    },
+    glutes: {
+      back: "M100 390 C60 440,80 520,150 520 C220 520,240 440,200 390 Z"
+    },
+    hamstrings_left: {
+      back: "M110 520 C90 620,100 720,130 760 C160 720,160 620,140 520 Z"
+    },
+    hamstrings_right: {
+      back: "M160 520 C180 620,180 720,210 760 C240 720,230 620,190 520 Z"
+    },
+  };
+
+  const muscleToIdMap: Record<string, string[]> = {
+    "Chest": ["chest"],
+    "Shoulders": ["delts_left", "delts_right"],
+    "Biceps": ["biceps_left", "biceps_right"],
+    "Triceps": ["triceps_left", "triceps_right"],
+    "Upper Back": ["traps"],
+    "Lower Back": ["lats"],
+    "Abs": ["abs"],
+    "Quadriceps": ["quads_left", "quads_right"],
+    "Hamstrings": ["hamstrings_left", "hamstrings_right"],
+    "Glutes": ["glutes"],
+    "Calves": ["calves_left", "calves_right"],
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Body Diagrams - Matching the exact shape provided */}
+      <div className="flex gap-6 justify-center flex-wrap">
+        {/* BACK (LEFT) */}
+        <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-xl p-4 border border-white/10">
+          <h3 className="text-sm font-semibold text-white mb-3 text-center">Back View</h3>
+          <svg viewBox="0 0 300 800" width="200" className="mx-auto">
+            {/* Back view - using provided design paths with transform */}
+            <g transform="translate(0,0)">
+            
+              {/* Show ALL muscles - back view with colors based on recovery status */}
+              {Object.entries(getMuscleRecoveryStatus).map(([muscle, status]) => {
+                const muscleIds = muscleToIdMap[muscle] || [];
+                const isRecovering = status.status === "recovering";
+                return muscleIds.map((muscleId) => {
+                  const path = musclePaths[muscleId]?.back;
+                  if (path) {
+                    return (
+                      <path
+                        key={`back-${muscleId}`}
+                        id={muscleId}
+                        d={path}
+                        fill={getMuscleColor(muscleId, isRecovering)}
+                        stroke="none"
+                        strokeLinejoin="round"
+                      />
+                    );
+                  }
+                  return null;
+                });
+              })}
+            </g>
+          </svg>
+        </div>
+
+        {/* FRONT (RIGHT) */}
+        <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-xl p-4 border border-white/10">
+          <h3 className="text-sm font-semibold text-white mb-3 text-center">Front View</h3>
+          <svg viewBox="0 0 300 800" width="200" className="mx-auto">
+            {/* Front view - using provided design paths with transform */}
+            <g transform="translate(0,0)">
+            
+              {/* Show ALL muscles - front view with colors based on recovery status */}
+              {Object.entries(getMuscleRecoveryStatus).map(([muscle, status]) => {
+                const muscleIds = muscleToIdMap[muscle] || [];
+                const isRecovering = status.status === "recovering";
+                return muscleIds.map((muscleId) => {
+                  const path = musclePaths[muscleId]?.front;
+                  if (path) {
+                    return (
+                      <path
+                        key={`front-${muscleId}`}
+                        id={muscleId}
+                        d={path}
+                        fill={getMuscleColor(muscleId, isRecovering)}
+                        stroke="none"
+                        strokeLinejoin="round"
+                      />
+                    );
+                  }
+                  return null;
+                });
+              })}
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      {/* Needs Recovery Section */}
+      {recoveringMuscles.length > 0 && (
+        <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-xl p-4 border border-white/10">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-red-500"></div>
+            <h3 className="text-base font-semibold text-white">Needs Recovery</h3>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {recoveringMuscles.map(([muscle, status]) => (
+              <button
+                key={muscle}
+                className="text-left p-2.5 bg-red-900/40 border border-red-800/50 rounded-lg hover:bg-red-900/50 transition-colors flex flex-col"
+              >
+                <span className="text-white font-medium text-xs">{muscle}</span>
+                <span className="text-red-300 text-[10px] mt-1">
+                  {status.daysLeft && status.daysLeft > 0 
+                    ? `${status.daysLeft}d ${status.hoursLeft || 0}h`
+                    : status.hoursLeft 
+                    ? `${status.hoursLeft}h`
+                    : "Recovering"}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Ready to Train Muscles List */}
+      {readyMuscles.length > 0 && (
+        <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-xl p-4 border border-white/10">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            <h3 className="text-base font-semibold text-white">Ready to Train</h3>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {readyMuscles.map(([muscle, _]) => (
+              <button
+                key={muscle}
+                className="text-left p-2.5 bg-green-900/40 border border-green-800/50 rounded-lg hover:bg-green-900/50 transition-colors"
+              >
+                <span className="text-white font-medium text-xs">{muscle}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* No recovering muscles message */}
+      {recoveringMuscles.length === 0 && readyMuscles.length > 0 && (
+        <div className="text-center py-4">
+          <p className="text-gray-400 text-sm">All muscles are recovered and ready to train! 💪</p>
+        </div>
+      )}
     </div>
   );
 }

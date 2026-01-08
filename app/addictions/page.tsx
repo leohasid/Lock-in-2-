@@ -597,15 +597,20 @@ export default function AddictionsPage() {
   }, [otherAddictions, currentTime, currencyInfo]);
 
   return (
-    <div className="min-h-screen bg-black text-white px-5 pt-6 pb-28">
+    <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-5 pt-6 pb-28">
       {/* HEADER */}
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Your Addictions</h1>
+        <div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent">
+            Recovery Journey
+          </h1>
+          <p className="text-xs text-gray-400 mt-1">Track your progress & celebrate wins</p>
+        </div>
               <button
                 onClick={() => setShowAddForm(true)}
-          className="px-3 py-1.5 bg-teal-400 hover:bg-teal-500 text-black rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+          className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-xl text-sm font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 flex items-center gap-2"
               >
-          <span className="text-sm">+</span>
+          <span className="text-lg">+</span>
           Track New
               </button>
             </div>
@@ -626,36 +631,50 @@ export default function AddictionsPage() {
           return (
             <button
               onClick={() => setShowPhoneDetail(true)}
-              className="w-full bg-[rgba(20,30,35,0.85)] rounded-xl p-4 border border-white/5 flex items-center gap-3 hover:bg-[rgba(20,30,35,1)] transition-colors"
+              className="w-full bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-5 border-2 border-teal-500/30 hover:border-teal-400/60 flex items-center gap-4 hover:shadow-2xl hover:shadow-teal-500/20 transition-all transform hover:scale-[1.02] relative overflow-hidden group"
             >
-              {/* Icon */}
-              <div className="text-3xl flex-shrink-0">📱</div>
+              {/* Animated background gradient */}
+              <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              
+              {/* Icon with glow effect */}
+              <div className="text-4xl flex-shrink-0 relative z-10 filter drop-shadow-lg animate-pulse">📱</div>
 
               {/* Content */}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base font-semibold text-white mb-1">Phone & Social Media</h3>
-                <p className="text-xs text-gray-400 mb-2">
-                  Best streak is {bestStreak} Day{bestStreak !== 1 ? 's' : ''}
+              <div className="flex-1 min-w-0 relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg font-bold text-white">Phone & Social Media</h3>
+                  {bestStreak >= 7 && (
+                    <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-[10px] font-bold rounded-full animate-pulse">
+                      🔥 {bestStreak} Day Streak!
+                    </span>
+                  )}
+          </div>
+                <p className="text-xs text-teal-400 mb-3 font-medium">
+                  ⭐ Best streak: {bestStreak} Day{bestStreak !== 1 ? 's' : ''}
                 </p>
-                <p className="text-sm text-gray-400 mb-2">
+                <p className="text-sm font-semibold text-white mb-3">
                   {formatMinutes(phoneAddiction.totalCurrentUsage)} / {formatMinutes(phoneAddiction.totalDailyLimit)} Today
                 </p>
                 
                 {/* Progress bar showing time until block */}
-                <div className="mb-2">
-                  <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                <div className="mb-3">
+                  <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden shadow-inner">
                     <div
-                      className={`h-2 rounded-full transition-all ${
+                      className={`h-3 rounded-full transition-all duration-500 shadow-lg ${
                         totalPercent >= 100
-                          ? "bg-red-500"
+                          ? "bg-gradient-to-r from-red-500 to-red-600"
                           : totalPercent >= 80
-                          ? "bg-yellow-500"
-                          : "bg-[#14f1d9]"
+                          ? "bg-gradient-to-r from-yellow-400 to-orange-500"
+                          : "bg-gradient-to-r from-teal-400 to-cyan-500"
                       }`}
                       style={{ width: `${totalPercent}%` }}
                     />
-          </div>
-                  <p className="text-xs text-gray-400 mt-1">
+                  </div>
+                  <p className={`text-xs mt-1.5 font-medium ${
+                    totalPercent >= 100 ? "text-red-400" :
+                    totalPercent >= 80 ? "text-yellow-400" :
+                    "text-teal-400"
+                  }`}>
                     {formatTimeUntilBlock(totalRemainingMinutes)} until block
                   </p>
         </div>
@@ -720,16 +739,18 @@ export default function AddictionsPage() {
                   );
                 })()}
 
-                <div className="flex items-center gap-2 mt-2">
-                  <Zap className="w-3.5 h-3.5 text-yellow-400" />
-                  <span className="text-xs text-gray-400">Current: {daysClean} Days</span>
+                <div className="flex items-center gap-2 mt-3 px-3 py-1.5 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
+                  <Zap className="w-4 h-4 text-yellow-400 animate-pulse" />
+                  <span className="text-xs font-bold text-yellow-300">Current: {daysClean} Days</span>
                 </div>
               </div>
 
               {/* Lightning bolt and arrow */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <Zap className="w-5 h-5 text-yellow-400" />
-                <ChevronRight className="w-5 h-5 text-gray-400" />
+              <div className="flex items-center gap-2 flex-shrink-0 relative z-10">
+                <div className="p-2 bg-gradient-to-br from-yellow-400/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
+                  <Zap className="w-5 h-5 text-yellow-400" />
+                </div>
+                <ChevronRight className="w-5 h-5 text-teal-400" />
               </div>
             </button>
           );
@@ -746,78 +767,107 @@ export default function AddictionsPage() {
             <button
               key={addiction.id}
               onClick={() => setShowOtherDetail(addiction.id)}
-              className="w-full bg-[rgba(20,30,35,0.85)] rounded-xl p-4 border border-white/5 flex items-center gap-3 hover:bg-[rgba(20,30,35,1)] transition-colors"
+              className="w-full bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-5 border-2 border-teal-500/30 hover:border-teal-400/60 flex items-center gap-4 hover:shadow-2xl hover:shadow-teal-500/20 transition-all transform hover:scale-[1.02] relative overflow-hidden group"
             >
-              {/* Icon */}
-              <div className="text-3xl flex-shrink-0">{getAddictionIcon(addiction)}</div>
+              {/* Animated background gradient */}
+              <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              
+              {/* Icon with glow effect */}
+              <div className="text-5xl flex-shrink-0 relative z-10 filter drop-shadow-lg animate-bounce">{getAddictionIcon(addiction)}</div>
 
               {/* Content */}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base font-semibold text-white mb-1">{addiction.name}</h3>
+              <div className="flex-1 min-w-0 relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg font-bold text-white">{addiction.name}</h3>
+                  {bestStreak >= 7 && (
+                    <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-[10px] font-bold rounded-full animate-pulse">
+                      🔥 {bestStreak} Day Streak!
+                    </span>
+                  )}
+                </div>
                 
                 {/* Best Streak */}
-                <p className="text-xs text-gray-400 mb-2">
-                  Best streak is {bestStreak} Day{bestStreak !== 1 ? 's' : ''}
+                <p className="text-xs text-teal-400 mb-3 font-medium">
+                  ⭐ Best streak: {bestStreak} Day{bestStreak !== 1 ? 's' : ''}
                 </p>
 
-                {/* Countdown Display in 00:00:00:00 format */}
-                <div className="mb-2">
-                  <div className="text-2xl font-bold text-white font-mono tracking-wider">
+                {/* Countdown Display in 00:00:00:00 format - More exciting */}
+                <div className="mb-3 p-3 bg-gradient-to-r from-purple-900/30 via-blue-900/30 to-teal-900/30 rounded-xl border border-teal-500/30">
+                  <div className="text-3xl font-bold bg-gradient-to-r from-teal-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent font-mono tracking-wider">
                     {formatCountdownTime(elapsed)}
                   </div>
+                  <p className="text-[10px] text-teal-400 mt-1 font-medium">Time Clean</p>
                 </div>
 
                 {/* Additional info based on type */}
-                <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center gap-2 mt-3">
                   {addiction.type === "goon" && (
-                    <>
-                      <PiggyBank className="w-3.5 h-3.5 text-[#14f1d9]" />
-                      <span className="text-xs text-gray-400">Saved: {currencyInfo.symbol}{money.total.toFixed(2)}</span>
-                    </>
+                    <div className="px-3 py-1.5 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-lg border border-green-500/30 flex items-center gap-2">
+                      <PiggyBank className="w-4 h-4 text-green-400" />
+                      <span className="text-xs font-bold text-green-300">Saved: {currencyInfo.symbol}{money.total.toFixed(2)}</span>
+                    </div>
                   )}
                   {addiction.type === "vape" && (
-                    <>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-[#14f1d9]" />
-                      <span className="text-xs text-gray-400">Challenge: {daysClean + 1} Days</span>
-                    </>
+                    <div className="px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg border border-purple-500/30 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                      <span className="text-xs font-bold text-purple-300">Challenge: {daysClean + 1} Days</span>
+                    </div>
                   )}
                   {addiction.type === "other" && (
-                    <>
-                      <Star className="w-3.5 h-3.5 text-[#14f1d9]" />
-                      <span className="text-xs text-gray-400">Current: {daysClean} Days</span>
-                    </>
+                    <div className="px-3 py-1.5 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-lg border border-blue-500/30 flex items-center gap-2">
+                      <Star className="w-4 h-4 text-blue-400" />
+                      <span className="text-xs font-bold text-blue-300">Current: {daysClean} Days</span>
+                    </div>
                   )}
                 </div>
               </div>
 
               {/* Lightning bolt and arrow */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <Zap className="w-5 h-5 text-yellow-400" />
-                <ChevronRight className="w-5 h-5 text-gray-400" />
+              <div className="flex items-center gap-2 flex-shrink-0 relative z-10">
+                <div className="p-2 bg-gradient-to-br from-yellow-400/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
+                  <Zap className="w-5 h-5 text-yellow-400" />
+                </div>
+                <ChevronRight className="w-5 h-5 text-teal-400" />
               </div>
             </button>
           );
         })}
       </div>
 
-      {/* Total Saved Summary */}
+      {/* Total Saved Summary - More exciting */}
       {otherAddictions.length > 0 && totalSaved > 0 && (
-        <div className="mt-6 flex items-center gap-2 text-sm text-gray-400">
-          <PiggyBank className="w-4 h-4" />
-          <span>Total Saved So Far {currencyInfo.symbol}{totalSaved.toFixed(2)}</span>
+        <div className="mt-6 p-5 bg-gradient-to-r from-green-500/20 via-emerald-500/20 to-green-500/20 rounded-2xl border-2 border-green-500/40 shadow-lg shadow-green-500/20">
+          <div className="flex items-center justify-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl">
+              <PiggyBank className="w-6 h-6 text-black" />
+            </div>
+            <div>
+              <p className="text-xs text-green-400 font-medium">Total Saved</p>
+              <p className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
+                {currencyInfo.symbol}{totalSaved.toFixed(2)}
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Empty State */}
+      {/* Empty State - More fun */}
       {addictions.length === 0 && (
-        <div className="bg-[rgba(20,30,35,0.85)] rounded-xl p-8 border border-white/5 text-center">
-          <p className="text-gray-300 text-base mb-4">Start tracking your recovery journey</p>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="bg-teal-400 hover:bg-teal-500 text-black px-6 py-2.5 rounded-lg font-semibold transition-colors"
-          >
-            Track Your First Addiction
-          </button>
+        <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-10 border-2 border-teal-500/30 text-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/10 to-teal-500/0 animate-pulse" />
+          <div className="relative z-10">
+            <div className="text-6xl mb-4 animate-bounce">🎯</div>
+            <h3 className="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent mb-2">
+              Start Your Recovery Journey
+            </h3>
+            <p className="text-gray-400 text-sm mb-6">Track your progress and celebrate every win!</p>
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-8 py-3 rounded-xl font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
+            >
+              🚀 Track Your First Addiction
+            </button>
+          </div>
         </div>
       )}
 
@@ -916,7 +966,7 @@ export default function AddictionsPage() {
                   setNewApp({ appName: "", dailyLimit: "" });
                 }}
                 className="text-white/40 hover:text-white"
-              >
+                      >
                 <X className="w-5 h-5" />
                       </button>
                     </div>
@@ -1033,7 +1083,7 @@ export default function AddictionsPage() {
                               isCloseToBlock ? "bg-yellow-500/10 border-yellow-500/30" :
                               "bg-[rgba(20,30,35,0.6)] border-white/5"
                             }`}
-                          >
+                            >
                             <div className="flex items-center justify-between mb-2">
                               <span className={`text-sm font-medium ${
                                 isBlocked ? "text-red-400" :
@@ -1051,7 +1101,7 @@ export default function AddictionsPage() {
                                 </span>
                               </div>
                             <div className="w-full bg-white/10 rounded-full h-2 mb-1">
-                              <div
+                                <div
                                 className={`h-2 rounded-full ${
                                   percent >= 100 ? "bg-red-500" : percent >= 80 ? "bg-yellow-500" : "bg-[#14f1d9]"
                                   }`}
