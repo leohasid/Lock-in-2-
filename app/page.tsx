@@ -80,30 +80,39 @@ export default function Home() {
     }
   }, [refreshTrigger]);
 
-  // Get weekly calories data (last 10 days for graph) - refresh when trigger changes
+  // Get hourly calories data for today's graph - resets every day
   const weeklyCaloriesData = useMemo(() => {
-    if (typeof window === "undefined") return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    if (typeof window === "undefined") return Array(24).fill(0);
     
     // Always use current date
     const currentDate = new Date();
+    const todayStr = currentDate.toISOString().split("T")[0];
     
     const storedMeals = localStorage.getItem("meals");
-    if (!storedMeals) return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    if (!storedMeals) return Array(24).fill(0);
     
     try {
       const meals = JSON.parse(storedMeals);
-      const data: number[] = [];
-      for (let i = 9; i >= 0; i--) {
-        const date = new Date(currentDate);
-        date.setDate(currentDate.getDate() - i);
-        const dateStr = date.toISOString().split("T")[0];
-        const dayMeals = meals.filter((m: any) => m.date === dateStr);
-        const dayCalories = dayMeals.reduce((sum: number, meal: any) => sum + (meal.calories || 0), 0);
-        data.push(dayCalories);
-      }
-      return data;
+      // Filter meals for today only
+      const todayMeals = meals.filter((m: any) => m.date === todayStr);
+      
+      // Initialize array for 24 hours
+      const hourlyData = Array(24).fill(0);
+      
+      // Group meals by hour
+      todayMeals.forEach((meal: any) => {
+        if (meal.time) {
+          // Parse time (format: "HH:MM")
+          const [hours] = meal.time.split(':').map(Number);
+          if (hours >= 0 && hours < 24) {
+            hourlyData[hours] += meal.calories || 0;
+          }
+        }
+      });
+      
+      return hourlyData;
     } catch (e) {
-      return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      return Array(24).fill(0);
     }
   }, [refreshTrigger]);
 
@@ -224,7 +233,7 @@ export default function Home() {
       </header>
 
       {/* Top Cards */}
-      <section className="grid grid-cols-[45%_1fr] gap-4 mb-6 items-stretch">
+      <section className="grid grid-cols-[45%_1fr] gap-3 mb-5 items-stretch">
         <Link href="/gym" className="block h-full">
           <GymCard
             streak={gymStreak}
