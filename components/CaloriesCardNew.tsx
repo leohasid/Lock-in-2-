@@ -37,20 +37,25 @@ export default function CaloriesCardNew({
   const goalY = range > 0 ? 40 - ((goal - minValue) / range) * 35 : 20;
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-gradient-to-b from-[#0c1422] to-black p-3 h-full flex flex-col">
+    <div className="rounded-2xl border-2 border-teal-500/30 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black p-4 h-full flex flex-col shadow-lg shadow-teal-500/10 hover:shadow-teal-500/20 transition-all relative overflow-hidden group">
+      {/* Animated background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      
       {/* Header - moved to top, smaller text */}
-      <div className="mb-1 flex items-center justify-between">
-        <h2 className="text-[10px] font-medium text-teal-400">Calories</h2>
-        <span className="text-[10px] text-teal-400">⚡</span>
+      <div className="mb-2 flex items-center justify-between relative z-10">
+        <h2 className="text-sm font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Calories</h2>
+        <div className="px-2 py-0.5 bg-gradient-to-r from-teal-500/20 to-cyan-500/20 rounded-lg border border-teal-500/30">
+          <span className="text-[10px] text-teal-400 font-bold">⚡</span>
+        </div>
       </div>
 
-      <p className="text-lg font-semibold leading-none mb-0.5">{current.toLocaleString()}</p>
-      <p className="mb-2 text-[10px] text-gray-400">
+      <p className="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent leading-none mb-1 relative z-10">{current.toLocaleString()}</p>
+      <p className="mb-3 text-[10px] text-gray-400 relative z-10">
         +{average.toLocaleString()} Avg.
       </p>
 
       {/* Chart */}
-      <div className="mb-2 h-8 rounded bg-white/5 relative overflow-hidden">
+      <div className="mb-3 h-10 rounded-lg bg-gradient-to-br from-white/5 to-white/0 border border-teal-500/20 relative overflow-hidden relative z-10">
         <svg 
           key={`graph-${current}-${weeklyData.join(',')}`}
           className="w-full h-full" 
@@ -72,8 +77,8 @@ export default function CaloriesCardNew({
           {/* Trend line */}
           <polyline
             fill="none"
-            stroke="#2dd4bf"
-            strokeWidth="2.5"
+            stroke="url(#caloriesLineGradient)"
+            strokeWidth="3"
             points={graphData
               .map((value, idx) => {
                 const x = graphData.length > 1 ? (idx / (graphData.length - 1)) * 100 : (idx * 10);
@@ -98,24 +103,35 @@ export default function CaloriesCardNew({
                 key={idx}
                 cx={x}
                 cy={y}
-                r="2.5"
-                fill="#2dd4bf"
+                r="3"
+                fill="url(#caloriesPointGradient)"
+                className="drop-shadow-lg"
               />
             );
           })}
+          <defs>
+            <linearGradient id="caloriesLineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#14f1d9" />
+              <stop offset="100%" stopColor="#0ddfc8" />
+            </linearGradient>
+            <linearGradient id="caloriesPointGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#14f1d9" />
+              <stop offset="100%" stopColor="#0ddfc8" />
+            </linearGradient>
+          </defs>
         </svg>
       </div>
 
       {/* Progress section - moved to bottom */}
-      <div className="mt-auto">
-        <div className="mb-1 flex justify-between text-[10px] text-gray-400">
+      <div className="mt-auto relative z-10">
+        <div className="mb-1.5 flex justify-between text-[10px] text-gray-300 font-medium">
           <span>{current.toLocaleString()} / {goal.toLocaleString()}</span>
-          <span className="text-teal-400 font-semibold">{percentage}%</span>
+          <span className="text-teal-400 font-bold">{percentage}%</span>
         </div>
 
-        <div className="h-1.5 w-full rounded-full bg-white/10">
+        <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden shadow-inner">
           <div
-            className="h-1.5 rounded-full bg-teal-400"
+            className="h-2 rounded-full bg-gradient-to-r from-teal-400 to-cyan-500 transition-all duration-500 shadow-lg"
             style={{ width: `${Math.min(percentage, 100)}%` }}
           />
         </div>

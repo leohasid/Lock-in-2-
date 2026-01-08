@@ -203,26 +203,28 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-black text-white px-4 pt-5 pb-28">
+    <main className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-4 pt-5 pb-28">
       {/* Header */}
-      <header className="mb-5 flex items-center justify-between">
+      <header className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold leading-none">Mogifi AI</h1>
-          <p className="mt-1 text-xs text-gray-400">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent leading-none">
+            Mogifi AI
+          </h1>
+          <p className="mt-1.5 text-xs text-gray-400">
             {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
           </p>
         </div>
 
         <Link
           href="/reflections"
-          className="rounded-full bg-white/10 px-3 py-1 text-[11px] text-gray-200"
+          className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-xl text-xs font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
         >
           Daily Reflections
         </Link>
       </header>
 
       {/* Top Cards */}
-      <section className="grid grid-cols-[45%_1fr] gap-3 mb-5 items-stretch">
+      <section className="grid grid-cols-[45%_1fr] gap-4 mb-6 items-stretch">
         <Link href="/gym" className="block h-full">
           <GymCard
             streak={gymStreak}
