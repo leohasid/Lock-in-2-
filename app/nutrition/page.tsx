@@ -408,13 +408,7 @@ export default function NutritionPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-4 pt-4 pb-28">
       {/* HEADER */}
-      <div className="mb-5 flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent">
-            Nutrition
-          </h1>
-          <p className="text-xs text-gray-400 mt-1">Track your macros & fuel your goals</p>
-        </div>
+      <div className="mb-5 flex items-start justify-end">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAIConsultation(true)}
