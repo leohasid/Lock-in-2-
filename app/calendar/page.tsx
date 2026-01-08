@@ -313,7 +313,6 @@ export default function CalendarPage() {
         {/* Header */}
         <div className="mb-4">
           <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-bold text-white">📅 Calendar & Reminders</h1>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowAddForm(true)}

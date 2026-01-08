@@ -376,7 +376,7 @@ export default function AddictionsPage() {
         } else {
           const phoneAddiction: PhoneAddiction = {
             id: Date.now().toString(),
-            name: "Phone & Social Media",
+            name: "Phone",
             startDate: new Date().toISOString().split("T")[0],
             apps: [],
             totalDailyLimit: newAddiction.dailyLimit ? parseInt(newAddiction.dailyLimit) : 120,
@@ -599,25 +599,19 @@ export default function AddictionsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-5 pt-6 pb-28">
       {/* HEADER */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent">
-            Recovery Journey
-          </h1>
-          <p className="text-xs text-gray-400 mt-1">Track your progress & celebrate wins</p>
-        </div>
-              <button
-                onClick={() => setShowAddForm(true)}
+      <div className="mb-6 flex items-center justify-end">
+        <button
+          onClick={() => setShowAddForm(true)}
           className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-xl text-sm font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 flex items-center gap-2"
-              >
+        >
           <span className="text-lg">+</span>
           Track New
-              </button>
-            </div>
+        </button>
+      </div>
 
       {/* ADDICTIONS LIST */}
-      <div className="space-y-4">
-        {/* Phone & Social Media */}
+      <div className="space-y-3">
+        {/* Phone */}
         {phoneAddictions.length > 0 && (() => {
           const phoneAddiction = phoneAddictions[0];
           const daysClean = getDaysClean(phoneAddiction.startDate);
@@ -631,36 +625,36 @@ export default function AddictionsPage() {
           return (
             <button
               onClick={() => setShowPhoneDetail(true)}
-              className="w-full bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-5 border-2 border-teal-500/30 hover:border-teal-400/60 flex items-center gap-4 hover:shadow-2xl hover:shadow-teal-500/20 transition-all transform hover:scale-[1.02] relative overflow-hidden group"
+              className="w-full bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-teal-500/30 hover:border-teal-400/60 flex items-center gap-3 hover:shadow-lg hover:shadow-teal-500/20 transition-all relative overflow-hidden group"
             >
               {/* Animated background gradient */}
               <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               
               {/* Icon with glow effect */}
-              <div className="text-4xl flex-shrink-0 relative z-10 filter drop-shadow-lg animate-pulse">📱</div>
+              <div className="text-3xl flex-shrink-0 relative z-10 filter drop-shadow-lg">📱</div>
 
               {/* Content */}
               <div className="flex-1 min-w-0 relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-lg font-bold text-white">Phone & Social Media</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-base font-bold text-white">Phone</h3>
                   {bestStreak >= 7 && (
                     <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-[10px] font-bold rounded-full animate-pulse">
                       🔥 {bestStreak} Day Streak!
                     </span>
                   )}
           </div>
-                <p className="text-xs text-teal-400 mb-3 font-medium">
+                <p className="text-[10px] text-teal-400 mb-1.5 font-medium">
                   ⭐ Best streak: {bestStreak} Day{bestStreak !== 1 ? 's' : ''}
                 </p>
-                <p className="text-sm font-semibold text-white mb-3">
+                <p className="text-xs font-semibold text-white mb-2">
                   {formatMinutes(phoneAddiction.totalCurrentUsage)} / {formatMinutes(phoneAddiction.totalDailyLimit)} Today
                 </p>
                 
                 {/* Progress bar showing time until block */}
-                <div className="mb-3">
-                  <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden shadow-inner">
+                <div className="mb-2">
+                  <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden shadow-inner">
                     <div
-                      className={`h-3 rounded-full transition-all duration-500 shadow-lg ${
+                      className={`h-2 rounded-full transition-all duration-500 ${
                         totalPercent >= 100
                           ? "bg-gradient-to-r from-red-500 to-red-600"
                           : totalPercent >= 80
@@ -670,7 +664,7 @@ export default function AddictionsPage() {
                       style={{ width: `${totalPercent}%` }}
                     />
                   </div>
-                  <p className={`text-xs mt-1.5 font-medium ${
+                  <p className={`text-[10px] mt-1 font-medium ${
                     totalPercent >= 100 ? "text-red-400" :
                     totalPercent >= 80 ? "text-yellow-400" :
                     "text-teal-400"
@@ -739,18 +733,18 @@ export default function AddictionsPage() {
                   );
                 })()}
 
-                <div className="flex items-center gap-2 mt-3 px-3 py-1.5 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
-                  <Zap className="w-4 h-4 text-yellow-400 animate-pulse" />
-                  <span className="text-xs font-bold text-yellow-300">Current: {daysClean} Days</span>
+                <div className="flex items-center gap-2 mt-2 px-2 py-1 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
+                  <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                  <span className="text-[10px] font-bold text-yellow-300">Current: {daysClean} Days</span>
                 </div>
               </div>
 
               {/* Lightning bolt and arrow */}
-              <div className="flex items-center gap-2 flex-shrink-0 relative z-10">
-                <div className="p-2 bg-gradient-to-br from-yellow-400/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
-                  <Zap className="w-5 h-5 text-yellow-400" />
+              <div className="flex items-center gap-1.5 flex-shrink-0 relative z-10">
+                <div className="p-1.5 bg-gradient-to-br from-yellow-400/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
+                  <Zap className="w-4 h-4 text-yellow-400" />
                 </div>
-                <ChevronRight className="w-5 h-5 text-teal-400" />
+                <ChevronRight className="w-4 h-4 text-teal-400" />
               </div>
             </button>
           );
@@ -767,67 +761,67 @@ export default function AddictionsPage() {
             <button
               key={addiction.id}
               onClick={() => setShowOtherDetail(addiction.id)}
-              className="w-full bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-5 border-2 border-teal-500/30 hover:border-teal-400/60 flex items-center gap-4 hover:shadow-2xl hover:shadow-teal-500/20 transition-all transform hover:scale-[1.02] relative overflow-hidden group"
+              className="w-full bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-teal-500/30 hover:border-teal-400/60 flex items-center gap-3 hover:shadow-lg hover:shadow-teal-500/20 transition-all relative overflow-hidden group"
             >
               {/* Animated background gradient */}
               <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               
               {/* Icon with glow effect */}
-              <div className="text-5xl flex-shrink-0 relative z-10 filter drop-shadow-lg animate-bounce">{getAddictionIcon(addiction)}</div>
+              <div className="text-3xl flex-shrink-0 relative z-10 filter drop-shadow-lg">{getAddictionIcon(addiction)}</div>
 
               {/* Content */}
               <div className="flex-1 min-w-0 relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-lg font-bold text-white">{addiction.name}</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-base font-bold text-white">{addiction.name}</h3>
                   {bestStreak >= 7 && (
-                    <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-[10px] font-bold rounded-full animate-pulse">
+                    <span className="px-1.5 py-0.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-[9px] font-bold rounded-full">
                       🔥 {bestStreak} Day Streak!
                     </span>
                   )}
                 </div>
                 
                 {/* Best Streak */}
-                <p className="text-xs text-teal-400 mb-3 font-medium">
+                <p className="text-[10px] text-teal-400 mb-1.5 font-medium">
                   ⭐ Best streak: {bestStreak} Day{bestStreak !== 1 ? 's' : ''}
                 </p>
 
                 {/* Countdown Display in 00:00:00:00 format - More exciting */}
-                <div className="mb-3 p-3 bg-gradient-to-r from-purple-900/30 via-blue-900/30 to-teal-900/30 rounded-xl border border-teal-500/30">
-                  <div className="text-3xl font-bold bg-gradient-to-r from-teal-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent font-mono tracking-wider">
+                <div className="mb-2 p-2 bg-gradient-to-r from-purple-900/30 via-blue-900/30 to-teal-900/30 rounded-lg border border-teal-500/30">
+                  <div className="text-xl font-bold bg-gradient-to-r from-teal-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent font-mono tracking-wider">
                     {formatCountdownTime(elapsed)}
                   </div>
-                  <p className="text-[10px] text-teal-400 mt-1 font-medium">Time Clean</p>
+                  <p className="text-[9px] text-teal-400 mt-0.5 font-medium">Time Clean</p>
                 </div>
 
                 {/* Additional info based on type */}
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex items-center gap-2 mt-2">
                   {addiction.type === "goon" && (
-                    <div className="px-3 py-1.5 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-lg border border-green-500/30 flex items-center gap-2">
-                      <PiggyBank className="w-4 h-4 text-green-400" />
-                      <span className="text-xs font-bold text-green-300">Saved: {currencyInfo.symbol}{money.total.toFixed(2)}</span>
+                    <div className="px-2 py-1 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-lg border border-green-500/30 flex items-center gap-1.5">
+                      <PiggyBank className="w-3.5 h-3.5 text-green-400" />
+                      <span className="text-[10px] font-bold text-green-300">Saved: {currencyInfo.symbol}{money.total.toFixed(2)}</span>
                     </div>
                   )}
                   {addiction.type === "vape" && (
-                    <div className="px-3 py-1.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg border border-purple-500/30 flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-purple-400" />
-                      <span className="text-xs font-bold text-purple-300">Challenge: {daysClean + 1} Days</span>
+                    <div className="px-2 py-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg border border-purple-500/30 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" />
+                      <span className="text-[10px] font-bold text-purple-300">Challenge: {daysClean + 1} Days</span>
                     </div>
                   )}
                   {addiction.type === "other" && (
-                    <div className="px-3 py-1.5 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-lg border border-blue-500/30 flex items-center gap-2">
-                      <Star className="w-4 h-4 text-blue-400" />
-                      <span className="text-xs font-bold text-blue-300">Current: {daysClean} Days</span>
+                    <div className="px-2 py-1 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-lg border border-blue-500/30 flex items-center gap-1.5">
+                      <Star className="w-3.5 h-3.5 text-blue-400" />
+                      <span className="text-[10px] font-bold text-blue-300">Current: {daysClean} Days</span>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Lightning bolt and arrow */}
-              <div className="flex items-center gap-2 flex-shrink-0 relative z-10">
-                <div className="p-2 bg-gradient-to-br from-yellow-400/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
-                  <Zap className="w-5 h-5 text-yellow-400" />
+              <div className="flex items-center gap-1.5 flex-shrink-0 relative z-10">
+                <div className="p-1.5 bg-gradient-to-br from-yellow-400/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
+                  <Zap className="w-4 h-4 text-yellow-400" />
                 </div>
-                <ChevronRight className="w-5 h-5 text-teal-400" />
+                <ChevronRight className="w-4 h-4 text-teal-400" />
               </div>
             </button>
           );
@@ -1023,7 +1017,7 @@ export default function AddictionsPage() {
             <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
             <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">Phone & Social Media</h2>
+                <h2 className="text-xl font-semibold">Phone</h2>
                   <button
                     onClick={() => setShowPhoneDetail(false)}
                   className="text-white/40 hover:text-white"
