@@ -444,8 +444,8 @@ export default function NutritionPage() {
           ].map((m) => (
             <div key={m.label} className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-300">{m.label}</span>
-                <span className="text-xs text-gray-400">{m.value}/{m.target}{m.unit}</span>
+                <span className="text-[10px] font-semibold text-gray-300">{m.label}</span>
+                <span className="text-[9px] text-gray-400">{m.value}/{m.target}{m.unit}</span>
               </div>
               <div className="h-2.5 rounded-full bg-white/10 overflow-hidden shadow-inner">
                 <div
@@ -458,7 +458,8 @@ export default function NutritionPage() {
         </div>
 
         {/* Calories Circle - Center - Much Bigger */}
-        <div className="flex-shrink-0 relative">
+        <div className="flex-shrink-0 relative flex flex-col items-center">
+          <p className="text-[10px] font-semibold text-gray-300 mb-1.5">Calories</p>
           <div className="w-40 h-40 rounded-full border-4 border-teal-500/30 flex items-center justify-center bg-gradient-to-br from-teal-900/20 to-cyan-900/20 shadow-lg">
             <div className="w-36 h-36 rounded-full border-4 border-transparent flex items-center justify-center relative">
               <svg className="w-36 h-36 transform -rotate-90 absolute inset-0">
@@ -509,8 +510,8 @@ export default function NutritionPage() {
           ].map((m) => (
             <div key={m.label} className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-300">{m.label}</span>
-                <span className="text-xs text-gray-400">{m.value}/{m.target}{m.unit}</span>
+                <span className="text-[10px] font-semibold text-gray-300">{m.label}</span>
+                <span className="text-[9px] text-gray-400">{m.value}/{m.target}{m.unit}</span>
               </div>
               <div className="h-2.5 rounded-full bg-white/10 overflow-hidden shadow-inner">
                 <div
