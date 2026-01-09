@@ -55,13 +55,17 @@ interface WeightEntry {
 
 export default function GymPage() {
   const router = useRouter();
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    // Normalize today to start of day for consistent comparison
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  });
   const [workoutPlan, setWorkoutPlan] = useState<WorkoutPlanByDay>({
     pushDay: [],
     pullDay: [],
     legsDay: [],
   });
-  const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
   const [workoutSchedule, setWorkoutSchedule] = useState<WorkoutSchedule[]>([]);
   const [showMissedWorkoutAlert, setShowMissedWorkoutAlert] = useState(false);
   const [missedWorkoutDate, setMissedWorkoutDate] = useState<string | null>(null);
@@ -483,10 +487,6 @@ export default function GymPage() {
     return workoutPlan[workoutType] || [];
   }, [selectedDate, workoutPlan, workoutSchedule]);
 
-  const activeExercise = useMemo(() => {
-    if (!activeExerciseId) return null;
-    return currentDayExercises.find((ex) => ex.id === activeExerciseId) || null;
-  }, [activeExerciseId, currentDayExercises]);
 
   // Get current day's workout name
   const currentDayWorkoutName = useMemo(() => {
@@ -718,89 +718,6 @@ export default function GymPage() {
           </div>
         )}
 
-        {activeExercise && (
-          <div
-            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-            onClick={() => setActiveExerciseId(null)}
-          >
-            <div
-              className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 w-full max-w-xl border border-white/10 max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">
-                    {currentDayWorkoutName}
-                  </p>
-                  <h2 className="text-2xl font-bold text-white">{activeExercise.name}</h2>
-                  <p className="text-sm text-gray-400 mt-1">
-                    Target: {activeExercise.goalSets} sets × {activeExercise.goalReps} reps
-                  </p>
-                </div>
-                <button
-                  onClick={() => setActiveExerciseId(null)}
-                  className="text-gray-400 hover:text-white"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                {activeExercise.sets.map((s, i) => (
-                  <div
-                    key={i}
-                    className={`flex items-center gap-3 p-3 rounded-lg border text-sm ${
-                      s.completed ? "border-green-600 bg-[rgba(20,30,35,0.85)]" : "border-white/10 bg-gradient-to-b from-[#0c1422] to-black"
-                    }`}
-                  >
-                    <span className="text-gray-400 w-6 text-xs">Set {i + 1}</span>
-                    <input
-                      type="number"
-                      value={s.reps}
-                      onChange={(e) =>
-                        updateSet(activeExercise.id, i, { reps: Number(e.target.value) || 0 })
-                      }
-                      className="w-16 bg-black border border-white/10 rounded px-2 py-1 text-right text-xs"
-                    />
-                    <span className="text-gray-500 text-xs">reps</span>
-                    <input
-                      type="number"
-                      value={s.weight}
-                      onChange={(e) =>
-                        updateSet(activeExercise.id, i, { weight: Number(e.target.value) || 0 })
-                      }
-                      className="w-20 bg-black border border-white/10 rounded px-2 py-1 text-right text-xs"
-                    />
-                    <span className="text-gray-400 text-xs">kg</span>
-                    <button
-                      onClick={() =>
-                        updateSet(activeExercise.id, i, { completed: !s.completed })
-                      }
-                      className={`ml-auto px-3 py-1.5 rounded text-xs font-semibold transition-colors ${
-                        s.completed
-                          ? "bg-green-600 text-white"
-                          : "bg-[rgba(20,30,35,1)] text-gray-200 hover:bg-gray-600"
-                      }`}
-                    >
-                      {s.completed ? "Done" : "Mark"}
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                onClick={() => {
-                  saveExercise(activeExercise.id);
-                  setActiveExerciseId(null);
-                }}
-                className="w-full mt-4 bg-teal-400 text-black px-4 py-3 rounded-lg flex items-center justify-center gap-2 text-sm font-semibold hover:bg-teal-500 transition-colors"
-              >
-                <Save className="w-4 h-4" />
-                Save Exercise
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Header with Date Selector */}
         <div className="mb-3">
@@ -812,32 +729,6 @@ export default function GymPage() {
                 className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
               >
                 + Weight
-              </button>
-              <button
-                onClick={() => {
-                  const convertToCustom = (exercises: Exercise[]): CustomExercise[] => {
-                    return exercises.map(ex => ({
-                      name: ex.name,
-                      sets: ex.goalSets,
-                      reps: ex.goalReps,
-                    }));
-                  };
-                  setCustomWorkoutPlan({
-                    pushDay: workoutPlan.pushDay.length > 0 
-                      ? convertToCustom(workoutPlan.pushDay)
-                      : [{ name: "", sets: 3, reps: 10 }],
-                    pullDay: workoutPlan.pullDay.length > 0
-                      ? convertToCustom(workoutPlan.pullDay)
-                      : [{ name: "", sets: 3, reps: 10 }],
-                    legsDay: workoutPlan.legsDay.length > 0
-                      ? convertToCustom(workoutPlan.legsDay)
-                      : [{ name: "", sets: 3, reps: 10 }],
-                  });
-                  setShowCustomWorkoutModal(true);
-                }}
-                className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
-              >
-                + Workout
               </button>
               <button
                 onClick={() => router.push("/consultation")}
@@ -890,7 +781,7 @@ export default function GymPage() {
                 ""
               }
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-3">
               <span className="text-xs text-gray-400">Progress</span>
               <div className="flex-1 bg-white/10 rounded-full h-2 overflow-hidden">
                 <div 
@@ -900,58 +791,17 @@ export default function GymPage() {
               </div>
               <span className="text-teal-400 font-bold text-xs min-w-[3rem] text-right">{totals.progress}% {totals.totalVolume} kg</span>
             </div>
+            <Link
+              href={`/gym/workout?date=${selectedDate.toISOString().split("T")[0]}`}
+              className="block w-full"
+            >
+              <button className="w-full px-4 py-2.5 bg-gradient-to-r from-teal-400 to-cyan-500 text-black rounded-lg text-sm font-bold hover:from-teal-500 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/30">
+                View Workout
+              </button>
+            </Link>
           </div>
         )}
 
-        {/* Exercises List - Image Style */}
-        {currentDayWorkoutName === "Rest Day" ? (
-          <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-6 border border-white/10 text-center mb-3">
-            <div className="text-4xl mb-2">😴</div>
-            <p className="text-base font-bold text-gray-300 mb-1">Rest Day</p>
-            <p className="text-gray-400 text-xs">Take a break and recover!</p>
-          </div>
-        ) : currentDayExercises.length === 0 ? (
-          <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-6 border border-white/10 text-center mb-3">
-            <div className="text-4xl mb-2">💪</div>
-            <p className="text-sm font-bold text-gray-300 mb-1">No exercises for {currentDayWorkoutName}</p>
-            <p className="text-gray-400 text-[10px]">Add your own workout or use AI to get started!</p>
-          </div>
-        ) : (
-          <main className="mb-3">
-            <p className="text-xs text-gray-400 mb-3 uppercase tracking-wide font-semibold">Exercises</p>
-            <div className="space-y-2">
-              {currentDayExercises.map((ex) => {
-                const completedSets = ex.sets.filter(s => s.completed).length;
-                const totalSets = ex.sets.length;
-                const nextIncompleteSet = ex.sets.findIndex(s => !s.completed);
-                
-                return (
-                  <div
-                    key={ex.id}
-                    className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-lg p-3 flex items-center justify-between"
-                  >
-                    <div className="flex-1">
-                      <h2 className="text-sm font-bold text-white mb-1">{ex.name}</h2>
-                      <p className="text-xs text-gray-400">
-                        {ex.goalSets} x {ex.goalReps} • {completedSets} / {totalSets} sets
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        if (nextIncompleteSet >= 0) {
-                          setActiveExerciseId(ex.id);
-                        }
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 text-black rounded-lg text-xs font-bold hover:from-teal-500 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/30"
-                    >
-                      START SET
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </main>
-        )}
 
         {/* Weight Tracking Section - Image Style */}
         <div className="mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-white/10">
@@ -1107,41 +957,18 @@ export default function GymPage() {
           )}
         </div>
 
-        {/* Strength Progress Section - Keep this */}
-        <section className="mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-xl p-3">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-bold text-white">Progress</h2>
-            <Link href="/gym/stats" className="text-[10px] text-teal-400 hover:text-teal-300">
-              View All →
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white/5 rounded-lg p-2 border border-white/10">
-              <p className="text-base font-bold text-teal-400 mb-0.5">+12%</p>
-              <p className="text-[9px] text-gray-400">Volume</p>
-            </div>
-            <div className="bg-white/5 rounded-lg p-2 border border-white/10">
-              <p className="text-base font-bold text-teal-400 mb-0.5">+5 kg</p>
-              <p className="text-[9px] text-gray-400">Bench PB</p>
-            </div>
-          </div>
-        </section>
 
         {/* Start Workout Button - Image Style */}
         {currentDayWorkoutName !== "Rest Day" && currentDayExercises.length > 0 && (
           <div className="mb-20 flex items-center justify-center gap-2">
-            <button
-              onClick={() => {
-                // Start workout - could scroll to first exercise or open workout mode
-                const firstExercise = currentDayExercises[0];
-                if (firstExercise) {
-                  setActiveExerciseId(firstExercise.id);
-                }
-              }}
-              className="flex-1 px-6 py-4 bg-gradient-to-r from-teal-400 to-cyan-500 text-black rounded-xl text-base font-bold hover:from-teal-500 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/30"
+            <Link
+              href={`/gym/workout?date=${selectedDate.toISOString().split("T")[0]}`}
+              className="flex-1"
             >
-              Start Workout
-            </button>
+              <button className="w-full px-6 py-4 bg-gradient-to-r from-teal-400 to-cyan-500 text-black rounded-xl text-base font-bold hover:from-teal-500 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/30">
+                Start Workout
+              </button>
+            </Link>
             <button className="px-3 py-4 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-xl hover:bg-[rgba(20,30,35,1)] transition-colors">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
