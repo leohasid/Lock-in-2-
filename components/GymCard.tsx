@@ -41,7 +41,7 @@ export default function GymCard({
       <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       
       <div className="mb-2 flex items-center justify-between relative z-10">
-        <h2 className="text-sm font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Gym</h2>
+        <h2 className="text-sm font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Fitness</h2>
         <div className="flex items-center gap-1.5 px-2 py-0.5 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
           <span className="text-[10px] font-bold text-yellow-300">🔥 {streak}</span>
         </div>

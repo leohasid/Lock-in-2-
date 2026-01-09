@@ -45,6 +45,14 @@ interface CustomWorkoutPlan {
   legsDay: CustomExercise[];
 }
 
+interface WeightEntry {
+  id: string;
+  date: string;
+  weight: number;
+  bodyFat?: number;
+  notes?: string;
+}
+
 export default function GymPage() {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -63,6 +71,9 @@ export default function GymPage() {
     pullDay: [{ name: "", sets: 3, reps: 10 }],
     legsDay: [{ name: "", sets: 3, reps: 10 }],
   });
+  const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
+  const [showWeightModal, setShowWeightModal] = useState(false);
+  const [newWeight, setNewWeight] = useState({ weight: "", bodyFat: "", notes: "" });
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
@@ -95,6 +106,25 @@ export default function GymPage() {
     
     return () => clearInterval(interval);
   }, []);
+
+  // Load weight entries from localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = localStorage.getItem("weightEntries");
+    if (stored) {
+      try {
+        setWeightEntries(JSON.parse(stored));
+      } catch (e) {
+        console.error("Error loading weight entries:", e);
+      }
+    }
+  }, []);
+
+  // Save weight entries to localStorage
+  useEffect(() => {
+    if (typeof window === "undefined" || !isLoaded) return;
+    localStorage.setItem("weightEntries", JSON.stringify(weightEntries));
+  }, [weightEntries, isLoaded]);
 
   // Load workout plan from localStorage on mount
   useEffect(() => {
@@ -630,9 +660,28 @@ export default function GymPage() {
     setMissedWorkoutDate(null);
   };
 
+  // Calculate weight progress
+  const latestWeight = weightEntries.length > 0 ? weightEntries[weightEntries.length - 1].weight : null;
+  const previousWeight = weightEntries.length > 1 ? weightEntries[weightEntries.length - 2].weight : null;
+  const weightChange = latestWeight && previousWeight ? latestWeight - previousWeight : null;
+
+  const handleAddWeight = () => {
+    if (!newWeight.weight) return;
+    const entry: WeightEntry = {
+      id: Date.now().toString(),
+      date: new Date().toISOString().split("T")[0],
+      weight: parseFloat(newWeight.weight),
+      bodyFat: newWeight.bodyFat ? parseFloat(newWeight.bodyFat) : undefined,
+      notes: newWeight.notes || undefined,
+    };
+    setWeightEntries([...weightEntries, entry]);
+    setNewWeight({ weight: "", bodyFat: "", notes: "" });
+    setShowWeightModal(false);
+  };
+
   return (
-    <div className="min-h-screen bg-black text-white px-4 pt-5 pb-28">
-      <div className="container mx-auto px-4 py-4">
+    <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-4 pt-4 pb-28">
+      <div className="max-w-md mx-auto">
         {/* Missed Workout Alert */}
         {showMissedWorkoutAlert && missedWorkoutDate && (
           <div className="mb-4 bg-yellow-900/50 border border-yellow-600 rounded-xl p-4 flex items-start gap-4">
@@ -753,225 +802,353 @@ export default function GymPage() {
           </div>
         )}
 
-        {/* Date Scroll Wheel */}
-        <div className="mb-4">
-          <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">Select Date</p>
-          <div className="flex overflow-x-auto gap-2 py-1.5 scrollbar-hide">
-            {days.map((day) => {
+        {/* Header with Date Selector */}
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Fitness</h1>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowWeightModal(true)}
+                className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
+              >
+                + Weight
+              </button>
+              <button
+                onClick={() => {
+                  const convertToCustom = (exercises: Exercise[]): CustomExercise[] => {
+                    return exercises.map(ex => ({
+                      name: ex.name,
+                      sets: ex.goalSets,
+                      reps: ex.goalReps,
+                    }));
+                  };
+                  setCustomWorkoutPlan({
+                    pushDay: workoutPlan.pushDay.length > 0 
+                      ? convertToCustom(workoutPlan.pushDay)
+                      : [{ name: "", sets: 3, reps: 10 }],
+                    pullDay: workoutPlan.pullDay.length > 0
+                      ? convertToCustom(workoutPlan.pullDay)
+                      : [{ name: "", sets: 3, reps: 10 }],
+                    legsDay: workoutPlan.legsDay.length > 0
+                      ? convertToCustom(workoutPlan.legsDay)
+                      : [{ name: "", sets: 3, reps: 10 }],
+                  });
+                  setShowCustomWorkoutModal(true);
+                }}
+                className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
+              >
+                + Workout
+              </button>
+              <button
+                onClick={() => router.push("/consultation")}
+                className="px-3 py-1.5 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-lg text-xs font-bold transition-all shadow-lg shadow-teal-500/30"
+              >
+                AI
+              </button>
+            </div>
+          </div>
+          {/* Date Scroll Wheel - Image Style */}
+          <div className="flex overflow-x-auto gap-1.5 py-1 scrollbar-hide items-center">
+            {days.map((day, index) => {
               const isSelected = day.toDateString() === selectedDate.toDateString();
               const isToday = day.toDateString() === new Date().toDateString();
-              const formatted = day.toLocaleDateString("en-GB", {
-                day: "numeric",
-                month: "short",
-              });
-              const dayName = day.toLocaleDateString("en-GB", { weekday: "short" });
+              const dayNum = day.getDate();
+              const dayName = day.toLocaleDateString("en-GB", { weekday: "short" }).toUpperCase();
+              const month = day.toLocaleDateString("en-GB", { month: "short" });
+              const showArrow = isSelected;
+              
               return (
                 <button
                   key={day.toISOString()}
                   onClick={() => setSelectedDate(day)}
-                  className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-lg text-xs font-medium transition-all min-w-[3.5rem] ${
+                  className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     isSelected
-                      ? "bg-gradient-to-br from-teal-400 to-teal-500 text-black shadow-lg scale-105"
+                      ? "bg-gradient-to-br from-teal-400 to-teal-500 text-black shadow-lg font-bold"
                       : isToday
-                      ? "bg-[rgba(20,30,35,0.85)] text-white border-2 border-teal-400/50"
+                      ? "bg-[rgba(20,30,35,0.85)] text-white border border-teal-400/50"
                       : "bg-gradient-to-b from-[#0c1422] to-black text-gray-300 hover:bg-[rgba(20,30,35,0.85)] border border-white/10"
                   }`}
                 >
-                  <span className="text-[9px] uppercase tracking-wide opacity-70 mb-0.5">{dayName}</span>
-                  <span className="text-sm font-bold">{formatted.split(" ")[0]}</span>
-                  <span className="text-[9px] opacity-70">{formatted.split(" ")[1]}</span>
+                  <span className="text-xs">{dayName}</span>
+                  {showArrow && <span className="text-xs">&gt;</span>}
+                  <span className="text-xs font-bold">{dayNum}</span>
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Header */}
-        <header className="mb-4">
-          <div className="bg-gradient-to-r from-teal-400/20 to-teal-500/20 border border-teal-400/30 rounded-xl p-4 mb-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2.5">
-                <div className="bg-teal-400 text-black rounded-lg p-2 shadow-lg">
-                  <Dumbbell className="w-5 h-5" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-white">{currentDayWorkoutName}</h1>
-                  <p className="text-gray-300 text-xs mt-0.5">
-                    {selectedDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
-                  </p>
-                </div>
+        {/* Workout Header - Image Style */}
+        {currentDayWorkoutName !== "Rest Day" && (
+          <div className="mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-white/10">
+            <h2 className="text-xl font-bold text-white mb-1">{currentDayWorkoutName}</h2>
+            <p className="text-sm text-gray-400 mb-3">
+              {selectedDate.toLocaleDateString("en-GB", { weekday: "long" })} • {
+                currentDayWorkoutName === "Push Day" ? "Chest / Shoulders / Triceps" :
+                currentDayWorkoutName === "Pull Day" ? "Back / Biceps" :
+                currentDayWorkoutName === "Legs Day" ? "Quads / Hamstrings / Glutes / Calves" :
+                ""
+              }
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400">Progress</span>
+              <div className="flex-1 bg-white/10 rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-gradient-to-r from-teal-400 to-cyan-500 h-full transition-all duration-300 rounded-full"
+                  style={{ width: `${totals.progress}%` }}
+                />
               </div>
+              <span className="text-teal-400 font-bold text-xs min-w-[3rem] text-right">{totals.progress}% {totals.totalVolume} kg</span>
             </div>
-            {currentDayWorkoutName !== "Rest Day" && (
-              <div className="flex items-center gap-3 pt-2 border-t border-teal-400/20">
-                <div className="flex-1">
-                  <p className="text-[10px] text-gray-400 mb-0.5">Progress</p>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-[rgba(20,30,35,0.85)] rounded-full h-1.5 overflow-hidden">
-                      <div 
-                        className="bg-gradient-to-r from-teal-400 to-teal-500 h-full transition-all duration-300 rounded-full"
-                        style={{ width: `${totals.progress}%` }}
-                      />
-                    </div>
-                    <span className="text-teal-400 font-bold text-xs min-w-[2.5rem] text-right">{totals.progress}%</span>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-gray-400 mb-0.5">Volume</p>
-                  <p className="text-teal-400 font-bold text-base">{totals.totalVolume} kg</p>
-                </div>
-              </div>
-            )}
           </div>
-        </header>
+        )}
 
-        {/* Workout Cards - Grid Layout */}
+        {/* Exercises List - Image Style */}
         {currentDayWorkoutName === "Rest Day" ? (
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-8 border border-white/10 text-center mb-4 shadow-xl">
-            <div className="text-5xl mb-3">😴</div>
-            <p className="text-xl font-bold text-gray-300 mb-1">Rest Day</p>
-            <p className="text-gray-400 text-sm">Take a break and recover!</p>
+          <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-6 border border-white/10 text-center mb-3">
+            <div className="text-4xl mb-2">😴</div>
+            <p className="text-base font-bold text-gray-300 mb-1">Rest Day</p>
+            <p className="text-gray-400 text-xs">Take a break and recover!</p>
           </div>
         ) : currentDayExercises.length === 0 ? (
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl p-8 border border-white/10 text-center mb-4 shadow-xl">
-            <div className="text-5xl mb-3">💪</div>
-            <p className="text-lg font-bold text-gray-300 mb-1">No exercises for {currentDayWorkoutName}</p>
-            <p className="text-gray-400 text-xs">Add your own workout plan or get an AI consultation to get started!</p>
+          <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-6 border border-white/10 text-center mb-3">
+            <div className="text-4xl mb-2">💪</div>
+            <p className="text-sm font-bold text-gray-300 mb-1">No exercises for {currentDayWorkoutName}</p>
+            <p className="text-gray-400 text-[10px]">Add your own workout or use AI to get started!</p>
           </div>
         ) : (
-          <main className="mb-4">
-            <p className="text-xs text-gray-400 mb-3 uppercase tracking-wide">Exercises</p>
-            <div className="grid grid-cols-2 gap-3">
+          <main className="mb-3">
+            <p className="text-xs text-gray-400 mb-3 uppercase tracking-wide font-semibold">Exercises</p>
+            <div className="space-y-2">
               {currentDayExercises.map((ex) => {
-              const completedSets = ex.sets.filter(s => s.completed).length;
-              const totalSets = ex.sets.length;
-              const progressPercent = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
-              const isComplete = completedSets === totalSets && totalSets > 0;
-              
-              return (
-                <section
-                  key={ex.id}
-                  className={`bg-gradient-to-br ${
-                    isComplete 
-                      ? "from-green-900/30 to-green-800/20 border-green-600/50" 
-                      : "from-gray-900 to-gray-800 border-white/10"
-                  } border rounded-lg p-3 cursor-pointer transition-all hover:scale-[1.02] hover:shadow-xl shadow-lg`}
-                  onClick={() => setActiveExerciseId(ex.id)}
-                >
-                  <div className="flex items-start justify-between mb-2">
+                const completedSets = ex.sets.filter(s => s.completed).length;
+                const totalSets = ex.sets.length;
+                const nextIncompleteSet = ex.sets.findIndex(s => !s.completed);
+                
+                return (
+                  <div
+                    key={ex.id}
+                    className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-lg p-3 flex items-center justify-between"
+                  >
                     <div className="flex-1">
-                      <h2 className="text-sm font-bold text-white mb-1 line-clamp-2">{ex.name}</h2>
-                      <p className="text-[10px] text-gray-400">
-                        {ex.goalSets} sets × {ex.goalReps} reps
+                      <h2 className="text-sm font-bold text-white mb-1">{ex.name}</h2>
+                      <p className="text-xs text-gray-400">
+                        {ex.goalSets} x {ex.goalReps} • {completedSets} / {totalSets} sets
                       </p>
                     </div>
-                    {isComplete && (
-                      <div className="bg-green-500 text-white rounded-full p-1">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
+                    <button
+                      onClick={() => {
+                        if (nextIncompleteSet >= 0) {
+                          setActiveExerciseId(ex.id);
+                        }
+                      }}
+                      className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 text-black rounded-lg text-xs font-bold hover:from-teal-500 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/30"
+                    >
+                      START SET
+                    </button>
                   </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-gray-400">Progress</span>
-                      <span className={`text-xs font-bold ${isComplete ? "text-green-400" : "text-teal-400"}`}>
-                        {completedSets}/{totalSets}
-                      </span>
-                    </div>
-                    <div className="w-full bg-[rgba(20,30,35,0.85)] rounded-full h-1.5 overflow-hidden">
-                      <div 
-                        className={`h-full transition-all duration-300 rounded-full ${
-                          isComplete 
-                            ? "bg-gradient-to-r from-green-500 to-green-600" 
-                            : "bg-gradient-to-r from-teal-400 to-teal-500"
-                        }`}
-                        style={{ width: `${progressPercent}%` }}
-                      />
-                    </div>
-                  </div>
-                </section>
-              );
-            })}
+                );
+              })}
             </div>
           </main>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 mb-6 flex-wrap">
-          <button
-            onClick={() => {
-              // Load existing workout plan into the modal
-              const convertToCustom = (exercises: Exercise[]): CustomExercise[] => {
-                return exercises.map(ex => ({
-                  name: ex.name,
-                  sets: ex.goalSets,
-                  reps: ex.goalReps,
-                }));
-              };
-              
-              setCustomWorkoutPlan({
-                pushDay: workoutPlan.pushDay.length > 0 
-                  ? convertToCustom(workoutPlan.pushDay)
-                  : [{ name: "", sets: 3, reps: 10 }],
-                pullDay: workoutPlan.pullDay.length > 0
-                  ? convertToCustom(workoutPlan.pullDay)
-                  : [{ name: "", sets: 3, reps: 10 }],
-                legsDay: workoutPlan.legsDay.length > 0
-                  ? convertToCustom(workoutPlan.legsDay)
-                  : [{ name: "", sets: 3, reps: 10 }],
-              });
-              setShowCustomWorkoutModal(true);
-            }}
-            className="flex-1 bg-gradient-to-b from-[#0c1422] to-black hover:bg-[rgba(20,30,35,0.85)] border border-white/10 text-white px-4 py-3 rounded-xl font-semibold transition-all text-sm shadow-lg hover:shadow-xl min-w-[140px]"
-          >
-            {workoutPlan.pushDay.length > 0 || workoutPlan.pullDay.length > 0 || workoutPlan.legsDay.length > 0
-              ? "Edit Workout Plan"
-              : "Add My Own Workout Plan"}
-          </button>
-          <button
-            onClick={() => {
-              router.push("/consultation");
-            }}
-            className="flex-1 bg-gradient-to-r from-teal-400 to-teal-500 hover:from-teal-500 hover:to-teal-600 text-black px-4 py-3 rounded-xl font-semibold transition-all text-sm shadow-lg hover:shadow-xl min-w-[140px]"
-          >
-            AI Consultation & Evaluation
-          </button>
+        {/* Weight Tracking Section - Image Style */}
+        <div className="mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-white/10">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-white">Body Weight</h3>
+            <select className="text-xs bg-transparent text-gray-400 border-none outline-none">
+              <option>1Y</option>
+              <option>6M</option>
+              <option>3M</option>
+              <option>1M</option>
+            </select>
+          </div>
+          {latestWeight ? (
+            <>
+              <div className="mb-3">
+                <p className="text-2xl font-bold text-white mb-1">{latestWeight} kg</p>
+                {weightChange !== null && (
+                  <p className={`text-sm ${weightChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {weightChange >= 0 ? '+' : ''}{weightChange.toFixed(1)} kg last year
+                  </p>
+                )}
+              </div>
+              {weightEntries.length > 1 && (() => {
+                const displayEntries = weightEntries.slice(-10);
+                const sortedEntries = [...displayEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                const minWeight = Math.min(...sortedEntries.map(e => e.weight));
+                const maxWeight = Math.max(...sortedEntries.map(e => e.weight));
+                const range = maxWeight - minWeight || 1;
+                const padding = 10;
+                const chartWidth = 300;
+                const chartHeight = 100;
+                const graphHeight = chartHeight - padding * 2;
+                const graphWidth = chartWidth - padding * 2;
+                
+                // Generate points for the line
+                const points = sortedEntries.map((entry, idx) => {
+                  const x = padding + (idx / Math.max(sortedEntries.length - 1, 1)) * graphWidth;
+                  const y = padding + graphHeight - ((entry.weight - minWeight) / range) * graphHeight;
+                  return { x, y, weight: entry.weight, date: entry.date };
+                });
+                
+                // Generate area polygon points
+                const areaPoints = `M${padding},${padding + graphHeight} ${points.map(p => `L${p.x},${p.y}`).join(' ')} L${padding + graphWidth},${padding + graphHeight} Z`;
+                
+                // Generate line path
+                const linePath = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+                
+                // Calculate Y-axis labels
+                const yStep = range / 3;
+                const yLabels = [
+                  Math.round(maxWeight),
+                  Math.round(maxWeight - yStep),
+                  Math.round(minWeight)
+                ];
+                
+                // Generate X-axis labels (first, middle, last dates)
+                const xLabels = [];
+                if (sortedEntries.length > 0) {
+                  xLabels.push(new Date(sortedEntries[0].date));
+                  if (sortedEntries.length > 2) {
+                    xLabels.push(new Date(sortedEntries[Math.floor(sortedEntries.length / 2)].date));
+                  }
+                  xLabels.push(new Date(sortedEntries[sortedEntries.length - 1].date));
+                }
+                
+                return (
+                  <div className="h-32 relative mt-2">
+                    <svg className="w-full h-full" viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="xMidYMid meet">
+                      <defs>
+                        <linearGradient id="weightGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="#14b8a6" stopOpacity="0" />
+                        </linearGradient>
+                        <filter id="glow">
+                          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                          <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                          </feMerge>
+                        </filter>
+                      </defs>
+                      
+                      {/* Grid lines */}
+                      {[0, 1, 2].map((i) => {
+                        const y = padding + (i / 2) * graphHeight;
+                        return (
+                          <line
+                            key={i}
+                            x1={padding}
+                            y1={y}
+                            x2={padding + graphWidth}
+                            y2={y}
+                            stroke="rgba(255,255,255,0.08)"
+                            strokeWidth="1"
+                          />
+                        );
+                      })}
+                      
+                      {/* Area under curve */}
+                      <path
+                        d={areaPoints}
+                        fill="url(#weightGradient)"
+                      />
+                      
+                      {/* Graph line */}
+                      <path
+                        d={linePath}
+                        fill="none"
+                        stroke="#14b8a6"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        filter="url(#glow)"
+                      />
+                      
+                      {/* Data points */}
+                      {points.map((point, idx) => (
+                        <g key={idx}>
+                          <circle
+                            cx={point.x}
+                            cy={point.y}
+                            r="3"
+                            fill="#14b8a6"
+                            stroke="#0c1422"
+                            strokeWidth="1.5"
+                            className="drop-shadow-lg"
+                          />
+                        </g>
+                      ))}
+                    </svg>
+                    
+                    {/* X-axis labels */}
+                    <div className="absolute bottom-0 left-0 right-0 flex justify-between text-[9px] text-gray-500 px-2 pb-1">
+                      {xLabels.map((date, idx) => (
+                        <span key={idx}>
+                          {date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                        </span>
+                      ))}
+                    </div>
+                    
+                    {/* Y-axis labels */}
+                    <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[9px] text-gray-500 py-2 pl-1">
+                      {yLabels.map((label, idx) => (
+                        <span key={idx}>{label}</span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </>
+          ) : (
+            <p className="text-xs text-gray-500 text-center py-4">No weight entries yet</p>
+          )}
         </div>
 
-        {/* Strength Progress Section */}
-        <section className="mt-8 bg-gradient-to-br from-gray-900 to-gray-800 border border-white/10 rounded-2xl p-6 mb-6 shadow-xl">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-xl font-bold text-white">Strength Progress Overview</h2>
-            <TrendingUp className="w-5 h-5 text-teal-400" />
+        {/* Strength Progress Section - Keep this */}
+        <section className="mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-xl p-3">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-bold text-white">Progress</h2>
+            <Link href="/gym/stats" className="text-[10px] text-teal-400 hover:text-teal-300">
+              View All →
+            </Link>
           </div>
-          <div className="grid grid-cols-2 gap-4 mb-5">
-            <div className="bg-[rgba(20,30,35,0.85)]/50 rounded-xl p-4 border border-white/10">
-              <p className="text-2xl font-bold text-teal-400 mb-1">+12%</p>
-              <p className="text-xs text-gray-400">Total Volume</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-white/5 rounded-lg p-2 border border-white/10">
+              <p className="text-base font-bold text-teal-400 mb-0.5">+12%</p>
+              <p className="text-[9px] text-gray-400">Volume</p>
             </div>
-            <div className="bg-[rgba(20,30,35,0.85)]/50 rounded-xl p-4 border border-white/10">
-              <p className="text-2xl font-bold text-teal-400 mb-1">+5 kg</p>
-              <p className="text-xs text-gray-400">Bench Press PB</p>
-            </div>
-            <div className="bg-[rgba(20,30,35,0.85)]/50 rounded-xl p-4 border border-white/10">
-              <p className="text-2xl font-bold text-teal-400 mb-1">+8%</p>
-              <p className="text-xs text-gray-400">Avg Set Volume</p>
-            </div>
-            <div className="bg-[rgba(20,30,35,0.85)]/50 rounded-xl p-4 border border-white/10">
-              <p className="text-2xl font-bold text-teal-400 mb-1">7 days</p>
-              <p className="text-xs text-gray-400">Active Streak</p>
+            <div className="bg-white/5 rounded-lg p-2 border border-white/10">
+              <p className="text-base font-bold text-teal-400 mb-0.5">+5 kg</p>
+              <p className="text-[9px] text-gray-400">Bench PB</p>
             </div>
           </div>
-          <Link
-            href="/gym/stats"
-            className="w-full bg-gradient-to-r from-teal-400 to-teal-500 hover:from-teal-500 hover:to-teal-600 text-black px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-semibold transition-all shadow-lg hover:shadow-xl"
-          >
-            <TrendingUp className="w-5 h-5" />
-            View All Stats & Charts
-          </Link>
         </section>
+
+        {/* Start Workout Button - Image Style */}
+        {currentDayWorkoutName !== "Rest Day" && currentDayExercises.length > 0 && (
+          <div className="mb-20 flex items-center justify-center gap-2">
+            <button
+              onClick={() => {
+                // Start workout - could scroll to first exercise or open workout mode
+                const firstExercise = currentDayExercises[0];
+                if (firstExercise) {
+                  setActiveExerciseId(firstExercise.id);
+                }
+              }}
+              className="flex-1 px-6 py-4 bg-gradient-to-r from-teal-400 to-cyan-500 text-black rounded-xl text-base font-bold hover:from-teal-500 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/30"
+            >
+              Start Workout
+            </button>
+            <button className="px-3 py-4 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-xl hover:bg-[rgba(20,30,35,1)] transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+              </svg>
+            </button>
+          </div>
+        )}
 
         {/* Custom Workout Plan Modal */}
         {showCustomWorkoutModal && (
@@ -1375,6 +1552,64 @@ export default function GymPage() {
                   className="flex-1 bg-teal-400 hover:bg-teal-500 text-black px-6 py-3 rounded-lg font-semibold transition-colors"
                 >
                   Save Workout Plan
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Weight Entry Modal */}
+        {showWeightModal && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-5 max-w-md w-full border border-white/10">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">Add Weight Entry</h2>
+                <button
+                  onClick={() => {
+                    setShowWeightModal(false);
+                    setNewWeight({ weight: "", bodyFat: "", notes: "" });
+                  }}
+                  className="text-white/40 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+      </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Weight (kg)</label>
+                  <input
+                    type="number"
+                    value={newWeight.weight}
+                    onChange={(e) => setNewWeight({ ...newWeight, weight: e.target.value })}
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-teal-400"
+                    placeholder="70.5"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Body Fat % (optional)</label>
+                  <input
+                    type="number"
+                    value={newWeight.bodyFat}
+                    onChange={(e) => setNewWeight({ ...newWeight, bodyFat: e.target.value })}
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-teal-400"
+                    placeholder="15"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Notes (optional)</label>
+                  <textarea
+                    value={newWeight.notes}
+                    onChange={(e) => setNewWeight({ ...newWeight, notes: e.target.value })}
+                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-teal-400 resize-none"
+                    rows={2}
+                    placeholder="Morning weight, after workout, etc."
+                  />
+                </div>
+                <button
+                  onClick={handleAddWeight}
+                  className="w-full py-2.5 bg-teal-400 text-black rounded-lg font-semibold hover:bg-teal-500 transition-colors text-sm"
+                >
+                  Add Entry
                 </button>
               </div>
             </div>

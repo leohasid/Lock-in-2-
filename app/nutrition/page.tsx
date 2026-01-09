@@ -409,22 +409,22 @@ export default function NutritionPage() {
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-4 pt-4 pb-28">
       {/* HEADER */}
       <div className="mb-5 flex items-start justify-end">
-        <div className="flex items-center gap-2">
-          <button
+            <div className="flex items-center gap-2">
+              <button
             onClick={() => setShowAIConsultation(true)}
             className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-xl text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 flex items-center gap-1.5 shadow-lg"
-          >
+              >
             <MessageSquare className="w-3.5 h-3.5 text-teal-400" />
             AI Coach
-          </button>
-          <button
+              </button>
+              <button
             onClick={() => setShowAddMeal(true)}
             className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-xl text-xs font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 flex items-center gap-1.5"
-          >
-            <Camera className="w-3.5 h-3.5" />
+              >
+                <Camera className="w-3.5 h-3.5" />
             Add/Scan
-          </button>
-        </div>
+              </button>
+            </div>
       </div>
 
       {/* CALORIES CIRCLE + MACROS - No box, on hard background */}
@@ -445,8 +445,8 @@ export default function NutritionPage() {
                 <div
                   className={`h-2.5 rounded-full bg-gradient-to-r ${m.color} transition-all duration-500 shadow-lg`}
                   style={{ width: `${m.percent}%` }}
-                />
-              </div>
+            />
+          </div>
             </div>
           ))}
         </div>
@@ -490,10 +490,10 @@ export default function NutritionPage() {
                 </p>
                 <p className="text-xs text-gray-400 mt-1">/{dailyGoals.calories.toLocaleString()}</p>
                 <p className="text-sm font-bold text-teal-400 mt-1.5">{caloriesPercentage}%</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
         {/* Right Macros - 3 macros */}
         <div className="flex-1 space-y-3">
@@ -512,8 +512,8 @@ export default function NutritionPage() {
                   className={`h-2.5 rounded-full bg-gradient-to-r ${m.color} transition-all duration-500 shadow-lg`}
                   style={{ width: `${m.percent}%` }}
                 />
-              </div>
             </div>
+          </div>
           ))}
         </div>
       </div>
@@ -524,13 +524,13 @@ export default function NutritionPage() {
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Today's Meals</h2>
-            <button
+              <button
               onClick={() => setShowMacroSettings(true)}
               className="text-[10px] text-teal-400 hover:text-teal-300 transition-colors font-medium"
-            >
+              >
               Edit Goals
-            </button>
-          </div>
+              </button>
+            </div>
           <div className="space-y-2 max-h-[200px] overflow-y-auto">
             {meals.length > 0 ? (
               meals.map((meal) => (
@@ -571,11 +571,11 @@ export default function NutritionPage() {
               <div className="text-4xl mb-2 animate-bounce">🍽️</div>
               <p className="text-sm text-gray-400">No meals logged today</p>
               <p className="text-xs text-gray-500 mt-1">Start tracking your nutrition!</p>
-            </div>
-          )}
           </div>
-        </div>
-      </div>
+        )}
+                </div>
+                      </div>
+                      </div>
 
       {/* ADD MEAL MODAL */}
       {showAddMeal && (
@@ -669,7 +669,7 @@ export default function NutritionPage() {
                     className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="5"
                     />
-                  </div>
+                </div>
                   <div>
                   <label className="block text-sm font-medium mb-1.5">Sodium (mg)</label>
                     <input
@@ -706,7 +706,7 @@ export default function NutritionPage() {
                 <button
                   onClick={handleAddMeal}
                   className="flex-1 py-2.5 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors text-sm"
-                >
+                  >
                   Add Meal
                   </button>
                 </div>
@@ -729,13 +729,13 @@ export default function NutritionPage() {
               onChange={(e) => setFoodToScan(e.target.value)}
               placeholder="e.g., Grilled chicken salad"
               className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm mb-4 focus:outline-none focus:border-[#14f1d9]"
-            />
+              />
             <div className="flex gap-2">
           <button
             onClick={() => {
                   setShowScanIntro(false);
                   setFoodToScan("");
-                }}
+            }}
                 className="flex-1 py-2.5 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors text-sm"
               >
                 Cancel
@@ -744,7 +744,7 @@ export default function NutritionPage() {
             onClick={() => {
                   setShowScanOptions(true);
                   setShowScanIntro(false);
-                }}
+            }}
                 className="flex-1 py-2.5 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors text-sm"
               >
                 Continue
@@ -817,7 +817,7 @@ export default function NutritionPage() {
               <button
                 onClick={capturePhoto}
                 className="px-6 py-3 bg-[#14f1d9] text-black rounded-lg font-medium text-sm"
-              >
+                    >
                 Capture
                     </button>
                   </div>
@@ -885,7 +885,7 @@ export default function NutritionPage() {
                   New Question
                         </button>
                       </div>
-            )}
+                )}
             </div>
           </div>
         )}
@@ -948,7 +948,7 @@ export default function NutritionPage() {
                   onChange={(e) => setMacroSettings({ ...macroSettings, sugar: parseInt(e.target.value) || 0 })}
                   className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                 />
-              </div>
+            </div>
               <div>
                 <label className="block text-sm font-medium mb-1.5">Sodium (mg)</label>
                 <input
