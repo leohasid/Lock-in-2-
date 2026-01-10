@@ -78,6 +78,7 @@ export default function GymPage() {
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
   const [showWeightModal, setShowWeightModal] = useState(false);
   const [newWeight, setNewWeight] = useState({ weight: "", bodyFat: "", notes: "" });
+  const [selectedTimeframe, setSelectedTimeframe] = useState<"1M" | "3M" | "1Y">("1Y");
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
@@ -655,9 +656,54 @@ export default function GymPage() {
   };
 
   // Calculate weight progress
-  const latestWeight = weightEntries.length > 0 ? weightEntries[weightEntries.length - 1].weight : null;
-  const previousWeight = weightEntries.length > 1 ? weightEntries[weightEntries.length - 2].weight : null;
-  const weightChange = latestWeight && previousWeight ? latestWeight - previousWeight : null;
+  // Sort weight entries by date
+  const sortedWeightEntries = useMemo(() => {
+    return [...weightEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [weightEntries]);
+
+  const latestWeight = sortedWeightEntries.length > 0 ? sortedWeightEntries[sortedWeightEntries.length - 1].weight : null;
+  
+  // Calculate weight change from one year ago (or oldest entry if less than a year)
+  const weightChange = useMemo(() => {
+    if (!latestWeight || sortedWeightEntries.length === 0) return null;
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const oneYearAgoStr = oneYearAgo.toISOString().split("T")[0];
+    
+    // Find the oldest entry or entry from one year ago
+    const oldestEntry = sortedWeightEntries[0];
+    const oneYearAgoEntry = sortedWeightEntries.find(e => e.date <= oneYearAgoStr);
+    const referenceEntry = oneYearAgoEntry || oldestEntry;
+    
+    if (referenceEntry && referenceEntry.weight) {
+      return latestWeight - referenceEntry.weight;
+    }
+    return null;
+  }, [latestWeight, sortedWeightEntries]);
+
+  // Calculate average weight
+  const averageWeight = useMemo(() => {
+    if (sortedWeightEntries.length === 0) return null;
+    const sum = sortedWeightEntries.reduce((acc, entry) => acc + entry.weight, 0);
+    return sum / sortedWeightEntries.length;
+  }, [sortedWeightEntries]);
+
+  // Calculate BMI (if height is available from onboarding)
+  const bmi = useMemo(() => {
+    if (!latestWeight) return null;
+    if (typeof window === "undefined") return null;
+    const onboardingData = localStorage.getItem("onboardingData");
+    if (!onboardingData) return null;
+    try {
+      const data = JSON.parse(onboardingData);
+      const heightInMeters = data.height ? data.height / 100 : null;
+      if (!heightInMeters) return null;
+      const bmiValue = latestWeight / (heightInMeters * heightInMeters);
+      return bmiValue;
+    } catch {
+      return null;
+    }
+  }, [latestWeight]);
 
   const handleAddWeight = () => {
     if (!newWeight.weight) return;
@@ -744,20 +790,22 @@ export default function GymPage() {
               <span className="text-xs text-gray-400">Progress</span>
               <div className="flex-1 bg-white/10 rounded-full h-2 overflow-hidden">
                 <div 
-                  className="bg-gradient-to-r from-teal-400 to-cyan-500 h-full transition-all duration-300 rounded-full"
+                  className="bg-gradient-to-r from-green-400 to-emerald-500 h-full transition-all duration-300 rounded-full"
                   style={{ width: `${totals.progress}%` }}
                 />
               </div>
-              <span className="text-teal-400 font-bold text-xs min-w-[3rem] text-right">{totals.progress}% {totals.totalVolume} kg</span>
+              <span className="text-green-400 font-bold text-xs min-w-[3rem] text-right">{totals.progress}% {totals.totalVolume} kg</span>
             </div>
-            <Link
-              href={`/gym/workout?date=${selectedDate.toISOString().split("T")[0]}`}
-              className="block w-full"
-            >
-              <button className="w-full px-4 py-2.5 bg-gradient-to-r from-teal-400 to-cyan-500 text-black rounded-lg text-sm font-bold hover:from-teal-500 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/30">
-                View Workout
-              </button>
-            </Link>
+            {currentDayExercises.length > 0 && (
+              <Link
+                href={`/gym/workout?date=${selectedDate.toISOString().split("T")[0]}`}
+                className="block w-full"
+              >
+                <button className="w-full px-4 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 text-black rounded-lg text-sm font-bold hover:from-teal-500 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/30">
+                  Start Workout
+                </button>
+              </Link>
+            )}
           </div>
         )}
 
@@ -766,12 +814,21 @@ export default function GymPage() {
         <div className="mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-white/10">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold text-white">Body Weight</h3>
-            <select className="text-xs bg-transparent text-gray-400 border-none outline-none">
-              <option>1Y</option>
-              <option>6M</option>
-              <option>3M</option>
-              <option>1M</option>
-            </select>
+            <div className="flex gap-1">
+              {(["1M", "3M", "1Y"] as const).map((timeframe) => (
+                <button
+                  key={timeframe}
+                  onClick={() => setSelectedTimeframe(timeframe)}
+                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                    selectedTimeframe === timeframe
+                      ? "bg-teal-400 text-black"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  {timeframe}
+                </button>
+              ))}
+            </div>
           </div>
           {latestWeight ? (
             <>
@@ -783,8 +840,8 @@ export default function GymPage() {
                   </p>
                 )}
               </div>
-              {weightEntries.length > 1 && (() => {
-                const displayEntries = weightEntries.slice(-10);
+              {sortedWeightEntries.length > 1 && (() => {
+                const displayEntries = sortedWeightEntries.slice(-10);
                 const sortedEntries = [...displayEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
                 const minWeight = Math.min(...sortedEntries.map(e => e.weight));
                 const maxWeight = Math.max(...sortedEntries.map(e => e.weight));
@@ -910,6 +967,33 @@ export default function GymPage() {
                   </div>
                 );
               })()}
+              {/* Statistics Row */}
+              {sortedWeightEntries.length > 1 && (
+                <div className="mt-4 flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+                    </svg>
+                    <span className="text-gray-400">Avg: <span className="text-white font-semibold">{averageWeight?.toFixed(1)} kg</span></span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <svg className={`w-4 h-4 ${weightChange && weightChange >= 0 ? 'text-red-400' : 'text-red-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                    <span className={`${weightChange && weightChange >= 0 ? 'text-red-400' : 'text-red-400'}`}>
+                      Change: <span className="font-semibold">{weightChange !== null ? (weightChange >= 0 ? '+' : '') + weightChange.toFixed(1) : '0.0'} kg</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <svg className={`w-4 h-4 ${bmi && bmi >= 18.5 && bmi <= 24.9 ? 'text-green-400' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-gray-400">
+                      BMI: <span className="text-white font-semibold">{bmi?.toFixed(1) || 'N/A'} {bmi && bmi >= 18.5 && bmi <= 24.9 ? 'Normal' : bmi && bmi < 18.5 ? 'Underweight' : bmi && bmi > 24.9 ? 'Overweight' : ''}</span>
+                    </span>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <p className="text-xs text-gray-500 text-center py-4">No weight entries yet</p>
@@ -918,29 +1002,9 @@ export default function GymPage() {
             onClick={() => setShowWeightModal(true)}
             className="mt-4 w-full px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-lg text-xs font-bold transition-all shadow-lg shadow-teal-500/30"
           >
-            Track Weight
+            Log Weight
           </button>
         </div>
-
-
-        {/* Start Workout Button - Image Style */}
-        {currentDayWorkoutName !== "Rest Day" && currentDayExercises.length > 0 && (
-          <div className="mb-20 flex items-center justify-center gap-2">
-            <Link
-              href={`/gym/workout?date=${selectedDate.toISOString().split("T")[0]}`}
-              className="flex-1"
-            >
-              <button className="w-full px-6 py-4 bg-gradient-to-r from-green-400 to-emerald-500 text-black rounded-xl text-base font-bold hover:from-green-500 hover:to-emerald-600 transition-all shadow-lg shadow-green-500/30">
-                Start Workout
-              </button>
-            </Link>
-            <button className="px-3 py-4 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-xl hover:bg-[rgba(20,30,35,1)] transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-              </svg>
-            </button>
-          </div>
-        )}
 
         {/* Custom Workout Plan Modal */}
         {showCustomWorkoutModal && (
