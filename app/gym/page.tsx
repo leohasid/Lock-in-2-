@@ -719,12 +719,6 @@ export default function GymPage() {
             <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Fitness</h1>
             <div className="flex gap-2">
               <button
-                onClick={() => setShowWeightModal(true)}
-                className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
-              >
-                + Weight
-              </button>
-              <button
                 onClick={() => router.push("/consultation")}
                 className="px-3 py-1.5 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-lg text-xs font-bold transition-all shadow-lg shadow-teal-500/30"
               >
@@ -920,6 +914,12 @@ export default function GymPage() {
           ) : (
             <p className="text-xs text-gray-500 text-center py-4">No weight entries yet</p>
           )}
+          <button
+            onClick={() => setShowWeightModal(true)}
+            className="mt-4 w-full px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-lg text-xs font-bold transition-all shadow-lg shadow-teal-500/30"
+          >
+            Track Weight
+          </button>
         </div>
 
 
@@ -930,7 +930,7 @@ export default function GymPage() {
               href={`/gym/workout?date=${selectedDate.toISOString().split("T")[0]}`}
               className="flex-1"
             >
-              <button className="w-full px-6 py-4 bg-gradient-to-r from-teal-400 to-cyan-500 text-black rounded-xl text-base font-bold hover:from-teal-500 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/30">
+              <button className="w-full px-6 py-4 bg-gradient-to-r from-green-400 to-emerald-500 text-black rounded-xl text-base font-bold hover:from-green-500 hover:to-emerald-600 transition-all shadow-lg shadow-green-500/30">
                 Start Workout
               </button>
             </Link>
