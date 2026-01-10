@@ -761,14 +761,13 @@ export default function GymPage() {
 
         {/* Header */}
         <div className="mb-3">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Fitness</h1>
+          <div className="flex items-center justify-end mb-2">
             <div className="flex gap-2">
               <button
                 onClick={() => router.push("/consultation")}
                 className="px-3 py-1.5 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-lg text-xs font-bold transition-all shadow-lg shadow-teal-500/30"
               >
-                AI
+                Fitness AI
               </button>
             </div>
           </div>

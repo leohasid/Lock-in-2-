@@ -40,6 +40,7 @@ export default function CalendarPage() {
   const [activeView, setActiveView] = useState<"calendar" | "routine">("calendar");
   const [selectedWeek, setSelectedWeek] = useState(new Date());
   const [routineView, setRoutineView] = useState<"fullWeek" | "today">("fullWeek");
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
   // Load reminders from localStorage on mount
   useEffect(() => {
@@ -285,13 +286,38 @@ export default function CalendarPage() {
     return days;
   };
 
-  // Get Monday to Friday only
-  const getWeekDaysMonFri = () => {
-    return getWeekDays().slice(0, 5);
+  // Generate hourly time slots from 04:00 to 23:00 (20 hours)
+  const generateTimeSlots = () => {
+    const slots = [];
+    for (let hour = 4; hour <= 23; hour++) {
+      slots.push(`${hour.toString().padStart(2, '0')}:00`);
+    }
+    return slots;
   };
-
-  // Generate time slots - specific times shown in the image
-  const timeSlots = ["06:00", "07:30", "08:00", "09:00", "11:00", "12:00", "14:00", "15:00", "17:00", "18:00", "20:00", "21:00"];
+  const timeSlots = generateTimeSlots();
+  
+  // Get Monday to Sunday for the current week
+  const getWeekDaysMonFri = () => {
+    const days: Date[] = [];
+    const startOfWeek = new Date(selectedWeek);
+    // Get Monday (day 1)
+    const day = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+    startOfWeek.setDate(diff);
+    
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + i);
+      days.push(date);
+    }
+    return days;
+  };
+  
+  // Get reminders for a specific day
+  const getDayReminders = (date: Date) => {
+    const dateStr = date.toISOString().split("T")[0];
+    return reminders.filter((r) => r.date === dateStr).sort((a, b) => a.time.localeCompare(b.time));
+  };
 
   // Get reminders for a specific day and time (with tolerance)
   const getRemindersForSlot = (date: Date, time: string) => {
@@ -566,51 +592,26 @@ export default function CalendarPage() {
           </div>
         )}
 
-        {/* Routine View - Weekly Schedule Grid */}
+        {/* Routine View - Day Selection and Schedule */}
         {activeView === "routine" && (
           <div className="mb-4">
-            {/* Sub-Navigation: Full Week / Today */}
-            <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => setRoutineView("fullWeek")}
-                className={`flex-1 px-4 py-2.5 rounded-lg font-bold transition-all ${
-                  routineView === "fullWeek"
-                    ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black border-2 border-teal-400 shadow-lg shadow-teal-500/30"
-                    : "bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-gray-400 hover:text-white"
-                }`}
-              >
-                Full Week
-              </button>
-              <button
-                onClick={() => setRoutineView("today")}
-                className={`flex-1 px-4 py-2.5 rounded-lg font-bold transition-all ${
-                  routineView === "today"
-                    ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black border-2 border-teal-400 shadow-lg shadow-teal-500/30"
-                    : "bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-gray-400 hover:text-white"
-                }`}
-              >
-                Today
-              </button>
-            </div>
-
-            {/* Week Navigation */}
-            <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group mb-4">
+            {/* Week Navigation Bar */}
+            <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-3 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group mb-4">
               <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative z-10">
-              <div className="flex items-center justify-center mb-4">
-                <div className="flex items-center gap-2">
+              <div className="relative z-10 flex items-center justify-center">
+                <div className="flex items-center gap-3">
                   <button
                     onClick={() => navigateWeek("prev")}
-                    className="bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 shadow-lg"
+                    className="bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white px-4 py-2 rounded-lg text-base hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 shadow-lg font-bold"
                   >
                     ←
                   </button>
-                  <span className="text-white font-bold min-w-[200px] text-center text-sm bg-gradient-to-r from-teal-400/20 to-cyan-400/20 px-3 py-1.5 rounded-lg">
-                    {weekDays[0].toLocaleDateString("en-US", { month: "short", day: "numeric" })} - {weekDays[6].toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  <span className="text-white font-bold min-w-[220px] text-center text-base bg-gradient-to-r from-teal-400/20 to-cyan-400/20 px-4 py-2 rounded-lg">
+                    {getWeekDaysMonFri()[0].toLocaleDateString("en-US", { month: "short", day: "numeric" })} - {getWeekDaysMonFri()[6].toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </span>
                   <button
                     onClick={() => navigateWeek("next")}
-                    className="bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 shadow-lg"
+                    className="bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white px-4 py-2 rounded-lg text-base hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 shadow-lg font-bold"
                   >
                     →
                   </button>
@@ -618,171 +619,137 @@ export default function CalendarPage() {
               </div>
             </div>
 
-            {/* Weekly Schedule Grid - Days on left, Times on top */}
-            <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group mb-4">
-              <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative z-10 overflow-x-auto -mx-4 px-4">
-                <div className="min-w-full">
-                  {/* Time header row */}
-                  <div className="grid gap-1.5 mb-2" style={{ gridTemplateColumns: `80px repeat(${timeSlots.length}, minmax(60px, 1fr))` }}>
-                    <div className="text-xs text-gray-400 font-semibold p-2"></div>
-                    {timeSlots.map((time) => (
-                      <div
-                        key={time}
-                        className="text-center text-[10px] font-bold p-2 rounded text-gray-300"
-                      >
-                        {time}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Day rows - Show Monday to Friday, or just today if today view */}
-                  <div className="space-y-1.5">
-                    {(routineView === "today" ? [new Date()] : getWeekDaysMonFri()).map((day, dayIndex) => {
-                      const isTodaySlot = isToday(day);
-                      const actualDayIndex = routineView === "today" ? (day.getDay() === 0 ? 6 : day.getDay() - 1) : dayIndex;
-                      const dayName = weekDayNames[actualDayIndex];
-                      return (
-                        <div 
-                          key={dayIndex} 
-                          className="grid gap-1.5 relative"
-                          style={{ gridTemplateColumns: `80px repeat(${timeSlots.length}, minmax(60px, 1fr))` }}
-                        >
-                          {/* Dashed grid lines - positioned between columns */}
-                          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                            <svg className="w-full h-full" style={{ left: '80px' }}>
-                              {timeSlots.map((_, idx) => {
-                                // Position lines between columns (after each time slot)
-                                const leftOffset = 80; // Day label width
-                                const columnWidth = `calc((100% - 80px) / ${timeSlots.length})`;
-                                const xPosition = idx * (100 / timeSlots.length);
-                                return (
-                                  <line
-                                    key={idx}
-                                    x1={`${xPosition}%`}
-                                    y1="0%"
-                                    x2={`${xPosition}%`}
-                                    y2="100%"
-                                    stroke="rgba(255,255,255,0.08)"
-                                    strokeWidth="1"
-                                    strokeDasharray="3,3"
-                                  />
-                                );
-                              })}
-                              {/* Horizontal line in middle of row */}
-                              <line
-                                x1="0%"
-                                y1="50%"
-                                x2="100%"
-                                y2="50%"
-                                stroke="rgba(255,255,255,0.08)"
-                                strokeWidth="1"
-                                strokeDasharray="3,3"
-                              />
-                            </svg>
+            {/* Day Selection - Monday to Sunday */}
+            {!selectedDay && (
+              <div className="space-y-3 mb-4">
+                {getWeekDaysMonFri().map((day, index) => {
+                  const dayName = weekDayNames[index];
+                  const isToday = day.toISOString().split("T")[0] === new Date().toISOString().split("T")[0];
+                  const dayReminders = getDayReminders(day);
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedDay(day)}
+                      className={`w-full bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border-2 transition-all transform hover:scale-[1.02] text-left shadow-lg ${
+                        isToday
+                          ? "border-teal-400 shadow-teal-500/30"
+                          : "border-white/10 hover:border-teal-400/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className={`text-lg font-bold mb-1 ${isToday ? "text-teal-400" : "text-white"}`}>
+                            {dayName}
                           </div>
-                          {/* Day label */}
-                          <div className={`text-xs font-bold p-2 rounded flex flex-col justify-center relative z-10 ${
-                            isTodaySlot ? "bg-teal-400/20 text-teal-400 border border-teal-400/30" : "text-gray-300 bg-[rgba(20,30,35,0.6)] border border-white/5"
-                          }`}>
-                            <div className="font-bold">{dayName}</div>
-                            <div className="text-[10px] mt-0.5 opacity-80">{day.getDate()}</div>
+                          <div className="text-sm text-gray-400">
+                            {day.toLocaleDateString("en-US", { month: "long", day: "numeric" })}
                           </div>
-                          {/* Time columns */}
-                          {timeSlots.map((time) => {
-                            // Get reminders for this time slot (with 30min tolerance)
-                            const slotReminders = reminders.filter((reminder) => {
-                              if (reminder.date !== day.toISOString().split("T")[0]) return false;
-                              const reminderHour = parseInt(reminder.time.split(":")[0]);
-                              const reminderMin = parseInt(reminder.time.split(":")[1]);
-                              const slotHour = parseInt(time.split(":")[0]);
-                              const slotMin = parseInt(time.split(":")[1]);
-                              const reminderTotal = reminderHour * 60 + reminderMin;
-                              const slotTotal = slotHour * 60 + slotMin;
-                              return Math.abs(reminderTotal - slotTotal) <= 60; // 1 hour tolerance
-                            }).sort((a, b) => a.time.localeCompare(b.time));
-
-                            return (
-                              <div
-                                key={time}
-                                className={`min-h-[60px] p-1 relative z-10 border-r border-dashed ${
-                                  isTodaySlot
-                                    ? "bg-teal-400/5 border-teal-400/10"
-                                    : "bg-transparent border-white/5"
-                                }`}
-                              >
-                                {slotReminders.length === 0 ? (
-                                  <div className="text-transparent text-[8px] h-full flex items-center justify-center">
-                                    -
-                                  </div>
-                                ) : (
-                                  <div className="space-y-1">
-                                    {slotReminders.map((reminder) => {
-                                      // Color mapping based on reminder title or type (matching image colors)
-                                      let colorClass = "bg-orange-600/50 border-orange-500/70 text-orange-100";
-                                      const titleLower = reminder.title.toLowerCase();
-                                      
-                                      // Check for "Study Session" first (contains both words)
-                                      if (titleLower.includes("study") && titleLower.includes("session")) {
-                                        colorClass = "bg-blue-600/50 border-blue-500/70 text-blue-100";
-                                      } 
-                                      // Check for "Gym Session" (contains both words)
-                                      else if ((titleLower.includes("gym") && titleLower.includes("session")) || titleLower.includes("workout")) {
-                                        colorClass = "bg-green-600/50 border-green-500/70 text-green-100";
-                                      } 
-                                      // Check for meditation
-                                      else if (titleLower.includes("meditation") || titleLower.includes("meditate")) {
-                                        colorClass = "bg-orange-700/60 border-orange-600/70 text-orange-100";
-                                      } 
-                                      // Check for other study/learn activities
-                                      else if (titleLower.includes("study") || titleLower.includes("learn")) {
-                                        colorClass = "bg-blue-600/50 border-blue-500/70 text-blue-100";
-                                      } 
-                                      // Check for other gym/exercise activities
-                                      else if (titleLower.includes("gym") || titleLower.includes("exercise")) {
-                                        colorClass = "bg-green-600/50 border-green-500/70 text-green-100";
-                                      } 
-                                      // Default by type
-                                      else if (reminder.type === "supplement") {
-                                        colorClass = "bg-blue-600/50 border-blue-500/70 text-blue-100";
-                                      } else if (reminder.type === "task") {
-                                        colorClass = "bg-green-600/50 border-green-500/70 text-green-100";
-                                      } else if (reminder.type === "habit") {
-                                        colorClass = "bg-orange-600/50 border-orange-500/70 text-orange-100";
-                                      }
-                                      
-                                      return (
-                                        <div
-                                          key={reminder.id}
-                                          onClick={() => {
-                                            setSelectedDate(day);
-                                            setClickedDate(day);
-                                            setShowDateModal(true);
-                                          }}
-                                          className={`p-2 rounded-md text-[10px] cursor-pointer transition-all hover:scale-105 font-semibold ${
-                                            reminder.completed
-                                              ? "opacity-50 line-through"
-                                              : ""
-                                          } ${colorClass} border`}
-                                          title={`${reminder.title} at ${reminder.time}`}
-                                        >
-                                          {reminder.title}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
+                          {dayReminders.length > 0 && (
+                            <div className="text-xs text-teal-400 mt-2 font-semibold">
+                              {dayReminders.length} reminder{dayReminders.length !== 1 ? "s" : ""}
+                            </div>
+                          )}
                         </div>
-                      );
-                    })}
+                        <div className="text-2xl">→</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Day Schedule View - Times going down */}
+            {selectedDay && (
+              <div className="mb-4">
+                <button
+                  onClick={() => setSelectedDay(null)}
+                  className="mb-4 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white px-4 py-2 rounded-lg hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 shadow-lg font-bold flex items-center gap-2"
+                >
+                  ← Back to Days
+                </button>
+                
+                <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="relative z-10">
+                    <h2 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent mb-4">
+                      {weekDayNames[selectedDay.getDay() === 0 ? 6 : selectedDay.getDay() - 1]} {selectedDay.toLocaleDateString("en-US", { month: "long", day: "numeric" })}
+                    </h2>
+                    
+                    <div className="relative border-l border-white/20 pl-2">
+                      {/* Times on the left, horizontal lines across, reminders on the right */}
+                      {timeSlots.map((time, idx) => {
+                        const reminderHour = parseInt(time.split(":")[0]);
+                        const reminderMin = 0;
+                        const matchingReminders = getDayReminders(selectedDay).filter((reminder) => {
+                          const rHour = parseInt(reminder.time.split(":")[0]);
+                          const rMin = parseInt(reminder.time.split(":")[1]) || 0;
+                          return rHour === reminderHour && Math.abs(rMin - reminderMin) <= 30;
+                        });
+                        
+                        // Color mapping
+                        let reminderElement = null;
+                        if (matchingReminders.length > 0) {
+                          const reminder = matchingReminders[0];
+                          let colorClass = "bg-orange-600/50 border-orange-500/70 text-orange-100";
+                          const titleLower = reminder.title.toLowerCase();
+                          
+                          if (titleLower.includes("study") && titleLower.includes("session")) {
+                            colorClass = "bg-blue-600/50 border-blue-500/70 text-blue-100";
+                          } else if ((titleLower.includes("gym") && titleLower.includes("session")) || titleLower.includes("workout")) {
+                            colorClass = "bg-green-600/50 border-green-500/70 text-green-100";
+                          } else if (titleLower.includes("meditation") || titleLower.includes("meditate")) {
+                            colorClass = "bg-orange-700/60 border-orange-600/70 text-orange-100";
+                          } else if (titleLower.includes("study") || titleLower.includes("learn")) {
+                            colorClass = "bg-blue-600/50 border-blue-500/70 text-blue-100";
+                          } else if (titleLower.includes("gym") || titleLower.includes("exercise")) {
+                            colorClass = "bg-green-600/50 border-green-500/70 text-green-100";
+                          } else if (reminder.type === "supplement") {
+                            colorClass = "bg-blue-600/50 border-blue-500/70 text-blue-100";
+                          } else if (reminder.type === "task") {
+                            colorClass = "bg-green-600/50 border-green-500/70 text-green-100";
+                          } else if (reminder.type === "habit") {
+                            colorClass = "bg-orange-600/50 border-orange-500/70 text-orange-100";
+                          }
+                          
+                          reminderElement = (
+                            <div
+                              key={reminder.id}
+                              onClick={() => {
+                                setClickedDate(selectedDay);
+                                setShowDateModal(true);
+                              }}
+                              className={`p-3 rounded-lg cursor-pointer transition-all hover:scale-[1.02] border ${colorClass} ${
+                                reminder.completed ? "opacity-50 line-through" : ""
+                              }`}
+                            >
+                              <div className="font-bold text-sm">{reminder.title}</div>
+                              <div className="text-xs mt-1 opacity-90">{reminder.time}</div>
+                            </div>
+                          );
+                        }
+                        
+                        return (
+                          <div key={idx} className="relative flex items-start min-h-[60px]">
+                            {/* Time on the left */}
+                            <div className="w-20 text-gray-300 text-sm font-semibold pt-3 flex-shrink-0">
+                              {time}
+                            </div>
+                            {/* Horizontal line extending across */}
+                            <div className="absolute left-20 right-0 top-6 border-t border-white/10"></div>
+                            {/* Reminder or empty space on the right */}
+                            <div className="flex-1 pl-6 pt-2">
+                              {reminderElement || (
+                                <div className="h-10"></div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
-              </div>
-            </div>
+            )}
           </div>
         )}
 

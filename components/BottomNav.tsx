@@ -11,7 +11,7 @@ export default function BottomNav() {
     { href: "/", icon: Home, label: "Home" },
     { href: "/nutrition", icon: UtensilsCrossed, label: "Calories" },
     { href: "/addictions", icon: Shield, label: "Addiction" },
-    { href: "/gym", icon: Dumbbell, label: "Workout" },
+    { href: "/gym", icon: Dumbbell, label: "Fitness" },
     { href: "/calendar", icon: Calendar, label: "Calendar" },
   ];
 
