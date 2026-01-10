@@ -459,17 +459,17 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-md">
         {/* Progress Bar */}
         <div className="mb-8">
-          <div className="w-full bg-gray-800 rounded-full h-2">
+          <div className="w-full bg-gradient-to-b from-[#0c1422] to-black rounded-full h-2.5 border border-white/10 shadow-inner">
             <div
-              className="bg-orange-500 h-2 rounded-full transition-all"
+              className="bg-gradient-to-r from-teal-400 to-cyan-500 h-2.5 rounded-full transition-all duration-500 shadow-lg shadow-teal-500/30"
               style={{ width: `${(step / getTotalSteps()) * 100}%` }}
             />
           </div>
-          <p className="text-sm text-gray-400 mt-2 text-center">
+          <p className="text-sm text-gray-300 mt-2 text-center font-semibold">
             Step {step} of {getTotalSteps()}
           </p>
         </div>
@@ -477,10 +477,10 @@ export default function OnboardingPage() {
         {/* Step 1: Fitness Goal */}
         {step === 1 && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-center mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               What&apos;s your fitness goal?
             </h1>
-            <p className="text-gray-400 text-center mb-6">
+            <p className="text-gray-300 text-center mb-6">
               Choose the primary goal you want to achieve
             </p>
             <div className="space-y-3">
@@ -492,15 +492,15 @@ export default function OnboardingPage() {
                 <button
                   key={option.value}
                   onClick={() => updateData("fitnessGoal", option.value)}
-                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  className={`w-full p-4 rounded-xl border-2 transition-all transform hover:scale-105 text-left shadow-lg ${
                     data.fitnessGoal === option.value
-                      ? "border-orange-500 bg-orange-500/10"
-                      : "border-gray-800 bg-gray-900 hover:border-gray-700"
+                      ? "border-teal-400 bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-teal-500/10 shadow-teal-500/30"
+                      : "border-white/10 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black hover:border-teal-400/50"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{option.emoji}</span>
-                    <span className="text-lg font-semibold">{option.label}</span>
+                    <span className={`text-lg font-bold ${data.fitnessGoal === option.value ? "text-white" : "text-gray-200"}`}>{option.label}</span>
                   </div>
                 </button>
               ))}
@@ -511,10 +511,10 @@ export default function OnboardingPage() {
         {/* Step 2: Equipment */}
         {step === 2 && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-center mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               What equipment do you have access to?
             </h1>
-            <p className="text-gray-400 text-center mb-6">
+            <p className="text-gray-300 text-center mb-6">
               This helps us create the perfect workout plan for you
             </p>
             <div className="space-y-3">
@@ -527,15 +527,15 @@ export default function OnboardingPage() {
                 <button
                   key={option.value}
                   onClick={() => updateData("equipment", option.value)}
-                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  className={`w-full p-4 rounded-xl border-2 transition-all transform hover:scale-105 text-left shadow-lg ${
                     data.equipment === option.value
-                      ? "border-orange-500 bg-orange-500/10"
-                      : "border-gray-800 bg-gray-900 hover:border-gray-700"
+                      ? "border-teal-400 bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-teal-500/10 shadow-teal-500/30"
+                      : "border-white/10 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black hover:border-teal-400/50"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{option.emoji}</span>
-                    <span className="text-lg font-semibold">{option.label}</span>
+                    <span className={`text-lg font-bold ${data.equipment === option.value ? "text-white" : "text-gray-200"}`}>{option.label}</span>
                   </div>
                 </button>
               ))}
@@ -546,10 +546,10 @@ export default function OnboardingPage() {
         {/* Step 3: Height */}
         {step === 3 && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-center mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               How tall are you?
             </h1>
-            <p className="text-gray-400 text-center mb-6">
+            <p className="text-gray-300 text-center mb-6">
               Enter your height in centimeters
             </p>
             <div className="space-y-4">
@@ -558,11 +558,11 @@ export default function OnboardingPage() {
                 placeholder="e.g., 175"
                 value={data.height || ""}
                 onChange={(e) => updateData("height", parseInt(e.target.value) || null)}
-                className="w-full p-4 bg-gray-900 border-2 border-gray-800 rounded-xl text-white text-center text-2xl focus:border-orange-500 focus:outline-none"
+                className="w-full p-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-white/10 rounded-xl text-white text-center text-2xl font-bold focus:border-teal-400 focus:outline-none shadow-lg transition-all"
                 min="100"
                 max="250"
               />
-              <p className="text-sm text-gray-500 text-center">
+              <p className="text-sm text-gray-400 text-center">
                 Enter height in cm (100-250)
               </p>
             </div>
@@ -572,10 +572,10 @@ export default function OnboardingPage() {
         {/* Step 4: Age */}
         {step === 4 && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-center mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               How old are you?
             </h1>
-            <p className="text-gray-400 text-center mb-6">
+            <p className="text-gray-300 text-center mb-6">
               This helps us calculate your optimal calorie intake
             </p>
             <div className="space-y-4">
@@ -584,11 +584,11 @@ export default function OnboardingPage() {
                 placeholder="e.g., 25"
                 value={data.age || ""}
                 onChange={(e) => updateData("age", parseInt(e.target.value) || null)}
-                className="w-full p-4 bg-gray-900 border-2 border-gray-800 rounded-xl text-white text-center text-2xl focus:border-orange-500 focus:outline-none"
+                className="w-full p-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-white/10 rounded-xl text-white text-center text-2xl font-bold focus:border-teal-400 focus:outline-none shadow-lg transition-all"
                 min="13"
                 max="100"
               />
-              <p className="text-sm text-gray-500 text-center">
+              <p className="text-sm text-gray-400 text-center">
                 Enter your age (13-100)
               </p>
             </div>
@@ -598,10 +598,10 @@ export default function OnboardingPage() {
         {/* Step 5: Weight */}
         {step === 5 && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-center mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               What&apos;s your current weight?
             </h1>
-            <p className="text-gray-400 text-center mb-6">
+            <p className="text-gray-300 text-center mb-6">
               Enter your weight in kilograms
             </p>
             <div className="space-y-4">
@@ -610,11 +610,11 @@ export default function OnboardingPage() {
                 placeholder="e.g., 75"
                 value={data.weight || ""}
                 onChange={(e) => updateData("weight", parseInt(e.target.value) || null)}
-                className="w-full p-4 bg-gray-900 border-2 border-gray-800 rounded-xl text-white text-center text-2xl focus:border-orange-500 focus:outline-none"
+                className="w-full p-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-white/10 rounded-xl text-white text-center text-2xl font-bold focus:border-teal-400 focus:outline-none shadow-lg transition-all"
                 min="30"
                 max="300"
               />
-              <p className="text-sm text-gray-500 text-center">
+              <p className="text-sm text-gray-400 text-center">
                 Enter weight in kg (30-300)
               </p>
             </div>
@@ -624,10 +624,10 @@ export default function OnboardingPage() {
         {/* Step 6: Aggressiveness */}
         {step === 6 && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-center mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               How aggressive do you want to hit your target?
             </h1>
-            <p className="text-gray-400 text-center mb-6">
+            <p className="text-gray-300 text-center mb-6">
               Choose your intensity level
             </p>
             <div className="space-y-3">
@@ -639,17 +639,17 @@ export default function OnboardingPage() {
                 <button
                   key={option.value}
                   onClick={() => updateData("aggressiveness", option.value)}
-                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  className={`w-full p-4 rounded-xl border-2 transition-all transform hover:scale-105 text-left shadow-lg ${
                     data.aggressiveness === option.value
-                      ? "border-orange-500 bg-orange-500/10"
-                      : "border-gray-800 bg-gray-900 hover:border-gray-700"
+                      ? "border-teal-400 bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-teal-500/10 shadow-teal-500/30"
+                      : "border-white/10 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black hover:border-teal-400/50"
                   }`}
                 >
                   <div className="flex items-center gap-3 mb-1">
                     <span className="text-2xl">{option.emoji}</span>
                     <div>
-                      <div className="text-lg font-semibold">{option.label}</div>
-                      <div className="text-sm text-gray-400">{option.desc}</div>
+                      <div className={`text-lg font-bold ${data.aggressiveness === option.value ? "text-white" : "text-gray-200"}`}>{option.label}</div>
+                      <div className={`text-sm ${data.aggressiveness === option.value ? "text-teal-300" : "text-gray-400"}`}>{option.desc}</div>
                     </div>
                   </div>
                 </button>
@@ -661,29 +661,29 @@ export default function OnboardingPage() {
         {/* Step 7: AI Workout Plan */}
         {step === 7 && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-center mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               Want an AI-built workout plan?
             </h1>
-            <p className="text-gray-400 text-center mb-6">
+            <p className="text-gray-300 text-center mb-6">
               Our AI coach will create a personalized workout plan based on your goals and equipment
             </p>
             <div className="space-y-3">
               {[
                 { value: true, label: "Yes, create my workout plan", emoji: "🤖" },
-                { value: false, label: "No, I&apos;ll create my own", emoji: "✋" },
+                { value: false, label: "No, skip for now", emoji: "✋" },
               ].map((option) => (
                 <button
                   key={String(option.value)}
                   onClick={() => updateData("wantsAIWorkoutPlan", option.value)}
-                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  className={`w-full p-4 rounded-xl border-2 transition-all transform hover:scale-105 text-left shadow-lg ${
                     data.wantsAIWorkoutPlan === option.value
-                      ? "border-orange-500 bg-orange-500/10"
-                      : "border-gray-800 bg-gray-900 hover:border-gray-700"
+                      ? "border-teal-400 bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-teal-500/10 shadow-teal-500/30"
+                      : "border-white/10 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black hover:border-teal-400/50"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{option.emoji}</span>
-                    <span className="text-lg font-semibold">{option.label}</span>
+                    <span className={`text-lg font-bold ${data.wantsAIWorkoutPlan === option.value ? "text-white" : "text-gray-200"}`}>{option.label}</span>
                   </div>
                 </button>
               ))}
@@ -694,29 +694,29 @@ export default function OnboardingPage() {
         {/* Step 8: Macros Plan */}
         {step === 8 && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-center mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               Want a personalized macros plan?
             </h1>
-            <p className="text-gray-400 text-center mb-6">
+            <p className="text-gray-300 text-center mb-6">
               Get custom daily calorie and macro targets (protein, carbs, fats) tailored to your goals
             </p>
             <div className="space-y-3">
               {[
                 { value: true, label: "Yes, create my macros plan", emoji: "📊" },
-                { value: false, label: "No, I&apos;ll set my own", emoji: "✋" },
+                { value: false, label: "No, skip for now", emoji: "✋" },
               ].map((option) => (
                 <button
                   key={String(option.value)}
                   onClick={() => updateData("wantsMacrosPlan", option.value)}
-                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  className={`w-full p-4 rounded-xl border-2 transition-all transform hover:scale-105 text-left shadow-lg ${
                     data.wantsMacrosPlan === option.value
-                      ? "border-orange-500 bg-orange-500/10"
-                      : "border-gray-800 bg-gray-900 hover:border-gray-700"
+                      ? "border-teal-400 bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-teal-500/10 shadow-teal-500/30"
+                      : "border-white/10 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black hover:border-teal-400/50"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{option.emoji}</span>
-                    <span className="text-lg font-semibold">{option.label}</span>
+                    <span className={`text-lg font-bold ${data.wantsMacrosPlan === option.value ? "text-white" : "text-gray-200"}`}>{option.label}</span>
                   </div>
                 </button>
               ))}
@@ -727,10 +727,10 @@ export default function OnboardingPage() {
         {/* Step 9: Track Addictions? */}
         {step === 9 && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-center mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               Do you want to track any addictions?
             </h1>
-            <p className="text-gray-400 text-center mb-6">
+            <p className="text-gray-300 text-center mb-6">
               We can help you monitor and overcome habits like phone usage, vaping, alcohol, and more
             </p>
             <div className="space-y-3">
@@ -747,15 +747,15 @@ export default function OnboardingPage() {
                       setTimeout(() => handleSubmit(), 100);
                     }
                   }}
-                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  className={`w-full p-4 rounded-xl border-2 transition-all transform hover:scale-105 text-left shadow-lg ${
                     data.wantsToTrackAddictions === option.value
-                      ? "border-orange-500 bg-orange-500/10"
-                      : "border-gray-800 bg-gray-900 hover:border-gray-700"
+                      ? "border-teal-400 bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-teal-500/10 shadow-teal-500/30"
+                      : "border-white/10 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black hover:border-teal-400/50"
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{option.emoji}</span>
-                    <span className="text-lg font-semibold">{option.label}</span>
+                    <span className={`text-lg font-bold ${data.wantsToTrackAddictions === option.value ? "text-white" : "text-gray-200"}`}>{option.label}</span>
                   </div>
                 </button>
               ))}
@@ -766,10 +766,10 @@ export default function OnboardingPage() {
         {/* Step 10: Which Addictions */}
         {step === 10 && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-center mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               Which addictions would you like to track?
             </h1>
-            <p className="text-gray-400 text-center mb-6">
+            <p className="text-gray-300 text-center mb-6">
               Select all that apply
             </p>
             <div className="space-y-3">
@@ -782,20 +782,20 @@ export default function OnboardingPage() {
                 <button
                   key={option.value}
                   onClick={() => toggleAddiction(option.value as AddictionType)}
-                  className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                  className={`w-full p-4 rounded-xl border-2 transition-all transform hover:scale-105 text-left shadow-lg ${
                     data.selectedAddictions.includes(option.value as AddictionType)
-                      ? "border-orange-500 bg-orange-500/10"
-                      : "border-gray-800 bg-gray-900 hover:border-gray-700"
+                      ? "border-teal-400 bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-teal-500/10 shadow-teal-500/30"
+                      : "border-white/10 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black hover:border-teal-400/50"
                   }`}
                 >
                   <div className="flex items-center gap-3 mb-1">
                     <span className="text-2xl">{option.emoji}</span>
                     <div className="flex-1">
-                      <div className="text-lg font-semibold">{option.label}</div>
-                      <div className="text-sm text-gray-400">{option.desc}</div>
+                      <div className={`text-lg font-bold ${data.selectedAddictions.includes(option.value as AddictionType) ? "text-white" : "text-gray-200"}`}>{option.label}</div>
+                      <div className={`text-sm ${data.selectedAddictions.includes(option.value as AddictionType) ? "text-teal-300" : "text-gray-400"}`}>{option.desc}</div>
                     </div>
                     {data.selectedAddictions.includes(option.value as AddictionType) && (
-                      <span className="text-orange-500 text-xl">✓</span>
+                      <span className="text-teal-400 text-xl font-bold">✓</span>
                     )}
                   </div>
                 </button>
@@ -807,10 +807,10 @@ export default function OnboardingPage() {
         {/* Step 11: Phone Daily Limit */}
         {step === 11 && data.selectedAddictions.includes("phone") && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-center mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               What&apos;s your daily phone limit?
             </h1>
-            <p className="text-gray-400 text-center mb-6">
+            <p className="text-gray-300 text-center mb-6">
               How many hours per day do you want to limit your phone usage?
             </p>
             <div className="space-y-4">
@@ -819,12 +819,12 @@ export default function OnboardingPage() {
                 placeholder="e.g., 2"
                 value={data.phoneDailyLimit || ""}
                 onChange={(e) => updateData("phoneDailyLimit", parseFloat(e.target.value) || null)}
-                className="w-full p-4 bg-gray-900 border-2 border-gray-800 rounded-xl text-white text-center text-2xl focus:border-orange-500 focus:outline-none"
+                className="w-full p-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-white/10 rounded-xl text-white text-center text-2xl font-bold focus:border-teal-400 focus:outline-none shadow-lg transition-all"
                 min="0.5"
                 max="24"
                 step="0.5"
               />
-              <p className="text-sm text-gray-500 text-center">
+              <p className="text-sm text-gray-400 text-center">
                 Enter hours per day (0.5-24)
               </p>
             </div>
@@ -834,22 +834,22 @@ export default function OnboardingPage() {
         {/* Step 12: Weekly Spend for Vape/Alcohol/Other */}
         {step === 12 && data.selectedAddictions.some(a => ["vape", "alcohol", "other"].includes(a)) && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-center mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               How much do you spend weekly?
             </h1>
-            <p className="text-gray-400 text-center mb-6">
+            <p className="text-gray-300 text-center mb-6">
               This helps us calculate how much money you&apos;ll save
             </p>
             <div className="space-y-4">
               {data.selectedAddictions.includes("vape") && (
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Vaping (per week)</label>
+                  <label className="block text-sm text-gray-300 mb-2 font-semibold">Vaping (per week)</label>
                   <input
                     type="number"
                     placeholder="e.g., 50"
                     value={data.vapeWeeklySpend || ""}
                     onChange={(e) => updateData("vapeWeeklySpend", parseFloat(e.target.value) || null)}
-                    className="w-full p-4 bg-gray-900 border-2 border-gray-800 rounded-xl text-white text-center text-xl focus:border-orange-500 focus:outline-none"
+                    className="w-full p-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-white/10 rounded-xl text-white text-center text-xl font-bold focus:border-teal-400 focus:outline-none shadow-lg transition-all"
                     min="0"
                     step="0.01"
                   />
@@ -857,13 +857,13 @@ export default function OnboardingPage() {
               )}
               {data.selectedAddictions.includes("alcohol") && (
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Alcohol (per week)</label>
+                  <label className="block text-sm text-gray-300 mb-2 font-semibold">Alcohol (per week)</label>
                   <input
                     type="number"
                     placeholder="e.g., 75"
                     value={data.alcoholWeeklySpend || ""}
                     onChange={(e) => updateData("alcoholWeeklySpend", parseFloat(e.target.value) || null)}
-                    className="w-full p-4 bg-gray-900 border-2 border-gray-800 rounded-xl text-white text-center text-xl focus:border-orange-500 focus:outline-none"
+                    className="w-full p-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-white/10 rounded-xl text-white text-center text-xl font-bold focus:border-teal-400 focus:outline-none shadow-lg transition-all"
                     min="0"
                     step="0.01"
                   />
@@ -871,13 +871,13 @@ export default function OnboardingPage() {
               )}
               {data.selectedAddictions.includes("other") && (
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Other Addiction (per week)</label>
+                  <label className="block text-sm text-gray-300 mb-2 font-semibold">Other Addiction (per week)</label>
                   <input
                     type="number"
                     placeholder="e.g., 30"
                     value={data.otherWeeklySpend || ""}
                     onChange={(e) => updateData("otherWeeklySpend", parseFloat(e.target.value) || null)}
-                    className="w-full p-4 bg-gray-900 border-2 border-gray-800 rounded-xl text-white text-center text-xl focus:border-orange-500 focus:outline-none"
+                    className="w-full p-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-white/10 rounded-xl text-white text-center text-xl font-bold focus:border-teal-400 focus:outline-none shadow-lg transition-all"
                     min="0"
                     step="0.01"
                   />
@@ -890,10 +890,10 @@ export default function OnboardingPage() {
         {/* Step 13: Start Date */}
         {step === 13 && (
           <div className="space-y-6">
-            <h1 className="text-3xl font-bold text-center mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               When did you start your journey?
             </h1>
-            <p className="text-gray-400 text-center mb-6">
+            <p className="text-gray-300 text-center mb-6">
               Choose when you began or want to begin overcoming these addictions
             </p>
             <div className="space-y-3">
@@ -901,20 +901,20 @@ export default function OnboardingPage() {
                 onClick={() => {
                   updateData("addictionStartDate", new Date().toISOString());
                 }}
-                className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                className={`w-full p-4 rounded-xl border-2 transition-all transform hover:scale-105 text-left shadow-lg ${
                   data.addictionStartDate === new Date().toISOString().split("T")[0] + "T00:00:00.000Z" || 
                   (data.addictionStartDate && new Date(data.addictionStartDate).toDateString() === new Date().toDateString())
-                    ? "border-orange-500 bg-orange-500/10"
-                    : "border-gray-800 bg-gray-900 hover:border-gray-700"
+                    ? "border-teal-400 bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-teal-500/10 shadow-teal-500/30"
+                    : "border-white/10 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black hover:border-teal-400/50"
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">📅</span>
-                  <span className="text-lg font-semibold">Today</span>
+                  <span className={`text-lg font-bold ${(data.addictionStartDate === new Date().toISOString().split("T")[0] + "T00:00:00.000Z" || (data.addictionStartDate && new Date(data.addictionStartDate).toDateString() === new Date().toDateString())) ? "text-white" : "text-gray-200"}`}>Today</span>
                 </div>
               </button>
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Or choose a specific date</label>
+                <label className="block text-sm text-gray-300 mb-2 font-semibold">Or choose a specific date</label>
                 <input
                   type="date"
                   value={data.addictionStartDate ? new Date(data.addictionStartDate).toISOString().split("T")[0] : ""}
@@ -926,7 +926,7 @@ export default function OnboardingPage() {
                     }
                   }}
                   max={new Date().toISOString().split("T")[0]}
-                  className="w-full p-4 bg-gray-900 border-2 border-gray-800 rounded-xl text-white focus:border-orange-500 focus:outline-none"
+                  className="w-full p-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-white/10 rounded-xl text-white font-bold focus:border-teal-400 focus:outline-none shadow-lg transition-all"
                 />
               </div>
             </div>
@@ -938,7 +938,7 @@ export default function OnboardingPage() {
           {step > 1 && (
             <button
               onClick={handleBack}
-              className="flex-1 p-4 bg-gray-900 border-2 border-gray-800 rounded-xl font-semibold hover:bg-gray-800 transition-all"
+              className="flex-1 p-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-white/10 rounded-xl font-bold text-gray-200 hover:border-teal-400/50 hover:scale-105 transition-all transform shadow-lg"
             >
               Back
             </button>
@@ -964,7 +964,7 @@ export default function OnboardingPage() {
                  (data.selectedAddictions.includes("other") && !data.otherWeeklySpend))) ||
               (step === 13 && !data.addictionStartDate)
             }
-            className="flex-1 p-4 bg-orange-500 text-black rounded-xl font-semibold hover:bg-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 p-4 bg-gradient-to-r from-teal-400 to-cyan-500 text-white rounded-xl font-bold hover:from-teal-500 hover:to-cyan-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 shadow-lg shadow-teal-500/30 disabled:hover:scale-100"
           >
             {loading ? "Saving..." : step === getTotalSteps() ? "Continue" : "Next"}
           </button>

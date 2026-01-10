@@ -597,8 +597,7 @@ export default function CalendarPage() {
             <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group mb-4">
               <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Weekly Routine</h2>
+              <div className="flex items-center justify-center mb-4">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => navigateWeek("prev")}
@@ -859,8 +858,7 @@ export default function CalendarPage() {
         <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group mb-4">
           <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Calendar</h2>
+            <div className="flex items-center justify-center mb-4">
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => navigateMonth("prev")}
