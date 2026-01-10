@@ -380,12 +380,6 @@ export default function GymPage() {
     return () => clearInterval(interval);
   }, [workoutScheduleKey, workoutPlan.pushDay.length, workoutPlan.pullDay.length, workoutPlan.legsDay.length]);
 
-  // Generate dates for the scroll wheel (show past 7 days and future 7 days)
-  const days = Array.from({ length: 15 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - 7 + i);
-    return d;
-  });
 
   // Get the workout type for the selected date
   const getWorkoutTypeForDate = (date: Date): "pushDay" | "pullDay" | "legsDay" | null => {
@@ -719,7 +713,7 @@ export default function GymPage() {
         )}
 
 
-        {/* Header with Date Selector */}
+        {/* Header */}
         <div className="mb-3">
           <div className="flex items-center justify-between mb-2">
             <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Fitness</h1>
@@ -737,35 +731,6 @@ export default function GymPage() {
                 AI
               </button>
             </div>
-          </div>
-          {/* Date Scroll Wheel - Image Style */}
-          <div className="flex overflow-x-auto gap-1.5 py-1 scrollbar-hide items-center">
-            {days.map((day, index) => {
-              const isSelected = day.toDateString() === selectedDate.toDateString();
-              const isToday = day.toDateString() === new Date().toDateString();
-              const dayNum = day.getDate();
-              const dayName = day.toLocaleDateString("en-GB", { weekday: "short" }).toUpperCase();
-              const month = day.toLocaleDateString("en-GB", { month: "short" });
-              const showArrow = isSelected;
-              
-              return (
-                <button
-                  key={day.toISOString()}
-                  onClick={() => setSelectedDate(day)}
-                  className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    isSelected
-                      ? "bg-gradient-to-br from-teal-400 to-teal-500 text-black shadow-lg font-bold"
-                      : isToday
-                      ? "bg-[rgba(20,30,35,0.85)] text-white border border-teal-400/50"
-                      : "bg-gradient-to-b from-[#0c1422] to-black text-gray-300 hover:bg-[rgba(20,30,35,0.85)] border border-white/10"
-                  }`}
-                >
-                  <span className="text-xs">{dayName}</span>
-                  {showArrow && <span className="text-xs">&gt;</span>}
-                  <span className="text-xs font-bold">{dayNum}</span>
-                </button>
-              );
-            })}
           </div>
         </div>
 

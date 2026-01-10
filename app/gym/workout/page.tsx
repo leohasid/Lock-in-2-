@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { ArrowLeft, X, Plus, Trash2 } from "lucide-react";
@@ -39,15 +39,19 @@ interface CustomExercise {
 
 export default function WorkoutPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const dateParam = searchParams.get("date");
+  
+  // Get date from URL on client side
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    if (dateParam) {
-      // Normalize date to start of day to avoid timezone issues
-      const date = new Date(dateParam + "T00:00:00");
-      return date;
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const dateParam = params.get("date");
+      if (dateParam) {
+        const date = new Date(dateParam + "T00:00:00");
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
     }
-    // Normalize today to start of day
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return today;
@@ -70,19 +74,22 @@ export default function WorkoutPage() {
     legsDay: [{ name: "", sets: 3, reps: 10 }],
   });
 
-  // Update selectedDate when dateParam changes
+  // Update selectedDate when URL changes
   useEffect(() => {
-    if (dateParam) {
-      // Normalize date to start of day to avoid timezone issues
-      const newDate = new Date(dateParam + "T00:00:00");
-      setSelectedDate(newDate);
-    } else {
-      // Normalize today to start of day
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      setSelectedDate(today);
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const urlDateParam = params.get("date");
+    if (urlDateParam) {
+      try {
+        const newDate = new Date(urlDateParam + "T00:00:00");
+        if (!isNaN(newDate.getTime())) {
+          setSelectedDate(newDate);
+        }
+      } catch (e) {
+        console.error("Error parsing date:", e);
+      }
     }
-  }, [dateParam]);
+  }, [typeof window !== "undefined" ? window.location.search : ""]);
 
   // Load workout plan and schedule
   useEffect(() => {
@@ -297,9 +304,9 @@ export default function WorkoutPage() {
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white pb-20">
       <div className="max-w-md mx-auto px-4 py-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3">
           <button
-            onClick={() => router.back()}
+            onClick={() => router.push("/gym")}
             className="p-2 hover:bg-white/10 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -332,6 +339,50 @@ export default function WorkoutPage() {
             className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
           >
             + Workout
+          </button>
+        </div>
+
+        {/* Date Selector with Left/Right Arrows */}
+        <div className="mb-4 flex items-center justify-center gap-3">
+          <button
+            onClick={() => {
+              const prevDate = new Date(selectedDate);
+              prevDate.setDate(prevDate.getDate() - 1);
+              prevDate.setHours(0, 0, 0, 0);
+              setSelectedDate(prevDate);
+              // Update URL
+              const dateStr = prevDate.toISOString().split("T")[0];
+              router.push(`/gym/workout?date=${dateStr}`);
+            }}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div className="flex flex-col items-center min-w-[140px] px-3 py-2 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-lg border border-white/10">
+            <span className="text-sm font-semibold text-white">
+              {selectedDate.toLocaleDateString("en-GB", { weekday: "long" })}
+            </span>
+            <span className="text-xs text-gray-400">
+              {selectedDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              const nextDate = new Date(selectedDate);
+              nextDate.setDate(nextDate.getDate() + 1);
+              nextDate.setHours(0, 0, 0, 0);
+              setSelectedDate(nextDate);
+              // Update URL
+              const dateStr = nextDate.toISOString().split("T")[0];
+              router.push(`/gym/workout?date=${dateStr}`);
+            }}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
 
