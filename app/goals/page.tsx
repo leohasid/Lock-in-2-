@@ -9,6 +9,7 @@ import { ArrowLeft, Edit2, Check, X, Plus, Trash2 } from "lucide-react";
 
 interface Goal {
   id: string;
+  type: string; // "financial", "fitness", "health", "learning", "other"
   title: string;
   current: number;
   target: number;
@@ -16,14 +17,26 @@ interface Goal {
   targetDate: string; // ISO date string
 }
 
+const GOAL_TYPES = [
+  { value: "financial", label: "Financial", question: "How much are you planning on making?", unit: "$" },
+  { value: "fitness", label: "Fitness", question: "What's your fitness target?", unit: "kg" },
+  { value: "health", label: "Health", question: "What's your health goal?", unit: "" },
+  { value: "learning", label: "Learning", question: "What do you want to learn?", unit: "hours" },
+  { value: "other", label: "Other", question: "What's your goal?", unit: "" },
+];
+
 export default function GoalsPage() {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [allGoals, setAllGoals] = useState<Goal[]>([]);
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [selectedGoalForProgress, setSelectedGoalForProgress] = useState<Goal | null>(null);
+  const [progressValue, setProgressValue] = useState("");
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [formData, setFormData] = useState({
+    type: "",
     title: "",
     current: 0,
     target: 0,
@@ -72,17 +85,21 @@ export default function GoalsPage() {
   };
 
   const handleAddGoal = () => {
-    if (!formData.title || !formData.target || !formData.targetDate) {
-      alert("Please fill in title, target, and completion date");
+    if (!formData.type || !formData.target || !formData.targetDate) {
+      alert("Please fill in all required fields");
       return;
     }
 
+    const goalType = GOAL_TYPES.find(t => t.value === formData.type);
+    const unit = formData.unit || goalType?.unit || "";
+
     const newGoal: Goal = {
       id: `goal_${Date.now()}`,
-      title: formData.title,
+      type: formData.type,
+      title: formData.title || goalType?.label || "Goal",
       current: formData.current || 0,
       target: formData.target,
-      unit: formData.unit || "",
+      unit: unit,
       targetDate: formData.targetDate,
     };
 
@@ -90,13 +107,14 @@ export default function GoalsPage() {
     setAllGoals(updatedGoals);
     localStorage.setItem("goals", JSON.stringify(updatedGoals));
     
-    setFormData({ title: "", current: 0, target: 0, unit: "", targetDate: "" });
+    setFormData({ type: "", title: "", current: 0, target: 0, unit: "", targetDate: "" });
     setShowAddForm(false);
   };
 
   const handleEditGoal = (goal: Goal) => {
     setEditingGoal(goal);
     setFormData({
+      type: goal.type || "",
       title: goal.title,
       current: goal.current,
       target: goal.target,
@@ -107,19 +125,23 @@ export default function GoalsPage() {
   };
 
   const handleUpdateGoal = () => {
-    if (!editingGoal || !formData.title || !formData.target || !formData.targetDate) {
-      alert("Please fill in title, target, and completion date");
+    if (!editingGoal || !formData.type || !formData.target || !formData.targetDate) {
+      alert("Please fill in all required fields");
       return;
     }
+
+    const goalType = GOAL_TYPES.find(t => t.value === formData.type);
+    const unit = formData.unit || goalType?.unit || "";
 
     const updatedGoals = allGoals.map(g =>
       g.id === editingGoal.id
         ? {
             ...g,
-            title: formData.title,
+            type: formData.type,
+            title: formData.title || goalType?.label || "Goal",
             current: formData.current || 0,
             target: formData.target,
-            unit: formData.unit || "",
+            unit: unit,
             targetDate: formData.targetDate,
           }
         : g
@@ -128,9 +150,30 @@ export default function GoalsPage() {
     setAllGoals(updatedGoals);
     localStorage.setItem("goals", JSON.stringify(updatedGoals));
     
-    setFormData({ title: "", current: 0, target: 0, unit: "", targetDate: "" });
+    setFormData({ type: "", title: "", current: 0, target: 0, unit: "", targetDate: "" });
     setEditingGoal(null);
     setShowAddForm(false);
+  };
+
+  const handleOpenProgressModal = (goal: Goal) => {
+    setSelectedGoalForProgress(goal);
+    setProgressValue(goal.current.toString());
+    setShowProgressModal(true);
+  };
+
+  const handleSaveProgress = () => {
+    if (!selectedGoalForProgress || !progressValue) return;
+    
+    const newCurrent = Number(progressValue);
+    if (isNaN(newCurrent) || newCurrent < 0) {
+      alert("Please enter a valid number");
+      return;
+    }
+
+    handleUpdateProgress(selectedGoalForProgress.id, newCurrent);
+    setShowProgressModal(false);
+    setSelectedGoalForProgress(null);
+    setProgressValue("");
   };
 
   const handleDeleteGoal = (goalId: string) => {
@@ -153,10 +196,10 @@ export default function GoalsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white p-6 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white p-6 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <Link href="/" className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+        <Link href="/" className="flex items-center gap-2 text-gray-400 hover:text-teal-400 transition-colors">
           <ArrowLeft className="w-5 h-5" />
           <span>Back</span>
         </Link>
@@ -167,16 +210,16 @@ export default function GoalsPage() {
                 onClick={() => {
                   setShowAddForm(!showAddForm);
                   setEditingGoal(null);
-                  setFormData({ title: "", current: 0, target: 0, unit: "", targetDate: "" });
+                  setFormData({ type: "", title: "", current: 0, target: 0, unit: "", targetDate: "" });
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 text-black font-semibold"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add</span>
               </button>
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors"
               >
                 <Edit2 className="w-4 h-4" />
                 <span>Edit</span>
@@ -187,13 +230,13 @@ export default function GoalsPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsEditing(false)}
-                className="px-4 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
               <button
                 onClick={handleSave}
-                className="px-4 py-2 bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+                className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
               >
                 <Check className="w-4 h-4" />
               </button>
@@ -204,67 +247,101 @@ export default function GoalsPage() {
 
       {/* Add/Edit Form */}
       {showAddForm && (
-        <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 mb-6">
-          <h3 className="text-lg font-bold mb-4">
+        <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-white/10 mb-6">
+          <h3 className="text-lg font-bold mb-4 bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
             {editingGoal ? "Edit Goal" : "Add New Goal"}
           </h3>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold mb-2">What is the goal?</label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-gray-600"
-                placeholder="e.g., I will make 10k"
-              />
+              <label className="block text-sm font-semibold mb-2 text-gray-300">What type of goal?</label>
+              <select
+                value={formData.type}
+                onChange={(e) => {
+                  const selectedType = GOAL_TYPES.find(t => t.value === e.target.value);
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    type: e.target.value,
+                    unit: selectedType?.unit || prev.unit
+                  }));
+                }}
+                className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
+              >
+                <option value="">Select goal type...</option>
+                {GOAL_TYPES.map(type => (
+                  <option key={type.value} value={type.value} className="bg-[#0c1422]">
+                    {type.label}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div>
-              <label className="block text-sm font-semibold mb-2">When is it to be completed by?</label>
-              <input
-                type="date"
-                value={formData.targetDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, targetDate: e.target.value }))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-gray-600"
-                min={new Date().toISOString().split("T")[0]}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold mb-2">Current</label>
-                <input
-                  type="number"
-                  value={formData.current}
-                  onChange={(e) => setFormData(prev => ({ ...prev, current: Number(e.target.value) }))}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-gray-600"
-                  min="0"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2">Target</label>
-                <input
-                  type="number"
-                  value={formData.target}
-                  onChange={(e) => setFormData(prev => ({ ...prev, target: Number(e.target.value) }))}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-gray-600"
-                  min="1"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-2">Unit</label>
-              <input
-                type="text"
-                value={formData.unit}
-                onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm focus:outline-none focus:border-gray-600"
-                placeholder="e.g., $, k (for 10k), kg, lbs"
-              />
-            </div>
+
+            {formData.type && (
+              <>
+                <div>
+                  <label className="block text-sm font-semibold mb-2 text-gray-300">
+                    {GOAL_TYPES.find(t => t.value === formData.type)?.question || "What's your goal?"}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
+                    placeholder={formData.type === "financial" ? "e.g., Make $10,000" : formData.type === "fitness" ? "e.g., Lose 10kg" : "Enter your goal"}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2 text-gray-300">
+                    {formData.type === "financial" ? "How much are you planning on making?" : "What's your target?"}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={formData.target}
+                      onChange={(e) => setFormData(prev => ({ ...prev, target: Number(e.target.value) }))}
+                      className="flex-1 bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
+                      min="1"
+                      placeholder="0"
+                    />
+                    <input
+                      type="text"
+                      value={formData.unit}
+                      onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
+                      className="w-20 bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
+                      placeholder={GOAL_TYPES.find(t => t.value === formData.type)?.unit || "unit"}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2 text-gray-300">When is it to be completed by?</label>
+                  <input
+                    type="date"
+                    value={formData.targetDate}
+                    onChange={(e) => setFormData(prev => ({ ...prev, targetDate: e.target.value }))}
+                    className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
+                    min={new Date().toISOString().split("T")[0]}
+                  />
+                </div>
+                {!editingGoal && (
+                  <div>
+                    <label className="block text-sm font-semibold mb-2 text-gray-300">Current progress (optional)</label>
+                    <input
+                      type="number"
+                      value={formData.current}
+                      onChange={(e) => setFormData(prev => ({ ...prev, current: Number(e.target.value) }))}
+                      className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
+                      min="0"
+                      placeholder="0"
+                    />
+                  </div>
+                )}
+              </>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={editingGoal ? handleUpdateGoal : handleAddGoal}
-                className="flex-1 py-3 bg-green-600 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                disabled={!formData.type || !formData.target || !formData.targetDate}
+                className="flex-1 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-black"
               >
                 {editingGoal ? "Update" : "Add Goal"}
               </button>
@@ -272,9 +349,9 @@ export default function GoalsPage() {
                 onClick={() => {
                   setShowAddForm(false);
                   setEditingGoal(null);
-                  setFormData({ title: "", current: 0, target: 0, unit: "", targetDate: "" });
+                  setFormData({ type: "", title: "", current: 0, target: 0, unit: "", targetDate: "" });
                 }}
-                className="flex-1 py-3 bg-gray-800 rounded-lg font-semibold hover:bg-gray-700 transition-colors"
+                className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-semibold transition-all text-white"
               >
                 Cancel
               </button>
@@ -283,30 +360,82 @@ export default function GoalsPage() {
         </div>
       )}
 
+      {/* Progress Update Modal */}
+      {showProgressModal && selectedGoalForProgress && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-6 max-w-md w-full border border-white/10">
+            <h3 className="text-xl font-bold text-white mb-2">Update Progress</h3>
+            <p className="text-sm text-gray-400 mb-4">{selectedGoalForProgress.title}</p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-300">
+                  Current: {selectedGoalForProgress.current}{selectedGoalForProgress.unit} / Target: {selectedGoalForProgress.target}{selectedGoalForProgress.unit}
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-300">New progress value</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={progressValue}
+                    onChange={(e) => setProgressValue(e.target.value)}
+                    className="flex-1 bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
+                    min="0"
+                    placeholder="0"
+                    autoFocus
+                  />
+                  <span className="text-gray-400">{selectedGoalForProgress.unit}</span>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSaveProgress}
+                  className="flex-1 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 text-black"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => {
+                    setShowProgressModal(false);
+                    setSelectedGoalForProgress(null);
+                    setProgressValue("");
+                  }}
+                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-semibold transition-all text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Goals List */}
       <div className="mb-6 flex-1">
-        <h2 className="text-xl font-bold text-white mb-4 uppercase">Goals</h2>
+        <h2 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent mb-4">Goals</h2>
         <div className="space-y-2">
           {allGoals.length > 0 ? (
             allGoals.map((goal) => (
               <div key={goal.id} className="relative">
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
-                    <GoalProgressCard
-                      title={goal.title}
-                      current={goal.current}
-                      target={goal.target}
-                      unit={goal.unit}
-                      targetDate={goal.targetDate}
+                    <div
                       onClick={() => {
                         if (!isEditing) {
-                          const newCurrent = prompt(`Update progress for "${goal.title}" (current: ${goal.current}${goal.unit}):`, goal.current.toString());
-                          if (newCurrent !== null) {
-                            handleUpdateProgress(goal.id, Number(newCurrent));
-                          }
+                          handleOpenProgressModal(goal);
                         }
                       }}
-                    />
+                      className="cursor-pointer"
+                    >
+                      <GoalProgressCard
+                        title={goal.title}
+                        current={goal.current}
+                        target={goal.target}
+                        unit={goal.unit}
+                        targetDate={goal.targetDate}
+                        onClick={() => {}}
+                      />
+                    </div>
                   </div>
                   {isEditing && (
                     <div className="flex items-center gap-2">
@@ -324,9 +453,9 @@ export default function GoalsPage() {
                       </button>
                       <button
                         onClick={() => handleDeleteGoal(goal.id)}
-                        className="p-2 bg-red-600 rounded hover:bg-red-700 transition-colors flex-shrink-0"
+                        className="p-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/50 rounded transition-colors flex-shrink-0"
                       >
-                        <Trash2 className="w-4 h-4 text-white" />
+                        <Trash2 className="w-4 h-4 text-red-400" />
                       </button>
                     </div>
                   )}
