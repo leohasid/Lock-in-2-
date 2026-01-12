@@ -2,55 +2,26 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
-import GymCard from "@/components/GymCard";
-import CaloriesCardNew from "@/components/CaloriesCardNew";
-import GoalsCard from "@/components/GoalsCard";
+import { TrendingUp, TrendingDown, Target, Flame, Dumbbell, Calendar } from "lucide-react";
 
 export default function Home() {
   const [today, setToday] = useState(new Date());
-  const [calories, setCalories] = useState({ current: 0, goal: 2000, percentage: 0 });
-  const [goals, setGoals] = useState<Array<{ id: string; title: string; current: number; target: number; unit: string; targetDate: string }>>([]);
-  const [selectedGoals, setSelectedGoals] = useState<Array<{ id: string; title: string; current: number; target: number; unit: string; targetDate: string }>>([]);
+  const [userName, setUserName] = useState("Leo");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Function to refresh data
-  const refreshData = useCallback(() => {
-    setRefreshTrigger(prev => prev + 1);
-  }, []);
+  // Get greeting based on time
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
 
-  // Poll for changes and listen for storage events
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  // Get calories data
+  const caloriesData = useMemo(() => {
+    if (typeof window === "undefined") return { current: 0, goal: 2000, percentage: 0 };
     
-    const handleStorageChange = () => {
-      refreshData();
-    };
-    
-    // Listen for storage events (works across tabs)
-    window.addEventListener("storage", handleStorageChange);
-    
-    // Listen for custom events (works in same window)
-    window.addEventListener("mealsUpdated", handleStorageChange);
-    
-    // Poll localStorage every 2 seconds to catch changes
-    const interval = setInterval(() => {
-      refreshData();
-    }, 2000);
-    
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("mealsUpdated", handleStorageChange);
-      clearInterval(interval);
-    };
-  }, [refreshData]);
-
-  // Get calories data - refresh when trigger changes
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    
-    // Always use current date
     const currentDate = new Date();
     const todayStr = currentDate.toISOString().split("T")[0];
     
@@ -62,38 +33,30 @@ export default function Home() {
         const totalCalories = todayMeals.reduce((sum: number, meal: any) => sum + (meal.calories || 0), 0);
         const storedGoals = localStorage.getItem("macroGoals");
         const goal = storedGoals ? JSON.parse(storedGoals).calories || 2000 : 2000;
-        setCalories({
+        return {
           current: totalCalories,
           goal,
           percentage: Math.min(Math.round((totalCalories / goal) * 100), 100),
-        });
+        };
       } catch (e) {
-        // Use defaults
+        return { current: 0, goal: 2000, percentage: 0 };
       }
-    } else {
-      // Reset if no meals
-      setCalories({
-        current: 0,
-        goal: 2000,
-        percentage: 0,
-      });
     }
+    return { current: 0, goal: 2000, percentage: 0 };
   }, [refreshTrigger]);
 
-  // Get weekly calories data (last 10 days for graph) - refresh when trigger changes
+  // Get weekly calories for chart
   const weeklyCaloriesData = useMemo(() => {
-    if (typeof window === "undefined") return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    if (typeof window === "undefined") return [];
     
-    // Always use current date
     const currentDate = new Date();
-    
     const storedMeals = localStorage.getItem("meals");
-    if (!storedMeals) return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    if (!storedMeals) return [];
     
     try {
       const meals = JSON.parse(storedMeals);
       const data: number[] = [];
-      for (let i = 9; i >= 0; i--) {
+      for (let i = 6; i >= 0; i--) {
         const date = new Date(currentDate);
         date.setDate(currentDate.getDate() - i);
         const dateStr = date.toISOString().split("T")[0];
@@ -103,151 +66,250 @@ export default function Home() {
       }
       return data;
     } catch (e) {
-      return [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      return [];
     }
   }, [refreshTrigger]);
 
-  // Get average calories - recalculate when data changes
-  const averageCalories = useMemo(() => {
-    const sum = weeklyCaloriesData.reduce((a, b) => a + b, 0);
-    return sum > 0 ? Math.round(sum / weeklyCaloriesData.length) : 0;
-  }, [weeklyCaloriesData]);
-
-  // Get gym streak and activity data (last 31 days)
-  const gymStreak = useMemo(() => {
-    if (typeof window === "undefined") return 0;
+  // Get gym stats
+  const gymStats = useMemo(() => {
+    if (typeof window === "undefined") return { streak: 0, thisWeek: 0, total: 0 };
     
     let streak = 0;
+    let thisWeek = 0;
+    let total = 0;
     const todayDate = new Date();
     todayDate.setHours(0, 0, 0, 0);
+    const weekAgo = new Date(todayDate);
+    weekAgo.setDate(todayDate.getDate() - 7);
     
     for (let i = 0; i < 31; i++) {
       const date = new Date(todayDate);
       date.setDate(todayDate.getDate() - i);
       const dateStr = date.toISOString().split("T")[0];
-      if (localStorage.getItem(`workout_${dateStr}`) === "completed") {
-        streak++;
-      } else {
+      const completed = localStorage.getItem(`workout_${dateStr}`) === "completed" || 
+                       (localStorage.getItem(`workout_${dateStr}`) && localStorage.getItem(`workout_${dateStr}`) !== "null");
+      
+      if (completed) {
+        total++;
+        if (date >= weekAgo) thisWeek++;
+        if (i === streak) streak++;
+      } else if (i === 0) {
         break;
       }
     }
-    return streak;
+    
+    return { streak, thisWeek, total };
   }, []);
 
-  // Get gym activity completion stats (last 31 days)
-  const gymActivityStats = useMemo(() => {
-    if (typeof window === "undefined") return { completed: 0, total: 31 };
+  // Get reminders count
+  const remindersData = useMemo(() => {
+    if (typeof window === "undefined") return { today: 0, completed: 0 };
     
-    let completed = 0;
-    const todayDate = new Date();
-    todayDate.setHours(0, 0, 0, 0);
+    const todayStr = new Date().toISOString().split("T")[0];
+    const reminders = localStorage.getItem("reminders");
+    if (!reminders) return { today: 0, completed: 0 };
     
-    for (let i = 0; i < 31; i++) {
-      const date = new Date(todayDate);
-      date.setDate(todayDate.getDate() - i);
-      const dateStr = date.toISOString().split("T")[0];
-      if (localStorage.getItem(`workout_${dateStr}`) === "completed") {
-        completed++;
-      }
+    try {
+      const parsed = JSON.parse(reminders);
+      const todayReminders = parsed.filter((r: any) => r.date === todayStr);
+      const completed = todayReminders.filter((r: any) => r.completed).length;
+      return { today: todayReminders.length, completed };
+    } catch (e) {
+      return { today: 0, completed: 0 };
     }
-    return { completed, total: 31 };
   }, []);
 
-  // Function to check if workout was completed on a date
-  const getGymActivity = useCallback((date: Date): boolean => {
-    if (typeof window === "undefined") return false;
-    const dateStr = date.toISOString().split("T")[0];
-    return localStorage.getItem(`workout_${dateStr}`) === "completed";
-  }, []);
-
-  // Load goals
+  // Load user name
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
-    const storedGoals = localStorage.getItem("goals");
-    let parsedGoals: any[] = [];
-    if (storedGoals) {
+    const onboardingData = localStorage.getItem("onboardingData");
+    if (onboardingData) {
       try {
-        parsedGoals = JSON.parse(storedGoals);
-        setGoals(parsedGoals);
-      } catch (e) {
-        parsedGoals = [];
-        setGoals([]);
-      }
-    } else {
-      parsedGoals = [];
-      setGoals([]);
+        const data = JSON.parse(onboardingData);
+        if (data.name) setUserName(data.name);
+      } catch (e) {}
     }
+  }, []);
 
-    // Load selected goals for home screen
-    const storedSelectedGoals = localStorage.getItem("selectedGoalsForHome");
-    let selectedGoalIds: string[] = [];
-    if (storedSelectedGoals) {
-      try {
-        selectedGoalIds = JSON.parse(storedSelectedGoals);
-      } catch (e) {
-        selectedGoalIds = [];
-        localStorage.setItem("selectedGoalsForHome", JSON.stringify(selectedGoalIds));
-      }
-    } else {
-      selectedGoalIds = [];
-      localStorage.setItem("selectedGoalsForHome", JSON.stringify(selectedGoalIds));
-    }
-    const goalsToShow = parsedGoals.filter((g: any) => selectedGoalIds.includes(g.id));
-    setSelectedGoals(goalsToShow);
-  }, [today]);
+  // Refresh data periodically
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const interval = setInterval(() => {
+      setRefreshTrigger(prev => prev + 1);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const handleAddGoal = () => {
-    // Navigate to goals page to add a new goal
-    window.location.href = "/goals";
-  };
+  const maxCalories = Math.max(
+    ...weeklyCaloriesData, 
+    caloriesData.goal, 
+    2000, // Minimum scale
+    1
+  );
+  const avgCalories = weeklyCaloriesData.length > 0 
+    ? Math.round(weeklyCaloriesData.reduce((a, b) => a + b, 0) / weeklyCaloriesData.length)
+    : 0;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-4 pt-5 pb-28">
+    <main className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-4 pt-6 pb-28">
       {/* Header */}
-      <header className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent leading-none">
-            Mogifi AI
-          </h1>
-          <p className="mt-1.5 text-xs text-gray-400">
-            {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-          </p>
-        </div>
-
-        <Link
-          href="/reflections"
-          className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-xl text-xs font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
-        >
-          Daily Reflections
-        </Link>
+      <header className="mb-8">
+        <h1 className="text-2xl font-semibold text-white mb-1">
+          {getGreeting()}, {userName}
+        </h1>
+        <p className="text-sm text-gray-400">
+          {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+        </p>
       </header>
 
-      {/* Top Cards */}
-      <section className="grid grid-cols-[45%_1fr] gap-4 mb-6 items-stretch">
-        <Link href="/gym" className="block h-full">
-          <GymCard
-            streak={gymStreak}
-            completed={gymActivityStats.completed}
-            total={gymActivityStats.total}
-            getActivityData={getGymActivity}
-          />
+      {/* Calories Bar Chart */}
+      <section className="mb-6 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-5 border border-white/10">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-white mb-1">Calories</h2>
+            <p className="text-xs text-gray-400">7-day overview</p>
+          </div>
+          <div className="text-right">
+            <div className="text-sm font-semibold text-white">{avgCalories}</div>
+            <div className="text-xs text-gray-400">Daily avg</div>
+          </div>
+        </div>
+
+        {/* Bar Chart */}
+        <div className="h-48 relative">
+          <svg width="100%" height="100%" className="overflow-visible" style={{ paddingBottom: '20px' }}>
+            {/* Grid lines */}
+            {[0, 25, 50, 75, 100].map((p) => (
+              <line
+                key={p}
+                x1="0"
+                y1={`${p}%`}
+                x2="100%"
+                y2={`${p}%`}
+                stroke="rgba(255,255,255,0.05)"
+                strokeWidth="1"
+              />
+            ))}
+
+            {/* Target calories line */}
+            {caloriesData.goal > 0 && (
+              <line
+                x1="0"
+                y1={`${100 - (caloriesData.goal / maxCalories) * 90}%`}
+                x2="100%"
+                y2={`${100 - (caloriesData.goal / maxCalories) * 90}%`}
+                stroke="#fbbf24"
+                strokeWidth="2"
+                strokeDasharray="4,4"
+                opacity="0.8"
+              />
+            )}
+
+            {/* Target label */}
+            {caloriesData.goal > 0 && (
+              <text
+                x="2"
+                y={`${100 - (caloriesData.goal / maxCalories) * 90}%`}
+                dy="-5"
+                className="text-[10px] fill-yellow-400 font-semibold"
+              >
+                Goal: {caloriesData.goal}
+              </text>
+            )}
+
+            {/* Bars */}
+            {weeklyCaloriesData.map((val, i) => {
+              const barWidth = 100 / weeklyCaloriesData.length;
+              const barHeight = (val / maxCalories) * 90;
+              const xPos = (i * barWidth) + (barWidth * 0.15);
+              const barActualWidth = barWidth * 0.7;
+              const yPos = 100 - barHeight;
+              const isAboveGoal = val >= caloriesData.goal;
+              
+              return (
+                <g key={i}>
+                  {/* Bar */}
+                  <rect
+                    x={`${xPos}%`}
+                    y={`${yPos}%`}
+                    width={`${barActualWidth}%`}
+                    height={`${barHeight}%`}
+                    fill={isAboveGoal ? "url(#barGradientGreen)" : "url(#barGradient)"}
+                    rx="4"
+                    className="transition-all hover:opacity-80"
+                  />
+                  {/* Value label on top of bar */}
+                  {val > 0 && (
+                    <text
+                      x={`${xPos + barActualWidth / 2}%`}
+                      y={`${Math.max(yPos - 2, 5)}%`}
+                      textAnchor="middle"
+                      className="text-[9px] fill-white font-semibold"
+                    >
+                      {Math.round(val)}
+                    </text>
+                  )}
+                </g>
+              );
+            })}
+
+            {/* Gradient definitions */}
+            <defs>
+              <linearGradient id="barGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#5eead4" />
+                <stop offset="100%" stopColor="#06b6d4" />
+              </linearGradient>
+              <linearGradient id="barGradientGreen" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#34d399" />
+                <stop offset="100%" stopColor="#10b981" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+
+        {/* Day labels */}
+        <div className="flex justify-between mt-2 text-[10px] text-gray-500">
+          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, i) => (
+            <span key={i} className="flex-1 text-center">{day}</span>
+          ))}
+        </div>
+      </section>
+
+      {/* Today's Overview */}
+      <section className="grid grid-cols-2 gap-3 mb-6">
+        {/* Reminders */}
+        <Link href="/calendar" className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-white/10 hover:border-teal-400/50 transition-all">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="w-4 h-4 text-teal-400" />
+            <span className="text-sm font-medium text-gray-300">Reminders</span>
+          </div>
+          <div className="text-xl font-bold text-white mb-1">
+            {remindersData.completed}/{remindersData.today}
+          </div>
+          <div className="text-xs text-gray-400">Completed today</div>
         </Link>
-        <Link href="/nutrition" className="block h-full">
-          <CaloriesCardNew
-            key={`calories-${refreshTrigger}-${calories.current}`}
-            current={calories.current}
-            goal={calories.goal}
-            average={averageCalories}
-            weeklyData={weeklyCaloriesData}
-          />
+
+        {/* Goals Quick View */}
+        <Link href="/goals" className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-white/10 hover:border-teal-400/50 transition-all">
+          <div className="flex items-center gap-2 mb-3">
+            <Target className="w-4 h-4 text-teal-400" />
+            <span className="text-sm font-medium text-gray-300">Goals</span>
+          </div>
+          <div className="text-xl font-bold text-white mb-1">—</div>
+          <div className="text-xs text-gray-400">View all goals</div>
         </Link>
       </section>
 
-      {/* Goals */}
-      <GoalsCard goals={selectedGoals} onAddGoal={handleAddGoal} />
+      {/* Quick Actions */}
+      <section className="mb-6">
+        <Link
+          href="/reflections"
+          className="block w-full bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-6 py-4 rounded-xl font-semibold transition-all transform hover:scale-[1.02] shadow-lg shadow-teal-500/30 text-center"
+        >
+          Daily Reflection
+        </Link>
+      </section>
 
-      {/* Bottom Navigation */}
       <BottomNav />
     </main>
   );
