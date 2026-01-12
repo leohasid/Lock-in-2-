@@ -45,66 +45,50 @@ export default function Home() {
     return { current: 0, goal: 2000, percentage: 0 };
   }, [refreshTrigger]);
 
-  // Get today's hourly macro data for line graph
-  const todayMacroData = useMemo(() => {
+  // Get Monday to Sunday weekly macro data
+  const dailyMacroData = useMemo(() => {
     if (typeof window === "undefined") return { calories: [], protein: [], carbs: [], fats: [] };
     
     const currentDate = new Date();
-    const todayStr = currentDate.toISOString().split("T")[0];
     const storedMeals = localStorage.getItem("meals");
     if (!storedMeals) return { calories: [], protein: [], carbs: [], fats: [] };
     
     try {
       const meals = JSON.parse(storedMeals);
-      const todayMeals = meals.filter((m: any) => m.date === todayStr);
+      const caloriesData: Array<{ day: string; value: number }> = [];
+      const proteinData: Array<{ day: string; value: number }> = [];
+      const carbsData: Array<{ day: string; value: number }> = [];
+      const fatsData: Array<{ day: string; value: number }> = [];
       
-      // Initialize hourly data (24 hours)
-      const hourlyData: { [key: string]: { calories: number; protein: number; carbs: number; fats: number } } = {};
-      for (let i = 0; i < 24; i++) {
-        hourlyData[`${i.toString().padStart(2, '0')}:00`] = { calories: 0, protein: 0, carbs: 0, fats: 0 };
-      }
+      // Find Monday of current week (Monday = 1, Sunday = 0)
+      const currentDay = currentDate.getDay();
+      const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1; // If Sunday, go back 6 days
+      const mondayDate = new Date(currentDate);
+      mondayDate.setDate(currentDate.getDate() - daysFromMonday);
+      mondayDate.setHours(0, 0, 0, 0);
       
-      // Sum macros by hour
-      todayMeals.forEach((meal: any) => {
-        if (meal.time) {
-          const hour = meal.time.split(':')[0];
-          const hourKey = `${hour.padStart(2, '0')}:00`;
-          if (hourlyData[hourKey]) {
-            hourlyData[hourKey].calories += meal.calories || 0;
-            hourlyData[hourKey].protein += meal.protein || 0;
-            hourlyData[hourKey].carbs += meal.carbs || 0;
-            hourlyData[hourKey].fats += meal.fats || 0;
-          }
-        }
-      });
-      
-      // Convert to cumulative arrays and filter to show key hours
-      const keyHours = [0, 6, 9, 12, 15, 18, 21];
-      let cumulativeCalories = 0;
-      let cumulativeProtein = 0;
-      let cumulativeCarbs = 0;
-      let cumulativeFats = 0;
-      
-      const caloriesData: Array<{ time: string; value: number }> = [];
-      const proteinData: Array<{ time: string; value: number }> = [];
-      const carbsData: Array<{ time: string; value: number }> = [];
-      const fatsData: Array<{ time: string; value: number }> = [];
-      
-      for (let i = 0; i < 24; i++) {
-        const hourKey = `${i.toString().padStart(2, '0')}:00`;
-        const data = hourlyData[hourKey];
+      // Get data for Monday through Sunday
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(mondayDate);
+        date.setDate(mondayDate.getDate() + i);
+        const dateStr = date.toISOString().split("T")[0];
         
-        cumulativeCalories += data.calories;
-        cumulativeProtein += data.protein;
-        cumulativeCarbs += data.carbs;
-        cumulativeFats += data.fats;
+        // Get all meals for this day
+        const dayMeals = meals.filter((m: any) => m.date === dateStr);
         
-        if (keyHours.includes(i) || i === 23) {
-          caloriesData.push({ time: hourKey, value: cumulativeCalories });
-          proteinData.push({ time: hourKey, value: cumulativeProtein });
-          carbsData.push({ time: hourKey, value: cumulativeCarbs });
-          fatsData.push({ time: hourKey, value: cumulativeFats });
-        }
+        // Sum macros for the day
+        const dayCalories = dayMeals.reduce((sum: number, meal: any) => sum + (meal.calories || 0), 0);
+        const dayProtein = dayMeals.reduce((sum: number, meal: any) => sum + (meal.protein || 0), 0);
+        const dayCarbs = dayMeals.reduce((sum: number, meal: any) => sum + (meal.carbs || 0), 0);
+        const dayFats = dayMeals.reduce((sum: number, meal: any) => sum + (meal.fats || 0), 0);
+        
+        // Format day label (e.g., "Mon 5")
+        const dayLabel = date.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
+        
+        caloriesData.push({ day: dayLabel, value: dayCalories });
+        proteinData.push({ day: dayLabel, value: dayProtein });
+        carbsData.push({ day: dayLabel, value: dayCarbs });
+        fatsData.push({ day: dayLabel, value: dayFats });
       }
       
       return { calories: caloriesData, protein: proteinData, carbs: carbsData, fats: fatsData };
@@ -238,24 +222,24 @@ export default function Home() {
   // Normalize macro data to percentage of goal for better comparison
   const normalizedMacroData = useMemo(() => {
     return {
-      calories: todayMacroData.calories.map(d => ({
+      calories: dailyMacroData.calories.map(d => ({
         ...d,
         value: macroGoals.calories > 0 ? (d.value / macroGoals.calories) * 100 : 0,
       })),
-      protein: todayMacroData.protein.map(d => ({
+      protein: dailyMacroData.protein.map(d => ({
         ...d,
         value: macroGoals.protein > 0 ? (d.value / macroGoals.protein) * 100 : 0,
       })),
-      carbs: todayMacroData.carbs.map(d => ({
+      carbs: dailyMacroData.carbs.map(d => ({
         ...d,
         value: macroGoals.carbs > 0 ? (d.value / macroGoals.carbs) * 100 : 0,
       })),
-      fats: todayMacroData.fats.map(d => ({
+      fats: dailyMacroData.fats.map(d => ({
         ...d,
         value: macroGoals.fats > 0 ? (d.value / macroGoals.fats) * 100 : 0,
       })),
     };
-  }, [todayMacroData, macroGoals]);
+  }, [dailyMacroData, macroGoals]);
 
   // Max value is 100% (goal) or slightly more if exceeded
   const maxChartValue = 120; // 120% to allow seeing if goals are exceeded
@@ -276,7 +260,7 @@ export default function Home() {
       <section className="mb-6 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-5 border border-white/10">
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-white mb-1">Macros</h2>
-          <p className="text-xs text-gray-400">Today&apos;s intake</p>
+          <p className="text-xs text-gray-400">7-day overview</p>
         </div>
 
         {/* Legend */}
@@ -427,11 +411,11 @@ export default function Home() {
           </svg>
         </div>
 
-        {/* Time labels */}
+        {/* Day labels */}
         {normalizedMacroData.calories.length > 0 && (
           <div className="flex justify-between mt-2 text-[10px] text-gray-500">
             {normalizedMacroData.calories.map((d, i) => (
-              <span key={i} className="flex-1 text-center">{d.time.substring(0, 5)}</span>
+              <span key={i} className="flex-1 text-center">{d.day}</span>
             ))}
           </div>
         )}
