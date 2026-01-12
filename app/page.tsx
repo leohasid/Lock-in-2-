@@ -232,8 +232,39 @@ export default function Home() {
     setShowAddictionSelector(false);
   };
 
-  // Get goals (up to 4)
-  const goalsData = useMemo(() => {
+  // Get daily goals
+  const dailyGoalsData = useMemo(() => {
+    if (typeof window === "undefined") return [];
+    
+    const storedGoals = localStorage.getItem("goals");
+    if (!storedGoals) return [];
+    
+    try {
+      const goals = JSON.parse(storedGoals);
+      const todayStr = new Date().toISOString().split("T")[0];
+      
+      // Filter daily goals and reset if needed
+      const dailyGoals = goals.filter((g: any) => g.goalType === "daily").map((goal: any) => {
+        // Reset daily goals if it's a new day
+        if (goal.lastUpdated !== todayStr) {
+          const updatedGoal = { ...goal, current: 0, lastUpdated: todayStr };
+          // Update in localStorage
+          const allGoals = JSON.parse(storedGoals);
+          const updatedAllGoals = allGoals.map((g: any) => g.id === goal.id ? updatedGoal : g);
+          localStorage.setItem("goals", JSON.stringify(updatedAllGoals));
+          return updatedGoal;
+        }
+        return goal;
+      });
+      
+      return dailyGoals.slice(0, 4);
+    } catch (e) {
+      return [];
+    }
+  }, [refreshTrigger]);
+
+  // Get long-term goals (up to 4)
+  const longTermGoalsData = useMemo(() => {
     if (typeof window === "undefined") return [];
     
     const storedGoals = localStorage.getItem("goals");
@@ -252,10 +283,13 @@ export default function Home() {
         }
       }
       
+      // Filter long-term goals only
+      const longTermGoals = goals.filter((g: any) => g.goalType === "long-term" || !g.goalType);
+      
       // If there are selected goals, use those, otherwise use first 4
       const goalsToShow = selectedIds.length > 0
-        ? goals.filter((g: any) => selectedIds.includes(g.id)).slice(0, 4)
-        : goals.slice(0, 4);
+        ? longTermGoals.filter((g: any) => selectedIds.includes(g.id)).slice(0, 4)
+        : longTermGoals.slice(0, 4);
       
       return goalsToShow;
     } catch (e) {
@@ -494,19 +528,56 @@ export default function Home() {
         )}
       </section>
 
-      {/* Goals */}
+      {/* Daily Goals */}
+      {dailyGoalsData.length > 0 && (
+        <section className="mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-white/10">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Target className="w-3.5 h-3.5 text-teal-400" />
+              <span className="text-xs font-medium text-gray-300">Daily Goals</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {dailyGoalsData.map((goal: any) => {
+              const percentage = goal.target > 0 
+                ? Math.min(Math.round((goal.current / goal.target) * 100), 100)
+                : 0;
+              
+              return (
+                <Link key={goal.id} href="/goals" className="block bg-[rgba(10,15,20,0.6)] rounded-lg p-2 border border-white/5 hover:border-teal-400/50 transition-all">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="text-xs font-semibold text-white">{goal.title}</div>
+                    <div className="text-[10px] text-gray-400">
+                      {goal.current} / {goal.target} {goal.unit}
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full transition-all"
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                  <div className="text-[10px] text-gray-500 mt-0.5">{percentage}% complete</div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Long-term Goals */}
       <section className="mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-white/10">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Target className="w-3.5 h-3.5 text-teal-400" />
-            <span className="text-xs font-medium text-gray-300">Goals</span>
+            <span className="text-xs font-medium text-gray-300">Long-term Goals</span>
           </div>
         </div>
 
-        {goalsData.length === 0 ? (
+        {longTermGoalsData.length === 0 ? (
           <div className="text-center py-3">
-            <div className="text-sm font-semibold text-white mb-1">No active goals</div>
-            <div className="text-[10px] text-gray-400 mb-2">Define what you&apos;re working toward this week.</div>
+            <div className="text-sm font-semibold text-white mb-1">No long-term goals</div>
+            <div className="text-[10px] text-gray-400 mb-2">Set goals for the future.</div>
             <Link
               href="/goals"
               className="inline-block bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-3 py-1.5 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 text-xs"
@@ -517,13 +588,13 @@ export default function Home() {
         ) : (
           <>
             <div className="space-y-2 mb-2">
-              {goalsData.map((goal: any) => {
+              {longTermGoalsData.map((goal: any) => {
                 const percentage = goal.target > 0 
                   ? Math.min(Math.round((goal.current / goal.target) * 100), 100)
                   : 0;
                 
                 return (
-                  <div key={goal.id} className="bg-[rgba(10,15,20,0.6)] rounded-lg p-2 border border-white/5">
+                  <Link key={goal.id} href="/goals" className="block bg-[rgba(10,15,20,0.6)] rounded-lg p-2 border border-white/5 hover:border-teal-400/50 transition-all">
                     <div className="flex items-center justify-between mb-1">
                       <div className="text-xs font-semibold text-white">{goal.title}</div>
                       <div className="text-[10px] text-gray-400">
@@ -537,7 +608,7 @@ export default function Home() {
                       />
                     </div>
                     <div className="text-[10px] text-gray-500 mt-0.5">{percentage}% complete</div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

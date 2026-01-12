@@ -10,11 +10,13 @@ import { ArrowLeft, Edit2, Check, X, Plus, Trash2 } from "lucide-react";
 interface Goal {
   id: string;
   type: string; // "financial", "fitness", "health", "learning", "other"
+  goalType: "daily" | "long-term"; // Daily or long-term goal
   title: string;
   current: number;
   target: number;
   unit: string;
-  targetDate: string; // ISO date string
+  targetDate: string; // ISO date string (only for long-term goals)
+  lastUpdated?: string; // ISO date string for daily goals to track when they reset
 }
 
 const GOAL_TYPES = [
@@ -35,16 +37,18 @@ export default function GoalsPage() {
   const [selectedGoalForProgress, setSelectedGoalForProgress] = useState<Goal | null>(null);
   const [progressValue, setProgressValue] = useState("");
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [goalTypeFilter, setGoalTypeFilter] = useState<"daily" | "long-term" | "all">("all");
   const [formData, setFormData] = useState({
+    goalType: "long-term" as "daily" | "long-term",
     type: "",
     title: "",
-    current: 0,
-    target: 0,
+    current: "",
+    target: "",
     unit: "",
     targetDate: "",
   });
 
-  // Load goals from localStorage
+  // Load goals from localStorage and reset daily goals if needed
   useEffect(() => {
     if (typeof window === "undefined") return;
     
@@ -52,7 +56,27 @@ export default function GoalsPage() {
     if (storedGoals) {
       try {
         const goals = JSON.parse(storedGoals);
-        setAllGoals(goals);
+        const todayStr = new Date().toISOString().split("T")[0];
+        
+        // Reset daily goals if it's a new day
+        const updatedGoals = goals.map((goal: Goal) => {
+          if (goal.goalType === "daily" && goal.lastUpdated !== todayStr) {
+            return { ...goal, current: 0, lastUpdated: todayStr };
+          }
+          return goal;
+        });
+        
+        // Only update if there were changes
+        const hasChanges = updatedGoals.some((g: Goal, i: number) => 
+          g.current !== goals[i]?.current || g.lastUpdated !== goals[i]?.lastUpdated
+        );
+        
+        if (hasChanges) {
+          setAllGoals(updatedGoals);
+          localStorage.setItem("goals", JSON.stringify(updatedGoals));
+        } else {
+          setAllGoals(goals);
+        }
       } catch (e) {
         setAllGoals([]);
       }
@@ -84,40 +108,70 @@ export default function GoalsPage() {
     }
   };
 
+  // Helper function to parse value with "k" notation
+  const parseValue = (value: string): number => {
+    if (!value || value.trim() === "") return 0;
+    const trimmed = value.trim().toLowerCase();
+    if (trimmed.endsWith("k")) {
+      const num = parseFloat(trimmed.slice(0, -1));
+      return isNaN(num) ? 0 : num * 1000;
+    }
+    const num = parseFloat(trimmed);
+    return isNaN(num) ? 0 : num;
+  };
+
   const handleAddGoal = () => {
-    if (!formData.type || !formData.target || !formData.targetDate) {
+    if (!formData.type || !formData.target) {
       alert("Please fill in all required fields");
+      return;
+    }
+
+    // Long-term goals require a target date
+    if (formData.goalType === "long-term" && !formData.targetDate) {
+      alert("Please select a target date for long-term goals");
       return;
     }
 
     const goalType = GOAL_TYPES.find(t => t.value === formData.type);
     const unit = formData.unit || goalType?.unit || "";
+    const targetValue = parseValue(formData.target);
+    const currentValue = parseValue(formData.current);
+
+    if (targetValue <= 0) {
+      alert("Target must be greater than 0");
+      return;
+    }
+
+    const todayStr = new Date().toISOString().split("T")[0];
 
     const newGoal: Goal = {
       id: `goal_${Date.now()}`,
       type: formData.type,
+      goalType: formData.goalType,
       title: formData.title || goalType?.label || "Goal",
-      current: formData.current || 0,
-      target: formData.target,
+      current: currentValue,
+      target: targetValue,
       unit: unit,
-      targetDate: formData.targetDate,
+      targetDate: formData.goalType === "daily" ? "" : formData.targetDate,
+      lastUpdated: formData.goalType === "daily" ? todayStr : undefined,
     };
 
     const updatedGoals = [...allGoals, newGoal];
     setAllGoals(updatedGoals);
     localStorage.setItem("goals", JSON.stringify(updatedGoals));
     
-    setFormData({ type: "", title: "", current: 0, target: 0, unit: "", targetDate: "" });
+    setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
     setShowAddForm(false);
   };
 
   const handleEditGoal = (goal: Goal) => {
     setEditingGoal(goal);
     setFormData({
+      goalType: goal.goalType || "long-term",
       type: goal.type || "",
       title: goal.title,
-      current: goal.current,
-      target: goal.target,
+      current: goal.current > 0 ? goal.current.toString() : "",
+      target: goal.target > 0 ? goal.target.toString() : "",
       unit: goal.unit,
       targetDate: goal.targetDate || "",
     });
@@ -125,24 +179,38 @@ export default function GoalsPage() {
   };
 
   const handleUpdateGoal = () => {
-    if (!editingGoal || !formData.type || !formData.target || !formData.targetDate) {
+    if (!editingGoal || !formData.type || !formData.target) {
       alert("Please fill in all required fields");
+      return;
+    }
+
+    // Long-term goals require a target date
+    if (formData.goalType === "long-term" && !formData.targetDate) {
+      alert("Please select a target date for long-term goals");
       return;
     }
 
     const goalType = GOAL_TYPES.find(t => t.value === formData.type);
     const unit = formData.unit || goalType?.unit || "";
+    const targetValue = parseValue(formData.target);
+    const currentValue = parseValue(formData.current);
+
+    if (targetValue <= 0) {
+      alert("Target must be greater than 0");
+      return;
+    }
 
     const updatedGoals = allGoals.map(g =>
       g.id === editingGoal.id
         ? {
             ...g,
             type: formData.type,
+            goalType: formData.goalType,
             title: formData.title || goalType?.label || "Goal",
-            current: formData.current || 0,
-            target: formData.target,
+            current: currentValue,
+            target: targetValue,
             unit: unit,
-            targetDate: formData.targetDate,
+            targetDate: formData.goalType === "daily" ? "" : formData.targetDate,
           }
         : g
     );
@@ -150,22 +218,22 @@ export default function GoalsPage() {
     setAllGoals(updatedGoals);
     localStorage.setItem("goals", JSON.stringify(updatedGoals));
     
-    setFormData({ type: "", title: "", current: 0, target: 0, unit: "", targetDate: "" });
+    setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
     setEditingGoal(null);
     setShowAddForm(false);
   };
 
   const handleOpenProgressModal = (goal: Goal) => {
     setSelectedGoalForProgress(goal);
-    setProgressValue(goal.current.toString());
+    setProgressValue(goal.current > 0 ? goal.current.toString() : "");
     setShowProgressModal(true);
   };
 
   const handleSaveProgress = () => {
     if (!selectedGoalForProgress || !progressValue) return;
     
-    const newCurrent = Number(progressValue);
-    if (isNaN(newCurrent) || newCurrent < 0) {
+    const newCurrent = parseValue(progressValue);
+    if (newCurrent < 0) {
       alert("Please enter a valid number");
       return;
     }
@@ -188,9 +256,18 @@ export default function GoalsPage() {
   };
 
   const handleUpdateProgress = (goalId: string, newCurrent: number) => {
-    const updatedGoals = allGoals.map(g =>
-      g.id === goalId ? { ...g, current: Math.max(0, Math.min(newCurrent, g.target)) } : g
-    );
+    const todayStr = new Date().toISOString().split("T")[0];
+    const updatedGoals = allGoals.map(g => {
+      if (g.id === goalId) {
+        const updated = { ...g, current: Math.max(0, Math.min(newCurrent, g.target)) };
+        // Update lastUpdated for daily goals
+        if (g.goalType === "daily") {
+          updated.lastUpdated = todayStr;
+        }
+        return updated;
+      }
+      return g;
+    });
     setAllGoals(updatedGoals);
     localStorage.setItem("goals", JSON.stringify(updatedGoals));
   };
@@ -210,7 +287,7 @@ export default function GoalsPage() {
                 onClick={() => {
                   setShowAddForm(!showAddForm);
                   setEditingGoal(null);
-                  setFormData({ type: "", title: "", current: 0, target: 0, unit: "", targetDate: "" });
+                  setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
                 }}
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 text-black font-semibold"
               >
@@ -253,6 +330,33 @@ export default function GoalsPage() {
           </h3>
           <div className="space-y-4">
             <div>
+              <label className="block text-sm font-semibold mb-2 text-gray-300">Daily or Long-term goal?</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, goalType: "daily" }))}
+                  className={`flex-1 py-2 rounded-lg font-semibold transition-all ${
+                    formData.goalType === "daily"
+                      ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black shadow-lg shadow-teal-500/30"
+                      : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
+                  }`}
+                >
+                  Daily
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, goalType: "long-term" }))}
+                  className={`flex-1 py-2 rounded-lg font-semibold transition-all ${
+                    formData.goalType === "long-term"
+                      ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black shadow-lg shadow-teal-500/30"
+                      : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
+                  }`}
+                >
+                  Long-term
+                </button>
+              </div>
+            </div>
+            <div>
               <label className="block text-sm font-semibold mb-2 text-gray-300">What type of goal?</label>
               <select
                 value={formData.type}
@@ -277,30 +381,37 @@ export default function GoalsPage() {
 
             {formData.type && (
               <>
-                <div>
-                  <label className="block text-sm font-semibold mb-2 text-gray-300">
-                    {GOAL_TYPES.find(t => t.value === formData.type)?.question || "What's your goal?"}
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
-                    placeholder={formData.type === "financial" ? "e.g., Make $10,000" : formData.type === "fitness" ? "e.g., Lose 10kg" : "Enter your goal"}
-                  />
-                </div>
+                {formData.type !== "financial" && (
+                  <div>
+                    <label className="block text-sm font-semibold mb-2 text-gray-300">
+                      {GOAL_TYPES.find(t => t.value === formData.type)?.question || "What's your goal?"}
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
+                      placeholder={formData.type === "fitness" ? "e.g., Lose 10kg" : "Enter your goal"}
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-semibold mb-2 text-gray-300">
                     {formData.type === "financial" ? "How much are you planning on making?" : "What's your target?"}
                   </label>
                   <div className="flex items-center gap-2">
                     <input
-                      type="number"
+                      type="text"
                       value={formData.target}
-                      onChange={(e) => setFormData(prev => ({ ...prev, target: Number(e.target.value) }))}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow numbers, k, K, and decimal point
+                        if (value === "" || /^[\d.]*[kK]?$/.test(value)) {
+                          setFormData(prev => ({ ...prev, target: value }));
+                        }
+                      }}
                       className="flex-1 bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
-                      min="1"
-                      placeholder="0"
+                      placeholder={formData.type === "financial" ? "e.g., 10k or 10000" : "Enter target"}
                     />
                     <input
                       type="text"
@@ -310,28 +421,45 @@ export default function GoalsPage() {
                       placeholder={GOAL_TYPES.find(t => t.value === formData.type)?.unit || "unit"}
                     />
                   </div>
+                  {formData.type === "financial" && formData.target && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      {parseValue(formData.target).toLocaleString()} {formData.unit || "$"}
+                    </p>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold mb-2 text-gray-300">When is it to be completed by?</label>
-                  <input
-                    type="date"
-                    value={formData.targetDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, targetDate: e.target.value }))}
-                    className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
-                    min={new Date().toISOString().split("T")[0]}
-                  />
-                </div>
+                {formData.goalType === "long-term" && (
+                  <div>
+                    <label className="block text-sm font-semibold mb-2 text-gray-300">When is it to be completed by?</label>
+                    <input
+                      type="date"
+                      value={formData.targetDate}
+                      onChange={(e) => setFormData(prev => ({ ...prev, targetDate: e.target.value }))}
+                      className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
+                      min={new Date().toISOString().split("T")[0]}
+                    />
+                  </div>
+                )}
                 {!editingGoal && (
                   <div>
                     <label className="block text-sm font-semibold mb-2 text-gray-300">Current progress (optional)</label>
                     <input
-                      type="number"
+                      type="text"
                       value={formData.current}
-                      onChange={(e) => setFormData(prev => ({ ...prev, current: Number(e.target.value) }))}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow numbers, k, K, and decimal point
+                        if (value === "" || /^[\d.]*[kK]?$/.test(value)) {
+                          setFormData(prev => ({ ...prev, current: value }));
+                        }
+                      }}
                       className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
-                      min="0"
-                      placeholder="0"
+                      placeholder={formData.type === "financial" ? "e.g., 5k or 5000" : "Enter current progress"}
                     />
+                    {formData.type === "financial" && formData.current && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        {parseValue(formData.current).toLocaleString()} {formData.unit || "$"}
+                      </p>
+                    )}
                   </div>
                 )}
               </>
@@ -340,7 +468,7 @@ export default function GoalsPage() {
             <div className="flex gap-3">
               <button
                 onClick={editingGoal ? handleUpdateGoal : handleAddGoal}
-                disabled={!formData.type || !formData.target || !formData.targetDate}
+                disabled={!formData.type || !formData.target || (formData.goalType === "long-term" && !formData.targetDate)}
                 className="flex-1 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-black"
               >
                 {editingGoal ? "Update" : "Add Goal"}
@@ -349,7 +477,7 @@ export default function GoalsPage() {
                 onClick={() => {
                   setShowAddForm(false);
                   setEditingGoal(null);
-                  setFormData({ type: "", title: "", current: 0, target: 0, unit: "", targetDate: "" });
+                  setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
                 }}
                 className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-semibold transition-all text-white"
               >
@@ -376,16 +504,26 @@ export default function GoalsPage() {
                 <label className="block text-sm font-semibold mb-2 text-gray-300">New progress value</label>
                 <div className="flex items-center gap-2">
                   <input
-                    type="number"
+                    type="text"
                     value={progressValue}
-                    onChange={(e) => setProgressValue(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow numbers, k, K, and decimal point
+                      if (value === "" || /^[\d.]*[kK]?$/.test(value)) {
+                        setProgressValue(value);
+                      }
+                    }}
                     className="flex-1 bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
-                    min="0"
-                    placeholder="0"
+                    placeholder="Enter value"
                     autoFocus
                   />
                   <span className="text-gray-400">{selectedGoalForProgress.unit}</span>
                 </div>
+                {selectedGoalForProgress.type === "financial" && progressValue && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    {parseValue(progressValue).toLocaleString()} {selectedGoalForProgress.unit}
+                  </p>
+                )}
               </div>
               <div className="flex gap-3">
                 <button
@@ -412,10 +550,53 @@ export default function GoalsPage() {
 
       {/* Goals List */}
       <div className="mb-6 flex-1">
-        <h2 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent mb-4">Goals</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Goals</h2>
+          {allGoals.length > 0 && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setGoalTypeFilter("all")}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  goalTypeFilter === "all"
+                    ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black"
+                    : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setGoalTypeFilter("daily")}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  goalTypeFilter === "daily"
+                    ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black"
+                    : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
+                }`}
+              >
+                Daily
+              </button>
+              <button
+                onClick={() => setGoalTypeFilter("long-term")}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  goalTypeFilter === "long-term"
+                    ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black"
+                    : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
+                }`}
+              >
+                Long-term
+              </button>
+            </div>
+          )}
+        </div>
         <div className="space-y-2">
           {allGoals.length > 0 ? (
-            allGoals.map((goal) => (
+            allGoals
+              .filter((goal) => {
+                if (goalTypeFilter === "all") return true;
+                if (goalTypeFilter === "daily") return goal.goalType === "daily";
+                if (goalTypeFilter === "long-term") return goal.goalType === "long-term";
+                return true;
+              })
+              .map((goal) => (
               <div key={goal.id} className="relative">
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
