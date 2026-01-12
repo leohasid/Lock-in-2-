@@ -3,14 +3,12 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { TrendingUp, TrendingDown, Target, Flame, Dumbbell, Calendar, Shield } from "lucide-react";
+import { TrendingUp, TrendingDown, Target, Flame, Dumbbell, Calendar, CheckSquare2 } from "lucide-react";
 
 export default function Home() {
   const [today, setToday] = useState(new Date());
   const [userName, setUserName] = useState("Leo");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [selectedAddictionId, setSelectedAddictionId] = useState<string | null>(null);
-  const [showAddictionSelector, setShowAddictionSelector] = useState(false);
 
   // Get greeting based on time
   const getGreeting = () => {
@@ -151,86 +149,25 @@ export default function Home() {
     return { streak, thisWeek, total };
   }, []);
 
-  // Get reminders count
+  // Get reminders/tasks count
   const remindersData = useMemo(() => {
-    if (typeof window === "undefined") return { today: 0, completed: 0 };
+    if (typeof window === "undefined") return { today: 0, completed: 0, remaining: 0 };
     
     const todayStr = new Date().toISOString().split("T")[0];
     const reminders = localStorage.getItem("reminders");
-    if (!reminders) return { today: 0, completed: 0 };
+    if (!reminders) return { today: 0, completed: 0, remaining: 0 };
     
     try {
       const parsed = JSON.parse(reminders);
       const todayReminders = parsed.filter((r: any) => r.date === todayStr);
       const completed = todayReminders.filter((r: any) => r.completed).length;
-      return { today: todayReminders.length, completed };
+      const remaining = todayReminders.length - completed;
+      return { today: todayReminders.length, completed, remaining };
     } catch (e) {
-      return { today: 0, completed: 0 };
+      return { today: 0, completed: 0, remaining: 0 };
     }
   }, [refreshTrigger]);
 
-  // Get addictions
-  const addictions = useMemo(() => {
-    if (typeof window === "undefined") return [];
-    
-    const stored = localStorage.getItem("addictions");
-    if (!stored) return [];
-    
-    try {
-      return JSON.parse(stored);
-    } catch (e) {
-      return [];
-    }
-  }, [refreshTrigger]);
-
-  // Get selected addiction for home page
-  const selectedAddiction = useMemo(() => {
-    if (!selectedAddictionId) return null;
-    return addictions.find((a: any) => a.id === selectedAddictionId) || null;
-  }, [addictions, selectedAddictionId]);
-
-  // Load selected addiction from localStorage
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = localStorage.getItem("selectedAddictionForHome");
-    if (stored) {
-      try {
-        const id = JSON.parse(stored);
-        setSelectedAddictionId(id);
-      } catch (e) {
-        // If no addiction selected, use first one if available
-        const storedAddictions = localStorage.getItem("addictions");
-        if (storedAddictions) {
-          try {
-            const parsed = JSON.parse(storedAddictions);
-            if (parsed.length > 0) {
-              setSelectedAddictionId(parsed[0].id);
-              localStorage.setItem("selectedAddictionForHome", JSON.stringify(parsed[0].id));
-            }
-          } catch (e) {}
-        }
-      }
-    } else {
-      // If no selection stored, use first addiction if available
-      const storedAddictions = localStorage.getItem("addictions");
-      if (storedAddictions) {
-        try {
-          const parsed = JSON.parse(storedAddictions);
-          if (parsed.length > 0) {
-            setSelectedAddictionId(parsed[0].id);
-            localStorage.setItem("selectedAddictionForHome", JSON.stringify(parsed[0].id));
-          }
-        } catch (e) {}
-      }
-    }
-  }, []);
-
-  // Save selected addiction to localStorage
-  const handleSelectAddiction = (id: string) => {
-    setSelectedAddictionId(id);
-    localStorage.setItem("selectedAddictionForHome", JSON.stringify(id));
-    setShowAddictionSelector(false);
-  };
 
   // Get daily goals
   const dailyGoalsData = useMemo(() => {
@@ -257,7 +194,7 @@ export default function Home() {
         return goal;
       });
       
-      return dailyGoals.slice(0, 4);
+      return dailyGoals.slice(0, 3);
     } catch (e) {
       return [];
     }
@@ -286,10 +223,10 @@ export default function Home() {
       // Filter long-term goals only
       const longTermGoals = goals.filter((g: any) => g.goalType === "long-term" || !g.goalType);
       
-      // If there are selected goals, use those, otherwise use first 4
+      // If there are selected goals, use those, otherwise use first 3
       const goalsToShow = selectedIds.length > 0
-        ? longTermGoals.filter((g: any) => selectedIds.includes(g.id)).slice(0, 4)
-        : longTermGoals.slice(0, 4);
+        ? longTermGoals.filter((g: any) => selectedIds.includes(g.id)).slice(0, 3)
+        : longTermGoals.slice(0, 3);
       
       return goalsToShow;
     } catch (e) {
@@ -528,101 +465,96 @@ export default function Home() {
         )}
       </section>
 
-      {/* Daily Goals */}
-      {dailyGoalsData.length > 0 && (
-        <section className="mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-white/10">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Target className="w-3.5 h-3.5 text-teal-400" />
-              <span className="text-xs font-medium text-gray-300">Daily Goals</span>
-            </div>
-          </div>
-          <div className="space-y-2">
-            {dailyGoalsData.map((goal: any) => {
-              const percentage = goal.target > 0 
-                ? Math.min(Math.round((goal.current / goal.target) * 100), 100)
-                : 0;
-              
-              return (
-                <Link key={goal.id} href="/goals" className="block bg-[rgba(10,15,20,0.6)] rounded-lg p-2 border border-white/5 hover:border-teal-400/50 transition-all">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="text-xs font-semibold text-white">{goal.title}</div>
-                    <div className="text-[10px] text-gray-400">
-                      {goal.current} / {goal.target} {goal.unit}
-                    </div>
-                  </div>
-                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full transition-all"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                  <div className="text-[10px] text-gray-500 mt-0.5">{percentage}% complete</div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Long-term Goals */}
+      {/* Goals - One Box Split in Half */}
       <section className="mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-white/10">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
+        <div className="flex gap-3 mb-2">
+          <div className="flex-1 flex items-center gap-2">
+            <Target className="w-3.5 h-3.5 text-teal-400" />
+            <span className="text-xs font-medium text-gray-300">Daily Goals</span>
+          </div>
+          <div className="w-px bg-white/10"></div>
+          <div className="flex-1 flex items-center gap-2">
             <Target className="w-3.5 h-3.5 text-teal-400" />
             <span className="text-xs font-medium text-gray-300">Long-term Goals</span>
           </div>
         </div>
-
-        {longTermGoalsData.length === 0 ? (
-          <div className="text-center py-3">
-            <div className="text-sm font-semibold text-white mb-1">No long-term goals</div>
-            <div className="text-[10px] text-gray-400 mb-2">Set goals for the future.</div>
-            <Link
-              href="/goals"
-              className="inline-block bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-3 py-1.5 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 text-xs"
-            >
-              + Create goal
-            </Link>
-          </div>
-        ) : (
-          <>
-            <div className="space-y-2 mb-2">
-              {longTermGoalsData.map((goal: any) => {
-                const percentage = goal.target > 0 
-                  ? Math.min(Math.round((goal.current / goal.target) * 100), 100)
-                  : 0;
-                
-                return (
-                  <Link key={goal.id} href="/goals" className="block bg-[rgba(10,15,20,0.6)] rounded-lg p-2 border border-white/5 hover:border-teal-400/50 transition-all">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="text-xs font-semibold text-white">{goal.title}</div>
-                      <div className="text-[10px] text-gray-400">
-                        {goal.current} / {goal.target} {goal.unit}
+        <div className="flex gap-3">
+          {/* Daily Goals - Left Half */}
+          <div className="flex-1">
+            {dailyGoalsData.length === 0 ? (
+              <div className="text-center py-2">
+                <div className="text-[10px] text-gray-400 mb-1">No daily goals</div>
+                <Link
+                  href="/goals"
+                  className="text-[9px] text-teal-400 hover:text-teal-300"
+                >
+                  + Add
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {dailyGoalsData.map((goal: any) => {
+                  const percentage = goal.target > 0 
+                    ? Math.min(Math.round((goal.current / goal.target) * 100), 100)
+                    : 0;
+                  
+                  return (
+                    <Link key={goal.id} href="/goals" className="block bg-[rgba(10,15,20,0.6)] rounded-lg p-1.5 border border-white/5 hover:border-teal-400/50 transition-all">
+                      <div className="text-[10px] font-semibold text-white mb-0.5 truncate">{goal.title}</div>
+                      <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full transition-all"
+                          style={{ width: `${percentage}%` }}
+                        />
                       </div>
-                    </div>
-                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full transition-all"
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                    <div className="text-[10px] text-gray-500 mt-0.5">{percentage}% complete</div>
-                  </Link>
-                );
-              })}
-            </div>
-            <Link
-              href="/goals"
-              className="block w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white px-3 py-2 rounded-lg font-semibold transition-all text-center text-xs"
-            >
-              View all goals
-            </Link>
-          </>
-        )}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Vertical Divider */}
+          <div className="w-px bg-white/10"></div>
+
+          {/* Long-term Goals - Right Half */}
+          <div className="flex-1">
+            {longTermGoalsData.length === 0 ? (
+              <div className="text-center py-2">
+                <div className="text-[10px] text-gray-400 mb-1">No long-term goals</div>
+                <Link
+                  href="/goals"
+                  className="text-[9px] text-teal-400 hover:text-teal-300"
+                >
+                  + Add
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {longTermGoalsData.map((goal: any) => {
+                  const percentage = goal.target > 0 
+                    ? Math.min(Math.round((goal.current / goal.target) * 100), 100)
+                    : 0;
+                  
+                  return (
+                    <Link key={goal.id} href="/goals" className="block bg-[rgba(10,15,20,0.6)] rounded-lg p-1.5 border border-white/5 hover:border-teal-400/50 transition-all">
+                      <div className="text-[10px] font-semibold text-white mb-0.5 truncate">{goal.title}</div>
+                      <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full transition-all"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       </section>
 
-      {/* Reminders and Addiction Side by Side */}
+      {/* Reminders and Tasks Side by Side */}
       <section className="mb-3 flex gap-2">
         {/* Reminders - Left Half */}
         <div className="flex-1">
@@ -638,98 +570,20 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Addiction - Right Half */}
-        <div className="flex-1 relative">
-          {selectedAddiction ? (
-            <div 
-              onClick={() => setShowAddictionSelector(true)}
-              className="block bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-white/10 hover:border-teal-400/50 transition-all h-full cursor-pointer"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <Shield className="w-3.5 h-3.5 text-teal-400" />
-                <span className="text-xs font-medium text-gray-300">{selectedAddiction.name}</span>
-              </div>
-              {("apps" in selectedAddiction || (selectedAddiction as any).type === "phone") ? (
-                <>
-                  <div className="text-lg font-bold text-white mb-0.5">
-                    {Math.floor(((selectedAddiction as any).totalCurrentUsage || 0) / 60)}h {((selectedAddiction as any).totalCurrentUsage || 0) % 60}m
-                  </div>
-                  <div className="text-[10px] text-gray-400">Today&apos;s usage</div>
-                </>
-              ) : ((selectedAddiction as any).type === "vape" || (selectedAddiction as any).type === "goon") ? (
-                <>
-                  <div className="text-lg font-bold text-white mb-0.5">
-                    ${(selectedAddiction as any).weeklySpend || 0}
-                  </div>
-                  <div className="text-[10px] text-gray-400">Weekly spend</div>
-                </>
-              ) : (
-                <>
-                  <div className="text-lg font-bold text-white mb-0.5">
-                    Active
-                  </div>
-                  <div className="text-[10px] text-gray-400">Tracking</div>
-                </>
-              )}
+        {/* Tasks - Right Half */}
+        <div className="flex-1">
+          <Link href="/calendar" className="block bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-white/10 hover:border-teal-400/50 transition-all h-full">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckSquare2 className="w-3.5 h-3.5 text-teal-400" />
+              <span className="text-xs font-medium text-gray-300">Tasks</span>
             </div>
-          ) : addictions.length > 0 ? (
-            <div 
-              onClick={() => setShowAddictionSelector(true)}
-              className="block bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-white/10 hover:border-teal-400/50 transition-all h-full cursor-pointer"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <Shield className="w-3.5 h-3.5 text-teal-400" />
-                <span className="text-xs font-medium text-gray-300">Select Addiction</span>
-              </div>
-              <div className="text-sm text-gray-400">Tap to choose</div>
+            <div className="text-lg font-bold text-white mb-0.5">
+              {remindersData.remaining}
             </div>
-          ) : (
-            <Link 
-              href="/addictions"
-              className="block bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-white/10 hover:border-teal-400/50 transition-all h-full"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <Shield className="w-3.5 h-3.5 text-teal-400" />
-                <span className="text-xs font-medium text-gray-300">Addiction</span>
-              </div>
-              <div className="text-sm text-gray-400">Add one to track</div>
-            </Link>
-          )}
+            <div className="text-[10px] text-gray-400">Left for today</div>
+          </Link>
         </div>
       </section>
-
-      {/* Addiction Selector Modal */}
-      {showAddictionSelector && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-6 max-w-md w-full border border-white/10">
-            <h3 className="text-xl font-bold text-white mb-4">Select Addiction to Display</h3>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {addictions.map((addiction: any) => (
-                <button
-                  key={addiction.id}
-                  onClick={() => handleSelectAddiction(addiction.id)}
-                  className={`w-full text-left p-3 rounded-lg border transition-all ${
-                    selectedAddictionId === addiction.id
-                      ? "bg-teal-500/20 border-teal-400"
-                      : "bg-white/5 border-white/10 hover:border-teal-400/50"
-                  }`}
-                >
-                  <div className="text-sm font-semibold text-white">{addiction.name}</div>
-                  {addiction.type && (
-                    <div className="text-xs text-gray-400 mt-1">{addiction.type}</div>
-                  )}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setShowAddictionSelector(false)}
-              className="mt-4 w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-semibold transition-all text-white text-sm"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
 
       <BottomNav />
     </main>
