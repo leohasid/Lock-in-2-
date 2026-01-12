@@ -245,26 +245,26 @@ export default function Home() {
   const maxChartValue = 120; // 120% to allow seeing if goals are exceeded
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-4 pt-6 pb-28">
+    <main className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-4 pt-4 pb-24">
       {/* Header */}
-      <header className="mb-8">
-        <h1 className="text-2xl font-semibold text-white mb-1">
+      <header className="mb-3">
+        <h1 className="text-xl font-semibold text-white mb-0.5">
           {getGreeting()}, {userName}
         </h1>
-        <p className="text-sm text-gray-400">
+        <p className="text-xs text-gray-400">
           {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
         </p>
       </header>
 
       {/* Macros Stacked Bar Chart */}
-      <section className="mb-6 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-5 border border-white/10">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-white mb-1">Macros</h2>
-          <p className="text-xs text-gray-400">7-day overview</p>
+      <section className="mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-white/10">
+        <div className="mb-2">
+          <h2 className="text-base font-semibold text-white mb-0.5">Macros</h2>
+          <p className="text-[10px] text-gray-400">7-day overview</p>
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap gap-4 mb-4 text-xs">
+        <div className="flex flex-wrap gap-2 mb-2 text-[10px]">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded bg-gradient-to-r from-orange-400 to-orange-500"></div>
             <span className="text-gray-300">Calories</span>
@@ -284,7 +284,7 @@ export default function Home() {
         </div>
 
         {/* Stacked Bar Chart */}
-        <div className="h-32 relative">
+        <div className="h-20 relative">
           <svg width="100%" height="100%" className="overflow-visible" style={{ paddingBottom: '20px' }}>
             {/* Grid lines */}
             {[0, 25, 50, 75, 100].map((p) => (
@@ -413,7 +413,7 @@ export default function Home() {
 
         {/* Day labels */}
         {normalizedMacroData.calories.length > 0 && (
-          <div className="flex justify-between mt-2 text-[10px] text-gray-500">
+          <div className="flex justify-between mt-1 text-[9px] text-gray-500">
             {normalizedMacroData.calories.map((d, i) => (
               <span key={i} className="flex-1 text-center">{d.day}</span>
             ))}
@@ -422,55 +422,55 @@ export default function Home() {
       </section>
 
       {/* Goals */}
-      <section className="mb-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-white/10">
-        <div className="flex items-center justify-between mb-4">
+      <section className="mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-white/10">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <Target className="w-4 h-4 text-teal-400" />
-            <span className="text-sm font-medium text-gray-300">Goals</span>
+            <Target className="w-3.5 h-3.5 text-teal-400" />
+            <span className="text-xs font-medium text-gray-300">Goals</span>
           </div>
         </div>
 
         {goalsData.length === 0 ? (
-          <div className="text-center py-6">
-            <div className="text-lg font-semibold text-white mb-2">No active goals</div>
-            <div className="text-xs text-gray-400 mb-4">Define what you&apos;re working toward this week.</div>
+          <div className="text-center py-3">
+            <div className="text-sm font-semibold text-white mb-1">No active goals</div>
+            <div className="text-[10px] text-gray-400 mb-2">Define what you&apos;re working toward this week.</div>
             <Link
               href="/goals"
-              className="inline-block bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-4 py-2 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 text-sm"
+              className="inline-block bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-3 py-1.5 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 text-xs"
             >
               + Create goal
             </Link>
           </div>
         ) : (
           <>
-            <div className="space-y-3 mb-4">
+            <div className="space-y-2 mb-2">
               {goalsData.map((goal: any) => {
                 const percentage = goal.target > 0 
                   ? Math.min(Math.round((goal.current / goal.target) * 100), 100)
                   : 0;
                 
                 return (
-                  <div key={goal.id} className="bg-[rgba(10,15,20,0.6)] rounded-lg p-3 border border-white/5">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-semibold text-white">{goal.title}</div>
-                      <div className="text-xs text-gray-400">
+                  <div key={goal.id} className="bg-[rgba(10,15,20,0.6)] rounded-lg p-2 border border-white/5">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-xs font-semibold text-white">{goal.title}</div>
+                      <div className="text-[10px] text-gray-400">
                         {goal.current} / {goal.target} {goal.unit}
                       </div>
                     </div>
-                    <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full transition-all"
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">{percentage}% complete</div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">{percentage}% complete</div>
                   </div>
                 );
               })}
             </div>
             <Link
               href="/goals"
-              className="block w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white px-4 py-3 rounded-lg font-semibold transition-all text-center text-sm"
+              className="block w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white px-3 py-2 rounded-lg font-semibold transition-all text-center text-xs"
             >
               View all goals
             </Link>
@@ -479,24 +479,24 @@ export default function Home() {
       </section>
 
       {/* Reminders */}
-      <section className="mb-6">
-        <Link href="/calendar" className="block bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-white/10 hover:border-teal-400/50 transition-all">
-          <div className="flex items-center gap-2 mb-3">
-            <Calendar className="w-4 h-4 text-teal-400" />
-            <span className="text-sm font-medium text-gray-300">Reminders</span>
+      <section className="mb-3">
+        <Link href="/calendar" className="block bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-white/10 hover:border-teal-400/50 transition-all">
+          <div className="flex items-center gap-2 mb-2">
+            <Calendar className="w-3.5 h-3.5 text-teal-400" />
+            <span className="text-xs font-medium text-gray-300">Reminders</span>
           </div>
-          <div className="text-xl font-bold text-white mb-1">
+          <div className="text-lg font-bold text-white mb-0.5">
             {remindersData.completed}/{remindersData.today}
           </div>
-          <div className="text-xs text-gray-400">Completed today</div>
+          <div className="text-[10px] text-gray-400">Completed today</div>
         </Link>
       </section>
 
       {/* Quick Actions */}
-      <section className="mb-6">
+      <section className="mb-3">
         <Link
           href="/reflections"
-          className="block w-full bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-6 py-4 rounded-xl font-semibold transition-all transform hover:scale-[1.02] shadow-lg shadow-teal-500/30 text-center"
+          className="block w-full bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-4 py-2.5 rounded-xl font-semibold transition-all transform hover:scale-[1.02] shadow-lg shadow-teal-500/30 text-center text-sm"
         >
           Daily Reflection
         </Link>
