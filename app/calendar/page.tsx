@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
-import { Trash2, Sparkles } from "lucide-react";
+import { Trash2, Sparkles, Plus } from "lucide-react";
 
 interface Reminder {
   id: string;
@@ -381,7 +381,7 @@ export default function CalendarPage() {
                 : "text-gray-400 hover:text-teal-300"
             }`}
           >
-            Routine
+            Schedule
           </button>
         </div>
 
@@ -661,12 +661,30 @@ export default function CalendarPage() {
             {/* Day Schedule View - Times going down */}
             {selectedDay && (
               <div className="mb-4">
-                <button
-                  onClick={() => setSelectedDay(null)}
-                  className="mb-4 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white px-4 py-2 rounded-lg hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 shadow-lg font-bold flex items-center gap-2"
-                >
-                  ← Back to Days
-                </button>
+                <div className="flex items-center gap-3 mb-4">
+                  <button
+                    onClick={() => setSelectedDay(null)}
+                    className="flex-1 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white px-4 py-2 rounded-lg hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 shadow-lg font-bold flex items-center justify-center gap-2"
+                  >
+                    ← Back to Days
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAddForm(true);
+                      setNewReminder({
+                        title: "",
+                        type: "task",
+                        time: "",
+                        date: selectedDay.toISOString().split("T")[0],
+                        repeatFrequency: "",
+                      });
+                    }}
+                    className="flex-1 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 font-bold flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Task
+                  </button>
+                </div>
                 
                 <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group">
                   <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />

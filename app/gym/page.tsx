@@ -795,16 +795,14 @@ export default function GymPage() {
               </div>
               <span className="text-green-400 font-bold text-xs min-w-[3rem] text-right">{totals.progress}% {totals.totalVolume} kg</span>
             </div>
-            {currentDayExercises.length > 0 && (
-              <Link
-                href={`/gym/workout?date=${selectedDate.toISOString().split("T")[0]}`}
-                className="block w-full"
-              >
-                <button className="w-full px-4 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 text-black rounded-lg text-sm font-bold hover:from-teal-500 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/30">
-                  Start Workout
-                </button>
-              </Link>
-            )}
+            <Link
+              href={`/gym/workout?date=${selectedDate.toISOString().split("T")[0]}`}
+              className="block w-full"
+            >
+              <button className="w-full px-3 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 text-black rounded-lg text-xs font-bold hover:from-teal-500 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/30">
+                View Workout
+              </button>
+            </Link>
           </div>
         )}
 

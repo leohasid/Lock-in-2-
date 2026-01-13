@@ -149,22 +149,24 @@ export default function Home() {
     return { streak, thisWeek, total };
   }, []);
 
-  // Get reminders/tasks count
-  const remindersData = useMemo(() => {
-    if (typeof window === "undefined") return { today: 0, completed: 0, remaining: 0 };
+  // Get tasks (from routine) count
+  const tasksData = useMemo(() => {
+    if (typeof window === "undefined") return { today: 0, completed: 0, remaining: 0, tasks: [] };
     
     const todayStr = new Date().toISOString().split("T")[0];
     const reminders = localStorage.getItem("reminders");
-    if (!reminders) return { today: 0, completed: 0, remaining: 0 };
+    if (!reminders) return { today: 0, completed: 0, remaining: 0, tasks: [] };
     
     try {
       const parsed = JSON.parse(reminders);
-      const todayReminders = parsed.filter((r: any) => r.date === todayStr);
-      const completed = todayReminders.filter((r: any) => r.completed).length;
-      const remaining = todayReminders.length - completed;
-      return { today: todayReminders.length, completed, remaining };
+      // Filter for tasks only (type "task")
+      const allTasks = parsed.filter((r: any) => r.type === "task");
+      const todayTasks = allTasks.filter((r: any) => r.date === todayStr);
+      const completed = todayTasks.filter((r: any) => r.completed).length;
+      const remaining = todayTasks.length - completed;
+      return { today: todayTasks.length, completed, remaining, tasks: todayTasks.slice(0, 3) };
     } catch (e) {
-      return { today: 0, completed: 0, remaining: 0 };
+      return { today: 0, completed: 0, remaining: 0, tasks: [] };
     }
   }, [refreshTrigger]);
 
@@ -554,35 +556,43 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Reminders and Tasks Side by Side */}
-      <section className="mb-3 flex gap-2">
-        {/* Reminders - Left Half */}
-        <div className="flex-1">
-          <Link href="/calendar" className="block bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-white/10 hover:border-teal-400/50 transition-all h-full">
-            <div className="flex items-center gap-2 mb-2">
-              <Calendar className="w-3.5 h-3.5 text-teal-400" />
-              <span className="text-xs font-medium text-gray-300">Reminders</span>
-            </div>
-            <div className="text-lg font-bold text-white mb-0.5">
-              {remindersData.completed}/{remindersData.today}
-            </div>
-            <div className="text-[10px] text-gray-400">Completed today</div>
-          </Link>
+      {/* Tasks Section */}
+      <section className="mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-white/10">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <CheckSquare2 className="w-4 h-4 text-teal-400" />
+            <h2 className="text-sm font-bold text-white">Tasks</h2>
+          </div>
+          {tasksData.today > 0 && (
+            <Link
+              href="/tasks"
+              className="text-xs text-teal-400 hover:text-teal-300 font-medium"
+            >
+              View All
+            </Link>
+          )}
         </div>
-
-        {/* Tasks - Right Half */}
-        <div className="flex-1">
-          <Link href="/calendar" className="block bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-white/10 hover:border-teal-400/50 transition-all h-full">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckSquare2 className="w-3.5 h-3.5 text-teal-400" />
-              <span className="text-xs font-medium text-gray-300">Tasks</span>
-            </div>
-            <div className="text-lg font-bold text-white mb-0.5">
-              {remindersData.remaining}
-            </div>
-            <div className="text-[10px] text-gray-400">Left for today</div>
-          </Link>
-        </div>
+        {tasksData.tasks.length === 0 ? (
+          <div className="text-center py-4">
+            <p className="text-xs text-gray-400">No tasks today</p>
+            <p className="text-[10px] text-gray-500 mt-1">Tasks from your routine will appear here</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {tasksData.tasks.map((task: any) => (
+              <div
+                key={task.id}
+                className="flex items-center gap-2 bg-[rgba(10,15,20,0.6)] rounded-lg p-2 border border-white/5"
+              >
+                <div className={`w-2 h-2 rounded-full ${task.completed ? 'bg-green-500' : 'bg-gray-500'}`} />
+                <span className={`text-xs flex-1 ${task.completed ? 'text-gray-500 line-through' : 'text-white'}`}>
+                  {task.title}
+                </span>
+                <span className="text-[10px] text-gray-400">{task.time}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <BottomNav />
