@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Upload, Camera, X, Settings, MessageSquare } from "lucide-react";
+import { Upload, Camera, X, Settings, MessageSquare, Sparkles } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
 interface Meal {
@@ -192,8 +192,107 @@ export default function NutritionPage() {
     ? Math.min(Math.round((totals.fiber / dailyGoals.fiber) * 100), 100) 
     : 0;
 
+  // Check if at least one macro target is hit (>= 100%)
+  const hasTargetHit = useMemo(() => {
+    return caloriesPercentage >= 100 || proteinPercentage >= 100 || carbsPercentage >= 100 || fatsPercentage >= 100;
+  }, [caloriesPercentage, proteinPercentage, carbsPercentage, fatsPercentage]);
+
+  const [mealAnalysis, setMealAnalysis] = useState<string | null>(null);
+  const [isAnalyzingMeals, setIsAnalyzingMeals] = useState(false);
+
+  // Fetch meal analysis when at least one target is hit
+  useEffect(() => {
+    if (typeof window === "undefined" || !isLoaded || !hasTargetHit || meals.length === 0) return;
+    
+    const todayStr = new Date().toISOString().split("T")[0];
+    const analysisKey = `mealAnalysis_${todayStr}`;
+    
+    // Check if analysis already exists for today
+    const storedAnalysis = localStorage.getItem(analysisKey);
+    if (storedAnalysis) {
+      setMealAnalysis(storedAnalysis);
+      return;
+    }
+
+    // Fetch analysis if not already analyzing
+    if (!isAnalyzingMeals && mealAnalysis === null) {
+      const fetchAnalysis = async () => {
+        setIsAnalyzingMeals(true);
+        try {
+          const response = await fetch("/api/meal-analysis", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              meals,
+              totals,
+              goals: dailyGoals,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.analysis) {
+              setMealAnalysis(data.analysis);
+              // Store analysis for today
+              localStorage.setItem(analysisKey, data.analysis);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching meal analysis:", error);
+        } finally {
+          setIsAnalyzingMeals(false);
+        }
+      };
+
+      fetchAnalysis();
+    }
+  }, [hasTargetHit, meals, totals, dailyGoals, isLoaded, isAnalyzingMeals, mealAnalysis]);
+
   const handleDeleteMeal = (mealId: string) => {
     setMeals(meals.filter(m => m.id !== mealId));
+  };
+
+  const handleManualMealAnalysis = async () => {
+    if (meals.length === 0) {
+      alert("Please add at least one meal before analyzing.");
+      return;
+    }
+
+    setIsAnalyzingMeals(true);
+    try {
+      const response = await fetch("/api/meal-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          meals,
+          totals,
+          goals: dailyGoals,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.analysis) {
+          const todayStr = new Date().toISOString().split("T")[0];
+          const analysisKey = `mealAnalysis_${todayStr}`;
+          setMealAnalysis(data.analysis);
+          // Store analysis for today
+          localStorage.setItem(analysisKey, data.analysis);
+          // Close the AI Coach modal
+          setShowAIConsultation(false);
+          setAiConsultationResponse("");
+          setAiConsultationMessage("");
+        }
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || "Failed to analyze meals. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error fetching meal analysis:", error);
+      alert("Failed to analyze meals. Please try again.");
+    } finally {
+      setIsAnalyzingMeals(false);
+    }
   };
 
   const startCamera = async () => {
@@ -517,6 +616,22 @@ export default function NutritionPage() {
           ))}
         </div>
       </div>
+
+      {/* Meal Analysis - Show when at least one target is hit */}
+      {hasTargetHit && (mealAnalysis || isAnalyzingMeals) && (
+        <div className="mb-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10">
+          <h3 className="text-base font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent mb-3">
+            📊 Daily Meal Analysis
+          </h3>
+          {isAnalyzingMeals ? (
+            <div className="text-gray-400 text-sm">Analyzing your meals...</div>
+          ) : mealAnalysis ? (
+            <div className="text-gray-300 text-sm whitespace-pre-line leading-relaxed">
+              {mealAnalysis}
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* MEALS BOX - Fun design */}
       <div className="mb-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group">
@@ -867,9 +982,18 @@ export default function NutritionPage() {
                 <button
                   onClick={handleAIConsultation}
                   disabled={isConsultingAI || !aiConsultationMessage.trim()}
-                  className="w-full py-2.5 bg-[#14f1d9] text-black rounded-lg text-sm font-medium hover:bg-[#0ddfc8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full py-2.5 bg-[#14f1d9] text-black rounded-lg text-sm font-medium hover:bg-[#0ddfc8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed mb-2"
                 >
                   {isConsultingAI ? "Consulting AI..." : "Ask AI"}
+                </button>
+                <div className="text-xs text-gray-400 text-center mb-2">or</div>
+                <button
+                  onClick={handleManualMealAnalysis}
+                  disabled={isAnalyzingMeals || meals.length === 0}
+                  className="w-full py-2.5 bg-[rgba(10,15,20,0.6)] border border-teal-500/50 text-teal-400 rounded-lg text-sm font-medium hover:bg-[rgba(10,15,20,0.8)] hover:border-teal-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {isAnalyzingMeals ? "Analyzing Meals..." : "Analyze Today's Meals"}
                 </button>
                   </div>
                 ) : (
