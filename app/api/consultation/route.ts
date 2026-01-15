@@ -2,8 +2,14 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
 export async function POST(request: Request) {
+  // Debug: Log environment check (without exposing the key)
+  console.log("OPENAI_API_KEY check:", process.env.OPENAI_API_KEY ? "EXISTS" : "MISSING");
+  
   if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json({ error: "Missing OPENAI_API_KEY" }, { status: 500 });
+    console.error("OPENAI_API_KEY is missing from environment variables");
+    return NextResponse.json({ 
+      error: "Missing OPENAI_API_KEY. Please ensure it's set in Vercel environment variables for Production environment." 
+    }, { status: 500 });
   }
 
   try {
@@ -69,9 +75,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ reply });
   } catch (error: any) {
     console.error("Consultation API error:", error);
+    console.error("Error details:", {
+      message: error?.message,
+      status: error?.status,
+      code: error?.code,
+      type: error?.name,
+      stack: error?.stack,
+    });
     
     // Provide more specific error messages
-    if (error.message?.includes("API key") || error.message?.includes("Invalid API key")) {
+    if (error.message?.includes("API key") || error.message?.includes("Invalid API key") || error?.code === "invalid_api_key") {
       return NextResponse.json({ 
         error: "OpenAI API key is missing or invalid. Please check your Vercel environment variables." 
       }, { status: 500 });

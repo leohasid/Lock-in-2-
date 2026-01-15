@@ -3,12 +3,15 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { TrendingUp, TrendingDown, Target, Flame, Dumbbell, Calendar, CheckSquare2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Target, Flame, Dumbbell, Calendar, CheckSquare2, Plus, X } from "lucide-react";
+import ActivityHeatmap from "@/components/ActivityHeatmap";
 
 export default function Home() {
   const [today, setToday] = useState(new Date());
   const [userName, setUserName] = useState("Leo");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showAddHabitForm, setShowAddHabitForm] = useState(false);
+  const [habitName, setHabitName] = useState("");
 
   // Get greeting based on time
   const getGreeting = () => {
@@ -236,6 +239,81 @@ export default function Home() {
     }
   }, [refreshTrigger]);
 
+  // Get all habits for tracker
+  const allHabitsData = useMemo(() => {
+    if (typeof window === "undefined") return [];
+    
+    const storedHabits = localStorage.getItem("allHabits");
+    if (!storedHabits) return [];
+    
+    let allHabits: Array<{ id: string; name: string }> = [];
+    try {
+      allHabits = JSON.parse(storedHabits);
+    } catch (e) {
+      return [];
+    }
+    
+    if (allHabits.length === 0) return [];
+    
+    const today = new Date();
+    const total = 91; // 91 days shown in ActivityHeatmap
+    
+    return allHabits.map((habit) => {
+      let streak = 0;
+      let completed = 0;
+      
+      // Calculate streak (consecutive days from today backwards)
+      for (let i = 0; i < 91; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dateStr = date.toISOString().split("T")[0];
+        
+        let isCompleted = false;
+        if (habit.id === "gym") {
+          isCompleted = localStorage.getItem(`workout_${dateStr}`) === "completed";
+        } else {
+          isCompleted = localStorage.getItem(`habit_${habit.id}_${dateStr}`) === "completed";
+        }
+        
+        if (isCompleted) {
+          streak++;
+        } else {
+          break;
+        }
+      }
+      
+      // Calculate total completed days in the 91-day period
+      for (let i = 0; i < 91; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        const dateStr = date.toISOString().split("T")[0];
+        
+        let isCompleted = false;
+        if (habit.id === "gym") {
+          isCompleted = localStorage.getItem(`workout_${dateStr}`) === "completed";
+        } else {
+          isCompleted = localStorage.getItem(`habit_${habit.id}_${dateStr}`) === "completed";
+        }
+        
+        if (isCompleted) {
+          completed++;
+        }
+      }
+      
+      // Function to check if habit was completed on a date
+      const getHabitCompletion = (date: Date): boolean => {
+        const dateStr = date.toISOString().split("T")[0];
+        if (habit.id === "gym") {
+          return localStorage.getItem(`workout_${dateStr}`) === "completed";
+        } else {
+          return localStorage.getItem(`habit_${habit.id}_${dateStr}`) === "completed";
+        }
+      };
+      
+      return { habit, streak, completed, total, getHabitCompletion };
+    });
+  }, [refreshTrigger]);
+
   // Load user name
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -256,6 +334,38 @@ export default function Home() {
     }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // Handle adding a new habit
+  const handleAddHabit = () => {
+    if (!habitName.trim()) {
+      alert("Please enter a habit name");
+      return;
+    }
+
+    if (typeof window === "undefined") return;
+    
+    const storedHabits = localStorage.getItem("allHabits");
+    let allHabits: Array<{ id: string; name: string }> = [];
+    if (storedHabits) {
+      try {
+        allHabits = JSON.parse(storedHabits);
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+
+    const newHabit = {
+      id: `habit_${Date.now()}`,
+      name: habitName.trim(),
+    };
+
+    const updatedHabits = [...allHabits, newHabit];
+    localStorage.setItem("allHabits", JSON.stringify(updatedHabits));
+    
+    setHabitName("");
+    setShowAddHabitForm(false);
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   // Normalize macro data to percentage of goal for better comparison
   const normalizedMacroData = useMemo(() => {
@@ -591,6 +701,35 @@ export default function Home() {
                 <span className="text-[10px] text-gray-400">{task.time}</span>
               </div>
             ))}
+          </div>
+        )}
+      </section>
+
+      {/* Habit Tracker Section */}
+      <section className="mb-3 bg-gray-900 rounded-xl p-4 border border-gray-800">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold text-white">Habit Tracker</h2>
+          <Link
+            href="/habits"
+            className="text-xs text-teal-400 hover:text-teal-300 font-medium"
+          >
+            View All
+          </Link>
+        </div>
+        {allHabitsData.length > 0 ? (
+          <ActivityHeatmap
+            title={allHabitsData[0].habit.name}
+            streak={allHabitsData[0].streak}
+            completed={allHabitsData[0].completed}
+            total={allHabitsData[0].total}
+            getActivityData={allHabitsData[0].getHabitCompletion}
+            color="#14b8a6"
+            showLegend={false}
+          />
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-xs text-gray-400">No habits yet</p>
+            <p className="text-[10px] text-gray-500 mt-1">Add habits to track your progress</p>
           </div>
         )}
       </section>
