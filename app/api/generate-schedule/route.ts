@@ -2,12 +2,32 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
 export async function POST(request: Request) {
-  if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json({ error: "Missing OPENAI_API_KEY" }, { status: 500 });
+  // Ensure this is server-side only
+  if (typeof window !== "undefined") {
+    return NextResponse.json({ error: "This API route is server-side only" }, { status: 403 });
+  }
+
+  // Check for API key
+  const apiKey = process.env.OPENAI_API_KEY;
+  console.log("[Generate Schedule API] OPENAI_API_KEY check:", apiKey ? "EXISTS" : "MISSING");
+  
+  if (!apiKey) {
+    const errorMsg = "Missing OPENAI_API_KEY. Please ensure it's set in Vercel environment variables.";
+    console.error("[Generate Schedule API]", errorMsg);
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 
   try {
-    const { preferences, month, year, existingReminders } = await request.json();
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await request.json();
+    } catch (parseError) {
+      console.error("[Generate Schedule API] Failed to parse request body:", parseError);
+      return NextResponse.json({ error: "Invalid request format" }, { status: 400 });
+    }
+
+    const { preferences, month, year, existingReminders } = requestBody;
 
     const systemPrompt = `You are an expert schedule and routine planner AI assistant. Your job is to create a comprehensive, well-organized monthly schedule that helps users establish and maintain a healthy, productive routine.
 
@@ -66,20 +86,29 @@ Example format:
 
     const userPrompt = `Generate a complete monthly schedule for ${month} ${year}. ${preferences ? `User preferences: ${preferences}` : 'Create a balanced, healthy routine with workouts, meals, supplements, and habits.'}`;
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.7,
-      max_tokens: 4000,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
+    // Combine system and user prompts into single input
+    const prompt = `${systemPrompt}\n\n${userPrompt}`;
+
+    // Initialize OpenAI client
+    const client = new OpenAI({ apiKey: apiKey });
+
+    console.log("[Generate Schedule API] Calling OpenAI API with responses.create...");
+    console.log("[Generate Schedule API] Prompt length:", prompt.length, "characters");
+    
+    // Call OpenAI API using responses.create
+    const response = await client.responses.create({
+      model: "gpt-4.1-mini",
+      input: prompt,
+      max_output_tokens: 4000,
     });
 
-    const response = completion.choices[0]?.message?.content?.trim();
+    console.log("[Generate Schedule API] OpenAI API call successful");
+
+    // Extract response text
+    const responseText = response.output_text?.trim();
     
-    if (!response) {
+    if (!responseText) {
+      console.error("[Generate Schedule API] OpenAI returned empty response. Response structure:", JSON.stringify(response, null, 2));
       return NextResponse.json({ 
         error: "AI service returned an empty response. Please try again." 
       }, { status: 500 });
@@ -88,13 +117,14 @@ Example format:
     // Parse the JSON response
     let parsedResponse;
     try {
-      parsedResponse = JSON.parse(response);
+      parsedResponse = JSON.parse(responseText);
     } catch (parseError) {
       // If response is not valid JSON, try to extract JSON from markdown code blocks
-      const jsonMatch = response.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+      const jsonMatch = responseText.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
       if (jsonMatch) {
         parsedResponse = JSON.parse(jsonMatch[1]);
       } else {
+        console.error("[Generate Schedule API] Could not parse JSON from AI response:", responseText);
         throw new Error("Could not parse JSON from AI response");
       }
     }
@@ -135,33 +165,86 @@ Example format:
       }, { status: 500 });
     }
 
+    console.log("[Generate Schedule API] Successfully generated schedule with", formattedReminders.length, "reminders");
     return NextResponse.json({ 
       reminders: formattedReminders,
       count: formattedReminders.length 
     });
-  } catch (error: any) {
-    console.error("Schedule generation API error:", error);
     
-    if (error.message?.includes("API key") || error.message?.includes("Invalid API key")) {
+  } catch (error: any) {
+    // Comprehensive error logging
+    console.error("[Generate Schedule API] Error occurred:");
+    console.error("Error type:", error?.constructor?.name);
+    console.error("Error message:", error?.message);
+    console.error("Error status:", error?.status);
+    console.error("Error code:", error?.code);
+    console.error("Error response:", error?.response);
+    if (error?.response) {
+      console.error("Error response status:", error.response.status);
+      console.error("Error response data:", JSON.stringify(error.response.data, null, 2));
+    }
+    console.error("Error stack:", error?.stack);
+    
+    // Handle specific OpenAI API errors
+    if (error instanceof OpenAI.APIError) {
+      console.error("[Generate Schedule API] OpenAI API Error detected:", {
+        status: error.status,
+        code: error.code,
+        type: error.type,
+        message: error.message,
+      });
+
+      if (error.status === 401 || error.code === "invalid_api_key") {
+        return NextResponse.json({ 
+          error: "OpenAI API key is invalid. Please check your Vercel environment variables." 
+        }, { status: 500 });
+      }
+
+      if (error.status === 429 || error.code === "rate_limit_exceeded") {
+        return NextResponse.json({ 
+          error: "Rate limit exceeded. Please try again in a moment." 
+        }, { status: 429 });
+      }
+
+      if (error.code === "insufficient_quota") {
+        return NextResponse.json({ 
+          error: "OpenAI account has insufficient quota. Please check your OpenAI account billing." 
+        }, { status: 500 });
+      }
+    }
+    
+    // Handle method not found errors (if responses.create doesn't exist)
+    if (error?.message?.includes("responses") || error?.message?.includes("method") || error?.code === "method_not_found") {
+      console.error("[Generate Schedule API] Possible API method issue - responses.create may not be available");
+      console.error("[Generate Schedule API] Full error details:", JSON.stringify(error, null, 2));
+    }
+    
+    // Handle generic API key errors
+    if (error?.message?.includes("API key") || error?.message?.includes("Invalid API key") || error?.code === "invalid_api_key") {
       return NextResponse.json({ 
         error: "OpenAI API key is missing or invalid. Please check your Vercel environment variables." 
       }, { status: 500 });
     }
     
-    if (error.message?.includes("rate limit") || error.status === 429) {
+    // Handle rate limit errors
+    if (error?.message?.includes("rate limit") || error?.status === 429) {
       return NextResponse.json({ 
         error: "Rate limit exceeded. Please try again in a moment." 
       }, { status: 429 });
     }
     
-    if (error.message?.includes("insufficient_quota")) {
+    // Handle quota errors
+    if (error?.message?.includes("insufficient_quota") || error?.code === "insufficient_quota") {
       return NextResponse.json({ 
         error: "OpenAI account has insufficient quota. Please check your OpenAI account billing." 
       }, { status: 500 });
     }
     
+    // Return generic error with message
+    const errorMessage = error?.message || "Unable to generate schedule. Please try again.";
+    console.error("[Generate Schedule API] Returning error:", errorMessage);
     return NextResponse.json({ 
-      error: error.message || "Unable to generate schedule. Please try again." 
+      error: errorMessage 
     }, { status: 500 });
   }
 }

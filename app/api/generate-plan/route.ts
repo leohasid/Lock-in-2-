@@ -2,17 +2,28 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
 export async function POST(request: Request) {
+  // Ensure this is server-side only
+  if (typeof window !== "undefined") {
+    return NextResponse.json({ error: "This API route is server-side only" }, { status: 403 });
+  }
+
+  // Check for API key
+  const apiKey = process.env.OPENAI_API_KEY;
+  console.log("[Generate Plan API] OPENAI_API_KEY check:", apiKey ? "EXISTS" : "MISSING");
+  
+  if (!apiKey) {
+    const errorMsg = "Missing OPENAI_API_KEY. Please ensure it's set in Vercel environment variables.";
+    console.error("[Generate Plan API]", errorMsg);
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
+  }
+
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ error: "Missing OPENAI_API_KEY" }, { status: 500 });
-    }
-
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
+    // Parse request body
     let requestData;
     try {
       requestData = await request.json();
-    } catch {
+    } catch (parseError) {
+      console.error("[Generate Plan API] Failed to parse request body:", parseError);
       return NextResponse.json(
         { error: "Invalid request body. Expected JSON." },
         { status: 400 }
@@ -29,6 +40,7 @@ export async function POST(request: Request) {
     } = requestData;
 
     if (!fitnessGoal || !equipment || !height || !age || !weight || !aggressiveness) {
+      console.error("[Generate Plan API] Missing required fields");
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -119,42 +131,31 @@ Respond with ONLY valid JSON in this exact format:
   "nutritionPlan": { ... }
 }`;
 
-    let completion;
-    try {
-      completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        temperature: 0.7,
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: "Generate my personalized fitness and nutrition plan based on my profile. Respond with ONLY valid JSON in this exact format: {\"gymPlan\": {...}, \"nutritionPlan\": {...}}",
-          },
-        ],
-        response_format: { type: "json_object" },
-      });
-    } catch (openaiError) {
-      console.error("OpenAI API error:", openaiError);
-      // Try without json_object format as fallback
-      try {
-        completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          temperature: 0.7,
-          messages: [
-            { role: "system", content: systemPrompt },
-            {
-              role: "user",
-              content: "Generate my personalized fitness and nutrition plan based on my profile. Respond with ONLY valid JSON in this exact format: {\"gymPlan\": {...}, \"nutritionPlan\": {...}}",
-            },
-          ],
-        });
-      } catch (fallbackError) {
-        throw new Error(`OpenAI API failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
-      }
-    }
+    const userPrompt = "Generate my personalized fitness and nutrition plan based on my profile. Respond with ONLY valid JSON in this exact format: {\"gymPlan\": {...}, \"nutritionPlan\": {...}}";
 
-    const responseText = completion.choices[0]?.message?.content?.trim();
+    // Combine system and user prompts into single input
+    const prompt = `${systemPrompt}\n\n${userPrompt}`;
+
+    // Initialize OpenAI client
+    const client = new OpenAI({ apiKey: apiKey });
+
+    console.log("[Generate Plan API] Calling OpenAI API with responses.create...");
+    console.log("[Generate Plan API] Prompt length:", prompt.length, "characters");
+    
+    // Call OpenAI API using responses.create
+    const response = await client.responses.create({
+      model: "gpt-4.1-mini",
+      input: prompt,
+      max_output_tokens: 4000,
+    });
+
+    console.log("[Generate Plan API] OpenAI API call successful");
+
+    // Extract response text
+    const responseText = response.output_text?.trim();
+    
     if (!responseText) {
+      console.error("[Generate Plan API] OpenAI returned empty response. Response structure:", JSON.stringify(response, null, 2));
       throw new Error("Empty response from OpenAI");
     }
 
@@ -175,23 +176,70 @@ Respond with ONLY valid JSON in this exact format:
 
     // Validate structure
     if (!plans.gymPlan || !plans.nutritionPlan) {
+      console.error("[Generate Plan API] Invalid plan structure:", plans);
       throw new Error("Invalid plan structure");
     }
 
+    console.log("[Generate Plan API] Successfully generated plans");
     return NextResponse.json({
       gymPlan: plans.gymPlan,
       nutritionPlan: plans.nutritionPlan,
     });
-  } catch (error) {
-    console.error("Generate plan error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    const errorDetails = error instanceof Error ? error.stack : String(error);
-    console.error("Error details:", errorDetails);
     
+  } catch (error: any) {
+    // Comprehensive error logging
+    console.error("[Generate Plan API] Error occurred:");
+    console.error("Error type:", error?.constructor?.name);
+    console.error("Error message:", error?.message);
+    console.error("Error status:", error?.status);
+    console.error("Error code:", error?.code);
+    console.error("Error response:", error?.response);
+    if (error?.response) {
+      console.error("Error response status:", error.response.status);
+      console.error("Error response data:", JSON.stringify(error.response.data, null, 2));
+    }
+    console.error("Error stack:", error?.stack);
+    
+    // Handle specific OpenAI API errors
+    if (error instanceof OpenAI.APIError) {
+      console.error("[Generate Plan API] OpenAI API Error detected:", {
+        status: error.status,
+        code: error.code,
+        type: error.type,
+        message: error.message,
+      });
+
+      if (error.status === 401 || error.code === "invalid_api_key") {
+        return NextResponse.json({ 
+          error: "OpenAI API key is invalid. Please check your Vercel environment variables." 
+        }, { status: 500 });
+      }
+
+      if (error.status === 429 || error.code === "rate_limit_exceeded") {
+        return NextResponse.json({ 
+          error: "Rate limit exceeded. Please try again in a moment." 
+        }, { status: 429 });
+      }
+
+      if (error.code === "insufficient_quota") {
+        return NextResponse.json({ 
+          error: "OpenAI account has insufficient quota. Please check your OpenAI account billing." 
+        }, { status: 500 });
+      }
+    }
+    
+    // Handle method not found errors (if responses.create doesn't exist)
+    if (error?.message?.includes("responses") || error?.message?.includes("method") || error?.code === "method_not_found") {
+      console.error("[Generate Plan API] Possible API method issue - responses.create may not be available");
+      console.error("[Generate Plan API] Full error details:", JSON.stringify(error, null, 2));
+    }
+    
+    // Return generic error with message
+    const errorMessage = error?.message || "Failed to generate plan. Please try again.";
+    console.error("[Generate Plan API] Returning error:", errorMessage);
     return NextResponse.json(
       { 
-        error: errorMessage || "Failed to generate plan. Please try again.",
-        details: process.env.NODE_ENV === "development" ? errorDetails : undefined
+        error: errorMessage
       },
       { status: 500 }
     );

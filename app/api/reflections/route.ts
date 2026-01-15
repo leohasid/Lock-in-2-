@@ -2,14 +2,32 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
 export async function POST(request: Request) {
-  if (!process.env.OPENAI_API_KEY) {
-    return NextResponse.json({ error: "Missing OPENAI_API_KEY" }, { status: 500 });
+  // Ensure this is server-side only
+  if (typeof window !== "undefined") {
+    return NextResponse.json({ error: "This API route is server-side only" }, { status: 403 });
+  }
+
+  // Check for API key
+  const apiKey = process.env.OPENAI_API_KEY;
+  console.log("[Reflections API] OPENAI_API_KEY check:", apiKey ? "EXISTS" : "MISSING");
+  
+  if (!apiKey) {
+    const errorMsg = "Missing OPENAI_API_KEY. Please ensure it's set in Vercel environment variables.";
+    console.error("[Reflections API]", errorMsg);
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 
   try {
-    const { currentReflection, previousReflections } = await request.json();
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await request.json();
+    } catch (parseError) {
+      console.error("[Reflections API] Failed to parse request body:", parseError);
+      return NextResponse.json({ error: "Invalid request format" }, { status: 400 });
+    }
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const { currentReflection, previousReflections } = requestBody;
 
     // Build context from previous reflections
     let contextText = "";
@@ -71,17 +89,33 @@ If suggesting goals/habits, add at the end:
 }
 \`\`\``;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.8,
-      max_tokens: 1500,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
+    // Combine system and user prompts into single input
+    const prompt = `${systemPrompt}\n\n${userPrompt}`;
+
+    // Initialize OpenAI client
+    const client = new OpenAI({ apiKey: apiKey });
+
+    console.log("[Reflections API] Calling OpenAI API with responses.create...");
+    console.log("[Reflections API] Prompt length:", prompt.length, "characters");
+    
+    // Call OpenAI API using responses.create
+    const response = await client.responses.create({
+      model: "gpt-4.1-mini",
+      input: prompt,
+      max_output_tokens: 1500,
     });
 
-    const reply = completion.choices[0]?.message?.content?.trim() || "";
+    console.log("[Reflections API] OpenAI API call successful");
+
+    // Extract response text
+    const reply = response.output_text?.trim() || "";
+
+    if (!reply) {
+      console.error("[Reflections API] OpenAI returned empty response. Response structure:", JSON.stringify(response, null, 2));
+      return NextResponse.json({ 
+        error: "AI service returned an empty response. Please try again." 
+      }, { status: 500 });
+    }
 
     // Extract JSON if present
     let suggestedGoals: any[] = [];
@@ -93,13 +127,14 @@ If suggesting goals/habits, add at the end:
         suggestedGoals = jsonData.suggestedGoals || [];
         suggestedHabits = jsonData.suggestedHabits || [];
       } catch (e) {
-        console.error("Error parsing suggested goals/habits:", e);
+        console.error("[Reflections API] Error parsing suggested goals/habits:", e);
       }
     }
 
     // Remove JSON from feedback text
     const feedback = reply.replace(/```json[\s\S]*?```/g, "").trim();
 
+    console.log("[Reflections API] Successfully generated feedback, length:", feedback.length);
     return NextResponse.json({
       feedback,
       suggestedGoals: suggestedGoals.map((g, idx) => ({
@@ -111,12 +146,61 @@ If suggesting goals/habits, add at the end:
         id: h.id || `habit_${Date.now()}_${idx}`,
       })),
     });
+    
   } catch (error: any) {
-    console.error("Reflections API error:", error);
-    return NextResponse.json(
-      { error: error.message || "Unable to generate feedback. Please try again." },
-      { status: 500 }
-    );
+    // Comprehensive error logging
+    console.error("[Reflections API] Error occurred:");
+    console.error("Error type:", error?.constructor?.name);
+    console.error("Error message:", error?.message);
+    console.error("Error status:", error?.status);
+    console.error("Error code:", error?.code);
+    console.error("Error response:", error?.response);
+    if (error?.response) {
+      console.error("Error response status:", error.response.status);
+      console.error("Error response data:", JSON.stringify(error.response.data, null, 2));
+    }
+    console.error("Error stack:", error?.stack);
+    
+    // Handle specific OpenAI API errors
+    if (error instanceof OpenAI.APIError) {
+      console.error("[Reflections API] OpenAI API Error detected:", {
+        status: error.status,
+        code: error.code,
+        type: error.type,
+        message: error.message,
+      });
+
+      if (error.status === 401 || error.code === "invalid_api_key") {
+        return NextResponse.json({ 
+          error: "OpenAI API key is invalid. Please check your Vercel environment variables." 
+        }, { status: 500 });
+      }
+
+      if (error.status === 429 || error.code === "rate_limit_exceeded") {
+        return NextResponse.json({ 
+          error: "Rate limit exceeded. Please try again in a moment." 
+        }, { status: 429 });
+      }
+
+      if (error.code === "insufficient_quota") {
+        return NextResponse.json({ 
+          error: "OpenAI account has insufficient quota. Please check your OpenAI account billing." 
+        }, { status: 500 });
+      }
+    }
+    
+    // Handle method not found errors (if responses.create doesn't exist)
+    if (error?.message?.includes("responses") || error?.message?.includes("method") || error?.code === "method_not_found") {
+      console.error("[Reflections API] Possible API method issue - responses.create may not be available");
+      console.error("[Reflections API] Full error details:", JSON.stringify(error, null, 2));
+    }
+    
+    // Return generic error with message
+    const errorMessage = error?.message || "Unable to generate feedback. Please try again.";
+    console.error("[Reflections API] Returning error:", errorMessage);
+    return NextResponse.json({ 
+      error: errorMessage 
+    }, { status: 500 });
   }
 }
 
