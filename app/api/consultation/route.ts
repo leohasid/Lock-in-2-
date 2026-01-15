@@ -27,15 +27,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid request format" }, { status: 400 });
     }
 
-    const { messages, context } = requestBody;
-
-    if (!messages || !Array.isArray(messages)) {
-      console.error("[Consultation API] Invalid messages array");
-      return NextResponse.json({ error: "Invalid messages format" }, { status: 400 });
-    }
-
-    const workoutData = context?.workoutStats || {};
-    const systemPrompt = `You are an expert fitness and nutrition AI coach named "Mogifi AI Coach". You are a knowledgeable, friendly, and helpful assistant who can answer ANY questions the user has - whether about fitness, nutrition, health, workouts, or general topics.
+    // Extract prompt from request body
+    // Support both new format (prompt) and legacy format (messages)
+    let prompt: string;
+    
+    if (requestBody.prompt) {
+      // New format: direct prompt
+      prompt = requestBody.prompt;
+    } else if (requestBody.messages && Array.isArray(requestBody.messages)) {
+      // Legacy format: convert messages array to prompt
+      const { messages, context } = requestBody;
+      const workoutData = context?.workoutStats || {};
+      
+      // Build system context
+      const systemContext = `You are an expert fitness and nutrition AI coach named "Mogifi AI Coach". You are a knowledgeable, friendly, and helpful assistant who can answer ANY questions the user has - whether about fitness, nutrition, health, workouts, or general topics.
 
 **Your Primary Role:**
 - Answer ANY question the user asks - be it fitness-related, nutrition, health, general knowledge, or casual conversation
@@ -66,42 +71,57 @@ export async function POST(request: Request) {
 - You can answer ANY question - don't limit yourself to just fitness
 - Be natural and conversational, not automated
 - Each response should feel personalized and genuine
-- If the user wants a workout plan, help them create one based on their goals and equipment`;
+- If the user wants a workout plan, help them create one based on their goals and equipment
+
+**Conversation History:**`;
+
+      // Convert messages to conversation format
+      const conversationText = messages
+        .map((msg: { role: string; content: string }) => {
+          const role = msg.role === "assistant" ? "Assistant" : "User";
+          return `${role}: ${msg.content || ""}`;
+        })
+        .join("\n");
+
+      prompt = `${systemContext}\n\n${conversationText}\n\nAssistant:`;
+    } else {
+      console.error("[Consultation API] Invalid request body - missing 'prompt' or 'messages'");
+      return NextResponse.json({ error: "Invalid request format. Provide 'prompt' or 'messages' in request body." }, { status: 400 });
+    }
+
+    if (!prompt || prompt.trim().length === 0) {
+      console.error("[Consultation API] Empty prompt");
+      return NextResponse.json({ error: "Prompt cannot be empty" }, { status: 400 });
+    }
 
     // Initialize OpenAI client
-    const openai = new OpenAI({ 
+    const client = new OpenAI({ 
       apiKey: apiKey,
     });
 
-    console.log("[Consultation API] Calling OpenAI API...");
+    console.log("[Consultation API] Calling OpenAI API with responses.create...");
+    console.log("[Consultation API] Prompt length:", prompt.length, "characters");
     
-    // Call OpenAI API
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.8,
-      max_tokens: 1000,
-      messages: [
-        { role: "system" as const, content: systemPrompt },
-        ...messages.map((msg: { role: string; content: string }) => ({
-          role: (msg.role === "assistant" ? "assistant" : "user") as "assistant" | "user",
-          content: msg.content || "",
-        })),
-      ],
+    // Call OpenAI API using responses.create
+    const response = await client.responses.create({
+      model: "gpt-4.1-mini",
+      input: prompt,
+      max_output_tokens: 300,
     });
 
     console.log("[Consultation API] OpenAI API call successful");
 
     // Extract response text
-    const reply = completion.choices[0]?.message?.content?.trim();
+    const reply = response.output_text?.trim();
     
     if (!reply) {
-      console.error("[Consultation API] OpenAI returned empty response. Response structure:", JSON.stringify(completion, null, 2));
+      console.error("[Consultation API] OpenAI returned empty response. Response structure:", JSON.stringify(response, null, 2));
       return NextResponse.json({ 
         error: "AI service returned an empty response. Please try again." 
       }, { status: 500 });
     }
 
-    console.log("[Consultation API] Successfully generated response");
+    console.log("[Consultation API] Successfully generated response, length:", reply.length);
     return NextResponse.json({ reply });
     
   } catch (error: any) {
@@ -114,7 +134,7 @@ export async function POST(request: Request) {
     console.error("Error response:", error?.response);
     if (error?.response) {
       console.error("Error response status:", error.response.status);
-      console.error("Error response data:", error.response.data);
+      console.error("Error response data:", JSON.stringify(error.response.data, null, 2));
     }
     console.error("Error stack:", error?.stack);
     
@@ -144,6 +164,12 @@ export async function POST(request: Request) {
           error: "OpenAI account has insufficient quota. Please check your OpenAI account billing." 
         }, { status: 500 });
       }
+    }
+    
+    // Handle method not found errors (if responses.create doesn't exist)
+    if (error?.message?.includes("responses") || error?.message?.includes("method") || error?.code === "method_not_found") {
+      console.error("[Consultation API] Possible API method issue - responses.create may not be available");
+      console.error("[Consultation API] Full error details:", JSON.stringify(error, null, 2));
     }
     
     // Handle generic API key errors
