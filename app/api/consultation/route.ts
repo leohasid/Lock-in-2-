@@ -2,18 +2,37 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
 export async function POST(request: Request) {
-  // Debug: Log environment check (without exposing the key)
-  console.log("OPENAI_API_KEY check:", process.env.OPENAI_API_KEY ? "EXISTS" : "MISSING");
+  // Ensure this is server-side only
+  if (typeof window !== "undefined") {
+    return NextResponse.json({ error: "This API route is server-side only" }, { status: 403 });
+  }
+
+  // Check for API key
+  const apiKey = process.env.OPENAI_API_KEY;
+  console.log("[Consultation API] OPENAI_API_KEY check:", apiKey ? "EXISTS" : "MISSING");
   
-  if (!process.env.OPENAI_API_KEY) {
-    console.error("OPENAI_API_KEY is missing from environment variables");
-    return NextResponse.json({ 
-      error: "Missing OPENAI_API_KEY. Please ensure it's set in Vercel environment variables for Production environment." 
-    }, { status: 500 });
+  if (!apiKey) {
+    const errorMsg = "Missing OPENAI_API_KEY. Please ensure it's set in Vercel environment variables for Production environment.";
+    console.error("[Consultation API]", errorMsg);
+    return NextResponse.json({ error: errorMsg }, { status: 500 });
   }
 
   try {
-    const { messages, context } = await request.json();
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = await request.json();
+    } catch (parseError) {
+      console.error("[Consultation API] Failed to parse request body:", parseError);
+      return NextResponse.json({ error: "Invalid request format" }, { status: 400 });
+    }
+
+    const { messages, context } = requestBody;
+
+    if (!messages || !Array.isArray(messages)) {
+      console.error("[Consultation API] Invalid messages array");
+      return NextResponse.json({ error: "Invalid messages format" }, { status: 400 });
+    }
 
     const workoutData = context?.workoutStats || {};
     const systemPrompt = `You are an expert fitness and nutrition AI coach named "Mogifi AI Coach". You are a knowledgeable, friendly, and helpful assistant who can answer ANY questions the user has - whether about fitness, nutrition, health, workouts, or general topics.
@@ -49,61 +68,110 @@ export async function POST(request: Request) {
 - Each response should feel personalized and genuine
 - If the user wants a workout plan, help them create one based on their goals and equipment`;
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    // Initialize OpenAI client
+    const openai = new OpenAI({ 
+      apiKey: apiKey,
+    });
+
+    console.log("[Consultation API] Calling OpenAI API...");
+    
+    // Call OpenAI API
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.8, // Higher temperature for more natural, varied responses
-      max_tokens: 1000, // Allow longer, more detailed responses
+      temperature: 0.8,
+      max_tokens: 1000,
       messages: [
         { role: "system" as const, content: systemPrompt },
-        ...(Array.isArray(messages) ? messages : []).map((msg: { role: string; content: string }) => ({
+        ...messages.map((msg: { role: string; content: string }) => ({
           role: (msg.role === "assistant" ? "assistant" : "user") as "assistant" | "user",
-          content: msg.content,
+          content: msg.content || "",
         })),
       ],
     });
 
+    console.log("[Consultation API] OpenAI API call successful");
+
+    // Extract response text
     const reply = completion.choices[0]?.message?.content?.trim();
     
     if (!reply) {
-      console.error("OpenAI returned empty response");
+      console.error("[Consultation API] OpenAI returned empty response. Response structure:", JSON.stringify(completion, null, 2));
       return NextResponse.json({ 
         error: "AI service returned an empty response. Please try again." 
       }, { status: 500 });
     }
 
+    console.log("[Consultation API] Successfully generated response");
     return NextResponse.json({ reply });
-  } catch (error: any) {
-    console.error("Consultation API error:", error);
-    console.error("Error details:", {
-      message: error?.message,
-      status: error?.status,
-      code: error?.code,
-      type: error?.name,
-      stack: error?.stack,
-    });
     
-    // Provide more specific error messages
-    if (error.message?.includes("API key") || error.message?.includes("Invalid API key") || error?.code === "invalid_api_key") {
+  } catch (error: any) {
+    // Comprehensive error logging
+    console.error("[Consultation API] Error occurred:");
+    console.error("Error type:", error?.constructor?.name);
+    console.error("Error message:", error?.message);
+    console.error("Error status:", error?.status);
+    console.error("Error code:", error?.code);
+    console.error("Error response:", error?.response);
+    if (error?.response) {
+      console.error("Error response status:", error.response.status);
+      console.error("Error response data:", error.response.data);
+    }
+    console.error("Error stack:", error?.stack);
+    
+    // Handle specific OpenAI API errors
+    if (error instanceof OpenAI.APIError) {
+      console.error("[Consultation API] OpenAI API Error detected:", {
+        status: error.status,
+        code: error.code,
+        type: error.type,
+        message: error.message,
+      });
+
+      if (error.status === 401 || error.code === "invalid_api_key") {
+        return NextResponse.json({ 
+          error: "OpenAI API key is invalid. Please check your Vercel environment variables." 
+        }, { status: 500 });
+      }
+
+      if (error.status === 429 || error.code === "rate_limit_exceeded") {
+        return NextResponse.json({ 
+          error: "Rate limit exceeded. Please try again in a moment." 
+        }, { status: 429 });
+      }
+
+      if (error.code === "insufficient_quota") {
+        return NextResponse.json({ 
+          error: "OpenAI account has insufficient quota. Please check your OpenAI account billing." 
+        }, { status: 500 });
+      }
+    }
+    
+    // Handle generic API key errors
+    if (error?.message?.includes("API key") || error?.message?.includes("Invalid API key") || error?.code === "invalid_api_key") {
       return NextResponse.json({ 
         error: "OpenAI API key is missing or invalid. Please check your Vercel environment variables." 
       }, { status: 500 });
     }
     
-    if (error.message?.includes("rate limit") || error.status === 429) {
+    // Handle rate limit errors
+    if (error?.message?.includes("rate limit") || error?.status === 429) {
       return NextResponse.json({ 
         error: "Rate limit exceeded. Please try again in a moment." 
       }, { status: 429 });
     }
     
-    if (error.message?.includes("insufficient_quota")) {
+    // Handle quota errors
+    if (error?.message?.includes("insufficient_quota") || error?.code === "insufficient_quota") {
       return NextResponse.json({ 
         error: "OpenAI account has insufficient quota. Please check your OpenAI account billing." 
       }, { status: 500 });
     }
     
+    // Return generic error with message
+    const errorMessage = error?.message || "Unable to generate a response. Please try again.";
+    console.error("[Consultation API] Returning generic error:", errorMessage);
     return NextResponse.json({ 
-      error: error.message || "Unable to generate a response. Please try again." 
+      error: errorMessage 
     }, { status: 500 });
   }
 }
