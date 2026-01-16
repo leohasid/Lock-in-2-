@@ -80,7 +80,7 @@ export default function ConsultationPage() {
         workoutStats: workoutData,
       };
 
-      const response = await fetch("/api/consultation", {
+      const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -100,7 +100,8 @@ export default function ConsultationPage() {
         throw new Error(data.error);
       }
       
-      return data.reply || "I'm here to help! How can I assist you with your fitness journey today?";
+      // Support both 'reply' and 'response' fields
+      return data.reply || data.response || "I'm here to help! How can I assist you with your fitness journey today?";
     } catch (error: any) {
       console.error("AI consultation error:", error);
       

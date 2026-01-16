@@ -473,7 +473,7 @@ export default function NutritionPage() {
     setAiConsultationResponse("");
     
     try {
-      const response = await fetch("/api/consultation", {
+      const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -490,11 +490,23 @@ export default function NutritionPage() {
         }),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to get AI response");
+      }
+
       const data = await response.json();
-      if (response.ok && data.response) {
-        setAiConsultationResponse(data.response);
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      // Support both 'response' and 'reply' fields
+      const aiResponse = data.response || data.reply;
+      if (aiResponse) {
+        setAiConsultationResponse(aiResponse);
       } else {
-        throw new Error(data.error || "Failed to get AI response");
+        throw new Error("No response from AI");
       }
     } catch (error: any) {
       console.error("AI consultation failed", error);
