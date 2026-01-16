@@ -473,21 +473,23 @@ export default function NutritionPage() {
     setAiConsultationResponse("");
     
     try {
+      // Build prompt with nutrition context
+      const prompt = `You are a helpful nutrition coach. Answer the user's question about nutrition and fitness.
+
+Current nutrition status:
+- Calories: ${totals.calories} / ${dailyGoals.calories}
+- Protein: ${totals.protein}g / ${dailyGoals.protein}g
+- Carbs: ${totals.carbs}g / ${dailyGoals.carbs}g
+- Fats: ${totals.fats}g / ${dailyGoals.fats}g
+
+User question: ${aiConsultationMessage}
+
+Provide a helpful, conversational response.`;
+
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: aiConsultationMessage,
-          context: {
-            currentCalories: totals.calories,
-            currentGoals: dailyGoals,
-            currentMacros: {
-              protein: totals.protein,
-              carbs: totals.carbs,
-              fats: totals.fats,
-            },
-          },
-        }),
+        body: JSON.stringify({ prompt }),
       });
 
       if (!response.ok) {
@@ -501,10 +503,8 @@ export default function NutritionPage() {
         throw new Error(data.error);
       }
       
-      // Support both 'response' and 'reply' fields
-      const aiResponse = data.response || data.reply;
-      if (aiResponse) {
-        setAiConsultationResponse(aiResponse);
+      if (data.response) {
+        setAiConsultationResponse(data.response);
       } else {
         throw new Error("No response from AI");
       }

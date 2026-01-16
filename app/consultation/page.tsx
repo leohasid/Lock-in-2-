@@ -73,20 +73,37 @@ export default function ConsultationPage() {
       const extractedEquipment = consultationData.equipment || (lastFewMessages.match(/(?:gym|dumbbell|barbell|bodyweight|home|equipment)/i)?.[0] || "");
       const extractedFrequency = consultationData.frequency || (lastFewMessages.match(/\d+\s*(?:day|times|week)/i)?.[0] || "");
       
-      const context = {
-        goal: extractedGoal || "general fitness",
-        equipment: extractedEquipment || "not specified",
-        frequency: extractedFrequency || "not specified",
-        workoutStats: workoutData,
-      };
+      // Build prompt with conversation history and context
+      const conversationHistory = messages
+        .map(m => `${m.role === "assistant" ? "Assistant" : "User"}: ${m.content}`)
+        .join("\n");
+      
+      const prompt = `You are an expert fitness and nutrition AI coach named "Mogifi AI Coach". You are a knowledgeable, friendly, and helpful assistant who can answer ANY questions the user has - whether about fitness, nutrition, health, workouts, or general topics.
+
+**User Context (use this when relevant to fitness questions):**
+- Fitness Goal: ${extractedGoal || "general fitness"}
+- Available Equipment: ${extractedEquipment || "not specified"}
+- Training Frequency: ${extractedFrequency || "not specified"}
+- Total Workouts Completed: ${workoutData.totalWorkouts || 0}
+- Workouts This Week: ${workoutData.workoutsThisWeek || 0}
+- Consistency Rate: ${workoutData.consistency || 0}%
+
+**Conversation History:**
+${conversationHistory}
+
+**How to Respond:**
+- Answer questions naturally and conversationally
+- If asked about fitness/nutrition, use the user context above
+- If asked about other topics, answer helpfully
+- Be engaging and personable - like talking to a knowledgeable friend
+- Provide detailed, thoughtful answers
+
+Provide your response now:`;
 
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: messages.map(m => ({ role: m.role, content: m.content })),
-          context,
-        }),
+        body: JSON.stringify({ prompt }),
       });
 
       if (!response.ok) {
@@ -100,8 +117,11 @@ export default function ConsultationPage() {
         throw new Error(data.error);
       }
       
-      // Support both 'reply' and 'response' fields
-      return data.reply || data.response || "I'm here to help! How can I assist you with your fitness journey today?";
+      if (data.response) {
+        return data.response;
+      } else {
+        return "I'm here to help! How can I assist you with your fitness journey today?";
+      }
     } catch (error: any) {
       console.error("AI consultation error:", error);
       
