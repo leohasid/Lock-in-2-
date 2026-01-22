@@ -560,15 +560,26 @@ Provide a helpful, conversational response.`;
         name: error?.name
       });
       
-      // More detailed error message
+      // More detailed error message with Railway URL info
+      const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || '';
       let errorMsg = "Unable to get AI consultation. Please try again.";
+      
       if (error?.message) {
         errorMsg = error.message;
       } else if (error instanceof TypeError && error.message.includes('fetch')) {
-        errorMsg = "Failed to connect to AI service. Check Railway backend is online.";
+        errorMsg = `Failed to connect to AI service. ${railwayUrl ? `Railway URL: ${railwayUrl}` : 'Railway URL not set - check Vercel env vars and redeploy.'}`;
       }
       
-      alert(errorMsg);
+      // Show detailed error in alert
+      const fullError = `Error: ${errorMsg}\n\n` +
+        `Railway URL: ${railwayUrl || 'NOT SET'}\n` +
+        `API URL: ${railwayUrl ? `${railwayUrl}/api/ai` : '/api/ai'}\n\n` +
+        `Check:\n` +
+        `1. Railway is online\n` +
+        `2. Vercel env var NEXT_PUBLIC_RAILWAY_API_URL is set\n` +
+        `3. Vercel has been redeployed after adding env var`;
+      
+      alert(fullError);
     } finally {
       setIsConsultingAI(false);
     }

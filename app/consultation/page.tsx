@@ -166,10 +166,14 @@ Provide your response now:`;
       }
     } catch (error: any) {
       console.error("AI consultation error:", error);
+      console.error("Full error details:", error);
+      
+      const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || '';
+      console.error("Railway URL status:", railwayUrl || "NOT SET");
       
       // Provide helpful error messages
       if (error.message?.includes("API key") || error.message?.includes("Missing")) {
-        return "⚠️ OpenAI API key is not configured. Please check your Vercel environment variables.";
+        return "⚠️ OpenAI API key is not configured. Please check Railway environment variables.";
       }
       
       if (error.message?.includes("rate limit")) {
@@ -180,7 +184,15 @@ Provide your response now:`;
         return "💳 OpenAI account quota exceeded. Please check your OpenAI account billing.";
       }
       
-      return `I'm having trouble connecting right now. ${error.message ? `Error: ${error.message}` : "Please check your internet connection and try again."}`;
+      if (error.message?.includes("405")) {
+        return `❌ HTTP 405 Error: Method not allowed. Railway URL: ${railwayUrl || 'NOT SET'}. Check Railway backend is deployed correctly.`;
+      }
+      
+      if (error.message?.includes("Network error") || error.message?.includes("fetch")) {
+        return `❌ Network error. Railway URL: ${railwayUrl || 'NOT SET - Check Vercel env vars and redeploy'}. Check Railway is online.`;
+      }
+      
+      return `I'm having trouble connecting right now. Error: ${error.message || "Unknown error"}. Railway URL: ${railwayUrl || 'NOT SET'}`;
     }
   };
 
