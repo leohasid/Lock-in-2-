@@ -662,12 +662,12 @@ export default function CalendarPage() {
             {selectedDay && (
               <div className="mb-4">
                 <div className="flex items-center gap-3 mb-4">
-                  <button
-                    onClick={() => setSelectedDay(null)}
+                <button
+                  onClick={() => setSelectedDay(null)}
                     className="flex-1 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white px-4 py-2 rounded-lg hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 shadow-lg font-bold flex items-center justify-center gap-2"
-                  >
-                    ← Back to Days
-                  </button>
+                >
+                  ← Back to Days
+                </button>
                   <button
                     onClick={() => {
                       setShowAddForm(true);

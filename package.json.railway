@@ -1,0 +1,9 @@
+{
+  "name": "mogifi-ai-backend-railway",
+  "version": "1.0.0",
+  "description": "Railway deployment config - points to backend",
+  "scripts": {
+    "install": "cd backend && npm install",
+    "start": "cd backend && node server.js"
+  }
+}

@@ -5,7 +5,7 @@ export async function POST(request: Request) {
   // Ensure this is server-side only
   if (typeof window !== "undefined") {
     return NextResponse.json({ error: "This API route is server-side only" }, { status: 403 });
-  }
+    }
 
   // Check for API key
   const apiKey = process.env.OPENAI_API_KEY;
@@ -147,7 +147,7 @@ Respond with ONLY valid JSON in this exact format:
       model: "gpt-4.1-mini",
       input: prompt,
       max_output_tokens: 4000,
-    });
+        });
 
     console.log("[Generate Plan API] OpenAI API call successful");
 

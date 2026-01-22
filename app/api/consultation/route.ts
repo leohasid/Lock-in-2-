@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     } else if (requestBody.messages && Array.isArray(requestBody.messages)) {
       // Legacy format: convert messages array to prompt
       const { messages, context } = requestBody;
-      const workoutData = context?.workoutStats || {};
+    const workoutData = context?.workoutStats || {};
       
       // Build system context
       const systemContext = `You are an expert fitness and nutrition AI coach named "Mogifi AI Coach". You are a knowledgeable, friendly, and helpful assistant who can answer ANY questions the user has - whether about fitness, nutrition, health, workouts, or general topics.

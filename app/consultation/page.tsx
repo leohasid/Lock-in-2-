@@ -100,7 +100,11 @@ ${conversationHistory}
 
 Provide your response now:`;
 
-      const response = await fetch("/api/ai", {
+      // Use Railway backend if available, otherwise fallback to local API
+      const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || '';
+      const apiUrl = railwayUrl ? `${railwayUrl}/api/ai` : '/api/ai';
+      
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),

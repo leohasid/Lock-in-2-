@@ -193,7 +193,7 @@ Example format:
         type: error.type,
         message: error.message,
       });
-
+    
       if (error.status === 401 || error.code === "invalid_api_key") {
         return NextResponse.json({ 
           error: "OpenAI API key is invalid. Please check your Vercel environment variables." 
