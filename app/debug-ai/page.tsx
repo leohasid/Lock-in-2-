@@ -8,7 +8,13 @@ export default function DebugAIPage() {
   const [railwayUrl, setRailwayUrl] = useState<string>("");
 
   const checkEnvironment = () => {
-    const url = process.env.NEXT_PUBLIC_RAILWAY_API_URL || "";
+    let url = process.env.NEXT_PUBLIC_RAILWAY_API_URL || "";
+    
+    // Ensure Railway URL has https:// protocol
+    if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `https://${url}`;
+    }
+    
     setRailwayUrl(url);
     
     if (!url) {

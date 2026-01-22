@@ -102,7 +102,13 @@ Provide your response now:`;
 
       // Use Railway backend if available, otherwise fallback to local API
       // Note: NEXT_PUBLIC_ env vars are embedded at build time, so redeploy after adding!
-      const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || '';
+      let railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || '';
+      
+      // Ensure Railway URL has https:// protocol
+      if (railwayUrl && !railwayUrl.startsWith('http://') && !railwayUrl.startsWith('https://')) {
+        railwayUrl = `https://${railwayUrl}`;
+      }
+      
       const apiUrl = railwayUrl ? `${railwayUrl}/api/ai` : '/api/ai';
       
       // Debug logging
