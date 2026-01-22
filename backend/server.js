@@ -15,16 +15,31 @@ const getOpenAIClient = () => {
 };
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*', // Allow all origins
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 app.use(express.json());
+
+// Handle preflight OPTIONS requests
+app.options('*', cors());
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'mogifi-ai-backend' });
 });
 
+// Explicitly handle OPTIONS for /api/ai (CORS preflight)
+app.options('/api/ai', cors(), (req, res) => {
+  res.status(200).end();
+});
+
 // AI endpoint
 app.post('/api/ai', async (req, res) => {
+  console.log('[Railway Backend] POST /api/ai received');
+  console.log('[Railway Backend] Request body:', req.body);
   try {
     const { prompt } = req.body;
 
@@ -51,6 +66,7 @@ app.post('/api/ai', async (req, res) => {
 
     const response = completion.choices[0]?.message?.content || 'No response generated';
 
+    console.log('[Railway Backend] Successfully generated response');
     res.json({ response });
   } catch (error) {
     console.error('AI API Error:', error);
