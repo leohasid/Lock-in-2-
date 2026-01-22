@@ -109,6 +109,9 @@ Provide your response now:`;
         railwayUrl = `https://${railwayUrl}`;
       }
       
+      // Remove trailing slash to avoid double slashes
+      railwayUrl = railwayUrl.replace(/\/+$/, '');
+      
       const apiUrl = railwayUrl ? `${railwayUrl}/api/ai` : '/api/ai';
       
       // Debug logging

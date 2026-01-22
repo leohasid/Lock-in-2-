@@ -15,6 +15,9 @@ export default function DebugAIPage() {
       url = `https://${url}`;
     }
     
+    // Remove trailing slash to avoid double slashes
+    url = url.replace(/\/+$/, '');
+    
     setRailwayUrl(url);
     
     if (!url) {
