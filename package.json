@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start -p ${PORT:-3000} -H 0.0.0.0",
+    "start": "next start",
     "lint": "eslint",
     "build:mobile": "BUILD_FOR_MOBILE=true next build && npx cap sync",
     "cap:sync": "npx cap sync",
