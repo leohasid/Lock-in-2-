@@ -104,11 +104,17 @@ Provide your response now:`;
       const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || '';
       const apiUrl = railwayUrl ? `${railwayUrl}/api/ai` : '/api/ai';
       
+      // Debug logging
+      console.log('[AI] Railway URL:', railwayUrl || 'NOT SET');
+      console.log('[AI] Using API URL:', apiUrl);
+      
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
+      
+      console.log('[AI] Response status:', response.status, response.statusText);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

@@ -490,11 +490,17 @@ Provide a helpful, conversational response.`;
       const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || '';
       const apiUrl = railwayUrl ? `${railwayUrl}/api/ai` : '/api/ai';
       
+      // Debug logging
+      console.log('[AI] Railway URL:', railwayUrl || 'NOT SET');
+      console.log('[AI] Using API URL:', apiUrl);
+      
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
+      
+      console.log('[AI] Response status:', response.status, response.statusText);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -514,7 +520,21 @@ Provide a helpful, conversational response.`;
       }
     } catch (error: any) {
       console.error("AI consultation failed", error);
-      alert(error?.message || "Unable to get AI consultation. Please try again.");
+      console.error("Error details:", {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name
+      });
+      
+      // More detailed error message
+      let errorMsg = "Unable to get AI consultation. Please try again.";
+      if (error?.message) {
+        errorMsg = error.message;
+      } else if (error instanceof TypeError && error.message.includes('fetch')) {
+        errorMsg = "Failed to connect to AI service. Check Railway backend is online.";
+      }
+      
+      alert(errorMsg);
     } finally {
       setIsConsultingAI(false);
     }
