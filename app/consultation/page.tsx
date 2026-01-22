@@ -101,27 +101,59 @@ ${conversationHistory}
 Provide your response now:`;
 
       // Use Railway backend if available, otherwise fallback to local API
+      // Note: NEXT_PUBLIC_ env vars are embedded at build time, so redeploy after adding!
       const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || '';
       const apiUrl = railwayUrl ? `${railwayUrl}/api/ai` : '/api/ai';
       
       // Debug logging
-      console.log('[AI] Railway URL:', railwayUrl || 'NOT SET');
-      console.log('[AI] Using API URL:', apiUrl);
+      console.log('[AI Debug] Railway URL from env:', railwayUrl || 'NOT SET - Need to redeploy Vercel!');
+      console.log('[AI Debug] Using API URL:', apiUrl);
       
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
-      });
-      
-      console.log('[AI] Response status:', response.status, response.statusText);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to get AI response");
+      let response;
+      try {
+        response = await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt }),
+        });
+        
+        console.log('[AI Debug] Response status:', response.status, response.statusText);
+      } catch (fetchError: any) {
+        console.error('[AI Debug] Fetch error:', fetchError);
+        throw new Error(`Network error: ${fetchError.message}. Check Railway URL: ${railwayUrl || 'NOT SET'}`);
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        let errorData;
+        try {
+          const text = await response.text();
+          console.error('[AI Debug] Error response text:', text);
+          errorData = JSON.parse(text);
+        } catch (e) {
+          errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+        }
+        
+        console.error('[AI Debug] Error details:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          apiUrl
+        });
+        
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to get AI response`);
+      }
+
+      let data;
+      try {
+        const text = await response.text();
+        console.log('[AI Debug] Response text:', text.substring(0, 200));
+        data = JSON.parse(text);
+      } catch (e) {
+        console.error('[AI Debug] Failed to parse response:', e);
+        throw new Error('Invalid response from server');
+      }
+      
+      console.log('[AI Debug] Parsed response data:', data);
       
       if (data.error) {
         throw new Error(data.error);
