@@ -1,0 +1,18 @@
+{
+  "name": "mogifi-ai-backend",
+  "version": "1.0.0",
+  "description": "AI backend server for Mogifi app",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["ai", "backend", "express"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "openai": "^6.9.0"
+  }
+}

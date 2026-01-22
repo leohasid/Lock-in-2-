@@ -1,155 +1,186 @@
-# Next Steps: Getting App Blocking Working
+# Next Steps: Deploying to Railway & Vercel
 
-## Current Status ✅
+## 🎯 Overview
 
-Your app is **live on Vercel** and working! Here's what works right now:
+- **Frontend (Next.js)** → Deploy to **Vercel**
+- **Backend (Express)** → Deploy to **Railway**
+- Connect frontend to Railway backend
 
-### ✅ What Works on Vercel (Web Version)
-- ✅ Set time limits for apps
-- ✅ Track app usage
-- ✅ Shows "Blocked" status when limit reached
-- ✅ Shows notifications when apps are blocked
-- ✅ UI shows "Cannot unblock" message
-- ✅ Automatic blocking detection
+---
 
-### ❌ What Doesn't Work on Web
-- ❌ **Can't actually block apps** - Web browsers can't block other apps
-- ❌ Native iOS blocking - Requires iOS app build
+## 📋 Step-by-Step Guide
 
-## What You Need to Do
+### Step 1: Deploy Backend to Railway
 
-### Option 1: Build iOS App (For Real Blocking) 🎯
+1. **Go to [Railway.app](https://railway.app)** and sign in with GitHub
 
-To get **actual app blocking** (not just status), you need to build the iOS app:
+2. **Create New Project:**
+   - Click "New Project"
+   - Select "Deploy from GitHub repo"
+   - Choose your repository (`Lock-in-2-`)
 
-#### Option A: Use EAS Build (Recommended - No Xcode Needed!)
+3. **Configure Service:**
+   - In the service settings, find **"Root Directory"**
+   - Set it to: `backend`
+   - This tells Railway to only use the `backend/` folder
 
-1. **Install EAS CLI**:
+4. **Set Environment Variables:**
+   - Go to **Variables** tab
+   - Add: `OPENAI_API_KEY` = `your-actual-openai-key`
+   - Railway automatically sets `PORT` (don't override it)
+
+5. **Deploy:**
+   - Railway will automatically detect `package.json` and run `npm install` then `npm start`
+   - Wait for deployment to complete
+
+6. **Get Your Backend URL:**
+   - Go to **Settings** → **Networking**
+   - Click **Generate Domain** (or use provided domain)
+   - Copy the URL (e.g., `https://your-app.up.railway.app`)
+
+7. **Test Your Backend:**
+   - Visit: `https://your-app.up.railway.app/health`
+   - Should return: `{"status":"ok","service":"mogifi-ai-backend"}`
+
+---
+
+### Step 2: Update Frontend to Use Railway Backend
+
+1. **Create `.env.local` in project root:**
    ```bash
-   npm install -g eas-cli
+   NEXT_PUBLIC_RAILWAY_API_URL=https://your-app.up.railway.app
    ```
 
-2. **Login to Expo**:
+2. **Update frontend API calls** to use Railway URL instead of `/api/ai`
+
+   The frontend currently calls:
+   - `/api/ai` (consultation page)
+   - `/api/meal-analysis` (nutrition page)
+   - `/api/generate-plan` (onboarding)
+   - etc.
+
+   These need to be updated to call your Railway backend.
+
+---
+
+### Step 3: Deploy Frontend to Vercel
+
+1. **Push all changes to GitHub:**
    ```bash
-   eas login
+   git add .
+   git commit -m "Add Railway backend and update frontend"
+   git push
    ```
 
-3. **Configure EAS** (you already have `eas.json`):
-   ```bash
-   eas build:configure
+2. **Go to [Vercel.com](https://vercel.com)** and sign in
+
+3. **Import your GitHub repository**
+
+4. **Configure:**
+   - Framework Preset: Next.js (auto-detected)
+   - Root Directory: `.` (root)
+   - Build Command: `npm run build`
+   - Output Directory: `.next`
+
+5. **Add Environment Variables:**
+   - `NEXT_PUBLIC_RAILWAY_API_URL` = `https://your-app.up.railway.app`
+
+6. **Deploy!**
+
+---
+
+## 🔧 What Needs to Be Updated
+
+### Backend (`backend/server.js`)
+✅ Already has OpenAI integration
+✅ Already has `/api/ai` endpoint
+✅ Already configured for Railway (listens on PORT, 0.0.0.0)
+
+### Frontend Updates Needed:
+
+1. **Create API utility** (`lib/api.ts`):
+   ```typescript
+   const RAILWAY_URL = process.env.NEXT_PUBLIC_RAILWAY_API_URL || '';
+   
+   export async function callAI(prompt: string) {
+     const res = await fetch(`${RAILWAY_URL}/api/ai`, {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ prompt })
+     });
+     const data = await res.json();
+     return data.response;
+   }
    ```
 
-4. **Build iOS app in the cloud**:
-   ```bash
-   eas build --platform ios
-   ```
+2. **Update `app/consultation/page.tsx`:**
+   - Change `fetch("/api/ai", ...)` to use Railway URL
 
-5. **Download and install** the `.ipa` file on your iPhone
+3. **Update `app/nutrition/page.tsx`:**
+   - Change `fetch("/api/ai", ...)` to use Railway URL
 
-**Pros:**
-- ✅ No Xcode needed
-- ✅ Builds in the cloud
-- ✅ Free tier available
-- ✅ Works on any Mac (even old ones)
+4. **Remove or keep Next.js API routes:**
+   - You can keep them as fallback, or remove them
+   - If keeping, they'll still work but will use Vercel's serverless functions
 
-**Cons:**
-- ⚠️ Requires Expo account
-- ⚠️ Need Apple Developer account ($99/year) for App Store
+---
 
-#### Option B: Use a Friend's Mac with Xcode
-
-1. Clone your repo on their Mac
-2. Open `ios/App/App.xcworkspace` in Xcode
-3. Add the plugin files (they're already created)
-4. Build and test
-
-#### Option C: Wait for Xcode Access
-
-- The code is ready
-- Just need to add files to Xcode project
-- Follow `IOS_BLOCKING_SETUP.md` when ready
-
-### Option 2: Continue with Web Version (For Now)
-
-The web version works great for:
-- ✅ Tracking usage
-- ✅ Showing blocked status
-- ✅ Notifications
-- ✅ All UI features
-
-**Users will see:**
-- "🚫 Blocked" status
-- "Cannot unblock" message
-- Notifications
-
-**But apps won't actually be blocked** - users can still use them (but they'll see they're over limit)
-
-## Recommended Path Forward
-
-### Short Term (Now):
-1. ✅ **Keep using Vercel** - Everything works for tracking
-2. ✅ **Test all features** - Make sure UI/UX is perfect
-3. ✅ **Get user feedback** - See what people want
-
-### Medium Term (Next 1-2 weeks):
-1. **Set up EAS Build** (if you want real blocking)
-   - Create Expo account
-   - Build iOS app in cloud
-   - Test on your iPhone
-
-2. **OR wait for Xcode access**
-   - Code is ready
-   - Just need to add files
-
-### Long Term:
-1. **App Store submission** (if using EAS or Xcode)
-2. **Add Android version** (later)
-
-## Quick Start: EAS Build
-
-If you want to try EAS Build right now:
+## 🚀 Quick Start Commands
 
 ```bash
-# 1. Install EAS CLI
-npm install -g eas-cli
+# Install backend dependencies
+cd backend
+npm install
 
-# 2. Login
-eas login
+# Test backend locally
+npm start
 
-# 3. Configure (if not done)
-eas build:configure
+# Install frontend dependencies (if needed)
+cd ..
+npm install
 
-# 4. Build iOS app
-eas build --platform ios --profile production
+# Test frontend locally
+npm run dev
 ```
 
-This will:
-- Build your iOS app in the cloud
-- Give you a download link
-- You can install it on your iPhone via TestFlight or direct install
+---
 
-## What Works Right Now
+## 📝 Checklist
 
-**On Vercel (Web):**
-- ✅ All tracking features
-- ✅ Blocking detection
-- ✅ UI shows blocked status
-- ✅ Notifications
-- ❌ Can't actually block apps (browser limitation)
+- [ ] Deploy backend to Railway
+- [ ] Set `OPENAI_API_KEY` in Railway
+- [ ] Get Railway backend URL
+- [ ] Test Railway backend (`/health` endpoint)
+- [ ] Create `.env.local` with Railway URL
+- [ ] Update frontend to use Railway URL
+- [ ] Deploy frontend to Vercel
+- [ ] Set `NEXT_PUBLIC_RAILWAY_API_URL` in Vercel
+- [ ] Test full integration
 
-**After iOS Build:**
-- ✅ Everything above PLUS
-- ✅ Real app blocking
-- ✅ Native iOS experience
+---
 
-## Summary
+## 🐛 Troubleshooting
 
-**You don't need to do anything right now** - the app works on Vercel!
+**Backend won't start on Railway:**
+- Check Root Directory is set to `backend`
+- Check environment variables are set
+- Check Railway logs for errors
 
-**If you want real blocking:**
-- Use EAS Build (no Xcode needed)
-- OR wait for Xcode access
-- OR use a friend's Mac
+**Frontend can't reach backend:**
+- Check CORS is enabled (already done in backend)
+- Check Railway URL is correct
+- Check environment variable is set in Vercel
 
-**The blocking logic is ready** - it just needs the iOS app to actually block apps!
+**OpenAI errors:**
+- Verify `OPENAI_API_KEY` is set in Railway
+- Check API key is valid
+- Check Railway logs for specific errors
 
+---
+
+## 📚 Files Created
+
+- `backend/server.js` - Express backend with OpenAI
+- `backend/package.json` - Backend dependencies
+- `backend/RAILWAY_DEPLOYMENT.md` - Railway deployment guide
+- `NEXT_STEPS.md` - This file
