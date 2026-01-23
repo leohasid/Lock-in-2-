@@ -333,47 +333,68 @@ Be concise, professional, and helpful.`;
     return () => clearInterval(interval);
   }, []);
 
-  // Body diagram component
+  // Body diagram component - matching the reference image
   const BodyDiagram = () => {
-    const highlightColor = workoutStats.daysSinceLast === null || workoutStats.daysSinceLast >= 3 ? "#ef4444" : "#1a1a1a";
+    // Highlight fresh muscle groups in red if no workout in 3+ days
+    const shouldHighlight = workoutStats.daysSinceLast === null || workoutStats.daysSinceLast >= 3;
+    const lightRed = "#ff6b6b"; // Lighter pinkish-red for chest/abs
+    const darkRed = "#ef4444"; // Darker red for biceps, triceps, quads
+    const baseColor = "#2a2a2a"; // Dark grey base
     
     return (
       <div className="relative w-full flex justify-center items-center py-8">
-        <svg width="200" height="400" viewBox="0 0 200 400" className="w-full max-w-[200px]">
-          {/* Head */}
-          <ellipse cx="100" cy="30" rx="25" ry="30" fill="#1a1a1a" />
+        <svg width="200" height="380" viewBox="0 0 200 380" className="w-full max-w-[200px]">
+          {/* Head - rounded */}
+          <ellipse cx="100" cy="25" rx="22" ry="28" fill={baseColor} />
           
           {/* Neck */}
-          <rect x="90" y="60" width="20" height="15" fill="#1a1a1a" />
+          <rect x="88" y="53" width="24" height="12" rx="2" fill={baseColor} />
           
-          {/* Shoulders */}
-          <ellipse cx="70" cy="85" rx="20" ry="15" fill={highlightColor} />
-          <ellipse cx="130" cy="85" rx="20" ry="15" fill={highlightColor} />
+          {/* Shoulders - dark grey (not highlighted) */}
+          <ellipse cx="65" cy="75" rx="18" ry="12" fill={baseColor} />
+          <ellipse cx="135" cy="75" rx="18" ry="12" fill={baseColor} />
           
-          {/* Chest */}
-          <ellipse cx="100" cy="110" rx="35" ry="25" fill={highlightColor} />
+          {/* Chest - lighter pinkish-red when fresh */}
+          <ellipse cx="100" cy="95" rx="32" ry="22" fill={shouldHighlight ? lightRed : baseColor} />
           
-          {/* Arms - Upper */}
-          <ellipse cx="50" cy="100" rx="12" ry="35" fill={highlightColor} />
-          <ellipse cx="150" cy="100" rx="12" ry="35" fill={highlightColor} />
+          {/* Biceps - darker red when fresh */}
+          <ellipse cx="45" cy="95" rx="10" ry="28" fill={shouldHighlight ? darkRed : baseColor} />
+          <ellipse cx="155" cy="95" rx="10" ry="28" fill={shouldHighlight ? darkRed : baseColor} />
           
-          {/* Arms - Lower */}
-          <ellipse cx="50" cy="150" rx="10" ry="30" fill="#1a1a1a" />
-          <ellipse cx="150" cy="150" rx="10" ry="30" fill="#1a1a1a" />
+          {/* Triceps - darker red when fresh */}
+          <ellipse cx="45" cy="130" rx="8" ry="20" fill={shouldHighlight ? darkRed : baseColor} />
+          <ellipse cx="155" cy="130" rx="8" ry="20" fill={shouldHighlight ? darkRed : baseColor} />
           
-          {/* Abs */}
-          <rect x="75" y="135" width="50" height="40" rx="5" fill={highlightColor} />
+          {/* Forearms - dark grey (not highlighted) */}
+          <ellipse cx="45" cy="160" rx="7" ry="25" fill={baseColor} />
+          <ellipse cx="155" cy="160" rx="7" ry="25" fill={baseColor} />
           
-          {/* Hips */}
-          <ellipse cx="100" cy="185" rx="30" ry="15" fill="#1a1a1a" />
+          {/* Abs/Six-pack - lighter pinkish-red when fresh */}
+          <rect x="70" y="120" width="60" height="35" rx="4" fill={shouldHighlight ? lightRed : baseColor} />
+          {/* Six-pack lines */}
+          {shouldHighlight && (
+            <>
+              <line x1="85" y1="130" x2="115" y2="130" stroke="#ff8a8a" strokeWidth="1" opacity="0.6" />
+              <line x1="85" y1="138" x2="115" y2="138" stroke="#ff8a8a" strokeWidth="1" opacity="0.6" />
+              <line x1="85" y1="146" x2="115" y2="146" stroke="#ff8a8a" strokeWidth="1" opacity="0.6" />
+              <line x1="100" y1="120" x2="100" y2="155" stroke="#ff8a8a" strokeWidth="1" opacity="0.6" />
+            </>
+          )}
           
-          {/* Legs - Upper */}
-          <ellipse cx="85" cy="220" rx="15" ry="50" fill={highlightColor} />
-          <ellipse cx="115" cy="220" rx="15" ry="50" fill={highlightColor} />
+          {/* Waist/Hips */}
+          <ellipse cx="100" cy="165" rx="28" ry="12" fill={baseColor} />
           
-          {/* Legs - Lower */}
-          <ellipse cx="85" cy="290" rx="12" ry="50" fill="#1a1a1a" />
-          <ellipse cx="115" cy="290" rx="12" ry="50" fill="#1a1a1a" />
+          {/* Quadriceps/Thighs - darker red when fresh */}
+          <ellipse cx="82" cy="200" rx="12" ry="45" fill={shouldHighlight ? darkRed : baseColor} />
+          <ellipse cx="118" cy="200" rx="12" ry="45" fill={shouldHighlight ? darkRed : baseColor} />
+          
+          {/* Lower legs - dark grey (not highlighted) */}
+          <ellipse cx="82" cy="260" rx="10" ry="45" fill={baseColor} />
+          <ellipse cx="118" cy="260" rx="10" ry="45" fill={baseColor} />
+          
+          {/* Feet */}
+          <ellipse cx="82" cy="310" rx="8" ry="12" fill={baseColor} />
+          <ellipse cx="118" cy="310" rx="8" ry="12" fill={baseColor} />
         </svg>
       </div>
     );
