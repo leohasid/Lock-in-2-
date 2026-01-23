@@ -929,6 +929,7 @@ export default function Home() {
     const [aiEvaluation, setAiEvaluation] = useState<string>("");
     const [isLoadingEvaluation, setIsLoadingEvaluation] = useState(false);
     const [evaluationError, setEvaluationError] = useState<string>("");
+    const [hasGenerated, setHasGenerated] = useState(false);
 
     // Generate AI evaluation
     const generateAIEvaluation = async () => {
@@ -1001,6 +1002,7 @@ Be positive, specific, and helpful. Keep it concise and friendly.`;
 
         const response = await callRailwayAI(prompt);
         setAiEvaluation(response);
+        setHasGenerated(true);
       } catch (error: any) {
         console.error("Error generating AI evaluation:", error);
         setEvaluationError(error.message || "Failed to generate evaluation. Please try again.");
@@ -1011,7 +1013,7 @@ Be positive, specific, and helpful. Keep it concise and friendly.`;
 
     // Auto-generate evaluation when tab is opened (only once)
     useEffect(() => {
-      if (!aiEvaluation && !isLoadingEvaluation && !evaluationError) {
+      if (!hasGenerated && !isLoadingEvaluation) {
         generateAIEvaluation();
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
