@@ -5,7 +5,7 @@ import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { 
   Target, TrendingUp, Calendar, CheckCircle2,
-  Activity, Brain, Loader2, BarChart3, ChevronRight
+  Activity, Brain, Loader2, ChevronRight, Dumbbell, Scale
 } from "lucide-react";
 import { callRailwayAI } from "@/lib/api";
 
@@ -37,6 +37,75 @@ export default function Home() {
       } catch (e) {}
     }
   }, []);
+
+  // Get weight data
+  const weightData = useMemo(() => {
+    if (typeof window === "undefined") return { current: null, entries: [] };
+    
+    // Try to get from weight entries first
+    const storedWeightEntries = localStorage.getItem("weightEntries");
+    if (storedWeightEntries) {
+      try {
+        const entries = JSON.parse(storedWeightEntries);
+        if (entries.length > 0) {
+          const sorted = entries.sort((a: any, b: any) => 
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+          return { current: sorted[0].weight, entries: sorted };
+        }
+      } catch (e) {}
+    }
+    
+    // Fallback to onboarding data
+    const onboardingData = localStorage.getItem("onboardingData");
+    if (onboardingData) {
+      try {
+        const data = JSON.parse(onboardingData);
+        if (data.weight) {
+          return { current: data.weight, entries: [] };
+        }
+      } catch (e) {}
+    }
+    
+    return { current: null, entries: [] };
+  }, [refreshTrigger]);
+
+  // Get workout stats
+  const workoutStats = useMemo(() => {
+    if (typeof window === "undefined") return { daysSinceLast: null, thisWeek: 0, total: 0, freshMuscleGroups: 0 };
+    
+    const todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
+    const todayStr = todayDate.toISOString().split("T")[0];
+    
+    let daysSinceLast = null;
+    let thisWeek = 0;
+    let total = 0;
+    const weekAgo = new Date(todayDate);
+    weekAgo.setDate(todayDate.getDate() - 7);
+    
+    // Find last workout
+    for (let i = 0; i < 30; i++) {
+      const date = new Date(todayDate);
+      date.setDate(todayDate.getDate() - i);
+      const dateStr = date.toISOString().split("T")[0];
+      const completed = localStorage.getItem(`workout_${dateStr}`) === "completed" || 
+                       (localStorage.getItem(`workout_${dateStr}`) && localStorage.getItem(`workout_${dateStr}`) !== "null");
+      
+      if (completed) {
+        if (daysSinceLast === null) {
+          daysSinceLast = i;
+        }
+        total++;
+        if (date >= weekAgo) thisWeek++;
+      }
+    }
+    
+    // Calculate fresh muscle groups (simplified: if no workout in last 3 days, all groups are fresh)
+    const freshMuscleGroups = daysSinceLast === null || daysSinceLast >= 3 ? 5 : Math.max(0, 5 - thisWeek);
+    
+    return { daysSinceLast, thisWeek, total, freshMuscleGroups };
+  }, [refreshTrigger]);
 
   // Get today's calories
   const caloriesData = useMemo(() => {
@@ -205,19 +274,6 @@ export default function Home() {
         } catch (e) {}
       }
       
-      let goalsCount = 0;
-      let completedGoals = 0;
-      if (storedGoals) {
-        try {
-          const goals = JSON.parse(storedGoals);
-          goalsCount = goals.length;
-          completedGoals = goals.filter((g: any) => {
-            const pct = g.target > 0 ? (g.current / g.target) * 100 : 0;
-            return pct >= 100;
-          }).length;
-        } catch (e) {}
-      }
-      
       let tasksToday = 0;
       let tasksCompleted = 0;
       if (reminders) {
@@ -229,35 +285,17 @@ export default function Home() {
           tasksCompleted = todayTasks.filter((r: any) => r.completed).length;
         } catch (e) {}
       }
-
-      const todayDate = new Date();
-      todayDate.setHours(0, 0, 0, 0);
-      const todayStr2 = todayDate.toISOString().split("T")[0];
-      const workoutToday = localStorage.getItem(`workout_${todayStr2}`) === "completed" || 
-                          (localStorage.getItem(`workout_${todayStr2}`) && localStorage.getItem(`workout_${todayStr2}`) !== "null");
-      
-      let workoutsThisWeek = 0;
-      const weekAgo = new Date(todayDate);
-      weekAgo.setDate(todayDate.getDate() - 7);
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(weekAgo);
-        date.setDate(weekAgo.getDate() + i);
-        const dateStr = date.toISOString().split("T")[0];
-        const completed = localStorage.getItem(`workout_${dateStr}`) === "completed" || 
-                         (localStorage.getItem(`workout_${dateStr}`) && localStorage.getItem(`workout_${dateStr}`) !== "null");
-        if (completed) workoutsThisWeek++;
-      }
       
       const prompt = `You are a professional lifestyle coach. Evaluate the user's progress today and provide a concise, motivating assessment.
 
 **User's Today's Data:**
-- Workout completed: ${workoutToday ? "Yes" : "No"}
-- Workouts this week: ${workoutsThisWeek}
+- Workout completed: ${workoutStats.daysSinceLast === 0 ? "Yes" : "No"}
+- Days since last workout: ${workoutStats.daysSinceLast ?? "Never"}
+- Workouts this week: ${workoutStats.thisWeek}
 - Calories consumed: ${caloriesToday} (${caloriesData.percentage}% of goal)
 - Meals logged: ${mealsToday}
 - Tasks completed: ${tasksCompleted} out of ${tasksToday}
-- Daily goals: ${dailyGoalsData.length}
-- Long-term goals: ${longTermGoalsData.length}
+- Current weight: ${weightData.current ? `${weightData.current}kg` : "Not set"}
 
 **Your Task:**
 Provide a brief, professional evaluation (2-3 sentences) that:
@@ -295,10 +333,56 @@ Be concise, professional, and helpful.`;
     return () => clearInterval(interval);
   }, []);
 
+  // Body diagram component
+  const BodyDiagram = () => {
+    const highlightColor = workoutStats.daysSinceLast === null || workoutStats.daysSinceLast >= 3 ? "#ef4444" : "#1a1a1a";
+    
+    return (
+      <div className="relative w-full flex justify-center items-center py-8">
+        <svg width="200" height="400" viewBox="0 0 200 400" className="w-full max-w-[200px]">
+          {/* Head */}
+          <ellipse cx="100" cy="30" rx="25" ry="30" fill="#1a1a1a" />
+          
+          {/* Neck */}
+          <rect x="90" y="60" width="20" height="15" fill="#1a1a1a" />
+          
+          {/* Shoulders */}
+          <ellipse cx="70" cy="85" rx="20" ry="15" fill={highlightColor} />
+          <ellipse cx="130" cy="85" rx="20" ry="15" fill={highlightColor} />
+          
+          {/* Chest */}
+          <ellipse cx="100" cy="110" rx="35" ry="25" fill={highlightColor} />
+          
+          {/* Arms - Upper */}
+          <ellipse cx="50" cy="100" rx="12" ry="35" fill={highlightColor} />
+          <ellipse cx="150" cy="100" rx="12" ry="35" fill={highlightColor} />
+          
+          {/* Arms - Lower */}
+          <ellipse cx="50" cy="150" rx="10" ry="30" fill="#1a1a1a" />
+          <ellipse cx="150" cy="150" rx="10" ry="30" fill="#1a1a1a" />
+          
+          {/* Abs */}
+          <rect x="75" y="135" width="50" height="40" rx="5" fill={highlightColor} />
+          
+          {/* Hips */}
+          <ellipse cx="100" cy="185" rx="30" ry="15" fill="#1a1a1a" />
+          
+          {/* Legs - Upper */}
+          <ellipse cx="85" cy="220" rx="15" ry="50" fill={highlightColor} />
+          <ellipse cx="115" cy="220" rx="15" ry="50" fill={highlightColor} />
+          
+          {/* Legs - Lower */}
+          <ellipse cx="85" cy="290" rx="12" ry="50" fill="#1a1a1a" />
+          <ellipse cx="115" cy="290" rx="12" ry="50" fill="#1a1a1a" />
+        </svg>
+      </div>
+    );
+  };
+
   return (
     <main className="min-h-screen bg-black text-white px-5 pt-6 pb-24">
       {/* Header */}
-      <header className="mb-8">
+      <header className="mb-6">
         <h1 className="text-2xl font-semibold text-white mb-1">
           {getGreeting()}, {userName}
         </h1>
@@ -308,6 +392,82 @@ Be concise, professional, and helpful.`;
       </header>
 
       <div className="space-y-6">
+        {/* Body Progress Section */}
+        <div className="bg-[#0a0a0a] rounded-lg border border-[#1a1a1a] overflow-hidden">
+          <div className="p-5 border-b border-[#1a1a1a]">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-semibold text-white">Body Progress</h3>
+              <Link
+                href="/gym"
+                className="text-xs text-[#666] hover:text-white transition-colors flex items-center gap-1"
+              >
+                View Details <ChevronRight className="w-3 h-3" />
+              </Link>
+            </div>
+            
+            {/* Stats above body */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white mb-1">
+                  {workoutStats.daysSinceLast !== null ? workoutStats.daysSinceLast : "—"}
+                </div>
+                <div className="text-[10px] text-[#666] uppercase tracking-wide">
+                  Days Since Last Workout
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white mb-1">
+                  {workoutStats.freshMuscleGroups}
+                </div>
+                <div className="text-[10px] text-[#666] uppercase tracking-wide">
+                  Fresh Muscle Groups
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Body Diagram */}
+          <BodyDiagram />
+          
+          {/* Progress Info at Bottom */}
+          <div className="p-5 border-t border-[#1a1a1a] bg-[#0f0f0f]">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-3">
+                <Scale className="w-5 h-5 text-[#666]" />
+                <div>
+                  <div className="text-xs text-[#666] mb-0.5">Weight</div>
+                  <div className="text-sm font-semibold text-white">
+                    {weightData.current ? `${weightData.current}kg` : "Not set"}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Dumbbell className="w-5 h-5 text-[#666]" />
+                <div>
+                  <div className="text-xs text-[#666] mb-0.5">Total Workouts</div>
+                  <div className="text-sm font-semibold text-white">{workoutStats.total}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Activity className="w-5 h-5 text-[#666]" />
+                <div>
+                  <div className="text-xs text-[#666] mb-0.5">This Week</div>
+                  <div className="text-sm font-semibold text-white">{workoutStats.thisWeek}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <TrendingUp className="w-5 h-5 text-[#666]" />
+                <div>
+                  <div className="text-xs text-[#666] mb-0.5">Calories Today</div>
+                  <div className="text-sm font-semibold text-white">
+                    {caloriesData.current} / {caloriesData.goal}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Macros Chart */}
         <div className="bg-[#0a0a0a] rounded-lg p-5 border border-[#1a1a1a]">
           <div className="flex items-center justify-between mb-5">
