@@ -169,9 +169,8 @@ export default function Home() {
               filter: highlightChest 
                 ? 'drop-shadow(0 0 12px rgba(255, 68, 68, 0.4)) drop-shadow(0 0 6px rgba(255, 153, 153, 0.3))'
                 : 'drop-shadow(0 0 4px rgba(0, 0, 0, 0.3))',
-              transition: 'filter 0.3s ease',
-              imageRendering: 'high-quality'
-            }}
+              transition: 'filter 0.3s ease'
+            } as React.CSSProperties}
             onError={() => setImageError(true)}
           />
         ) : (
