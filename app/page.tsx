@@ -151,57 +151,31 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // Body diagram component - exact match to reference
+  // Body diagram component - uses high-quality image asset
   const BodyDiagram = ({ highlightChest = true }: { highlightChest?: boolean }) => {
-    const lightRed = "#ff9999"; // Lighter pinkish-red for chest/abs
-    const darkRed = "#ff4444"; // Darker red for biceps, triceps, quads  
-    const baseColor = "#333333"; // Dark grey base
-    
     return (
-      <svg width="120" height="200" viewBox="0 0 120 200" className="w-full max-w-[120px]">
-        {/* Head */}
-        <ellipse cx="60" cy="12" rx="12" ry="15" fill={baseColor} />
-        
-        {/* Neck */}
-        <rect x="56" y="27" width="8" height="6" rx="1" fill={baseColor} />
-        
-        {/* Shoulders - dark grey */}
-        <ellipse cx="42" cy="38" rx="10" ry="6" fill={baseColor} />
-        <ellipse cx="78" cy="38" rx="10" ry="6" fill={baseColor} />
-        
-        {/* Chest - lighter pinkish-red when highlighted */}
-        <ellipse cx="60" cy="50" rx="18" ry="12" fill={highlightChest ? lightRed : baseColor} />
-        
-        {/* Biceps - darker red when highlighted */}
-        <ellipse cx="30" cy="50" rx="5" ry="14" fill={highlightChest ? darkRed : baseColor} />
-        <ellipse cx="90" cy="50" rx="5" ry="14" fill={highlightChest ? darkRed : baseColor} />
-        
-        {/* Triceps */}
-        <ellipse cx="30" cy="68" rx="4" ry="12" fill={highlightChest ? darkRed : baseColor} />
-        <ellipse cx="90" cy="68" rx="4" ry="12" fill={highlightChest ? darkRed : baseColor} />
-        
-        {/* Forearms - dark grey */}
-        <ellipse cx="30" cy="85" rx="3" ry="12" fill={baseColor} />
-        <ellipse cx="90" cy="85" rx="3" ry="12" fill={baseColor} />
-        
-        {/* Abs */}
-        <rect x="42" y="64" width="36" height="20" rx="2" fill={highlightChest ? lightRed : baseColor} />
-        
-        {/* Waist */}
-        <ellipse cx="60" cy="88" rx="16" ry="6" fill={baseColor} />
-        
-        {/* Quadriceps */}
-        <ellipse cx="50" cy="110" rx="6" ry="22" fill={highlightChest ? darkRed : baseColor} />
-        <ellipse cx="70" cy="110" rx="6" ry="22" fill={highlightChest ? darkRed : baseColor} />
-        
-        {/* Lower legs - dark grey */}
-        <ellipse cx="50" cy="140" rx="5" ry="22" fill={baseColor} />
-        <ellipse cx="70" cy="140" rx="5" ry="22" fill={baseColor} />
-        
-        {/* Feet */}
-        <ellipse cx="50" cy="168" rx="4" ry="6" fill={baseColor} />
-        <ellipse cx="70" cy="168" rx="4" ry="6" fill={baseColor} />
-      </svg>
+      <div className="relative w-[120px] h-[200px] flex-shrink-0">
+        {/* High-quality body image with glow effects */}
+        <img
+          src="/body-diagram.png"
+          alt="Body diagram"
+          className="w-full h-full object-contain"
+          style={{
+            filter: highlightChest 
+              ? 'drop-shadow(0 0 12px rgba(255, 68, 68, 0.4)) drop-shadow(0 0 6px rgba(255, 153, 153, 0.3))'
+              : 'drop-shadow(0 0 4px rgba(0, 0, 0, 0.3))',
+            transition: 'filter 0.3s ease'
+          }}
+          onError={(e) => {
+            // Fallback: show placeholder if image not found
+            (e.target as HTMLImageElement).style.display = 'none';
+            const placeholder = document.createElement('div');
+            placeholder.className = 'w-full h-full bg-[#1a1a1a] rounded-lg border border-[#2a2a2a] flex items-center justify-center';
+            placeholder.innerHTML = '<span class="text-xs text-[#666]">Body Image</span>';
+            (e.target as HTMLImageElement).parentElement?.appendChild(placeholder);
+          }}
+        />
+      </div>
     );
   };
 
@@ -311,8 +285,8 @@ export default function Home() {
                 </div>
               </div>
               
-              {/* Body diagram on right */}
-              <div className="flex-shrink-0 ml-4">
+              {/* Body diagram on right - high-quality image asset */}
+              <div className="flex-shrink-0 ml-4 flex items-center justify-center">
                 <BodyDiagram highlightChest={workoutRecommendation.recovered} />
               </div>
             </div>
@@ -428,8 +402,8 @@ export default function Home() {
               </div>
             </div>
             
-            {/* Body diagram */}
-            <div className="flex-shrink-0">
+            {/* Body diagram - high-quality image asset */}
+            <div className="flex-shrink-0 flex items-center justify-center">
               <BodyDiagram highlightChest={recoveryStats.recovered} />
             </div>
           </div>
