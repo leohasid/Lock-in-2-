@@ -152,29 +152,34 @@ export default function Home() {
   }, []);
 
   // Body diagram component - uses high-quality image asset
+  // CRITICAL: This requires a high-quality PNG/WebP image at /public/body-diagram.png
+  // The image should be semi-realistic male torso with red/pink muscle highlights
+  // See BODY_IMAGE_SETUP.md for detailed requirements
   const BodyDiagram = ({ highlightChest = true }: { highlightChest?: boolean }) => {
+    const [imageError, setImageError] = useState(false);
+    
     return (
-      <div className="relative w-[120px] h-[200px] flex-shrink-0">
-        {/* High-quality body image with glow effects */}
-        <img
-          src="/body-diagram.png"
-          alt="Body diagram"
-          className="w-full h-full object-contain"
-          style={{
-            filter: highlightChest 
-              ? 'drop-shadow(0 0 12px rgba(255, 68, 68, 0.4)) drop-shadow(0 0 6px rgba(255, 153, 153, 0.3))'
-              : 'drop-shadow(0 0 4px rgba(0, 0, 0, 0.3))',
-            transition: 'filter 0.3s ease'
-          }}
-          onError={(e) => {
-            // Fallback: show placeholder if image not found
-            (e.target as HTMLImageElement).style.display = 'none';
-            const placeholder = document.createElement('div');
-            placeholder.className = 'w-full h-full bg-[#1a1a1a] rounded-lg border border-[#2a2a2a] flex items-center justify-center';
-            placeholder.innerHTML = '<span class="text-xs text-[#666]">Body Image</span>';
-            (e.target as HTMLImageElement).parentElement?.appendChild(placeholder);
-          }}
-        />
+      <div className="relative w-[120px] h-[200px] flex-shrink-0 flex items-center justify-center">
+        {!imageError ? (
+          <img
+            src="/body-diagram.png"
+            alt="Body diagram"
+            className="w-full h-full object-contain"
+            style={{
+              filter: highlightChest 
+                ? 'drop-shadow(0 0 12px rgba(255, 68, 68, 0.4)) drop-shadow(0 0 6px rgba(255, 153, 153, 0.3))'
+                : 'drop-shadow(0 0 4px rgba(0, 0, 0, 0.3))',
+              transition: 'filter 0.3s ease',
+              imageRendering: 'high-quality'
+            }}
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-full h-full bg-[#1a1a1a] rounded-lg border border-[#2a2a2a] flex flex-col items-center justify-center p-2">
+            <span className="text-[10px] text-[#666] text-center">Add body-diagram.png to /public</span>
+            <span className="text-[8px] text-[#555] text-center mt-1">See BODY_IMAGE_SETUP.md</span>
+          </div>
+        )}
       </div>
     );
   };
