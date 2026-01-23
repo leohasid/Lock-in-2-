@@ -355,18 +355,30 @@ export default function Home() {
                 const icons = [Target, Dumbbell, Zap];
                 const Icon = icons[idx] || Target;
                 
+                // Format display value based on goal type
+                let displayValue = `${goal.percentage}%`;
+                if (goal.unit === "kg" && goal.target > 0) {
+                  displayValue = `${goal.current} / ${goal.target}`;
+                } else if (goal.title.toLowerCase().includes("train") && goal.target > 0) {
+                  displayValue = `${goal.current} / ${goal.target}`;
+                } else if (goal.title.toLowerCase().includes("step") && goal.target > 0) {
+                  const currentK = (goal.current / 1000).toFixed(1);
+                  const targetK = (goal.target / 1000).toFixed(0);
+                  displayValue = `${currentK}k / ${targetK}k`;
+                }
+                
                 return (
                   <Link
                     key={goal.id}
                     href="/goals"
                     className="block"
                   >
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center border border-[#2a2a2a]">
                         <Icon className="w-4 h-4" style={{ color: iconColors[idx] || "#ff4444" }} />
                       </div>
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-white mb-1">{goal.title}</div>
+                        <div className="text-sm font-medium text-white mb-2">{goal.title}</div>
                         <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all"
@@ -378,7 +390,7 @@ export default function Home() {
                         </div>
                       </div>
                       <div className="text-sm font-semibold text-white">
-                        {goal.percentage}% <ChevronRight className="w-3 h-3 inline" />
+                        {displayValue} <ChevronRight className="w-3 h-3 inline" />
                       </div>
                     </div>
                   </Link>
