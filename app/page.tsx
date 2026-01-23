@@ -151,16 +151,16 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // Body diagram component - uses high-quality image asset
-  // CRITICAL: This requires a high-quality PNG/WebP image at /public/body-diagram.png
-  // The image should be semi-realistic male torso with red/pink muscle highlights
-  // See BODY_IMAGE_SETUP.md for detailed requirements
+  // Body diagram component - TEMPORARY: High-quality SVG placeholder
+  // TODO: Replace with actual PNG/WebP image asset at /public/body-diagram.png
+  // This SVG is a realistic placeholder until the proper image asset is added
   const BodyDiagram = ({ highlightChest = true }: { highlightChest?: boolean }) => {
     const [imageError, setImageError] = useState(false);
     
-    return (
-      <div className="relative w-[120px] h-[200px] flex-shrink-0 flex items-center justify-center">
-        {!imageError ? (
+    // Try to load the image first
+    if (!imageError) {
+      return (
+        <div className="relative w-[120px] h-[200px] flex-shrink-0 flex items-center justify-center">
           <img
             src="/body-diagram.png"
             alt="Body diagram"
@@ -173,12 +173,132 @@ export default function Home() {
             } as React.CSSProperties}
             onError={() => setImageError(true)}
           />
-        ) : (
-          <div className="w-full h-full bg-[#1a1a1a] rounded-lg border border-[#2a2a2a] flex flex-col items-center justify-center p-2">
-            <span className="text-[10px] text-[#666] text-center">Add body-diagram.png to /public</span>
-            <span className="text-[8px] text-[#555] text-center mt-1">See BODY_IMAGE_SETUP.md</span>
-          </div>
-        )}
+        </div>
+      );
+    }
+    
+    // High-quality realistic SVG placeholder with proper anatomy
+    const baseColor = "#2a2a2a";
+    const darkBase = "#1f1f1f";
+    const lightRed = highlightChest ? "#ff9999" : baseColor;
+    const darkRed = highlightChest ? "#ff4444" : baseColor;
+    const chestColor = highlightChest ? "#ff8888" : baseColor;
+    
+    return (
+      <div className="relative w-[120px] h-[200px] flex-shrink-0 flex items-center justify-center">
+        <svg width="120" height="200" viewBox="0 0 120 200" className="w-full h-full">
+          <defs>
+            {/* Gradients for realistic shading */}
+            <linearGradient id="chestGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={highlightChest ? "#ffaaaa" : baseColor} />
+              <stop offset="50%" stopColor={chestColor} />
+              <stop offset="100%" stopColor={highlightChest ? "#ff6666" : darkBase} />
+            </linearGradient>
+            <linearGradient id="armGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor={highlightChest ? "#ff5555" : baseColor} />
+              <stop offset="50%" stopColor={darkRed} />
+              <stop offset="100%" stopColor={highlightChest ? "#ff3333" : darkBase} />
+            </linearGradient>
+            <linearGradient id="absGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={highlightChest ? "#ffaaaa" : baseColor} />
+              <stop offset="30%" stopColor={lightRed} />
+              <stop offset="70%" stopColor={lightRed} />
+              <stop offset="100%" stopColor={highlightChest ? "#ff6666" : darkBase} />
+            </linearGradient>
+            <radialGradient id="shoulderGrad" cx="50%" cy="30%">
+              <stop offset="0%" stopColor="#3a3a3a" />
+              <stop offset="100%" stopColor={baseColor} />
+            </radialGradient>
+          </defs>
+          
+          {/* Head - rounded, realistic */}
+          <ellipse cx="60" cy="15" rx="14" ry="18" fill={baseColor} />
+          <ellipse cx="60" cy="18" rx="10" ry="12" fill="#252525" opacity="0.6" />
+          
+          {/* Neck - with subtle shading */}
+          <rect x="54" y="33" width="12" height="10" rx="2" fill={baseColor} />
+          <rect x="56" y="35" width="8" height="6" fill="#252525" opacity="0.4" />
+          
+          {/* Shoulders - realistic shape with gradient */}
+          <ellipse cx="42" cy="48" rx="12" ry="8" fill="url(#shoulderGrad)" />
+          <ellipse cx="78" cy="48" rx="12" ry="8" fill="url(#shoulderGrad)" />
+          
+          {/* Chest - highlighted with gradient when fresh */}
+          <ellipse cx="60" cy="62" rx="22" ry="16" fill="url(#chestGrad)" />
+          <ellipse cx="60" cy="60" rx="18" ry="12" fill={chestColor} opacity="0.7" />
+          {/* Chest definition lines */}
+          {highlightChest && (
+            <>
+              <line x1="50" y1="58" x2="70" y2="58" stroke="#ffaaaa" strokeWidth="0.5" opacity="0.4" />
+              <line x1="50" y1="62" x2="70" y2="62" stroke="#ffaaaa" strokeWidth="0.5" opacity="0.4" />
+            </>
+          )}
+          
+          {/* Biceps - upper arm, highlighted */}
+          <ellipse cx="32" cy="62" rx="6" ry="18" fill="url(#armGrad)" />
+          <ellipse cx="88" cy="62" rx="6" ry="18" fill="url(#armGrad)" />
+          {/* Bicep peak highlight */}
+          {highlightChest && (
+            <>
+              <ellipse cx="32" cy="58" rx="4" ry="6" fill="#ff6666" opacity="0.6" />
+              <ellipse cx="88" cy="58" rx="4" ry="6" fill="#ff6666" opacity="0.6" />
+            </>
+          )}
+          
+          {/* Triceps - back of arm */}
+          <ellipse cx="32" cy="82" rx="5" ry="14" fill="url(#armGrad)" />
+          <ellipse cx="88" cy="82" rx="5" ry="14" fill="url(#armGrad)" />
+          
+          {/* Forearms - dark grey, not highlighted */}
+          <ellipse cx="32" cy="100" rx="4" ry="16" fill={baseColor} />
+          <ellipse cx="88" cy="100" rx="4" ry="16" fill={baseColor} />
+          <ellipse cx="32" cy="102" rx="3" ry="12" fill="#252525" opacity="0.5" />
+          <ellipse cx="88" cy="102" rx="3" ry="12" fill="#252525" opacity="0.5" />
+          
+          {/* Abs/Six-pack - highlighted with gradient */}
+          <rect x="48" y="80" width="24" height="24" rx="3" fill="url(#absGrad)" />
+          {/* Six-pack definition - realistic lines */}
+          {highlightChest ? (
+            <>
+              <line x1="52" y1="86" x2="68" y2="86" stroke="#ffaaaa" strokeWidth="0.8" opacity="0.5" />
+              <line x1="52" y1="92" x2="68" y2="92" stroke="#ffaaaa" strokeWidth="0.8" opacity="0.5" />
+              <line x1="52" y1="98" x2="68" y2="98" stroke="#ffaaaa" strokeWidth="0.8" opacity="0.5" />
+              <line x1="60" y1="80" x2="60" y2="104" stroke="#ffaaaa" strokeWidth="0.8" opacity="0.5" />
+            </>
+          ) : (
+            <>
+              <line x1="52" y1="86" x2="68" y2="86" stroke="#444" strokeWidth="0.5" opacity="0.3" />
+              <line x1="52" y1="92" x2="68" y2="92" stroke="#444" strokeWidth="0.5" opacity="0.3" />
+              <line x1="52" y1="98" x2="68" y2="98" stroke="#444" strokeWidth="0.5" opacity="0.3" />
+              <line x1="60" y1="80" x2="60" y2="104" stroke="#444" strokeWidth="0.5" opacity="0.3" />
+            </>
+          )}
+          
+          {/* Waist/Hips */}
+          <ellipse cx="60" cy="108" rx="20" ry="8" fill={baseColor} />
+          <ellipse cx="60" cy="110" rx="16" ry="6" fill="#252525" opacity="0.4" />
+          
+          {/* Quadriceps/Thighs - highlighted */}
+          <ellipse cx="52" cy="135" rx="7" ry="28" fill={highlightChest ? darkRed : baseColor} />
+          <ellipse cx="68" cy="135" rx="7" ry="28" fill={highlightChest ? darkRed : baseColor} />
+          {/* Quad definition */}
+          {highlightChest && (
+            <>
+              <ellipse cx="52" cy="130" rx="5" ry="8" fill="#ff5555" opacity="0.5" />
+              <ellipse cx="68" cy="130" rx="5" ry="8" fill="#ff5555" opacity="0.5" />
+            </>
+          )}
+          
+          {/* Lower legs - dark grey */}
+          <ellipse cx="52" cy="170" rx="6" ry="28" fill={baseColor} />
+          <ellipse cx="68" cy="170" rx="6" ry="28" fill={baseColor} />
+          <ellipse cx="52" cy="172" rx="4" ry="22" fill="#252525" opacity="0.5" />
+          <ellipse cx="68" cy="172" rx="4" ry="22" fill="#252525" opacity="0.5" />
+          
+          {/* Feet */}
+          <ellipse cx="52" cy="200" rx="5" ry="8" fill={baseColor} />
+          <ellipse cx="68" cy="200" rx="5" ry="8" fill={baseColor} />
+        </svg>
       </div>
     );
   };
