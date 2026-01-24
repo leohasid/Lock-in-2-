@@ -3,48 +3,22 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import GoalProgressCard from "@/components/GoalProgressCard";
-import { Edit2, Check, X, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Calendar } from "lucide-react";
 
 interface Goal {
   id: string;
-  type: string; // "financial", "fitness", "health", "learning", "other"
-  goalType: "daily" | "long-term"; // Daily or long-term goal
+  type: string;
+  goalType: "daily" | "long-term";
   title: string;
   current: number;
   target: number;
   unit: string;
-  targetDate: string; // ISO date string (only for long-term goals)
-  lastUpdated?: string; // ISO date string for daily goals to track when they reset
+  targetDate: string;
+  lastUpdated?: string;
 }
 
-const GOAL_TYPES = [
-  { value: "financial", label: "Financial", question: "How much are you planning on making?", unit: "$" },
-  { value: "fitness", label: "Fitness", question: "What's your fitness target?", unit: "kg" },
-  { value: "health", label: "Health", question: "What's your health goal?", unit: "" },
-  { value: "learning", label: "Learning", question: "What do you want to learn?", unit: "hours" },
-  { value: "other", label: "Other", question: "What's your goal?", unit: "" },
-];
-
 export default function Home() {
-  const [isEditing, setIsEditing] = useState(false);
   const [allGoals, setAllGoals] = useState<Goal[]>([]);
-  const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [showProgressModal, setShowProgressModal] = useState(false);
-  const [selectedGoalForProgress, setSelectedGoalForProgress] = useState<Goal | null>(null);
-  const [progressValue, setProgressValue] = useState("");
-  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
-  const [goalTypeFilter, setGoalTypeFilter] = useState<"daily" | "long-term" | "all">("all");
-  const [formData, setFormData] = useState({
-    goalType: "long-term" as "daily" | "long-term",
-    type: "",
-    title: "",
-    current: "",
-    target: "",
-    unit: "",
-    targetDate: "",
-  });
 
   // Load goals from localStorage and reset daily goals if needed
   useEffect(() => {
@@ -79,580 +53,178 @@ export default function Home() {
         setAllGoals([]);
       }
     }
-
-    // Load selected goals for home screen
-    const storedSelected = localStorage.getItem("selectedGoalsForHome");
-    if (storedSelected) {
-      try {
-        const selected = JSON.parse(storedSelected);
-        setSelectedGoalIds(selected);
-      } catch (e) {
-        setSelectedGoalIds([]);
-      }
-    }
   }, []);
 
-  const handleSave = () => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem("selectedGoalsForHome", JSON.stringify(selectedGoalIds));
-    setIsEditing(false);
+  // Get daily goals
+  const dailyGoals = allGoals.filter(goal => goal.goalType === "daily");
+  
+  // Get long-term goals
+  const longTermGoals = allGoals.filter(goal => goal.goalType === "long-term");
+
+  // Calculate weekly progress (mock for now - you can enhance this with actual weekly tracking)
+  const weeklyGoals = longTermGoals.filter(goal => {
+    if (!goal.targetDate) return false;
+    const targetDate = new Date(goal.targetDate);
+    const today = new Date();
+    const daysDiff = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return daysDiff <= 7 && daysDiff > 0;
+  });
+
+  // Calculate monthly progress
+  const monthlyGoals = longTermGoals.filter(goal => {
+    if (!goal.targetDate) return false;
+    const targetDate = new Date(goal.targetDate);
+    const today = new Date();
+    const daysDiff = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return daysDiff <= 30 && daysDiff > 7;
+  });
+
+  // Calculate progress for a set of goals
+  const calculateProgress = (goals: Goal[]) => {
+    if (goals.length === 0) return { completed: 0, total: 0, progress: 0 };
+    const completed = goals.filter(g => g.current >= g.target).length;
+    const total = goals.length;
+    return { completed, total, progress: total > 0 ? completed / total : 0 };
   };
 
-  const handleToggleSelection = (goalId: string) => {
-    if (selectedGoalIds.includes(goalId)) {
-      setSelectedGoalIds(prev => prev.filter(id => id !== goalId));
-    } else {
-      setSelectedGoalIds(prev => [...prev, goalId]);
-    }
+  const weeklyProgress = calculateProgress(weeklyGoals);
+  const monthlyProgress = calculateProgress(monthlyGoals);
+  const longTermProgress = calculateProgress(longTermGoals);
+
+  // Get next weekly goal title
+  const getNextWeeklyGoal = () => {
+    const incomplete = weeklyGoals.find(g => g.current < g.target);
+    return incomplete ? incomplete.title : weeklyGoals[0]?.title || "No weekly goals";
   };
 
-  // Helper function to parse value with "k" notation
-  const parseValue = (value: string): number => {
-    if (!value || value.trim() === "") return 0;
-    const trimmed = value.trim().toLowerCase();
-    if (trimmed.endsWith("k")) {
-      const num = parseFloat(trimmed.slice(0, -1));
-      return isNaN(num) ? 0 : num * 1000;
-    }
-    const num = parseFloat(trimmed);
-    return isNaN(num) ? 0 : num;
+  // Get next monthly goal title
+  const getNextMonthlyGoal = () => {
+    const incomplete = monthlyGoals.find(g => g.current < g.target);
+    return incomplete ? incomplete.title : monthlyGoals[0]?.title || "No monthly goals";
   };
 
-  const handleAddGoal = () => {
-    if (!formData.type || !formData.target) {
-      alert("Please fill in all required fields");
-      return;
-    }
-
-    // Long-term goals require a target date
-    if (formData.goalType === "long-term" && !formData.targetDate) {
-      alert("Please select a target date for long-term goals");
-      return;
-    }
-
-    const goalType = GOAL_TYPES.find(t => t.value === formData.type);
-    const unit = formData.unit || goalType?.unit || "";
-    const targetValue = parseValue(formData.target);
-    const currentValue = parseValue(formData.current);
-
-    if (targetValue <= 0) {
-      alert("Target must be greater than 0");
-      return;
-    }
-
-    const todayStr = new Date().toISOString().split("T")[0];
-
-    const newGoal: Goal = {
-      id: `goal_${Date.now()}`,
-      type: formData.type,
-      goalType: formData.goalType,
-      title: formData.title || goalType?.label || "Goal",
-      current: currentValue,
-      target: targetValue,
-      unit: unit,
-      targetDate: formData.goalType === "daily" ? "" : formData.targetDate,
-      lastUpdated: formData.goalType === "daily" ? todayStr : undefined,
-    };
-
-    const updatedGoals = [...allGoals, newGoal];
-    setAllGoals(updatedGoals);
-    localStorage.setItem("goals", JSON.stringify(updatedGoals));
-    
-    setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
-    setShowAddForm(false);
-  };
-
-  const handleEditGoal = (goal: Goal) => {
-    setEditingGoal(goal);
-    setFormData({
-      goalType: goal.goalType || "long-term",
-      type: goal.type || "",
-      title: goal.title,
-      current: goal.current > 0 ? goal.current.toString() : "",
-      target: goal.target > 0 ? goal.target.toString() : "",
-      unit: goal.unit,
-      targetDate: goal.targetDate || "",
-    });
-    setShowAddForm(true);
-  };
-
-  const handleUpdateGoal = () => {
-    if (!editingGoal || !formData.type || !formData.target) {
-      alert("Please fill in all required fields");
-      return;
-    }
-
-    // Long-term goals require a target date
-    if (formData.goalType === "long-term" && !formData.targetDate) {
-      alert("Please select a target date for long-term goals");
-      return;
-    }
-
-    const goalType = GOAL_TYPES.find(t => t.value === formData.type);
-    const unit = formData.unit || goalType?.unit || "";
-    const targetValue = parseValue(formData.target);
-    const currentValue = parseValue(formData.current);
-
-    if (targetValue <= 0) {
-      alert("Target must be greater than 0");
-      return;
-    }
-
-    const updatedGoals = allGoals.map(g =>
-      g.id === editingGoal.id
-        ? {
-            ...g,
-            type: formData.type,
-            goalType: formData.goalType,
-            title: formData.title || goalType?.label || "Goal",
-            current: currentValue,
-            target: targetValue,
-            unit: unit,
-            targetDate: formData.goalType === "daily" ? "" : formData.targetDate,
-          }
-        : g
-    );
-
-    setAllGoals(updatedGoals);
-    localStorage.setItem("goals", JSON.stringify(updatedGoals));
-    
-    setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
-    setEditingGoal(null);
-    setShowAddForm(false);
-  };
-
-  const handleOpenProgressModal = (goal: Goal) => {
-    setSelectedGoalForProgress(goal);
-    setProgressValue(goal.current > 0 ? goal.current.toString() : "");
-    setShowProgressModal(true);
-  };
-
-  const handleSaveProgress = () => {
-    if (!selectedGoalForProgress || !progressValue) return;
-    
-    const newCurrent = parseValue(progressValue);
-    if (newCurrent < 0) {
-      alert("Please enter a valid number");
-      return;
-    }
-
-    handleUpdateProgress(selectedGoalForProgress.id, newCurrent);
-    setShowProgressModal(false);
-    setSelectedGoalForProgress(null);
-    setProgressValue("");
-  };
-
-  const handleDeleteGoal = (goalId: string) => {
-    if (confirm("Are you sure you want to delete this goal?")) {
-      const updatedGoals = allGoals.filter(g => g.id !== goalId);
-      setAllGoals(updatedGoals);
-      localStorage.setItem("goals", JSON.stringify(updatedGoals));
-      
-      // Remove from selected if it was selected
-      setSelectedGoalIds(prev => prev.filter(id => id !== goalId));
-    }
-  };
-
-  const handleUpdateProgress = (goalId: string, newCurrent: number) => {
-    const todayStr = new Date().toISOString().split("T")[0];
-    const updatedGoals = allGoals.map(g => {
-      if (g.id === goalId) {
-        const updated = { ...g, current: Math.max(0, Math.min(newCurrent, g.target)) };
-        // Update lastUpdated for daily goals
-        if (g.goalType === "daily") {
-          updated.lastUpdated = todayStr;
-        }
-        return updated;
-      }
-      return g;
-    });
-    setAllGoals(updatedGoals);
-    localStorage.setItem("goals", JSON.stringify(updatedGoals));
+  // Get next long-term goal title
+  const getNextLongTermGoal = () => {
+    const incomplete = longTermGoals.find(g => g.current < g.target);
+    return incomplete ? incomplete.title : longTermGoals[0]?.title || "No long-term goals";
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white p-6 flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Goals</h1>
-        <div className="flex items-center gap-2">
-          {!isEditing && (
-            <>
-              <button
-                onClick={() => {
-                  setShowAddForm(!showAddForm);
-                  setEditingGoal(null);
-                  setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 text-black font-semibold"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add</span>
-              </button>
-              <button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors"
-              >
-                <Edit2 className="w-4 h-4" />
-                <span>Edit</span>
-              </button>
-            </>
-          )}
-          {isEditing && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsEditing(false)}
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-              <button
-                onClick={handleSave}
-                className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
-              >
-                <Check className="w-4 h-4" />
-              </button>
-            </div>
-          )}
+    <div className="min-h-screen bg-black text-white">
+      <div className="max-w-2xl mx-auto px-4 py-6 pb-24">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-semibold text-white mb-2">Goals</h1>
         </div>
-      </div>
 
-      {/* Add/Edit Form */}
-      {showAddForm && (
-        <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-white/10 mb-6">
-          <h3 className="text-lg font-bold mb-4 bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
-            {editingGoal ? "Edit Goal" : "Add New Goal"}
-          </h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold mb-2 text-gray-300">Daily or Long-term goal?</label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, goalType: "daily" }))}
-                  className={`flex-1 py-2 rounded-lg font-semibold transition-all ${
-                    formData.goalType === "daily"
-                      ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black shadow-lg shadow-teal-500/30"
-                      : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
-                  }`}
-                >
-                  Daily
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, goalType: "long-term" }))}
-                  className={`flex-1 py-2 rounded-lg font-semibold transition-all ${
-                    formData.goalType === "long-term"
-                      ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black shadow-lg shadow-teal-500/30"
-                      : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
-                  }`}
-                >
-                  Long-term
-                </button>
-              </div>
+        <div className="space-y-5">
+          {/* Daily Goals Section */}
+          <div className="bg-white/5 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-white">Daily Goals</h2>
+              <Link 
+                href="/goals"
+                className="text-sm font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
+              >
+                View All
+              </Link>
             </div>
-            <div>
-              <label className="block text-sm font-semibold mb-2 text-gray-300">What type of goal?</label>
-              <select
-                value={formData.type}
-                onChange={(e) => {
-                  const selectedType = GOAL_TYPES.find(t => t.value === e.target.value);
-                  setFormData(prev => ({ 
-                    ...prev, 
-                    type: e.target.value,
-                    unit: selectedType?.unit || prev.unit
-                  }));
-                }}
-                className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
-              >
-                <option value="">Select goal type...</option>
-                {GOAL_TYPES.map(type => (
-                  <option key={type.value} value={type.value} className="bg-[#0c1422]">
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {formData.type && (
-              <>
-                {formData.type !== "financial" && (
-                  <div>
-                    <label className="block text-sm font-semibold mb-2 text-gray-300">
-                      {GOAL_TYPES.find(t => t.value === formData.type)?.question || "What's your goal?"}
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.title}
-                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                      className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
-                      placeholder={formData.type === "fitness" ? "e.g., Lose 10kg" : "Enter your goal"}
-                    />
-                  </div>
-                )}
-                <div>
-                  <label className="block text-sm font-semibold mb-2 text-gray-300">
-                    {formData.type === "financial" ? "How much are you planning on making?" : "What's your target?"}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={formData.target}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // Allow numbers, k, K, and decimal point
-                        if (value === "" || /^[\d.]*[kK]?$/.test(value)) {
-                          setFormData(prev => ({ ...prev, target: value }));
-                        }
-                      }}
-                      className="flex-1 bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
-                      placeholder={formData.type === "financial" ? "e.g., 10k or 10000" : "Enter target"}
-                    />
-                    <input
-                      type="text"
-                      value={formData.unit}
-                      onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
-                      className="w-20 bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
-                      placeholder={GOAL_TYPES.find(t => t.value === formData.type)?.unit || "unit"}
-                    />
-                  </div>
-                  {formData.type === "financial" && formData.target && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      {parseValue(formData.target).toLocaleString()} {formData.unit || "$"}
-                    </p>
-                  )}
-                </div>
-                {formData.goalType === "long-term" && (
-                  <div>
-                    <label className="block text-sm font-semibold mb-2 text-gray-300">When is it to be completed by?</label>
-                    <input
-                      type="date"
-                      value={formData.targetDate}
-                      onChange={(e) => setFormData(prev => ({ ...prev, targetDate: e.target.value }))}
-                      className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
-                      min={new Date().toISOString().split("T")[0]}
-                    />
-                  </div>
-                )}
-                {!editingGoal && (
-                  <div>
-                    <label className="block text-sm font-semibold mb-2 text-gray-300">Current progress (optional)</label>
-                    <input
-                      type="text"
-                      value={formData.current}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        // Allow numbers, k, K, and decimal point
-                        if (value === "" || /^[\d.]*[kK]?$/.test(value)) {
-                          setFormData(prev => ({ ...prev, current: value }));
-                        }
-                      }}
-                      className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
-                      placeholder={formData.type === "financial" ? "e.g., 5k or 5000" : "Enter current progress"}
-                    />
-                    {formData.type === "financial" && formData.current && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        {parseValue(formData.current).toLocaleString()} {formData.unit || "$"}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-
-            <div className="flex gap-3">
-              <button
-                onClick={editingGoal ? handleUpdateGoal : handleAddGoal}
-                disabled={!formData.type || !formData.target || (formData.goalType === "long-term" && !formData.targetDate)}
-                className="flex-1 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-black"
-              >
-                {editingGoal ? "Update" : "Add Goal"}
-              </button>
-              <button
-                onClick={() => {
-                  setShowAddForm(false);
-                  setEditingGoal(null);
-                  setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
-                }}
-                className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-semibold transition-all text-white"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Progress Update Modal */}
-      {showProgressModal && selectedGoalForProgress && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-6 max-w-md w-full border border-white/10">
-            <h3 className="text-xl font-bold text-white mb-2">Update Progress</h3>
-            <p className="text-sm text-gray-400 mb-4">{selectedGoalForProgress.title}</p>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-300">
-                  Current: {selectedGoalForProgress.current}{selectedGoalForProgress.unit} / Target: {selectedGoalForProgress.target}{selectedGoalForProgress.unit}
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2 text-gray-300">New progress value</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={progressValue}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Allow numbers, k, K, and decimal point
-                      if (value === "" || /^[\d.]*[kK]?$/.test(value)) {
-                        setProgressValue(value);
-                      }
-                    }}
-                    className="flex-1 bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
-                    placeholder="Enter value"
-                    autoFocus
-                  />
-                  <span className="text-gray-400">{selectedGoalForProgress.unit}</span>
-                </div>
-                {selectedGoalForProgress.type === "financial" && progressValue && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    {parseValue(progressValue).toLocaleString()} {selectedGoalForProgress.unit}
-                  </p>
-                )}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={handleSaveProgress}
-                  className="flex-1 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 text-black"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => {
-                    setShowProgressModal(false);
-                    setSelectedGoalForProgress(null);
-                    setProgressValue("");
-                  }}
-                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-semibold transition-all text-white"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Goals List */}
-      <div className="mb-6 flex-1">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Your Goals</h2>
-          {allGoals.length > 0 && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setGoalTypeFilter("all")}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  goalTypeFilter === "all"
-                    ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black"
-                    : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setGoalTypeFilter("daily")}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  goalTypeFilter === "daily"
-                    ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black"
-                    : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
-                }`}
-              >
-                Daily
-              </button>
-              <button
-                onClick={() => setGoalTypeFilter("long-term")}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  goalTypeFilter === "long-term"
-                    ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black"
-                    : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
-                }`}
-              >
-                Long-term
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="space-y-2">
-          {allGoals.length > 0 ? (
-            allGoals
-              .filter((goal) => {
-                if (goalTypeFilter === "all") return true;
-                if (goalTypeFilter === "daily") return goal.goalType === "daily";
-                if (goalTypeFilter === "long-term") return goal.goalType === "long-term";
-                return true;
-              })
-              .map((goal) => (
-              <div key={goal.id} className="relative">
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
+            
+            <div className="space-y-3">
+              {dailyGoals.length > 0 ? (
+                dailyGoals.slice(0, 4).map((goal) => {
+                  const isCompleted = goal.current >= goal.target;
+                  return (
                     <div
-                      onClick={() => {
-                        if (!isEditing) {
-                          handleOpenProgressModal(goal);
-                        }
-                      }}
-                      className="cursor-pointer"
+                      key={goal.id}
+                      className="flex items-center gap-3 p-4 bg-black/60 rounded-xl"
                     >
-                      <GoalProgressCard
-                        title={goal.title}
-                        current={goal.current}
-                        target={goal.target}
-                        unit={goal.unit}
-                        targetDate={goal.targetDate}
-                        onClick={() => {}}
-                      />
-                    </div>
-                  </div>
-                  {isEditing && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleToggleSelection(goal.id)}
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                          selectedGoalIds.includes(goal.id)
-                            ? "bg-green-500 border-green-500"
-                            : "border-gray-500"
+                      <CheckCircle2 
+                        className={`w-6 h-6 flex-shrink-0 ${
+                          isCompleted ? "text-cyan-400" : "text-gray-600"
                         }`}
-                      >
-                        {selectedGoalIds.includes(goal.id) && (
-                          <Check className="w-4 h-4 text-white" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => handleEditGoal(goal)}
-                        className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded transition-colors flex-shrink-0"
-                      >
-                        <Edit2 className="w-4 h-4 text-white" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteGoal(goal.id)}
-                        className="p-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/50 rounded transition-colors flex-shrink-0"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-400" />
-                      </button>
+                      />
+                      <span className="flex-1 text-white text-base">
+                        {goal.title}
+                      </span>
                     </div>
-                  )}
+                  );
+                })
+              ) : (
+                <div className="p-4 bg-black/60 rounded-xl text-gray-400 text-center">
+                  No daily goals yet. <Link href="/goals" className="text-cyan-400 hover:underline">Add one</Link>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Scheduled Goals Section */}
+          <div className="bg-white/5 rounded-2xl p-5">
+            <h2 className="text-xl font-semibold text-white mb-4">Scheduled Goals</h2>
+            
+            <div className="space-y-3">
+              {/* Weekly Goals Card */}
+              <div className="p-4 bg-black/60 rounded-xl">
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-base font-semibold text-white">Weekly Goals</h3>
+                  <p className="text-sm text-gray-400">
+                    {weeklyProgress.completed > 0 
+                      ? `${weeklyProgress.completed} / ${weeklyProgress.total} completed`
+                      : weeklyGoals.length > 0 
+                        ? getNextWeeklyGoal()
+                        : "No weekly goals"}
+                  </p>
+                  <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
+                    <div
+                      className="bg-cyan-400 h-2 rounded-full transition-all"
+                      style={{ width: `${weeklyProgress.progress * 100}%` }}
+                    />
+                  </div>
                 </div>
               </div>
-            ))
-          ) : (
-            <p className="text-gray-500 text-center py-8">No goals yet. Click "Add" to create one.</p>
-          )}
+
+              {/* Monthly Goals Card */}
+              <div className="p-4 bg-black/60 rounded-xl">
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-base font-semibold text-white">Monthly Goals</h3>
+                  <p className="text-sm text-gray-400">
+                    {monthlyProgress.completed > 0
+                      ? `${monthlyProgress.completed} / ${monthlyProgress.total} completed`
+                      : monthlyGoals.length > 0
+                        ? getNextMonthlyGoal()
+                        : "No monthly goals"}
+                  </p>
+                  <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
+                    <div
+                      className="bg-cyan-400 h-2 rounded-full transition-all"
+                      style={{ width: `${monthlyProgress.progress * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Long-Term Goals Card */}
+              <div className="p-4 bg-black/60 rounded-xl">
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-base font-semibold text-white">Long-Term Goals</h3>
+                  <p className="text-sm text-gray-400">
+                    {longTermProgress.completed > 0
+                      ? `${longTermProgress.completed} / ${longTermProgress.total} completed`
+                      : longTermGoals.length > 0
+                        ? getNextLongTermGoal()
+                        : "No long-term goals"}
+                  </p>
+                  <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
+                    <div
+                      className="bg-cyan-400 h-2 rounded-full transition-all"
+                      style={{ width: `${longTermProgress.progress * 100}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        {isEditing && (
-          <p className="text-sm text-gray-400 mt-4">
-            Select goals to show on the home screen ({selectedGoalIds.length} selected)
-          </p>
-        )}
       </div>
 
       <BottomNav />
