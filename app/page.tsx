@@ -1,569 +1,661 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { 
-  Target, Calendar, CheckCircle2, Info, 
-  ChevronRight, Dumbbell, Scale, TrendingUp, TrendingDown,
-  FileText, Zap
-} from "lucide-react";
+import GoalProgressCard from "@/components/GoalProgressCard";
+import { Edit2, Check, X, Plus, Trash2 } from "lucide-react";
+
+interface Goal {
+  id: string;
+  type: string; // "financial", "fitness", "health", "learning", "other"
+  goalType: "daily" | "long-term"; // Daily or long-term goal
+  title: string;
+  current: number;
+  target: number;
+  unit: string;
+  targetDate: string; // ISO date string (only for long-term goals)
+  lastUpdated?: string; // ISO date string for daily goals to track when they reset
+}
+
+const GOAL_TYPES = [
+  { value: "financial", label: "Financial", question: "How much are you planning on making?", unit: "$" },
+  { value: "fitness", label: "Fitness", question: "What's your fitness target?", unit: "kg" },
+  { value: "health", label: "Health", question: "What's your health goal?", unit: "" },
+  { value: "learning", label: "Learning", question: "What do you want to learn?", unit: "hours" },
+  { value: "other", label: "Other", question: "What's your goal?", unit: "" },
+];
 
 export default function Home() {
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [today] = useState(new Date());
+  const [isEditing, setIsEditing] = useState(false);
+  const [allGoals, setAllGoals] = useState<Goal[]>([]);
+  const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [selectedGoalForProgress, setSelectedGoalForProgress] = useState<Goal | null>(null);
+  const [progressValue, setProgressValue] = useState("");
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [goalTypeFilter, setGoalTypeFilter] = useState<"daily" | "long-term" | "all">("all");
+  const [formData, setFormData] = useState({
+    goalType: "long-term" as "daily" | "long-term",
+    type: "",
+    title: "",
+    current: "",
+    target: "",
+    unit: "",
+    targetDate: "",
+  });
 
-  // Get streak count
-  const streakCount = useMemo(() => {
-    if (typeof window === "undefined") return 0;
-    let streak = 0;
-    const todayDate = new Date();
-    todayDate.setHours(0, 0, 0, 0);
-    
-    for (let i = 0; i < 30; i++) {
-      const date = new Date(todayDate);
-      date.setDate(todayDate.getDate() - i);
-      const dateStr = date.toISOString().split("T")[0];
-      const completed = localStorage.getItem(`workout_${dateStr}`) === "completed" || 
-                       (localStorage.getItem(`workout_${dateStr}`) && localStorage.getItem(`workout_${dateStr}`) !== "null");
-      
-      if (completed) {
-        streak++;
-      } else if (i === 0) {
-        break;
-      }
-    }
-    
-    return streak;
-  }, [refreshTrigger]);
-
-  // Get workout recommendation (determine which muscle groups to train)
-  const workoutRecommendation = useMemo(() => {
-    if (typeof window === "undefined") return { muscleGroups: "CHEST & TRICEPS", time: 42, recovered: true, fatigueRisk: "Low" };
-    
-    // Simple logic: if no workout in 3+ days, recommend chest & triceps
-    const todayDate = new Date();
-    todayDate.setHours(0, 0, 0, 0);
-    let daysSinceLast = null;
-    
-    for (let i = 0; i < 30; i++) {
-      const date = new Date(todayDate);
-      date.setDate(todayDate.getDate() - i);
-      const dateStr = date.toISOString().split("T")[0];
-      const completed = localStorage.getItem(`workout_${dateStr}`) === "completed" || 
-                       (localStorage.getItem(`workout_${dateStr}`) && localStorage.getItem(`workout_${dateStr}`) !== "null");
-      
-      if (completed) {
-        daysSinceLast = i;
-        break;
-      }
-    }
-    
-    return {
-      muscleGroups: "CHEST & TRICEPS",
-      time: 42,
-      recovered: daysSinceLast === null || daysSinceLast >= 3,
-      fatigueRisk: "Low"
-    };
-  }, [refreshTrigger]);
-
-  // Get body recovery stats
-  const recoveryStats = useMemo(() => {
-    if (typeof window === "undefined") return { daysSinceChest: 3, recovered: true, estFat: 45, muscleGroupsRecovered: 5 };
-    
-    const todayDate = new Date();
-    todayDate.setHours(0, 0, 0, 0);
-    let daysSinceChest = 3; // Default
-    
-    for (let i = 0; i < 30; i++) {
-      const date = new Date(todayDate);
-      date.setDate(todayDate.getDate() - i);
-      const dateStr = date.toISOString().split("T")[0];
-      const completed = localStorage.getItem(`workout_${dateStr}`) === "completed" || 
-                       (localStorage.getItem(`workout_${dateStr}`) && localStorage.getItem(`workout_${dateStr}`) !== "null");
-      
-      if (completed) {
-        daysSinceChest = i;
-        break;
-      }
-    }
-    
-    return {
-      daysSinceChest: daysSinceChest >= 3 ? 3 : daysSinceChest,
-      recovered: daysSinceChest >= 3,
-      estFat: 45,
-      muscleGroupsRecovered: 5
-    };
-  }, [refreshTrigger]);
-
-  // Get today's goals
-  const todayGoals = useMemo(() => {
-    if (typeof window === "undefined") return [];
-    const storedGoals = localStorage.getItem("goals");
-    if (!storedGoals) return [];
-    
-    try {
-      const goals = JSON.parse(storedGoals);
-      // Return first 3 goals with progress
-      return goals.slice(0, 3).map((goal: any) => {
-        const percentage = goal.target > 0 
-          ? Math.min(Math.round((goal.current / goal.target) * 100), 100)
-          : 0;
-        return { ...goal, percentage };
-      });
-    } catch (e) {
-      return [];
-    }
-  }, [refreshTrigger]);
-
-  // Get readiness score and weight change
-  const readinessData = useMemo(() => {
-    if (typeof window === "undefined") return { score: 78, change: 6, weightChange: -1.2 };
-    
-    // Calculate readiness based on recent workouts, recovery, etc.
-    const score = 78; // Default
-    const change = 6; // +6%
-    
-    // Get weight change
-    const weightEntries = localStorage.getItem("weightEntries");
-    let weightChange = 0;
-    if (weightEntries) {
-      try {
-        const entries = JSON.parse(weightEntries);
-        if (entries.length >= 2) {
-          const sorted = entries.sort((a: any, b: any) => 
-            new Date(b.date).getTime() - new Date(a.date).getTime()
-          );
-          weightChange = sorted[0].weight - sorted[1].weight;
-        }
-      } catch (e) {}
-    }
-    
-    return { score, change, weightChange: weightChange !== 0 ? weightChange : -1.2 };
-  }, [refreshTrigger]);
-
-  // Refresh data periodically
+  // Load goals from localStorage and reset daily goals if needed
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const interval = setInterval(() => {
-      setRefreshTrigger(prev => prev + 1);
-    }, 30000);
-    return () => clearInterval(interval);
+    
+    const storedGoals = localStorage.getItem("goals");
+    if (storedGoals) {
+      try {
+        const goals = JSON.parse(storedGoals);
+        const todayStr = new Date().toISOString().split("T")[0];
+        
+        // Reset daily goals if it's a new day
+        const updatedGoals = goals.map((goal: Goal) => {
+          if (goal.goalType === "daily" && goal.lastUpdated !== todayStr) {
+            return { ...goal, current: 0, lastUpdated: todayStr };
+          }
+          return goal;
+        });
+        
+        // Only update if there were changes
+        const hasChanges = updatedGoals.some((g: Goal, i: number) => 
+          g.current !== goals[i]?.current || g.lastUpdated !== goals[i]?.lastUpdated
+        );
+        
+        if (hasChanges) {
+          setAllGoals(updatedGoals);
+          localStorage.setItem("goals", JSON.stringify(updatedGoals));
+        } else {
+          setAllGoals(goals);
+        }
+      } catch (e) {
+        setAllGoals([]);
+      }
+    }
+
+    // Load selected goals for home screen
+    const storedSelected = localStorage.getItem("selectedGoalsForHome");
+    if (storedSelected) {
+      try {
+        const selected = JSON.parse(storedSelected);
+        setSelectedGoalIds(selected);
+      } catch (e) {
+        setSelectedGoalIds([]);
+      }
+    }
   }, []);
 
-  // Body diagram component - TEMPORARY: High-quality SVG placeholder
-  // TODO: Replace with actual PNG/WebP image asset at /public/body-diagram.png
-  // This SVG is a realistic placeholder until the proper image asset is added
-  const BodyDiagram = ({ highlightChest = true }: { highlightChest?: boolean }) => {
-    const [imageError, setImageError] = useState(false);
-    
-    // Try to load the image first
-    if (!imageError) {
-      return (
-        <div className="relative w-[120px] h-[200px] flex-shrink-0 flex items-center justify-center">
-          <img
-            src="/body-diagram.png"
-            alt="Body diagram"
-            className="w-full h-full object-contain"
-            style={{
-              filter: highlightChest 
-                ? 'drop-shadow(0 0 12px rgba(255, 68, 68, 0.4)) drop-shadow(0 0 6px rgba(255, 153, 153, 0.3))'
-                : 'drop-shadow(0 0 4px rgba(0, 0, 0, 0.3))',
-              transition: 'filter 0.3s ease'
-            } as React.CSSProperties}
-            onError={() => setImageError(true)}
-          />
-        </div>
-      );
-    }
-    
-    // High-quality realistic SVG placeholder with proper anatomy
-    const baseColor = "#2a2a2a";
-    const darkBase = "#1f1f1f";
-    const lightRed = highlightChest ? "#ff9999" : baseColor;
-    const darkRed = highlightChest ? "#ff4444" : baseColor;
-    const chestColor = highlightChest ? "#ff8888" : baseColor;
-    
-    return (
-      <div className="relative w-[120px] h-[200px] flex-shrink-0 flex items-center justify-center">
-        <svg width="120" height="200" viewBox="0 0 120 200" className="w-full h-full">
-          <defs>
-            {/* Gradients for realistic shading */}
-            <linearGradient id="chestGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={highlightChest ? "#ffaaaa" : baseColor} />
-              <stop offset="50%" stopColor={chestColor} />
-              <stop offset="100%" stopColor={highlightChest ? "#ff6666" : darkBase} />
-            </linearGradient>
-            <linearGradient id="armGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor={highlightChest ? "#ff5555" : baseColor} />
-              <stop offset="50%" stopColor={darkRed} />
-              <stop offset="100%" stopColor={highlightChest ? "#ff3333" : darkBase} />
-            </linearGradient>
-            <linearGradient id="absGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={highlightChest ? "#ffaaaa" : baseColor} />
-              <stop offset="30%" stopColor={lightRed} />
-              <stop offset="70%" stopColor={lightRed} />
-              <stop offset="100%" stopColor={highlightChest ? "#ff6666" : darkBase} />
-            </linearGradient>
-            <radialGradient id="shoulderGrad" cx="50%" cy="30%">
-              <stop offset="0%" stopColor="#3a3a3a" />
-              <stop offset="100%" stopColor={baseColor} />
-            </radialGradient>
-          </defs>
-          
-          {/* Head - rounded, realistic */}
-          <ellipse cx="60" cy="15" rx="14" ry="18" fill={baseColor} />
-          <ellipse cx="60" cy="18" rx="10" ry="12" fill="#252525" opacity="0.6" />
-          
-          {/* Neck - with subtle shading */}
-          <rect x="54" y="33" width="12" height="10" rx="2" fill={baseColor} />
-          <rect x="56" y="35" width="8" height="6" fill="#252525" opacity="0.4" />
-          
-          {/* Shoulders - realistic shape with gradient */}
-          <ellipse cx="42" cy="48" rx="12" ry="8" fill="url(#shoulderGrad)" />
-          <ellipse cx="78" cy="48" rx="12" ry="8" fill="url(#shoulderGrad)" />
-          
-          {/* Chest - highlighted with gradient when fresh */}
-          <ellipse cx="60" cy="62" rx="22" ry="16" fill="url(#chestGrad)" />
-          <ellipse cx="60" cy="60" rx="18" ry="12" fill={chestColor} opacity="0.7" />
-          {/* Chest definition lines */}
-          {highlightChest && (
-            <>
-              <line x1="50" y1="58" x2="70" y2="58" stroke="#ffaaaa" strokeWidth="0.5" opacity="0.4" />
-              <line x1="50" y1="62" x2="70" y2="62" stroke="#ffaaaa" strokeWidth="0.5" opacity="0.4" />
-            </>
-          )}
-          
-          {/* Biceps - upper arm, highlighted */}
-          <ellipse cx="32" cy="62" rx="6" ry="18" fill="url(#armGrad)" />
-          <ellipse cx="88" cy="62" rx="6" ry="18" fill="url(#armGrad)" />
-          {/* Bicep peak highlight */}
-          {highlightChest && (
-            <>
-              <ellipse cx="32" cy="58" rx="4" ry="6" fill="#ff6666" opacity="0.6" />
-              <ellipse cx="88" cy="58" rx="4" ry="6" fill="#ff6666" opacity="0.6" />
-            </>
-          )}
-          
-          {/* Triceps - back of arm */}
-          <ellipse cx="32" cy="82" rx="5" ry="14" fill="url(#armGrad)" />
-          <ellipse cx="88" cy="82" rx="5" ry="14" fill="url(#armGrad)" />
-          
-          {/* Forearms - dark grey, not highlighted */}
-          <ellipse cx="32" cy="100" rx="4" ry="16" fill={baseColor} />
-          <ellipse cx="88" cy="100" rx="4" ry="16" fill={baseColor} />
-          <ellipse cx="32" cy="102" rx="3" ry="12" fill="#252525" opacity="0.5" />
-          <ellipse cx="88" cy="102" rx="3" ry="12" fill="#252525" opacity="0.5" />
-          
-          {/* Abs/Six-pack - highlighted with gradient */}
-          <rect x="48" y="80" width="24" height="24" rx="3" fill="url(#absGrad)" />
-          {/* Six-pack definition - realistic lines */}
-          {highlightChest ? (
-            <>
-              <line x1="52" y1="86" x2="68" y2="86" stroke="#ffaaaa" strokeWidth="0.8" opacity="0.5" />
-              <line x1="52" y1="92" x2="68" y2="92" stroke="#ffaaaa" strokeWidth="0.8" opacity="0.5" />
-              <line x1="52" y1="98" x2="68" y2="98" stroke="#ffaaaa" strokeWidth="0.8" opacity="0.5" />
-              <line x1="60" y1="80" x2="60" y2="104" stroke="#ffaaaa" strokeWidth="0.8" opacity="0.5" />
-            </>
-          ) : (
-            <>
-              <line x1="52" y1="86" x2="68" y2="86" stroke="#444" strokeWidth="0.5" opacity="0.3" />
-              <line x1="52" y1="92" x2="68" y2="92" stroke="#444" strokeWidth="0.5" opacity="0.3" />
-              <line x1="52" y1="98" x2="68" y2="98" stroke="#444" strokeWidth="0.5" opacity="0.3" />
-              <line x1="60" y1="80" x2="60" y2="104" stroke="#444" strokeWidth="0.5" opacity="0.3" />
-            </>
-          )}
-          
-          {/* Waist/Hips */}
-          <ellipse cx="60" cy="108" rx="20" ry="8" fill={baseColor} />
-          <ellipse cx="60" cy="110" rx="16" ry="6" fill="#252525" opacity="0.4" />
-          
-          {/* Quadriceps/Thighs - highlighted */}
-          <ellipse cx="52" cy="135" rx="7" ry="28" fill={highlightChest ? darkRed : baseColor} />
-          <ellipse cx="68" cy="135" rx="7" ry="28" fill={highlightChest ? darkRed : baseColor} />
-          {/* Quad definition */}
-          {highlightChest && (
-            <>
-              <ellipse cx="52" cy="130" rx="5" ry="8" fill="#ff5555" opacity="0.5" />
-              <ellipse cx="68" cy="130" rx="5" ry="8" fill="#ff5555" opacity="0.5" />
-            </>
-          )}
-          
-          {/* Lower legs - dark grey */}
-          <ellipse cx="52" cy="170" rx="6" ry="28" fill={baseColor} />
-          <ellipse cx="68" cy="170" rx="6" ry="28" fill={baseColor} />
-          <ellipse cx="52" cy="172" rx="4" ry="22" fill="#252525" opacity="0.5" />
-          <ellipse cx="68" cy="172" rx="4" ry="22" fill="#252525" opacity="0.5" />
-          
-          {/* Feet */}
-          <ellipse cx="52" cy="200" rx="5" ry="8" fill={baseColor} />
-          <ellipse cx="68" cy="200" rx="5" ry="8" fill={baseColor} />
-        </svg>
-      </div>
-    );
+  const handleSave = () => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("selectedGoalsForHome", JSON.stringify(selectedGoalIds));
+    setIsEditing(false);
   };
 
-  // Circular readiness gauge component
-  const ReadinessGauge = ({ score, percentage }: { score: number; percentage: number }) => {
-    const radius = 35;
-    const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (percentage / 100) * circumference;
+  const handleToggleSelection = (goalId: string) => {
+    if (selectedGoalIds.includes(goalId)) {
+      setSelectedGoalIds(prev => prev.filter(id => id !== goalId));
+    } else {
+      setSelectedGoalIds(prev => [...prev, goalId]);
+    }
+  };
+
+  // Helper function to parse value with "k" notation
+  const parseValue = (value: string): number => {
+    if (!value || value.trim() === "") return 0;
+    const trimmed = value.trim().toLowerCase();
+    if (trimmed.endsWith("k")) {
+      const num = parseFloat(trimmed.slice(0, -1));
+      return isNaN(num) ? 0 : num * 1000;
+    }
+    const num = parseFloat(trimmed);
+    return isNaN(num) ? 0 : num;
+  };
+
+  const handleAddGoal = () => {
+    if (!formData.type || !formData.target) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    // Long-term goals require a target date
+    if (formData.goalType === "long-term" && !formData.targetDate) {
+      alert("Please select a target date for long-term goals");
+      return;
+    }
+
+    const goalType = GOAL_TYPES.find(t => t.value === formData.type);
+    const unit = formData.unit || goalType?.unit || "";
+    const targetValue = parseValue(formData.target);
+    const currentValue = parseValue(formData.current);
+
+    if (targetValue <= 0) {
+      alert("Target must be greater than 0");
+      return;
+    }
+
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    const newGoal: Goal = {
+      id: `goal_${Date.now()}`,
+      type: formData.type,
+      goalType: formData.goalType,
+      title: formData.title || goalType?.label || "Goal",
+      current: currentValue,
+      target: targetValue,
+      unit: unit,
+      targetDate: formData.goalType === "daily" ? "" : formData.targetDate,
+      lastUpdated: formData.goalType === "daily" ? todayStr : undefined,
+    };
+
+    const updatedGoals = [...allGoals, newGoal];
+    setAllGoals(updatedGoals);
+    localStorage.setItem("goals", JSON.stringify(updatedGoals));
     
-    return (
-      <div className="relative w-24 h-24">
-        <svg className="transform -rotate-90" width="96" height="96">
-          {/* Background circle */}
-          <circle
-            cx="48"
-            cy="48"
-            r={radius}
-            stroke="#1a1a1a"
-            strokeWidth="6"
-            fill="none"
-          />
-          {/* Progress circle with gradient */}
-          <defs>
-            <linearGradient id="readinessGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#ff4444" />
-              <stop offset="100%" stopColor="#ff9999" />
-            </linearGradient>
-          </defs>
-          <circle
-            cx="48"
-            cy="48"
-            r={radius}
-            stroke="url(#readinessGradient)"
-            strokeWidth="6"
-            fill="none"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            strokeLinecap="round"
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className="text-2xl font-bold text-white">{score}</div>
-          <div className="text-[10px] text-[#888] mt-0.5">Readiness Score</div>
-        </div>
-      </div>
+    setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
+    setShowAddForm(false);
+  };
+
+  const handleEditGoal = (goal: Goal) => {
+    setEditingGoal(goal);
+    setFormData({
+      goalType: goal.goalType || "long-term",
+      type: goal.type || "",
+      title: goal.title,
+      current: goal.current > 0 ? goal.current.toString() : "",
+      target: goal.target > 0 ? goal.target.toString() : "",
+      unit: goal.unit,
+      targetDate: goal.targetDate || "",
+    });
+    setShowAddForm(true);
+  };
+
+  const handleUpdateGoal = () => {
+    if (!editingGoal || !formData.type || !formData.target) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    // Long-term goals require a target date
+    if (formData.goalType === "long-term" && !formData.targetDate) {
+      alert("Please select a target date for long-term goals");
+      return;
+    }
+
+    const goalType = GOAL_TYPES.find(t => t.value === formData.type);
+    const unit = formData.unit || goalType?.unit || "";
+    const targetValue = parseValue(formData.target);
+    const currentValue = parseValue(formData.current);
+
+    if (targetValue <= 0) {
+      alert("Target must be greater than 0");
+      return;
+    }
+
+    const updatedGoals = allGoals.map(g =>
+      g.id === editingGoal.id
+        ? {
+            ...g,
+            type: formData.type,
+            goalType: formData.goalType,
+            title: formData.title || goalType?.label || "Goal",
+            current: currentValue,
+            target: targetValue,
+            unit: unit,
+            targetDate: formData.goalType === "daily" ? "" : formData.targetDate,
+          }
+        : g
     );
+
+    setAllGoals(updatedGoals);
+    localStorage.setItem("goals", JSON.stringify(updatedGoals));
+    
+    setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
+    setEditingGoal(null);
+    setShowAddForm(false);
+  };
+
+  const handleOpenProgressModal = (goal: Goal) => {
+    setSelectedGoalForProgress(goal);
+    setProgressValue(goal.current > 0 ? goal.current.toString() : "");
+    setShowProgressModal(true);
+  };
+
+  const handleSaveProgress = () => {
+    if (!selectedGoalForProgress || !progressValue) return;
+    
+    const newCurrent = parseValue(progressValue);
+    if (newCurrent < 0) {
+      alert("Please enter a valid number");
+      return;
+    }
+
+    handleUpdateProgress(selectedGoalForProgress.id, newCurrent);
+    setShowProgressModal(false);
+    setSelectedGoalForProgress(null);
+    setProgressValue("");
+  };
+
+  const handleDeleteGoal = (goalId: string) => {
+    if (confirm("Are you sure you want to delete this goal?")) {
+      const updatedGoals = allGoals.filter(g => g.id !== goalId);
+      setAllGoals(updatedGoals);
+      localStorage.setItem("goals", JSON.stringify(updatedGoals));
+      
+      // Remove from selected if it was selected
+      setSelectedGoalIds(prev => prev.filter(id => id !== goalId));
+    }
+  };
+
+  const handleUpdateProgress = (goalId: string, newCurrent: number) => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const updatedGoals = allGoals.map(g => {
+      if (g.id === goalId) {
+        const updated = { ...g, current: Math.max(0, Math.min(newCurrent, g.target)) };
+        // Update lastUpdated for daily goals
+        if (g.goalType === "daily") {
+          updated.lastUpdated = todayStr;
+        }
+        return updated;
+      }
+      return g;
+    });
+    setAllGoals(updatedGoals);
+    localStorage.setItem("goals", JSON.stringify(updatedGoals));
   };
 
   return (
-    <main className="min-h-screen bg-black text-white px-4 pt-4 pb-24">
-      {/* Top Header */}
-      <header className="mb-6">
-        <div className="flex items-start justify-between mb-2">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-1">Stay Locked In</h1>
-            <p className="text-sm text-white/80">
-              You're on a {streakCount}-day streak <ChevronRight className="w-4 h-4 inline" />
-            </p>
-          </div>
-          <div className="flex gap-4">
-            <Link href="/goals" className="flex flex-col items-center">
-              <div className="w-10 h-10 rounded-full bg-[#1a1a1a] flex items-center justify-center mb-1 border border-[#2a2a2a]">
-                <Target className="w-5 h-5 text-[#ff4444]" />
-              </div>
-              <span className="text-[10px] text-[#888]">Goals</span>
-            </Link>
-            <Link href="/reflections" className="flex flex-col items-center">
-              <div className="w-10 h-10 rounded-full bg-[#1a1a1a] flex items-center justify-center mb-1 border border-[#2a2a2a]">
-                <FileText className="w-5 h-5 text-[#ff4444]" />
-              </div>
-              <span className="text-[10px] text-[#888]">Reflection</span>
-            </Link>
-          </div>
+    <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white p-6 flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Goals</h1>
+        <div className="flex items-center gap-2">
+          {!isEditing && (
+            <>
+              <button
+                onClick={() => {
+                  setShowAddForm(!showAddForm);
+                  setEditingGoal(null);
+                  setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 text-black font-semibold"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add</span>
+              </button>
+              <button
+                onClick={() => setIsEditing(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors"
+              >
+                <Edit2 className="w-4 h-4" />
+                <span>Edit</span>
+              </button>
+            </>
+          )}
+          {isEditing && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsEditing(false)}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleSave}
+                className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
-      </header>
+      </div>
 
-      <div className="space-y-4">
-        {/* Today's Recommendation Card */}
-        <div className="bg-gradient-to-br from-[#0a0a0a] via-[#1a1a1a] to-[#0a0a0a] rounded-2xl p-5 border border-[#2a2a2a] relative overflow-hidden">
-          {/* Subtle gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#ff4444]/5 to-transparent pointer-events-none" />
-          
-          <div className="relative z-10">
-            <h2 className="text-sm font-medium text-[#888] mb-4">Today's Recommendation</h2>
-            
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-3">
-                  <Dumbbell className="w-5 h-5 text-[#ff4444]" />
-                  <span className="text-xl font-bold text-white">{workoutRecommendation.muscleGroups}</span>
-                </div>
-                
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${workoutRecommendation.recovered ? 'bg-green-500' : 'bg-gray-500'}`} />
-                    <span className="text-white">Fully Recovered</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-green-500" />
-                    <span className="text-white">Fst: time: {workoutRecommendation.time} min</span>
-                    <Info className="w-3 h-3 text-[#888]" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-gray-500" />
-                    <span className="text-[#888]">Fatigue risk: {workoutRecommendation.fatigueRisk}</span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Body diagram on right - high-quality image asset */}
-              <div className="flex-shrink-0 ml-4 flex items-center justify-center">
-                <BodyDiagram highlightChest={workoutRecommendation.recovered} />
+      {/* Add/Edit Form */}
+      {showAddForm && (
+        <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-white/10 mb-6">
+          <h3 className="text-lg font-bold mb-4 bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
+            {editingGoal ? "Edit Goal" : "Add New Goal"}
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold mb-2 text-gray-300">Daily or Long-term goal?</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, goalType: "daily" }))}
+                  className={`flex-1 py-2 rounded-lg font-semibold transition-all ${
+                    formData.goalType === "daily"
+                      ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black shadow-lg shadow-teal-500/30"
+                      : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
+                  }`}
+                >
+                  Daily
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, goalType: "long-term" }))}
+                  className={`flex-1 py-2 rounded-lg font-semibold transition-all ${
+                    formData.goalType === "long-term"
+                      ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black shadow-lg shadow-teal-500/30"
+                      : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
+                  }`}
+                >
+                  Long-term
+                </button>
               </div>
             </div>
-            
-            {/* Action buttons */}
-            <div className="flex gap-3 mt-6">
-              <Link
-                href="/gym"
-                className="flex-1 bg-gradient-to-r from-[#ff4444] to-[#ff6666] text-white font-semibold py-3 px-4 rounded-xl text-center hover:from-[#ff5555] hover:to-[#ff7777] transition-all shadow-lg shadow-[#ff4444]/20"
+            <div>
+              <label className="block text-sm font-semibold mb-2 text-gray-300">What type of goal?</label>
+              <select
+                value={formData.type}
+                onChange={(e) => {
+                  const selectedType = GOAL_TYPES.find(t => t.value === e.target.value);
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    type: e.target.value,
+                    unit: selectedType?.unit || prev.unit
+                  }));
+                }}
+                className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
               >
-                Start Recommended Workout
-              </Link>
-              <button className="px-4 py-3 border border-[#2a2a2a] rounded-xl text-white text-sm font-medium hover:border-[#3a3a3a] transition-colors">
-                Change Plan
+                <option value="">Select goal type...</option>
+                {GOAL_TYPES.map(type => (
+                  <option key={type.value} value={type.value} className="bg-[#0c1422]">
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {formData.type && (
+              <>
+                {formData.type !== "financial" && (
+                  <div>
+                    <label className="block text-sm font-semibold mb-2 text-gray-300">
+                      {GOAL_TYPES.find(t => t.value === formData.type)?.question || "What's your goal?"}
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
+                      placeholder={formData.type === "fitness" ? "e.g., Lose 10kg" : "Enter your goal"}
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-semibold mb-2 text-gray-300">
+                    {formData.type === "financial" ? "How much are you planning on making?" : "What's your target?"}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={formData.target}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow numbers, k, K, and decimal point
+                        if (value === "" || /^[\d.]*[kK]?$/.test(value)) {
+                          setFormData(prev => ({ ...prev, target: value }));
+                        }
+                      }}
+                      className="flex-1 bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
+                      placeholder={formData.type === "financial" ? "e.g., 10k or 10000" : "Enter target"}
+                    />
+                    <input
+                      type="text"
+                      value={formData.unit}
+                      onChange={(e) => setFormData(prev => ({ ...prev, unit: e.target.value }))}
+                      className="w-20 bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
+                      placeholder={GOAL_TYPES.find(t => t.value === formData.type)?.unit || "unit"}
+                    />
+                  </div>
+                  {formData.type === "financial" && formData.target && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      {parseValue(formData.target).toLocaleString()} {formData.unit || "$"}
+                    </p>
+                  )}
+                </div>
+                {formData.goalType === "long-term" && (
+                  <div>
+                    <label className="block text-sm font-semibold mb-2 text-gray-300">When is it to be completed by?</label>
+                    <input
+                      type="date"
+                      value={formData.targetDate}
+                      onChange={(e) => setFormData(prev => ({ ...prev, targetDate: e.target.value }))}
+                      className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
+                      min={new Date().toISOString().split("T")[0]}
+                    />
+                  </div>
+                )}
+                {!editingGoal && (
+                  <div>
+                    <label className="block text-sm font-semibold mb-2 text-gray-300">Current progress (optional)</label>
+                    <input
+                      type="text"
+                      value={formData.current}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        // Allow numbers, k, K, and decimal point
+                        if (value === "" || /^[\d.]*[kK]?$/.test(value)) {
+                          setFormData(prev => ({ ...prev, current: value }));
+                        }
+                      }}
+                      className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
+                      placeholder={formData.type === "financial" ? "e.g., 5k or 5000" : "Enter current progress"}
+                    />
+                    {formData.type === "financial" && formData.current && (
+                      <p className="text-xs text-gray-400 mt-1">
+                        {parseValue(formData.current).toLocaleString()} {formData.unit || "$"}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={editingGoal ? handleUpdateGoal : handleAddGoal}
+                disabled={!formData.type || !formData.target || (formData.goalType === "long-term" && !formData.targetDate)}
+                className="flex-1 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-black"
+              >
+                {editingGoal ? "Update" : "Add Goal"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddForm(false);
+                  setEditingGoal(null);
+                  setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
+                }}
+                className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-semibold transition-all text-white"
+              >
+                Cancel
               </button>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Today's Goals */}
-        <div className="bg-[#0a0a0a] rounded-2xl p-5 border border-[#1a1a1a]">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-white">Today's Goals</h2>
-            <button className="text-xs text-[#888] hover:text-white transition-colors">
-              + Add Goal Based on Today <ChevronRight className="w-3 h-3 inline" />
-            </button>
-          </div>
-          
-          {todayGoals.length === 0 ? (
-            <div className="text-center py-6">
-              <p className="text-sm text-[#666] mb-2">No goals set for today</p>
-              <Link href="/goals" className="text-xs text-[#ff4444] hover:text-[#ff6666]">
-                + Add New Goal
-              </Link>
-            </div>
-          ) : (
+      {/* Progress Update Modal */}
+      {showProgressModal && selectedGoalForProgress && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-6 max-w-md w-full border border-white/10">
+            <h3 className="text-xl font-bold text-white mb-2">Update Progress</h3>
+            <p className="text-sm text-gray-400 mb-4">{selectedGoalForProgress.title}</p>
             <div className="space-y-4">
-              {todayGoals.map((goal: any, idx: number) => {
-                const iconColors = ["#ff4444", "#ffaa00", "#3b82f6"];
-                const icons = [Target, Dumbbell, Zap];
-                const Icon = icons[idx] || Target;
-                
-                // Format display value based on goal type
-                let displayValue = `${goal.percentage}%`;
-                if (goal.unit === "kg" && goal.target > 0) {
-                  displayValue = `${goal.current} / ${goal.target}`;
-                } else if (goal.title.toLowerCase().includes("train") && goal.target > 0) {
-                  displayValue = `${goal.current} / ${goal.target}`;
-                } else if (goal.title.toLowerCase().includes("step") && goal.target > 0) {
-                  const currentK = (goal.current / 1000).toFixed(1);
-                  const targetK = (goal.target / 1000).toFixed(0);
-                  displayValue = `${currentK}k / ${targetK}k`;
-                }
-                
-                return (
-                  <Link
-                    key={goal.id}
-                    href="/goals"
-                    className="block"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] flex items-center justify-center border border-[#2a2a2a]">
-                        <Icon className="w-4 h-4" style={{ color: iconColors[idx] || "#ff4444" }} />
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-white mb-2">{goal.title}</div>
-                        <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{
-                              width: `${goal.percentage}%`,
-                              background: `linear-gradient(to right, ${iconColors[idx] || "#ff4444"}, ${iconColors[idx] || "#ff4444"}dd)`
-                            }}
-                          />
-                        </div>
-                      </div>
-                      <div className="text-sm font-semibold text-white">
-                        {displayValue} <ChevronRight className="w-3 h-3 inline" />
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-              <Link
-                href="/goals"
-                className="block text-center text-xs text-[#888] hover:text-white transition-colors pt-2"
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-300">
+                  Current: {selectedGoalForProgress.current}{selectedGoalForProgress.unit} / Target: {selectedGoalForProgress.target}{selectedGoalForProgress.unit}
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2 text-gray-300">New progress value</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={progressValue}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow numbers, k, K, and decimal point
+                      if (value === "" || /^[\d.]*[kK]?$/.test(value)) {
+                        setProgressValue(value);
+                      }
+                    }}
+                    className="flex-1 bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-teal-400 text-white"
+                    placeholder="Enter value"
+                    autoFocus
+                  />
+                  <span className="text-gray-400">{selectedGoalForProgress.unit}</span>
+                </div>
+                {selectedGoalForProgress.type === "financial" && progressValue && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    {parseValue(progressValue).toLocaleString()} {selectedGoalForProgress.unit}
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSaveProgress}
+                  className="flex-1 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 text-black"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => {
+                    setShowProgressModal(false);
+                    setSelectedGoalForProgress(null);
+                    setProgressValue("");
+                  }}
+                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg font-semibold transition-all text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Goals List */}
+      <div className="mb-6 flex-1">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Your Goals</h2>
+          {allGoals.length > 0 && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setGoalTypeFilter("all")}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  goalTypeFilter === "all"
+                    ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black"
+                    : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
+                }`}
               >
-                + Add New Goal
-              </Link>
+                All
+              </button>
+              <button
+                onClick={() => setGoalTypeFilter("daily")}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  goalTypeFilter === "daily"
+                    ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black"
+                    : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
+                }`}
+              >
+                Daily
+              </button>
+              <button
+                onClick={() => setGoalTypeFilter("long-term")}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  goalTypeFilter === "long-term"
+                    ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black"
+                    : "bg-white/5 border border-white/10 text-white hover:bg-white/10"
+                }`}
+              >
+                Long-term
+              </button>
             </div>
           )}
         </div>
-
-        {/* Body Recovery */}
-        <div className="bg-[#0a0a0a] rounded-2xl p-5 border border-[#1a1a1a]">
-          <h2 className="text-base font-semibold text-white mb-4">Body Recovery</h2>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-white mb-1">
-                {recoveryStats.daysSinceChest} DAYS SINCE LAST CHEST WORKOUT
-              </div>
-              <div className="flex items-center gap-2 mb-1">
-                <div className={`w-2 h-2 rounded-full ${recoveryStats.recovered ? 'bg-green-500' : 'bg-gray-500'}`} />
-                <span className="text-sm text-white">Fully Recovered</span>
-              </div>
-              <div className="text-xs text-[#888]">Est. fat {recoveryStats.estFat}</div>
-            </div>
-            
-            <div className="text-right mr-4">
-              <div className="text-sm font-semibold text-white mb-1">
-                {recoveryStats.muscleGroupsRecovered} MUSCLE GROUPS RECOVERED
-              </div>
-            </div>
-            
-            {/* Body diagram - high-quality image asset */}
-            <div className="flex-shrink-0 flex items-center justify-center">
-              <BodyDiagram highlightChest={recoveryStats.recovered} />
-            </div>
-          </div>
-        </div>
-
-        {/* Readiness Score */}
-        <div className="bg-[#0a0a0a] rounded-2xl p-5 border border-[#1a1a1a]">
-          <div className="flex items-center gap-6">
-            {/* Circular gauge */}
-            <ReadinessGauge score={readinessData.score} percentage={78} />
-            
-            {/* Stats */}
-            <div className="flex-1 space-y-4">
-              <div>
-                <div className="text-lg font-bold text-white mb-0.5">
-                  {readinessData.change > 0 ? '+' : ''}{readinessData.change}%
+        <div className="space-y-2">
+          {allGoals.length > 0 ? (
+            allGoals
+              .filter((goal) => {
+                if (goalTypeFilter === "all") return true;
+                if (goalTypeFilter === "daily") return goal.goalType === "daily";
+                if (goalTypeFilter === "long-term") return goal.goalType === "long-term";
+                return true;
+              })
+              .map((goal) => (
+              <div key={goal.id} className="relative">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <div
+                      onClick={() => {
+                        if (!isEditing) {
+                          handleOpenProgressModal(goal);
+                        }
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <GoalProgressCard
+                        title={goal.title}
+                        current={goal.current}
+                        target={goal.target}
+                        unit={goal.unit}
+                        targetDate={goal.targetDate}
+                        onClick={() => {}}
+                      />
+                    </div>
+                  </div>
+                  {isEditing && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleSelection(goal.id)}
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                          selectedGoalIds.includes(goal.id)
+                            ? "bg-green-500 border-green-500"
+                            : "border-gray-500"
+                        }`}
+                      >
+                        {selectedGoalIds.includes(goal.id) && (
+                          <Check className="w-4 h-4 text-white" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleEditGoal(goal)}
+                        className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded transition-colors flex-shrink-0"
+                      >
+                        <Edit2 className="w-4 h-4 text-white" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteGoal(goal.id)}
+                        className="p-2 bg-red-600/20 hover:bg-red-600/30 border border-red-600/50 rounded transition-colors flex-shrink-0"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <div className="text-xs text-[#888]">Readiness Score</div>
               </div>
-              <div>
-                <div className="text-lg font-bold text-white mb-0.5">
-                  {readinessData.weightChange > 0 ? '+' : ''}{readinessData.weightChange.toFixed(1)} kg
-                </div>
-                <div className="text-xs text-[#888]">Body weight</div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Recommendation */}
-          <div className="mt-4 pt-4 border-t border-[#1a1a1a]">
-            <p className="text-sm text-white">Push intensity today</p>
-          </div>
+            ))
+          ) : (
+            <p className="text-gray-500 text-center py-8">No goals yet. Click "Add" to create one.</p>
+          )}
         </div>
+        {isEditing && (
+          <p className="text-sm text-gray-400 mt-4">
+            Select goals to show on the home screen ({selectedGoalIds.length} selected)
+          </p>
+        )}
       </div>
 
       <BottomNav />
-    </main>
+    </div>
   );
 }
