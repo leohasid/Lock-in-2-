@@ -85,6 +85,29 @@ export default function ConsultationPage() {
     try {
       const workoutData = getWorkoutData();
       
+      // Get today's reflection if available
+      const todayStr = new Date().toISOString().split("T")[0];
+      const storedReflection = localStorage.getItem(`reflection_${todayStr}`);
+      let reflectionContext = "";
+      
+      if (storedReflection) {
+        try {
+          const reflection = JSON.parse(storedReflection);
+          if (reflection.howWasDay || reflection.grateful || reflection.focusTomorrow) {
+            reflectionContext = `\n\n**Today's Reflection (user may want to discuss this):**
+- How was your day: ${reflection.howWasDay || "Not provided"}
+- Grateful for: ${reflection.grateful || "Not provided"}
+- Focus tomorrow: ${reflection.focusTomorrow || "Not provided"}
+- Time Management: ${reflection.timeManagement || 0}/3
+- Discipline: ${reflection.discipline || 0}/3
+- Energy: ${reflection.energy || 0}/3
+- Clarity: ${reflection.clarity || 0}/3`;
+          }
+        } catch (e) {
+          // Ignore if reflection parsing fails
+        }
+      }
+      
       // Try to extract context from conversation
       const lastFewMessages = messages.slice(-5).map(m => m.content).join(" ");
       const extractedGoal = consultationData.goal || (lastFewMessages.match(/goal.*?(?:build|muscle|lose|weight|strength|endurance|cardio)/i)?.[0] || "");
@@ -104,7 +127,7 @@ export default function ConsultationPage() {
 - Training Frequency: ${extractedFrequency || "not specified"}
 - Total Workouts Completed: ${workoutData.totalWorkouts || 0}
 - Workouts This Week: ${workoutData.workoutsThisWeek || 0}
-- Consistency Rate: ${workoutData.consistency || 0}%
+- Consistency Rate: ${workoutData.consistency || 0}%${reflectionContext}
 
 **Conversation History:**
 ${conversationHistory}
@@ -112,6 +135,7 @@ ${conversationHistory}
 **How to Respond:**
 - Answer questions naturally and conversationally
 - If asked about fitness/nutrition, use the user context above
+- If the user wants to discuss their day or reflection, reference their reflection data naturally
 - If asked about other topics, answer helpfully
 - Be engaging and personable - like talking to a knowledgeable friend
 - Provide detailed, thoughtful answers
@@ -139,8 +163,8 @@ Provide your response now:`;
       let response;
       try {
         response = await fetch(apiUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prompt }),
         });
         
