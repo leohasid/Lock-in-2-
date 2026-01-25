@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { 
-  Settings, Bell, CheckCircle2, Calendar, 
-  Check, Play, User
+  CheckCircle2, Calendar, 
+  Check, Play
 } from "lucide-react";
 
 interface Goal {
@@ -22,7 +22,6 @@ interface Goal {
 
 export default function Home() {
   const [allGoals, setAllGoals] = useState<Goal[]>([]);
-  const [selectedTab, setSelectedTab] = useState<"weekly" | "monthly" | "long-term">("weekly");
 
   // Load goals from localStorage
   useEffect(() => {
@@ -77,13 +76,6 @@ export default function Home() {
     return daysDiff <= 30 && daysDiff > 7;
   });
 
-  const getCurrentTabGoals = () => {
-    switch (selectedTab) {
-      case "weekly": return weeklyGoals;
-      case "monthly": return monthlyGoals;
-      case "long-term": return longTermGoals;
-    }
-  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -114,18 +106,8 @@ export default function Home() {
     <div className="min-h-screen bg-black text-white">
       <div className="max-w-md mx-auto pb-24">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 pt-4 pb-2">
-          <Settings className="w-6 h-6 text-white" />
-          <h1 className="text-lg font-semibold text-white">Goals Dashboard</h1>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Bell className="w-6 h-6 text-white" />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full" />
-            </div>
-            <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
-              <User className="w-5 h-5 text-white" />
-            </div>
-          </div>
+        <div className="px-4 pt-4 pb-2">
+          <h1 className="text-lg font-semibold text-white text-center">Goals Dashboard</h1>
         </div>
 
         {/* Slogan */}
@@ -192,7 +174,7 @@ export default function Home() {
 
           {/* Scheduled Goals Section */}
           <div className="bg-gray-900/50 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-4">
               <div className="relative">
                 <Calendar className="w-5 h-5 text-cyan-400" />
                 <Play className="w-3 h-3 text-white absolute -bottom-0.5 -right-0.5 bg-cyan-400 rounded-full" />
@@ -200,66 +182,90 @@ export default function Home() {
               <h2 className="text-lg font-semibold text-white">Scheduled Goals</h2>
             </div>
 
-            {/* Tabs */}
-            <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => setSelectedTab("weekly")}
-                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                  selectedTab === "weekly"
-                    ? "bg-cyan-400 text-black"
-                    : "bg-gray-800 text-white"
-                }`}
-              >
-                Weekly Goals
-              </button>
-              <button
-                onClick={() => setSelectedTab("monthly")}
-                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                  selectedTab === "monthly"
-                    ? "bg-cyan-400 text-black"
-                    : "bg-gray-800 text-white"
-                }`}
-              >
-                Monthly Goals
-              </button>
-              <button
-                onClick={() => setSelectedTab("long-term")}
-                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                  selectedTab === "long-term"
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-800 text-white"
-                }`}
-              >
-                Long-Term Goals
-              </button>
-            </div>
-
-            {/* Goals List */}
-            <div className="space-y-3">
-              {getCurrentTabGoals().length > 0 ? (
-                getCurrentTabGoals().map((goal) => {
-                  const isCompleted = goal.current >= goal.target;
-                  return (
-                    <div key={goal.id} className="p-3 bg-black/60 rounded-xl">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className={`w-5 h-5 border-2 rounded ${
-                          isCompleted 
-                            ? "bg-cyan-400 border-cyan-400 flex items-center justify-center" 
-                            : "border-gray-500"
-                        }`}>
-                          {isCompleted && <Check className="w-3 h-3 text-black" />}
-                        </div>
-                        <span className="text-white text-sm flex-1">{goal.title}</span>
-                      </div>
-                      {goal.targetDate && (
-                        <p className="text-gray-400 text-xs ml-8">Due: {formatDate(goal.targetDate)}</p>
-                      )}
+            {/* Weekly Goals */}
+            <div className="mb-4">
+              <h3 className="text-base font-semibold text-white mb-2">Weekly Goals</h3>
+              {weeklyGoals.length > 0 ? (
+                <div className="p-3 bg-black/60 rounded-xl">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`w-5 h-5 border-2 rounded ${
+                      weeklyGoals[0].current >= weeklyGoals[0].target
+                        ? "bg-cyan-400 border-cyan-400 flex items-center justify-center" 
+                        : "border-gray-500"
+                    }`}>
+                      {weeklyGoals[0].current >= weeklyGoals[0].target && <Check className="w-3 h-3 text-black" />}
                     </div>
-                  );
-                })
+                    <span className="text-white text-sm flex-1">{weeklyGoals[0].title}</span>
+                  </div>
+                  {weeklyGoals[0].targetDate && (
+                    <p className="text-gray-400 text-xs ml-8">Due: {formatDate(weeklyGoals[0].targetDate)}</p>
+                  )}
+                </div>
               ) : (
                 <div className="p-3 bg-black/60 rounded-xl text-gray-400 text-center text-sm">
-                  No {selectedTab} goals yet
+                  No weekly goals yet
+                </div>
+              )}
+            </div>
+
+            {/* Monthly Goals */}
+            <div className="mb-4">
+              <h3 className="text-base font-semibold text-white mb-2">Monthly Goals</h3>
+              {monthlyGoals.length > 0 ? (
+                <div className="p-3 bg-black/60 rounded-xl">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`w-5 h-5 border-2 rounded ${
+                      monthlyGoals[0].current >= monthlyGoals[0].target
+                        ? "bg-cyan-400 border-cyan-400 flex items-center justify-center" 
+                        : "border-gray-500"
+                    }`}>
+                      {monthlyGoals[0].current >= monthlyGoals[0].target && <Check className="w-3 h-3 text-black" />}
+                    </div>
+                    <span className="text-white text-sm flex-1">{monthlyGoals[0].title}</span>
+                  </div>
+                  {monthlyGoals[0].targetDate && (
+                    <p className="text-gray-400 text-xs ml-8">Due: {formatDate(monthlyGoals[0].targetDate)}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="p-3 bg-black/60 rounded-xl text-gray-400 text-center text-sm">
+                  No monthly goals yet
+                </div>
+              )}
+            </div>
+
+            {/* Long-Term Goals */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-semibold text-white">Long-Term Goals</h3>
+                {longTermGoals.length > 1 && (
+                  <Link 
+                    href="/goals"
+                    className="text-sm font-medium text-cyan-400"
+                  >
+                    View All
+                  </Link>
+                )}
+              </div>
+              {longTermGoals.length > 0 ? (
+                <div className="p-3 bg-black/60 rounded-xl">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`w-5 h-5 border-2 rounded ${
+                      longTermGoals[0].current >= longTermGoals[0].target
+                        ? "bg-cyan-400 border-cyan-400 flex items-center justify-center" 
+                        : "border-gray-500"
+                    }`}>
+                      {longTermGoals[0].current >= longTermGoals[0].target && <Check className="w-3 h-3 text-black" />}
+                    </div>
+                    <span className="text-white text-sm flex-1">{longTermGoals[0].title}</span>
+                  </div>
+                  {longTermGoals[0].targetDate && (
+                    <p className="text-gray-400 text-xs ml-8">Due: {formatDate(longTermGoals[0].targetDate)}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="p-3 bg-black/60 rounded-xl text-gray-400 text-center text-sm">
+                  No long-term goals yet
                 </div>
               )}
             </div>
