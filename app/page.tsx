@@ -127,7 +127,7 @@ export default function Home() {
                 <h2 className="text-lg font-semibold text-white">Daily Goals</h2>
               </div>
               <Link 
-                href="/goals"
+                href="/goals?filter=daily"
                 className="text-sm font-medium text-cyan-400"
               >
                 View All

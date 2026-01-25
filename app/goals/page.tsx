@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import GoalProgressCard from "@/components/GoalProgressCard";
 import { ArrowLeft, Edit2, Check, X, Plus, Trash2 } from "lucide-react";
@@ -29,6 +29,7 @@ const GOAL_TYPES = [
 
 export default function GoalsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isEditing, setIsEditing] = useState(false);
   const [allGoals, setAllGoals] = useState<Goal[]>([]);
   const [selectedGoalIds, setSelectedGoalIds] = useState<string[]>([]);
@@ -37,7 +38,13 @@ export default function GoalsPage() {
   const [selectedGoalForProgress, setSelectedGoalForProgress] = useState<Goal | null>(null);
   const [progressValue, setProgressValue] = useState("");
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
-  const [goalTypeFilter, setGoalTypeFilter] = useState<"daily" | "long-term" | "all">("all");
+  const [goalTypeFilter, setGoalTypeFilter] = useState<"daily" | "long-term" | "all">(() => {
+    const filter = searchParams.get("filter");
+    if (filter === "daily" || filter === "long-term") {
+      return filter;
+    }
+    return "all";
+  });
   const [formData, setFormData] = useState({
     goalType: "long-term" as "daily" | "long-term",
     type: "",
