@@ -25,10 +25,28 @@ export default function ConsultationPage() {
   // Initialize conversation
   useEffect(() => {
     if (messages.length === 0) {
+      // Check if there's a reflection for today to include in context
+      const todayStr = new Date().toISOString().split("T")[0];
+      const storedReflection = localStorage.getItem(`reflection_${todayStr}`);
+      let reflectionContext = "";
+      
+      if (storedReflection) {
+        try {
+          const reflection = JSON.parse(storedReflection);
+          if (reflection.howWasDay || reflection.grateful || reflection.focusTomorrow) {
+            reflectionContext = `\n\n**Today's Reflection Context:**\n- How was your day: ${reflection.howWasDay || "Not provided"}\n- Grateful for: ${reflection.grateful || "Not provided"}\n- Focus tomorrow: ${reflection.focusTomorrow || "Not provided"}\n- Time Management: ${reflection.timeManagement || 0}/3\n- Discipline: ${reflection.discipline || 0}/3\n- Energy: ${reflection.energy || 0}/3\n- Clarity: ${reflection.clarity || 0}/3`;
+          }
+        } catch (e) {
+          // Ignore if reflection parsing fails
+        }
+      }
+
       const greetingMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
-        content: "Hey! I'm your AI fitness coach. I'm here to help with anything you need - workout plans, nutrition advice, progress evaluation, exercise questions, or just general fitness chat. I can also create a new training plan or modify your existing one. What's on your mind?",
+        content: reflectionContext 
+          ? `Hey! I'm your AI fitness coach. I can see you've reflected on your day today.${reflectionContext}\n\nI'm here to help with anything you need - we can discuss your day, workout plans, nutrition advice, progress evaluation, exercise questions, or just general fitness chat. What would you like to talk about?`
+          : "Hey! I'm your AI fitness coach. I'm here to help with anything you need - workout plans, nutrition advice, progress evaluation, exercise questions, or just general fitness chat. I can also create a new training plan or modify your existing one. What's on your mind?",
       };
       setMessages([greetingMessage]);
     }

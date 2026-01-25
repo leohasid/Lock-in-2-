@@ -5,7 +5,7 @@ import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { 
   CheckCircle2, Calendar, 
-  Check, Play, BookOpen
+  Check, Play, BookOpen, MessageCircle
 } from "lucide-react";
 
 interface Goal {
@@ -100,6 +100,7 @@ export default function Home() {
   // Check if today's reflection exists
   const [hasTodayReflection, setHasTodayReflection] = useState(false);
   const [reflectionPreview, setReflectionPreview] = useState("");
+  const [aiFeedback, setAiFeedback] = useState("");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -115,20 +116,28 @@ export default function Home() {
         } else {
           setReflectionPreview("Reflection saved");
         }
+        // Get AI feedback if it exists
+        if (data.aiFeedback) {
+          setAiFeedback(data.aiFeedback.length > 120 ? data.aiFeedback.substring(0, 120) + "..." : data.aiFeedback);
+        } else {
+          setAiFeedback("");
+        }
       } catch (e) {
         setHasTodayReflection(false);
         setReflectionPreview("");
+        setAiFeedback("");
       }
     } else {
       setHasTodayReflection(false);
       setReflectionPreview("");
+      setAiFeedback("");
     }
   }, []);
 
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="max-w-md mx-auto pb-24">
-        {/* Header */}
+      {/* Header */}
         <div className="px-4 pt-4 pb-2">
           <h1 className="text-lg font-semibold text-white text-center">Goals Dashboard</h1>
         </div>
@@ -148,15 +157,15 @@ export default function Home() {
                   <CheckCircle2 className="w-3 h-3 text-white absolute -bottom-0.5 -right-0.5 bg-cyan-400 rounded-full" />
                 </div>
                 <h2 className="text-lg font-semibold text-white">Daily Goals</h2>
-              </div>
-              <Link 
+        </div>
+        <Link
                 href="/goals?filter=daily"
                 className="text-sm font-medium text-cyan-400"
-              >
+        >
                 View All
-              </Link>
-            </div>
-            
+        </Link>
+        </div>
+
             <div className="space-y-2">
               {dailyGoals.length > 0 ? (
                 dailyGoals.slice(0, 4).map((goal) => {
@@ -190,9 +199,9 @@ export default function Home() {
               ) : (
                 <div className="p-3 bg-black/60 rounded-xl text-gray-400 text-center text-sm">
                   No daily goals yet
-                </div>
+          </div>
               )}
-            </div>
+          </div>
           </div>
 
           {/* Scheduled Goals Section */}
@@ -201,9 +210,9 @@ export default function Home() {
               <div className="relative">
                 <Calendar className="w-5 h-5 text-cyan-400" />
                 <Play className="w-3 h-3 text-white absolute -bottom-0.5 -right-0.5 bg-cyan-400 rounded-full" />
-              </div>
+          </div>
               <h2 className="text-lg font-semibold text-white">Scheduled Goals</h2>
-            </div>
+        </div>
 
             {/* Weekly Goals */}
             <div className="mb-4">
@@ -285,12 +294,12 @@ export default function Home() {
                   {longTermGoals[0].targetDate && (
                     <p className="text-gray-400 text-xs ml-8">Due: {formatDate(longTermGoals[0].targetDate)}</p>
                   )}
-                </div>
+        </div>
               ) : (
                 <div className="p-3 bg-black/60 rounded-xl text-gray-400 text-center text-sm">
                   No long-term goals yet
-                </div>
-              )}
+          </div>
+        )}
             </div>
           </div>
 
@@ -323,14 +332,32 @@ export default function Home() {
               </Link>
             </div>
             {hasTodayReflection ? (
-              <div className="p-3 bg-black/60 rounded-xl">
-                <p className="text-white text-sm mb-2">Today's Reflection</p>
-                <p className="text-gray-400 text-xs">{reflectionPreview}</p>
+              <div className="space-y-3">
+                <div className="p-3 bg-black/60 rounded-xl">
+                  <p className="text-white text-sm mb-2">Today's Reflection</p>
+                  <p className="text-gray-400 text-xs">{reflectionPreview}</p>
+                </div>
+                {aiFeedback && (
+                  <div className="p-3 bg-black/60 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <MessageCircle className="w-4 h-4 text-cyan-400" />
+                      <p className="text-white text-sm">AI Response</p>
+                    </div>
+                    <p className="text-gray-300 text-xs leading-relaxed">{aiFeedback}</p>
+        </div>
+                )}
+                <Link
+                  href="/consultation?from=reflection"
+                  className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-cyan-400/20 hover:bg-cyan-400/30 border border-cyan-400/50 rounded-xl text-cyan-400 text-sm font-medium transition-colors"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Chat with AI about your day
+                </Link>
               </div>
             ) : (
               <div className="p-3 bg-black/60 rounded-xl">
                 <p className="text-gray-400 text-sm text-center">No reflection for today yet</p>
-                <Link 
+                <Link
                   href="/reflections"
                   className="block text-center mt-2 text-cyan-400 text-sm hover:underline"
                 >
@@ -340,7 +367,7 @@ export default function Home() {
             )}
           </div>
         </div>
-      </div>
+        </div>
 
       <BottomNav />
     </div>
