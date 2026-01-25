@@ -136,167 +136,173 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="max-w-md mx-auto pb-24">
+      <div className="max-w-md mx-auto pb-20">
       {/* Header */}
-        <div className="px-4 pt-4 pb-2">
-          <h1 className="text-lg font-semibold text-white text-center">Goals Dashboard</h1>
+        <div className="px-4 pt-3 pb-1">
+          <h1 className="text-base font-semibold text-white text-center">Goals Dashboard</h1>
         </div>
 
         {/* Slogan */}
-        <div className="px-4 pb-4">
-          <p className="text-cyan-400 italic text-sm">Stay Focused and Achieve Your Goals!</p>
+        <div className="px-4 pb-2">
+          <p className="text-cyan-400 italic text-xs">Stay Focused and Achieve Your Goals!</p>
         </div>
 
-        <div className="px-4 space-y-5">
+        <div className="px-4 space-y-3">
           {/* Daily Goals Section */}
-          <div className="bg-gray-900/50 rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
+          <div className="bg-gray-900/50 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
                 <div className="relative">
-                  <Calendar className="w-5 h-5 text-cyan-400" />
-                  <CheckCircle2 className="w-3 h-3 text-white absolute -bottom-0.5 -right-0.5 bg-cyan-400 rounded-full" />
+                  <Calendar className="w-4 h-4 text-cyan-400" />
+                  <CheckCircle2 className="w-2.5 h-2.5 text-white absolute -bottom-0.5 -right-0.5 bg-cyan-400 rounded-full" />
                 </div>
-                <h2 className="text-lg font-semibold text-white">Daily Goals</h2>
+                <h2 className="text-sm font-semibold text-white">Daily Goals</h2>
         </div>
         <Link
                 href="/goals?filter=daily"
-                className="text-sm font-medium text-cyan-400"
+                className="text-xs font-medium text-cyan-400"
         >
                 View All
         </Link>
         </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {dailyGoals.length > 0 ? (
-                dailyGoals.slice(0, 4).map((goal) => {
+                dailyGoals.slice(0, 3).map((goal) => {
                   const isCompleted = goal.current >= goal.target;
                   return (
                     <div
                       key={goal.id}
-                      className="flex items-center justify-between p-3 bg-black/60 rounded-xl"
+                      className="flex items-center justify-between p-2 bg-black/60 rounded-lg"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 border-2 rounded ${
+          <div className="flex items-center gap-2">
+                        <div className={`w-4 h-4 border-2 rounded ${
                           isCompleted 
                             ? "bg-cyan-400 border-cyan-400 flex items-center justify-center" 
                             : "border-gray-500"
                         }`}>
-                          {isCompleted && <Check className="w-3 h-3 text-black" />}
+                          {isCompleted && <Check className="w-2.5 h-2.5 text-black" />}
                         </div>
-                        <span className="text-white text-sm">{goal.title}</span>
+                        <span className="text-white text-xs">{goal.title}</span>
                       </div>
                       {!isCompleted && (
                         <button
                           onClick={() => handleMarkComplete(goal.id)}
-                          className="px-3 py-1 bg-gray-700 text-white text-xs rounded-lg hover:bg-gray-600 transition-colors"
+                          className="px-2 py-0.5 bg-gray-700 text-white text-[10px] rounded hover:bg-gray-600 transition-colors"
                         >
-                          Mark Complete
+                          Mark
                         </button>
                       )}
                     </div>
                   );
                 })
               ) : (
-                <div className="p-3 bg-black/60 rounded-xl text-gray-400 text-center text-sm">
+                <div className="p-2 bg-black/60 rounded-lg text-gray-400 text-center text-xs">
                   No daily goals yet
-          </div>
+                </div>
               )}
-          </div>
+            </div>
           </div>
 
           {/* Scheduled Goals Section */}
-          <div className="bg-gray-900/50 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-4">
+          <div className="bg-gray-900/50 rounded-xl p-3">
+            <div className="flex items-center gap-1.5 mb-2">
               <div className="relative">
-                <Calendar className="w-5 h-5 text-cyan-400" />
-                <Play className="w-3 h-3 text-white absolute -bottom-0.5 -right-0.5 bg-cyan-400 rounded-full" />
-          </div>
-              <h2 className="text-lg font-semibold text-white">Scheduled Goals</h2>
-        </div>
+                <Calendar className="w-4 h-4 text-cyan-400" />
+                <Play className="w-2.5 h-2.5 text-white absolute -bottom-0.5 -right-0.5 bg-cyan-400 rounded-full" />
+              </div>
+              <h2 className="text-sm font-semibold text-white">Scheduled Goals</h2>
+            </div>
 
             {/* Weekly Goals */}
-            <div className="mb-4">
-              <h3 className="text-base font-semibold text-white mb-2">Weekly Goals</h3>
+            <div className="mb-2">
+              <h3 className="text-xs font-semibold text-white mb-1">Weekly Goals</h3>
               {weeklyGoals.length > 0 ? (
-                <div className="p-3 bg-black/60 rounded-xl">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-5 h-5 border-2 rounded ${
+                <div className="p-2 bg-black/60 rounded-lg">
+          <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 border-2 rounded flex-shrink-0 ${
                       weeklyGoals[0].current >= weeklyGoals[0].target
                         ? "bg-cyan-400 border-cyan-400 flex items-center justify-center" 
                         : "border-gray-500"
                     }`}>
-                      {weeklyGoals[0].current >= weeklyGoals[0].target && <Check className="w-3 h-3 text-black" />}
-                    </div>
-                    <span className="text-white text-sm flex-1">{weeklyGoals[0].title}</span>
-                  </div>
-                  {weeklyGoals[0].targetDate && (
-                    <p className="text-gray-400 text-xs ml-8">Due: {formatDate(weeklyGoals[0].targetDate)}</p>
-                  )}
-                </div>
+                      {weeklyGoals[0].current >= weeklyGoals[0].target && <Check className="w-2.5 h-2.5 text-black" />}
+          </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-white text-xs block truncate">{weeklyGoals[0].title}</span>
+                      {weeklyGoals[0].targetDate && (
+                        <p className="text-gray-400 text-[10px]">Due: {formatDate(weeklyGoals[0].targetDate)}</p>
+                      )}
+          </div>
+          </div>
+        </div>
               ) : (
-                <div className="p-3 bg-black/60 rounded-xl text-gray-400 text-center text-sm">
+                <div className="p-2 bg-black/60 rounded-lg text-gray-400 text-center text-xs">
                   No weekly goals yet
                 </div>
               )}
             </div>
 
             {/* Monthly Goals */}
-            <div className="mb-4">
-              <h3 className="text-base font-semibold text-white mb-2">Monthly Goals</h3>
+            <div className="mb-2">
+              <h3 className="text-xs font-semibold text-white mb-1">Monthly Goals</h3>
               {monthlyGoals.length > 0 ? (
-                <div className="p-3 bg-black/60 rounded-xl">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-5 h-5 border-2 rounded ${
+                <div className="p-2 bg-black/60 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 border-2 rounded flex-shrink-0 ${
                       monthlyGoals[0].current >= monthlyGoals[0].target
                         ? "bg-cyan-400 border-cyan-400 flex items-center justify-center" 
                         : "border-gray-500"
                     }`}>
-                      {monthlyGoals[0].current >= monthlyGoals[0].target && <Check className="w-3 h-3 text-black" />}
+                      {monthlyGoals[0].current >= monthlyGoals[0].target && <Check className="w-2.5 h-2.5 text-black" />}
                     </div>
-                    <span className="text-white text-sm flex-1">{monthlyGoals[0].title}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-white text-xs block truncate">{monthlyGoals[0].title}</span>
+                      {monthlyGoals[0].targetDate && (
+                        <p className="text-gray-400 text-[10px]">Due: {formatDate(monthlyGoals[0].targetDate)}</p>
+                      )}
+                    </div>
                   </div>
-                  {monthlyGoals[0].targetDate && (
-                    <p className="text-gray-400 text-xs ml-8">Due: {formatDate(monthlyGoals[0].targetDate)}</p>
-                  )}
                 </div>
               ) : (
-                <div className="p-3 bg-black/60 rounded-xl text-gray-400 text-center text-sm">
+                <div className="p-2 bg-black/60 rounded-lg text-gray-400 text-center text-xs">
                   No monthly goals yet
                 </div>
               )}
             </div>
 
             {/* Long-Term Goals */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-base font-semibold text-white">Long-Term Goals</h3>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-xs font-semibold text-white">Long-Term Goals</h3>
                 {longTermGoals.length > 1 && (
                   <Link 
                     href="/goals"
-                    className="text-sm font-medium text-cyan-400"
+                    className="text-xs font-medium text-cyan-400"
                   >
                     View All
                   </Link>
                 )}
               </div>
               {longTermGoals.length > 0 ? (
-                <div className="p-3 bg-black/60 rounded-xl">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-5 h-5 border-2 rounded ${
+                <div className="p-2 bg-black/60 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 border-2 rounded flex-shrink-0 ${
                       longTermGoals[0].current >= longTermGoals[0].target
                         ? "bg-cyan-400 border-cyan-400 flex items-center justify-center" 
                         : "border-gray-500"
                     }`}>
-                      {longTermGoals[0].current >= longTermGoals[0].target && <Check className="w-3 h-3 text-black" />}
+                      {longTermGoals[0].current >= longTermGoals[0].target && <Check className="w-2.5 h-2.5 text-black" />}
                     </div>
-                    <span className="text-white text-sm flex-1">{longTermGoals[0].title}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-white text-xs block truncate">{longTermGoals[0].title}</span>
+                      {longTermGoals[0].targetDate && (
+                        <p className="text-gray-400 text-[10px]">Due: {formatDate(longTermGoals[0].targetDate)}</p>
+                      )}
+                    </div>
                   </div>
-                  {longTermGoals[0].targetDate && (
-                    <p className="text-gray-400 text-xs ml-8">Due: {formatDate(longTermGoals[0].targetDate)}</p>
-                  )}
         </div>
               ) : (
-                <div className="p-3 bg-black/60 rounded-xl text-gray-400 text-center text-sm">
+                <div className="p-2 bg-black/60 rounded-lg text-gray-400 text-center text-xs">
                   No long-term goals yet
           </div>
         )}
@@ -304,62 +310,62 @@ export default function Home() {
           </div>
 
           {/* Goal Tracker Section */}
-          <div className="bg-gray-900/50 rounded-2xl p-4">
-            <h2 className="text-lg font-semibold text-white mb-3">Goal Tracker</h2>
-            <p className="text-white text-sm mb-2">
+          <div className="bg-gray-900/50 rounded-xl p-3">
+            <h2 className="text-sm font-semibold text-white mb-1.5">Goal Tracker</h2>
+            <p className="text-white text-xs mb-1.5">
               {Math.round(savingsProgress * 100)}% Towards Savings Goal
             </p>
-            <div className="w-full bg-gray-700 rounded-full h-2">
+            <div className="w-full bg-gray-700 rounded-full h-1.5">
               <div
-                className="bg-cyan-400 h-2 rounded-full transition-all"
+                className="bg-cyan-400 h-1.5 rounded-full transition-all"
                 style={{ width: `${savingsProgress * 100}%` }}
               />
             </div>
           </div>
 
           {/* Reflection Section */}
-          <div className="bg-gray-900/50 rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-cyan-400" />
-                <h2 className="text-lg font-semibold text-white">Reflection</h2>
+          <div className="bg-gray-900/50 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <BookOpen className="w-4 h-4 text-cyan-400" />
+                <h2 className="text-sm font-semibold text-white">Reflection</h2>
               </div>
               <Link 
                 href="/reflections"
-                className="text-sm font-medium text-cyan-400"
+                className="text-xs font-medium text-cyan-400"
               >
                 View All
               </Link>
             </div>
             {hasTodayReflection ? (
-              <div className="space-y-3">
-                <div className="p-3 bg-black/60 rounded-xl">
-                  <p className="text-white text-sm mb-2">Today's Reflection</p>
-                  <p className="text-gray-400 text-xs">{reflectionPreview}</p>
+              <div className="space-y-2">
+                <div className="p-2 bg-black/60 rounded-lg">
+                  <p className="text-white text-xs mb-1">Today's Reflection</p>
+                  <p className="text-gray-400 text-[10px] leading-tight">{reflectionPreview}</p>
                 </div>
                 {aiFeedback && (
-                  <div className="p-3 bg-black/60 rounded-xl">
-                    <div className="flex items-center gap-2 mb-2">
-                      <MessageCircle className="w-4 h-4 text-cyan-400" />
-                      <p className="text-white text-sm">AI Response</p>
+                  <div className="p-2 bg-black/60 rounded-lg">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <MessageCircle className="w-3 h-3 text-cyan-400" />
+                      <p className="text-white text-xs">AI Response</p>
                     </div>
-                    <p className="text-gray-300 text-xs leading-relaxed">{aiFeedback}</p>
+                    <p className="text-gray-300 text-[10px] leading-tight">{aiFeedback}</p>
         </div>
                 )}
                 <Link
                   href="/consultation?from=reflection"
-                  className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-cyan-400/20 hover:bg-cyan-400/30 border border-cyan-400/50 rounded-xl text-cyan-400 text-sm font-medium transition-colors"
+                  className="flex items-center justify-center gap-1.5 w-full py-1.5 px-3 bg-cyan-400/20 hover:bg-cyan-400/30 border border-cyan-400/50 rounded-lg text-cyan-400 text-xs font-medium transition-colors"
                 >
-                  <MessageCircle className="w-4 h-4" />
-                  Chat with AI about your day
+                  <MessageCircle className="w-3 h-3" />
+                  Chat with AI
                 </Link>
               </div>
             ) : (
-              <div className="p-3 bg-black/60 rounded-xl">
-                <p className="text-gray-400 text-sm text-center">No reflection for today yet</p>
+              <div className="p-2 bg-black/60 rounded-lg">
+                <p className="text-gray-400 text-xs text-center">No reflection for today yet</p>
                 <Link
                   href="/reflections"
-                  className="block text-center mt-2 text-cyan-400 text-sm hover:underline"
+                  className="block text-center mt-1 text-cyan-400 text-xs hover:underline"
                 >
                   Start reflecting
                 </Link>
