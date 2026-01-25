@@ -5,7 +5,7 @@ import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { 
   CheckCircle2, Calendar, 
-  Check, Play
+  Check, Play, BookOpen
 } from "lucide-react";
 
 interface Goal {
@@ -82,11 +82,6 @@ export default function Home() {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  // Calculate this week progress
-  const thisWeekCompleted = dailyGoals.filter(g => g.current >= g.target).length;
-  const thisWeekTotal = dailyGoals.length;
-  const thisWeekProgress = thisWeekTotal > 0 ? thisWeekCompleted / thisWeekTotal : 0;
-
   // Calculate savings goal progress (mock - you can enhance this)
   const savingsGoal = longTermGoals.find(g => g.type === "financial");
   const savingsProgress = savingsGoal ? Math.min(savingsGoal.current / savingsGoal.target, 1) : 0.75;
@@ -101,6 +96,34 @@ export default function Home() {
     setAllGoals(updatedGoals);
     localStorage.setItem("goals", JSON.stringify(updatedGoals));
   };
+
+  // Check if today's reflection exists
+  const [hasTodayReflection, setHasTodayReflection] = useState(false);
+  const [reflectionPreview, setReflectionPreview] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const todayStr = new Date().toISOString().split("T")[0];
+    const stored = localStorage.getItem(`reflection_${todayStr}`);
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        setHasTodayReflection(true);
+        // Show a preview of how the day was
+        if (data.howWasDay) {
+          setReflectionPreview(data.howWasDay.length > 60 ? data.howWasDay.substring(0, 60) + "..." : data.howWasDay);
+        } else {
+          setReflectionPreview("Reflection saved");
+        }
+      } catch (e) {
+        setHasTodayReflection(false);
+        setReflectionPreview("");
+      }
+    } else {
+      setHasTodayReflection(false);
+      setReflectionPreview("");
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -271,20 +294,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* This Week Section */}
-          <div className="bg-gray-900/50 rounded-2xl p-4">
-            <h2 className="text-lg font-semibold text-white mb-3">This Week</h2>
-            <p className="text-white text-sm mb-2">
-              Progress: {thisWeekCompleted} / {thisWeekTotal} Tasks Completed
-            </p>
-            <div className="w-full bg-gray-700 rounded-full h-2">
-              <div
-                className="bg-cyan-400 h-2 rounded-full transition-all"
-                style={{ width: `${thisWeekProgress * 100}%` }}
-              />
-            </div>
-          </div>
-
           {/* Goal Tracker Section */}
           <div className="bg-gray-900/50 rounded-2xl p-4">
             <h2 className="text-lg font-semibold text-white mb-3">Goal Tracker</h2>
@@ -297,6 +306,38 @@ export default function Home() {
                 style={{ width: `${savingsProgress * 100}%` }}
               />
             </div>
+          </div>
+
+          {/* Reflection Section */}
+          <div className="bg-gray-900/50 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-cyan-400" />
+                <h2 className="text-lg font-semibold text-white">Reflection</h2>
+              </div>
+              <Link 
+                href="/reflections"
+                className="text-sm font-medium text-cyan-400"
+              >
+                View All
+              </Link>
+            </div>
+            {hasTodayReflection ? (
+              <div className="p-3 bg-black/60 rounded-xl">
+                <p className="text-white text-sm mb-2">Today's Reflection</p>
+                <p className="text-gray-400 text-xs">{reflectionPreview}</p>
+              </div>
+            ) : (
+              <div className="p-3 bg-black/60 rounded-xl">
+                <p className="text-gray-400 text-sm text-center">No reflection for today yet</p>
+                <Link 
+                  href="/reflections"
+                  className="block text-center mt-2 text-cyan-400 text-sm hover:underline"
+                >
+                  Start reflecting
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
