@@ -220,6 +220,94 @@ export default function Home() {
         </div>
 
         <div className="px-4 space-y-3">
+          {/* Schedule Tasks Section */}
+          <div className="bg-gray-900/50 rounded-xl p-3">
+            <div className="flex items-center gap-1.5 mb-2">
+              <List className="w-4 h-4 text-cyan-400" />
+              <h2 className="text-sm font-semibold text-white">Schedule Tasks</h2>
+            </div>
+            <div className="space-y-1.5 mb-2">
+              {tasks.length > 0 ? (
+                tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="flex items-center justify-between p-2 bg-black/60 rounded-lg"
+                  >
+                    <div className="flex items-center gap-2 flex-1">
+                      <div
+                        onClick={() => handleToggleTask(task.id)}
+                        className={`w-4 h-4 border-2 rounded cursor-pointer ${
+                          task.completed
+                            ? "bg-cyan-400 border-cyan-400 flex items-center justify-center"
+                            : "border-gray-500"
+                        }`}
+                      >
+                        {task.completed && <Check className="w-2.5 h-2.5 text-black" />}
+                      </div>
+                      <span
+                        className={`text-white text-xs flex-1 ${
+                          task.completed ? "line-through text-gray-500" : ""
+                        }`}
+                      >
+                        {task.name}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="text-red-400 hover:text-red-300 ml-2"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="p-2 bg-black/60 rounded-lg text-gray-400 text-center text-xs">
+                  No tasks yet
+                </div>
+              )}
+            </div>
+            {showTaskInput ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newTaskName}
+                  onChange={(e) => setNewTaskName(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter") {
+                      handleAddTask();
+                    }
+                  }}
+                  placeholder="Task name..."
+                  className="flex-1 bg-black/60 border border-white/10 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-cyan-400"
+                  autoFocus
+                />
+                <button
+                  onClick={handleAddTask}
+                  className="px-3 py-2 bg-cyan-400 hover:bg-cyan-500 text-black text-xs font-medium rounded-lg transition-colors"
+                >
+                  Add
+                </button>
+                <button
+                  onClick={() => {
+                    setShowTaskInput(false);
+                    setNewTaskName("");
+                  }}
+                  className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-xs font-medium rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowTaskInput(true)}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-cyan-400/20 hover:bg-cyan-400/30 border border-cyan-400/50 rounded-lg text-cyan-400 text-xs font-medium transition-colors"
+              >
+                <Plus className="w-3 h-3" />
+                Add Task
+              </button>
+            )}
+          </div>
+
           {/* Daily Goals Section */}
           <div className="bg-gray-900/50 rounded-xl p-3">
             <div className="flex items-center justify-between mb-2">
@@ -379,94 +467,6 @@ export default function Home() {
           </div>
         )}
             </div>
-          </div>
-
-          {/* Schedule Tasks Section */}
-          <div className="bg-gray-900/50 rounded-xl p-3">
-            <div className="flex items-center gap-1.5 mb-2">
-              <List className="w-4 h-4 text-cyan-400" />
-              <h2 className="text-sm font-semibold text-white">Schedule Tasks</h2>
-            </div>
-            <div className="space-y-1.5 mb-2">
-              {tasks.length > 0 ? (
-                tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex items-center justify-between p-2 bg-black/60 rounded-lg"
-                  >
-                    <div className="flex items-center gap-2 flex-1">
-                      <div
-                        onClick={() => handleToggleTask(task.id)}
-                        className={`w-4 h-4 border-2 rounded cursor-pointer ${
-                          task.completed
-                            ? "bg-cyan-400 border-cyan-400 flex items-center justify-center"
-                            : "border-gray-500"
-                        }`}
-                      >
-                        {task.completed && <Check className="w-2.5 h-2.5 text-black" />}
-                      </div>
-                      <span
-                        className={`text-white text-xs flex-1 ${
-                          task.completed ? "line-through text-gray-500" : ""
-                        }`}
-                      >
-                        {task.name}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteTask(task.id)}
-                      className="text-red-400 hover:text-red-300 ml-2"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <div className="p-2 bg-black/60 rounded-lg text-gray-400 text-center text-xs">
-                  No tasks yet
-                </div>
-              )}
-            </div>
-            {showTaskInput ? (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newTaskName}
-                  onChange={(e) => setNewTaskName(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      handleAddTask();
-                    }
-                  }}
-                  placeholder="Task name..."
-                  className="flex-1 bg-black/60 border border-white/10 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-cyan-400"
-                  autoFocus
-                />
-                <button
-                  onClick={handleAddTask}
-                  className="px-3 py-2 bg-cyan-400 hover:bg-cyan-500 text-black text-xs font-medium rounded-lg transition-colors"
-                >
-                  Add
-                </button>
-                <button
-                  onClick={() => {
-                    setShowTaskInput(false);
-                    setNewTaskName("");
-                  }}
-                  className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-xs font-medium rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowTaskInput(true)}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-cyan-400/20 hover:bg-cyan-400/30 border border-cyan-400/50 rounded-lg text-cyan-400 text-xs font-medium transition-colors"
-              >
-                <Plus className="w-3 h-3" />
-                Add Task
-              </button>
-            )}
           </div>
 
           {/* Strength Increase Chart */}
