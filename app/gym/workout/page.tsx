@@ -257,15 +257,15 @@ export default function WorkoutPage() {
     return null;
   };
 
-  // Get current day's exercises - check workoutOptions first if an option is selected
+  // Get current day's exercises - prioritize workoutOptions if available
   const currentDayExercises = useMemo(() => {
     const workoutType = getWorkoutTypeForDate(selectedDate);
     if (!workoutType) return [];
     
-    // Check if there's a selected workout option
+    // First, check if there's a selected workout option from URL
     if (selectedWorkoutOption && workoutOptions.length > 0) {
       const option = workoutOptions.find((o: WorkoutOption) => o.id === selectedWorkoutOption);
-      if (option) {
+      if (option && option.days.day1.length > 0) {
         // Combine all exercises from the option (they're all in day1 now)
         const allExercises = [
           ...(option.days.day1 || []),
@@ -285,6 +285,34 @@ export default function WorkoutPage() {
             completed: false,
           })),
         }));
+      }
+    }
+    
+    // If no option selected, try to find the option that matches current workout type
+    // and has exercises
+    if (workoutOptions.length > 0 && workoutPlan[workoutType]?.length === 0) {
+      // Find the first option that has exercises for this day type
+      for (const option of workoutOptions) {
+        const allExercises = [
+          ...(option.days.day1 || []),
+          ...(option.days.day2 || []),
+          ...(option.days.day3 || []),
+        ];
+        if (allExercises.length > 0) {
+          // Convert to Exercise format
+          return allExercises.map((ex: any) => ({
+            id: ex.id || `ex-${Date.now()}-${Math.random()}`,
+            name: ex.name || "",
+            goalSets: ex.goalSets || ex.sets || 3,
+            goalReps: ex.goalReps || ex.reps || 10,
+            goalWeight: ex.goalWeight || 0,
+            sets: ex.sets || Array.from({ length: ex.goalSets || ex.sets || 3 }, () => ({
+              reps: ex.goalReps || ex.reps || 10,
+              weight: ex.goalWeight || 0,
+              completed: false,
+            })),
+          }));
+        }
       }
     }
     
