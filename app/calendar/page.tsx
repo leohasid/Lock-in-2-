@@ -112,12 +112,30 @@ Check if they specified days. If not, ask specifically about days.`
 
       setScheduleChatMessages(prev => [...prev, { role: "assistant", content: aiResponse }]);
 
-      // Check if AI is asking for confirmation or ready to add
-      if (aiResponse.toLowerCase().includes("confirm") || 
-          (aiResponse.toLowerCase().includes("add") && 
-          (aiResponse.toLowerCase().includes("yes") || aiResponse.toLowerCase().includes("proceed")))) {
+      // Check if user is confirming or if we have enough info
+      const lowerResponse = aiResponse.toLowerCase();
+      const lowerUserMsg = userMessage.toLowerCase();
+      
+      // Check if user specified days
+      const hasDays = lowerUserMsg.includes("monday") || lowerUserMsg.includes("tuesday") || 
+                     lowerUserMsg.includes("wednesday") || lowerUserMsg.includes("thursday") ||
+                     lowerUserMsg.includes("friday") || lowerUserMsg.includes("saturday") ||
+                     lowerUserMsg.includes("sunday") || lowerUserMsg.includes("weekday") ||
+                     lowerUserMsg.includes("weekend") || lowerUserMsg.includes("every day") ||
+                     lowerUserMsg.includes("all days") || lowerUserMsg.includes("mon-fri");
+      
+      // If AI is asking for confirmation and user says yes, or if user provided days and confirmed
+      if ((lowerResponse.includes("add") && lowerUserMsg.includes("yes")) ||
+          (lowerResponse.includes("confirm") && lowerUserMsg.includes("yes")) ||
+          (hasDays && (lowerUserMsg.includes("yes") || lowerUserMsg.includes("add") || lowerUserMsg.includes("proceed")))) {
         // Process and add reminders based on conversation
         processAndAddReminders(userMessage);
+      } else if (!hasDays && !lowerUserMsg.includes("?") && !lowerUserMsg.includes("when")) {
+        // If no days specified and user didn't ask a question, remind them we need days
+        setScheduleChatMessages(prev => [...prev, {
+          role: "assistant",
+          content: "I need to know which days you want these scheduled. Please specify the days (e.g., Monday, Tuesday, Wednesday, or Monday-Friday, or Weekends, or All days)."
+        }]);
       }
     } catch (error: any) {
       console.error("Schedule chat error:", error);
