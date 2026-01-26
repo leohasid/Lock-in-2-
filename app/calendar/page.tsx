@@ -1303,6 +1303,82 @@ Respond naturally and ask follow-up questions if needed. When you have enough in
             </div>
           </div>
         )}
+
+        {/* Schedule Chat Modal */}
+        {showScheduleChat && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full max-h-[90vh] flex flex-col border border-white/10">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-teal-400" />
+                  Schedule Setup
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowScheduleChat(false);
+                    setScheduleChatMessages([]);
+                    setScheduleChatInput("");
+                    setScheduleContext(null);
+                  }}
+                  className="text-gray-400 hover:text-white text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Chat Messages */}
+              <div className="flex-1 overflow-y-auto space-y-4 mb-4 min-h-[300px] max-h-[400px]">
+                {scheduleChatMessages.map((msg, index) => (
+                  <div
+                    key={index}
+                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-lg p-3 ${
+                        msg.role === "user"
+                          ? "bg-teal-400 text-black"
+                          : "bg-[rgba(20,30,35,0.85)] text-white"
+                      }`}
+                    >
+                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                  </div>
+                ))}
+                {isScheduleChatLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-[rgba(20,30,35,0.85)] rounded-lg p-3">
+                      <p className="text-sm text-gray-400">AI is thinking...</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat Input */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={scheduleChatInput}
+                  onChange={(e) => setScheduleChatInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey && scheduleChatInput.trim()) {
+                      handleScheduleChatSend();
+                    }
+                  }}
+                  placeholder="Type your response..."
+                  className="flex-1 bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  disabled={isScheduleChatLoading}
+                />
+                <button
+                  onClick={handleScheduleChatSend}
+                  disabled={!scheduleChatInput.trim() || isScheduleChatLoading}
+                  className="bg-teal-400 hover:bg-teal-500 disabled:bg-gray-700 disabled:cursor-not-allowed text-black px-4 py-3 rounded-lg font-semibold transition-colors"
+                >
+                  Send
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       <div className="pb-20">
         {/* Spacer for bottom navigation */}
