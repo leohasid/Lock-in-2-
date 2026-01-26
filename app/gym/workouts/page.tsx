@@ -106,6 +106,36 @@ export default function WorkoutsPage() {
     router.push(`/gym/workouts/${optionId}`);
   };
 
+  const handleAddWorkout = () => {
+    // Find the highest option number
+    const optionNumbers = workoutOptions.map(opt => {
+      const match = opt.name.match(/Option (\d+)/);
+      return match ? parseInt(match[1]) : 0;
+    });
+    const nextNumber = optionNumbers.length > 0 ? Math.max(...optionNumbers) + 1 : workoutOptions.length + 1;
+    
+    const newOption: WorkoutOption = {
+      id: `option${nextNumber}`,
+      name: `Option ${nextNumber}`,
+      days: {
+        day1: [],
+        day2: [],
+        day3: [],
+      },
+      dayNames: {
+        day1: "Day 1",
+        day2: "Day 2",
+        day3: "Day 3",
+      },
+    };
+    
+    const updatedOptions = [...workoutOptions, newOption];
+    setWorkoutOptions(updatedOptions);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("workoutOptions", JSON.stringify(updatedOptions));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white pb-20">
       <div className="max-w-md mx-auto px-4 py-6">
@@ -120,12 +150,12 @@ export default function WorkoutsPage() {
           <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
             Select Workout Option
           </h1>
-          <Link
-            href="/gym/workouts/new"
+          <button
+            onClick={handleAddWorkout}
             className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
           >
             Add Workout
-          </Link>
+          </button>
         </div>
 
         {/* Workout Options */}
