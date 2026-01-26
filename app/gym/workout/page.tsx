@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { ArrowLeft, X, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, Dumbbell } from "lucide-react";
 
 interface Exercise {
   id: string;
@@ -425,36 +425,51 @@ export default function WorkoutPage() {
             <p className="text-gray-400 text-[10px]">Add your own workout or use AI to get started!</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Exercises</p>
+          <div className="space-y-4">
+            {/* Exercise count header */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-white">{currentDayExercises.length} exercises</h2>
+              <button className="text-cyan-400 hover:text-cyan-300">
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* Exercise List */}
             {currentDayExercises.map((ex) => {
               const completedSets = ex.sets.filter(s => s.completed).length;
               const totalSets = ex.sets.length;
-              const nextIncompleteSet = ex.sets.findIndex(s => !s.completed);
+              const firstSet = ex.sets[0];
+              const weightDisplay = firstSet?.weight || ex.goalWeight || 0;
               
               return (
                 <div
                   key={ex.id}
-                  className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-lg p-3"
+                  onClick={() => setActiveExerciseId(ex.id)}
+                  className="bg-black/40 border border-white/10 rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-black/60 transition-colors"
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex-1">
-                      <h2 className="text-sm font-bold text-white mb-1">{ex.name}</h2>
-                      <p className="text-xs text-gray-400">
-                        {ex.goalSets} x {ex.goalReps} • {completedSets} / {totalSets} sets
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        if (nextIncompleteSet >= 0) {
-                          setActiveExerciseId(ex.id);
-                        }
-                      }}
-                      className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 text-black rounded-lg text-xs font-bold hover:from-teal-500 hover:to-cyan-600 transition-all shadow-lg shadow-teal-500/30"
-                    >
-                      START SET
-                    </button>
+                  {/* Exercise thumbnail placeholder */}
+                  <div className="w-16 h-16 bg-gray-800 rounded-lg flex-shrink-0 flex items-center justify-center">
+                    <Dumbbell className="w-8 h-8 text-gray-600" />
                   </div>
+                  
+                  {/* Exercise info */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-white mb-1 truncate">{ex.name}</h3>
+                    <p className="text-xs text-gray-400">
+                      {totalSets} sets • {ex.goalReps} reps • {weightDisplay} {weightDisplay > 0 ? 'lb' : ''}
+                    </p>
+                  </div>
+                  
+                  {/* Three dot menu */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveExerciseId(ex.id);
+                    }}
+                    className="text-gray-400 hover:text-white p-1"
+                  >
+                    <MoreVertical className="w-5 h-5" />
+                  </button>
                 </div>
               );
             })}
@@ -485,71 +500,167 @@ export default function WorkoutPage() {
 
         {/* Exercise Modal */}
         {activeExercise && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full border border-white/10">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-white">{activeExercise.name}</h2>
-                <button
-                  onClick={() => setActiveExerciseId(null)}
-                  className="text-gray-400 hover:text-white"
-                >
-                  <X className="w-6 h-6" />
+          <div className="fixed inset-0 bg-black flex flex-col z-50">
+            {/* Header with close button */}
+            <div className="flex items-center justify-end p-4">
+              <button
+                onClick={() => setActiveExerciseId(null)}
+                className="w-10 h-10 bg-black/80 rounded-full flex items-center justify-center text-white hover:bg-black/60"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {/* Exercise image placeholder */}
+              <div className="w-full h-48 bg-gray-900 flex items-center justify-center relative">
+                <Dumbbell className="w-20 h-20 text-gray-700" />
+                <button className="absolute top-4 right-4 w-8 h-8 bg-black/80 rounded-full flex items-center justify-center text-white">
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-              
-              <div className="space-y-3">
-                {activeExercise.sets.map((set, setIndex) => (
-                  <div
-                    key={setIndex}
-                    className={`p-3 rounded-lg border ${
-                      set.completed
-                        ? "bg-green-900/30 border-green-600/50"
-                        : "bg-white/5 border-white/10"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold text-white">Set {setIndex + 1}</span>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={set.completed}
-                          onChange={(e) => {
-                            updateSet(activeExercise.id, setIndex, { completed: e.target.checked });
-                            if (e.target.checked) {
-                              saveExercise(activeExercise.id);
-                            }
-                          }}
-                          className="w-4 h-4 rounded border-white/20 bg-transparent text-teal-400 focus:ring-teal-400"
-                        />
-                        <span className="text-xs text-gray-400">Completed</span>
-                      </label>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1">Reps</label>
-                        <input
-                          type="number"
-                          value={set.reps}
-                          onChange={(e) => {
-                            updateSet(activeExercise.id, setIndex, { reps: parseInt(e.target.value) || 0 });
-                          }}
-                          className="w-full bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
-                        />
+
+              <div className="p-4 space-y-4">
+                {/* Exercise name and How-To */}
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-white">{activeExercise.name}</h2>
+                  <button className="flex items-center gap-1 text-cyan-400 text-sm font-medium">
+                    How-To
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-2">
+                  <button className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-black/40 border border-white/10 rounded-lg text-white text-sm">
+                    <Clock className="w-4 h-4" />
+                    Rest timer: On
+                  </button>
+                  <button className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-black/40 border border-white/10 rounded-lg text-white text-sm">
+                    <BarChart3 className="w-4 h-4" />
+                    History
+                  </button>
+                  <button className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-black/40 border border-white/10 rounded-lg text-white text-sm">
+                    <RefreshCw className="w-4 h-4" />
+                    Replace
+                  </button>
+                </div>
+
+                {/* Sets */}
+                <div className="space-y-3">
+                  {activeExercise.sets.map((set, setIndex) => {
+                    const isCompleted = set.completed;
+                    const isActive = !isCompleted && setIndex === activeExercise.sets.findIndex(s => !s.completed);
+                    
+                    return (
+                      <div
+                        key={setIndex}
+                        className={`p-4 rounded-lg ${
+                          isCompleted
+                            ? "bg-cyan-500/20 border border-cyan-500/50"
+                            : isActive
+                            ? "bg-cyan-500/10 border-2 border-cyan-400"
+                            : "bg-black/40 border border-white/10"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          {isCompleted ? (
+                            <div className="w-8 h-8 rounded-full bg-cyan-400 flex items-center justify-center flex-shrink-0">
+                              <svg className="w-5 h-5 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </div>
+                          ) : (
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                              isActive ? "bg-cyan-400 text-black" : "bg-gray-700 text-gray-400"
+                            }`}>
+                              <span className="text-sm font-semibold">{setIndex + 1}</span>
+                            </div>
+                          )}
+                          
+                          {isCompleted ? (
+                            <div className="flex-1">
+                              <div className="flex items-center gap-4">
+                                <div>
+                                  <span className="text-lg font-semibold text-white">{set.reps}</span>
+                                  <span className="text-xs text-gray-400 ml-1">reps</span>
+                                </div>
+                                <div>
+                                  <span className="text-lg font-semibold text-white">{set.weight}</span>
+                                  <span className="text-xs text-gray-400 ml-1">lb</span>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex-1 grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs text-gray-400 mb-1">Reps</label>
+                                <input
+                                  type="number"
+                                  value={set.reps}
+                                  onChange={(e) => {
+                                    updateSet(activeExercise.id, setIndex, { reps: parseInt(e.target.value) || 0 });
+                                  }}
+                                  className="w-full bg-black/60 text-white p-2 rounded border border-white/20 focus:outline-none focus:border-cyan-400 text-base font-semibold"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-400 mb-1">Weight (lb)</label>
+                                <input
+                                  type="number"
+                                  value={set.weight}
+                                  onChange={(e) => {
+                                    updateSet(activeExercise.id, setIndex, { weight: parseFloat(e.target.value) || 0 });
+                                  }}
+                                  className="w-full bg-black/60 text-white p-2 rounded border border-white/20 focus:outline-none focus:border-cyan-400 text-base font-semibold"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Bar + Plates</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1">Weight (kg)</label>
-                        <input
-                          type="number"
-                          value={set.weight}
-                          onChange={(e) => {
-                            updateSet(activeExercise.id, setIndex, { weight: parseFloat(e.target.value) || 0 });
-                          }}
-                          className="w-full bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })}
+                </div>
+
+                {/* Add Set button */}
+                <button
+                  onClick={() => {
+                    const workoutType = getWorkoutTypeForDate(selectedDate);
+                    if (!workoutType) return;
+                    
+                    setWorkoutPlan((prev) => {
+                      const updated = {
+                        ...prev,
+                        [workoutType]: prev[workoutType].map((ex) =>
+                          ex.id === activeExercise.id
+                            ? {
+                                ...ex,
+                                sets: [...ex.sets, { reps: ex.goalReps, weight: 0, completed: false }],
+                              }
+                            : ex
+                        ),
+                      };
+                      return updated;
+                    });
+                  }}
+                  className="flex items-center justify-center gap-2 w-full py-3 text-cyan-400 hover:text-cyan-300"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span className="font-medium">Add Set</span>
+                </button>
+
+                {/* Log All Sets button */}
+                <button
+                  onClick={() => {
+                    saveExercise(activeExercise.id);
+                    setActiveExerciseId(null);
+                  }}
+                  className="w-full py-4 bg-cyan-400 hover:bg-cyan-500 text-black font-bold rounded-lg transition-colors"
+                >
+                  Log All Sets
+                </button>
               </div>
             </div>
           </div>
