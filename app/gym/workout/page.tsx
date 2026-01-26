@@ -338,7 +338,7 @@ export default function WorkoutPage() {
             }}
             className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
           >
-            + Workout
+            View Workouts
           </button>
         </div>
 
@@ -454,7 +454,7 @@ export default function WorkoutPage() {
 
         {/* Strength Progress Section */}
         {currentDayWorkoutName !== "Rest Day" && (
-          <section className="mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-xl p-3">
+          <section className="mb-4 mt-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-xl p-3">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-sm font-bold text-white">Progress</h2>
               <Link href="/gym/stats" className="text-[10px] text-teal-400 hover:text-teal-300">
