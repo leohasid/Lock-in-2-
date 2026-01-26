@@ -5,7 +5,7 @@ import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { 
   CheckCircle2, Calendar, 
-  Check, Play, BookOpen, MessageCircle
+  Check, Play, BookOpen, MessageCircle, Sparkles
 } from "lucide-react";
 
 interface Goal {
@@ -22,7 +22,7 @@ interface Goal {
 
 export default function Home() {
   const [allGoals, setAllGoals] = useState<Goal[]>([]);
-
+      
   // Load goals from localStorage
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -138,13 +138,16 @@ export default function Home() {
     <div className="min-h-screen bg-black text-white">
       <div className="max-w-md mx-auto pb-20">
       {/* Header */}
-        <div className="px-4 pt-3 pb-1">
-          <h1 className="text-base font-semibold text-white text-center">Goals Dashboard</h1>
-        </div>
-
-        {/* Slogan */}
-        <div className="px-4 pb-2">
-          <p className="text-cyan-400 italic text-xs">Stay Focused and Achieve Your Goals!</p>
+        <div className="px-4 pt-3 pb-1 flex items-center justify-between">
+          <Link
+            href="/consultation?from=reflection"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-400/20 hover:bg-cyan-400/30 border border-cyan-400/50 rounded-lg text-cyan-400 text-xs font-medium transition-colors"
+          >
+            <Sparkles className="w-3 h-3" />
+            AI Reflection
+          </Link>
+          <h1 className="text-base font-semibold text-white">Goals Dashboard</h1>
+          <div className="w-24" /> {/* Spacer for centering */}
         </div>
 
         <div className="px-4 space-y-3">
@@ -267,7 +270,7 @@ export default function Home() {
                 <div className="p-2 bg-black/60 rounded-lg text-gray-400 text-center text-xs">
                   No monthly goals yet
                 </div>
-              )}
+                  )}
             </div>
 
             {/* Long-Term Goals */}
@@ -281,7 +284,7 @@ export default function Home() {
                   >
                     View All
                   </Link>
-                )}
+                  )}
               </div>
               {longTermGoals.length > 0 ? (
                 <div className="p-2 bg-black/60 rounded-lg">
@@ -306,20 +309,6 @@ export default function Home() {
                   No long-term goals yet
           </div>
         )}
-            </div>
-          </div>
-
-          {/* Goal Tracker Section */}
-          <div className="bg-gray-900/50 rounded-xl p-3">
-            <h2 className="text-sm font-semibold text-white mb-1.5">Goal Tracker</h2>
-            <p className="text-white text-xs mb-1.5">
-              {Math.round(savingsProgress * 100)}% Towards Savings Goal
-            </p>
-            <div className="w-full bg-gray-700 rounded-full h-1.5">
-              <div
-                className="bg-cyan-400 h-1.5 rounded-full transition-all"
-                style={{ width: `${savingsProgress * 100}%` }}
-              />
             </div>
           </div>
 
