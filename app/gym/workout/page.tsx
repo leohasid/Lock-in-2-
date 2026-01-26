@@ -1126,6 +1126,7 @@ export default function WorkoutPage() {
                   </div>
                 </div>
               </div>
+              )}
 
               <div className="flex gap-4">
                 <button
