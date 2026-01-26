@@ -68,6 +68,147 @@ export default function CalendarPage() {
     localStorage.setItem("reminders", JSON.stringify(reminders));
   }, [reminders, isLoaded]);
 
+  const handleScheduleChatSend = async () => {
+    if (!scheduleChatInput.trim() || isScheduleChatLoading) return;
+
+    const userMessage = scheduleChatInput.trim();
+    setScheduleChatInput("");
+    
+    // Add user message
+    setScheduleChatMessages(prev => [...prev, { role: "user", content: userMessage }]);
+    setIsScheduleChatLoading(true);
+
+    try {
+      // Call AI consultation API with context
+      const response = await fetch("/api/consultation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userMessage,
+          context: `You are helping the user set up their schedule. They have ${scheduleContext?.generatedReminders?.length || 0} generated schedule items. Ask clarifying questions about:
+1. Which days of the week (Monday-Friday, weekends, all days, specific days)
+2. Repeat frequency (forever, specific period, number of times)
+3. Preferred times for activities
+4. Any modifications needed
+
+Previous conversation:
+${scheduleChatMessages.map(m => `${m.role}: ${m.content}`).join('\n')}
+
+User just said: ${userMessage}
+
+Respond naturally and ask follow-up questions if needed. When you have enough information, summarize what will be added and ask for confirmation.`
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get AI response");
+      }
+
+      const data = await response.json();
+      const aiResponse = data.response || data.message || "I understand. Let me help you set up your schedule.";
+
+      setScheduleChatMessages(prev => [...prev, { role: "assistant", content: aiResponse }]);
+
+      // Check if AI is asking for confirmation or ready to add
+      if (aiResponse.toLowerCase().includes("confirm") || 
+          (aiResponse.toLowerCase().includes("add") && 
+          (aiResponse.toLowerCase().includes("yes") || aiResponse.toLowerCase().includes("proceed")))) {
+        // Process and add reminders based on conversation
+        processAndAddReminders(userMessage);
+      }
+    } catch (error: any) {
+      console.error("Schedule chat error:", error);
+      setScheduleChatMessages(prev => [...prev, {
+        role: "assistant",
+        content: "I'm sorry, I encountered an error. Could you please try again or provide your preferences directly?"
+      }]);
+    } finally {
+      setIsScheduleChatLoading(false);
+    }
+  };
+
+  const processAndAddReminders = (userPreferences: string) => {
+    if (!scheduleContext?.generatedReminders) return;
+
+    // Parse user preferences to determine days and repeat settings
+    const lowerPrefs = userPreferences.toLowerCase();
+    const daysOfWeek = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+    const selectedDays: string[] = [];
+    
+    // Determine which days
+    if (lowerPrefs.includes("weekday") || lowerPrefs.includes("monday-friday") || lowerPrefs.includes("mon-fri")) {
+      selectedDays.push(...["monday", "tuesday", "wednesday", "thursday", "friday"]);
+    } else if (lowerPrefs.includes("weekend")) {
+      selectedDays.push("saturday", "sunday");
+    } else if (lowerPrefs.includes("every day") || lowerPrefs.includes("all days")) {
+      selectedDays.push(...daysOfWeek);
+    } else {
+      daysOfWeek.forEach(day => {
+        if (lowerPrefs.includes(day)) selectedDays.push(day);
+      });
+    }
+
+    // Determine repeat frequency
+    let repeatFreq = "";
+    if (lowerPrefs.includes("forever") || lowerPrefs.includes("indefinitely") || lowerPrefs.includes("always")) {
+      repeatFreq = "daily";
+    } else if (lowerPrefs.includes("week")) {
+      const weekMatch = lowerPrefs.match(/(\d+)\s*week/);
+      if (weekMatch) {
+        repeatFreq = `every ${weekMatch[1]} weeks`;
+      } else {
+        repeatFreq = "weekly";
+      }
+    } else if (lowerPrefs.includes("month")) {
+      repeatFreq = "monthly";
+    }
+
+    // Process reminders with user preferences
+    const processedReminders: Reminder[] = [];
+    const today = new Date();
+    
+    scheduleContext.generatedReminders.forEach((reminder: Reminder) => {
+      if (selectedDays.length === 0) {
+        // If no specific days, use original date
+        processedReminders.push({
+          ...reminder,
+          repeatFrequency: repeatFreq || reminder.repeatFrequency || "",
+        });
+      } else {
+        // Create reminders for each selected day
+        selectedDays.forEach(dayName => {
+          const dayIndex = daysOfWeek.indexOf(dayName);
+          if (dayIndex !== -1) {
+            const reminderDate = new Date(today);
+            const currentDay = today.getDay();
+            const daysUntilDay = (dayIndex - currentDay + 7) % 7 || 7;
+            reminderDate.setDate(today.getDate() + daysUntilDay);
+            
+            processedReminders.push({
+              ...reminder,
+              id: `${reminder.id}-${dayName}`,
+              date: reminderDate.toISOString().split("T")[0],
+              repeatFrequency: repeatFreq || reminder.repeatFrequency || "weekly",
+            });
+          }
+        });
+      }
+    });
+
+    // Add to reminders
+    setReminders([...reminders, ...processedReminders]);
+    setShowScheduleChat(false);
+    setScheduleChatMessages([]);
+    setScheduleChatInput("");
+    setScheduleContext(null);
+    setShowAIGenerator(false);
+    setAiPreferences("");
+    setGeneratedReminders([]);
+    setShowGeneratedPreview(false);
+    
+    alert(`Successfully added ${processedReminders.length} items to your schedule!`);
+  };
+
   const parseRepeatFrequency = (frequency: string): { days: number; count: number } | null => {
     if (!frequency || frequency.trim() === "") return null;
     
