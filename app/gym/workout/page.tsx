@@ -142,13 +142,45 @@ export default function WorkoutPage() {
                   pullDay: [],
                   legsDay: [],
                 });
+                
+                // Also automatically apply to workoutPlan so they show up on the main page
+                if (allExercises.length > 0) {
+                  const workoutType = getWorkoutTypeForDate(selectedDate);
+                  if (workoutType) {
+                    const convertedExercises = allExercises.map((ex: any) => ({
+                      id: ex.id || `ex-${Date.now()}-${Math.random()}`,
+                      name: ex.name || "",
+                      goalSets: ex.goalSets || ex.sets || 3,
+                      goalReps: ex.goalReps || ex.reps || 10,
+                      goalWeight: ex.goalWeight || 0,
+                      sets: ex.sets || Array.from({ length: ex.goalSets || ex.sets || 3 }, () => ({
+                        reps: ex.goalReps || ex.reps || 10,
+                        weight: ex.goalWeight || 0,
+                        completed: false,
+                      })),
+                    }));
+                    
+                    setWorkoutPlan((prev) => ({
+                      ...prev,
+                      [workoutType]: convertedExercises,
+                    }));
+                    
+                    if (typeof window !== "undefined") {
+                      const updatedPlan = {
+                        ...workoutPlan,
+                        [workoutType]: convertedExercises,
+                      };
+                      localStorage.setItem("workoutPlan", JSON.stringify(updatedPlan));
+                    }
+                  }
+                }
               }
             } catch (e) {
               console.error("Error loading workout option:", e);
             }
           }
     }
-  }, [typeof window !== "undefined" ? window.location.search : ""]);
+  }, [typeof window !== "undefined" ? window.location.search : "", selectedDate, workoutPlan]);
 
   // Load workout plan and schedule
   useEffect(() => {
