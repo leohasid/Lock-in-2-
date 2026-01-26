@@ -123,25 +123,15 @@ export default function WorkoutsPage() {
           <div className="w-9" /> {/* Spacer for centering */}
         </div>
 
-        {/* Description */}
-        <p className="text-gray-400 mb-6 text-center">
-          Choose a workout split that fits your training style
-        </p>
-
         {/* Workout Options */}
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 gap-3">
           {workoutOptions.map((option) => (
             <button
               key={option.id}
               onClick={() => handleSelectOption(option.id)}
-              className="p-6 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-xl hover:border-cyan-400/50 transition-colors text-left"
+              className="p-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-lg hover:border-cyan-400/50 transition-colors text-left"
             >
-              <h3 className="text-xl font-bold text-white mb-3">{option.name}</h3>
-              <div className="space-y-2 text-sm text-gray-400">
-                <p>• {option.dayNames.day1}</p>
-                <p>• {option.dayNames.day2}</p>
-                <p>• {option.dayNames.day3}</p>
-              </div>
+              <h3 className="text-sm font-semibold text-white">{option.name}</h3>
             </button>
           ))}
         </div>
