@@ -29,20 +29,20 @@ export async function POST(request: Request) {
 
     const { preferences, month, year, existingReminders } = requestBody;
 
-    const systemPrompt = `You are an expert schedule and routine planner AI assistant. Your job is to create a comprehensive, well-organized monthly schedule that helps users establish and maintain a healthy, productive routine.
+    const systemPrompt = `You are an expert schedule and routine planner AI assistant. Your job is to create a schedule based ONLY on what the user explicitly mentions.
+
+**CRITICAL RULES:**
+1. ONLY create reminders for activities, tasks, or items that the user explicitly mentions in their preferences
+2. DO NOT add random workouts, exercises, or activities that the user did not mention
+3. DO NOT invent new tasks - only use what the user specified
+4. If the user mentions "workout", use that exact term - do not change it to "HIIT workout" or add variations
+5. Extract the exact activities the user wants to track from their input
 
 **Your Task:**
-Generate a complete monthly schedule for ${month} ${year} that includes:
-- Workout/exercise sessions (distributed throughout the week)
-- Meal times and nutrition reminders
-- Supplement reminders
-- Habit tracking items
-- Task reminders
-- Rest days and recovery periods
-- Any other routine activities the user wants to track
+Generate a monthly schedule for ${month} ${year} based ONLY on the user's explicit preferences below.
 
-**User Preferences:**
-${preferences ? `- ${preferences}` : "- No specific preferences provided. Create a balanced, healthy routine."}
+**User Preferences (ONLY use these items):**
+${preferences ? preferences : "- No preferences provided. Return an empty schedule."}
 
 **Existing Reminders (to avoid duplicates):**
 ${existingReminders && existingReminders.length > 0 
@@ -71,20 +71,18 @@ Example format:
 }
 
 **Guidelines:**
-- Create a realistic, sustainable routine
-- Space out activities appropriately
-- Include variety in workout types
-- Consider rest days and recovery
-- Make meal times consistent
-- Include morning and evening routines
-- Distribute activities throughout the day
+- ONLY create reminders for items explicitly mentioned by the user
+- DO NOT add your own suggestions or variations
+- Use the exact wording the user provided for activity names
+- Space out activities appropriately throughout the month
 - Don't create duplicates of existing reminders
-- Make the schedule personalized based on user preferences
-- Generate reminders for the entire month
+- If user mentions a time, use that time
+- If user doesn't mention a time, use reasonable defaults (e.g., 08:00 for morning activities)
+- Generate reminders for the entire month based on repeat frequency
 
 **Important:** Return ONLY valid JSON in the format: {"reminders": [...]}. No markdown, no code blocks, just the JSON object.`;
 
-    const userPrompt = `Generate a complete monthly schedule for ${month} ${year}. ${preferences ? `User preferences: ${preferences}` : 'Create a balanced, healthy routine with workouts, meals, supplements, and habits.'}`;
+    const userPrompt = `Generate a monthly schedule for ${month} ${year} based ONLY on these user preferences: ${preferences || 'No preferences provided - return empty schedule'}. Only include activities the user explicitly mentioned. Do not add any activities they did not mention.`;
 
     // Combine system and user prompts into single input
     const prompt = `${systemPrompt}\n\n${userPrompt}`;

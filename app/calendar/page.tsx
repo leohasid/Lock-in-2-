@@ -85,18 +85,21 @@ export default function CalendarPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: userMessage,
-          context: `You are helping the user set up their schedule. They have ${scheduleContext?.generatedReminders?.length || 0} generated schedule items. Ask clarifying questions about:
-1. Which days of the week (Monday-Friday, weekends, all days, specific days)
-2. Repeat frequency (forever, specific period, number of times)
-3. Preferred times for activities
-4. Any modifications needed
+          context: `You are helping the user set up their schedule. They have ${scheduleContext?.generatedReminders?.length || 0} schedule items that need to be added.
+
+**IMPORTANT RULES:**
+1. You MUST ask which specific days (Monday, Tuesday, Wednesday, etc.) if the user hasn't specified
+2. If the user doesn't mention days, ask: "Which days should these be scheduled? Please specify (e.g., Monday, Tuesday, or Monday-Friday)"
+3. If the user doesn't mention repeat frequency, ask: "Should these repeat forever, or for how long?"
+4. Only proceed to add when you have clear information about: (a) which days, (b) repeat frequency
+5. When you have all info, summarize and ask: "Should I add these to your schedule now?"
 
 Previous conversation:
 ${scheduleChatMessages.map(m => `${m.role}: ${m.content}`).join('\n')}
 
 User just said: ${userMessage}
 
-Respond naturally and ask follow-up questions if needed. When you have enough information, summarize what will be added and ask for confirmation.`
+Check if they specified days. If not, ask specifically about days.`
         }),
       });
 
@@ -1278,7 +1281,7 @@ Respond naturally and ask follow-up questions if needed. When you have enough in
                         setScheduleChatMessages([
                           {
                             role: "assistant",
-                            content: `I've generated ${generatedReminders.length} schedule items for you. Before I add them to your schedule, I'd like to ask a few questions:\n\n1. Which days of the week should these activities be scheduled? (e.g., Monday-Friday, Weekends, All days)\n2. Should these repeat forever, or for a specific period?\n3. Are there any specific times you prefer for certain activities?\n4. Would you like to modify any of the activities before adding them?\n\nPlease let me know your preferences!`
+                            content: `I've generated ${generatedReminders.length} schedule items based on what you mentioned. Before I add them to your schedule, I need to know:\n\n1. Which days should these be scheduled? Please specify the days (e.g., Monday, Tuesday, Wednesday, or Monday-Friday, or Weekends, or All days)\n2. Should these repeat forever, or for a specific period?\n3. Are there any specific times you prefer?\n\nPlease tell me which days you want these scheduled on.`
                           }
                         ]);
                         setShowGeneratedPreview(false);
