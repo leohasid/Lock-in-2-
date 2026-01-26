@@ -430,12 +430,23 @@ export default function WorkoutPage() {
           <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
             {currentDayWorkoutName}
           </h1>
-          <Link
-            href="/gym/workouts"
-            className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
-          >
-            View Workouts
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                // TODO: Implement reorganise workout functionality
+                alert("Reorganise workout feature coming soon!");
+              }}
+              className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
+            >
+              Reorganise Workout
+            </button>
+            <Link
+              href="/gym/workouts"
+              className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
+            >
+              View Workouts
+            </Link>
+          </div>
         </div>
 
         {/* Date Selector with Left/Right Arrows */}
