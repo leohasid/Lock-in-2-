@@ -1128,66 +1128,89 @@ export default function WorkoutPage() {
               
                 {/* Buttons - only show when editing workout plan */}
                 <div className="flex gap-4 mt-6">
-                <button
-                  onClick={() => {
-                    setShowCustomWorkoutModal(false);
-                    setShowWorkoutOptions(true);
-                    setSelectedWorkoutOption(null);
-                    setCustomWorkoutPlan({
-                      pushDay: [{ name: "", sets: 3, reps: 10 }],
-                      pullDay: [{ name: "", sets: 3, reps: 10 }],
-                      legsDay: [{ name: "", sets: 3, reps: 10 }],
-                    });
-                  }}
-                  className="flex-1 bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    // Convert exercises to Exercise format for each day type
-                    const convertExercises = (exercises: CustomExercise[]): Exercise[] => {
-                      return exercises
-                        .filter((ex) => ex.name.trim() !== "")
-                        .map((ex, index) => ({
-                          id: `custom-${Date.now()}-${index}`,
-                          name: ex.name,
-                          goalSets: ex.sets,
-                          goalReps: ex.reps,
-                          goalWeight: 0,
-                          sets: Array.from({ length: ex.sets }, () => ({
-                            reps: ex.reps,
-                            weight: 0,
-                            completed: false,
-                          })),
-                        }));
-                    };
+                  <button
+                    onClick={() => {
+                      setShowCustomWorkoutModal(false);
+                      setShowWorkoutOptions(true);
+                      setSelectedWorkoutOption(null);
+                      setCustomWorkoutPlan({
+                        pushDay: [{ name: "", sets: 3, reps: 10 }],
+                        pullDay: [{ name: "", sets: 3, reps: 10 }],
+                        legsDay: [{ name: "", sets: 3, reps: 10 }],
+                      });
+                    }}
+                    className="flex-1 bg-[rgba(20,30,35,0.85)] hover:bg-[rgba(20,30,35,1)] text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!selectedWorkoutOption) return;
+                      
+                      // Convert exercises to Exercise format for each day type
+                      const convertExercises = (exercises: CustomExercise[]): Exercise[] => {
+                        return exercises
+                          .filter((ex) => ex.name.trim() !== "")
+                          .map((ex, index) => ({
+                            id: `custom-${Date.now()}-${index}`,
+                            name: ex.name,
+                            goalSets: ex.sets,
+                            goalReps: ex.reps,
+                            goalWeight: 0,
+                            sets: Array.from({ length: ex.sets }, () => ({
+                              reps: ex.reps,
+                              weight: 0,
+                              completed: false,
+                            })),
+                          }));
+                      };
 
-                    const pushDayExercises = convertExercises(customWorkoutPlan.pushDay);
-                    const pullDayExercises = convertExercises(customWorkoutPlan.pullDay);
-                    const legsDayExercises = convertExercises(customWorkoutPlan.legsDay);
+                      const day1Exercises = convertExercises(customWorkoutPlan.pushDay);
+                      const day2Exercises = convertExercises(customWorkoutPlan.pullDay);
+                      const day3Exercises = convertExercises(customWorkoutPlan.legsDay);
 
-                    // Save the workout plan
-                    const newPlan = {
-                      pushDay: pushDayExercises,
-                      pullDay: pullDayExercises,
-                      legsDay: legsDayExercises,
-                    };
-                    setWorkoutPlan(newPlan);
-                    if (typeof window !== "undefined") {
-                      localStorage.setItem("workoutPlan", JSON.stringify(newPlan));
-                    }
-                    setShowCustomWorkoutModal(false);
-                    setCustomWorkoutPlan({
-                      pushDay: [{ name: "", sets: 3, reps: 10 }],
-                      pullDay: [{ name: "", sets: 3, reps: 10 }],
-                      legsDay: [{ name: "", sets: 3, reps: 10 }],
-                    });
-                  }}
-                  className="flex-1 bg-teal-400 hover:bg-teal-500 text-black px-6 py-3 rounded-lg font-semibold transition-colors"
-                >
-                  Save Workout Plan
-                </button>
+                      // Update the selected workout option
+                      const updatedOptions = workoutOptions.map(opt => 
+                        opt.id === selectedWorkoutOption
+                          ? {
+                              ...opt,
+                              days: {
+                                day1: day1Exercises,
+                                day2: day2Exercises,
+                                day3: day3Exercises,
+                              },
+                            }
+                          : opt
+                      );
+                      setWorkoutOptions(updatedOptions);
+                      if (typeof window !== "undefined") {
+                        localStorage.setItem("workoutOptions", JSON.stringify(updatedOptions));
+                      }
+
+                      // Also save to the main workout plan (for backward compatibility)
+                      const newPlan = {
+                        pushDay: day1Exercises,
+                        pullDay: day2Exercises,
+                        legsDay: day3Exercises,
+                      };
+                      setWorkoutPlan(newPlan);
+                      if (typeof window !== "undefined") {
+                        localStorage.setItem("workoutPlan", JSON.stringify(newPlan));
+                      }
+                      
+                      setShowCustomWorkoutModal(false);
+                      setShowWorkoutOptions(true);
+                      setSelectedWorkoutOption(null);
+                      setCustomWorkoutPlan({
+                        pushDay: [{ name: "", sets: 3, reps: 10 }],
+                        pullDay: [{ name: "", sets: 3, reps: 10 }],
+                        legsDay: [{ name: "", sets: 3, reps: 10 }],
+                      });
+                    }}
+                    className="flex-1 bg-teal-400 hover:bg-teal-500 text-black px-6 py-3 rounded-lg font-semibold transition-colors"
+                  >
+                    Save Workout Plan
+                  </button>
                 </div>
               </div>
               )}
