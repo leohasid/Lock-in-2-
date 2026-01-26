@@ -430,21 +430,21 @@ export default function WorkoutPage() {
           <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
             {currentDayWorkoutName}
           </h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => {
                 // TODO: Implement reorganise workout functionality
                 alert("Reorganise workout feature coming soon!");
               }}
-              className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
+              className="px-2 py-1 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-[10px] font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
             >
-              Reorganise Workout
+              Reorganise
             </button>
             <Link
               href="/gym/workouts"
-              className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
+              className="px-2 py-1 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-[10px] font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
             >
-              View Workouts
+              View
             </Link>
           </div>
         </div>
@@ -509,9 +509,9 @@ export default function WorkoutPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Exercise count header */}
+            {/* Workout day name header */}
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-white">{currentDayExercises.length} exercises</h2>
+              <h2 className="text-base font-semibold text-white">{currentDayWorkoutName}</h2>
               <button className="text-cyan-400 hover:text-cyan-300">
                 <Plus className="w-5 h-5" />
               </button>
