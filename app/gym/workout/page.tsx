@@ -92,7 +92,7 @@ export default function WorkoutPage() {
     legsDay: [{ name: "", sets: 3, reps: 10 }],
   });
 
-  // Update selectedDate when URL changes
+  // Update selectedDate when URL changes and handle option parameter
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -105,6 +105,46 @@ export default function WorkoutPage() {
         }
       } catch (e) {
         console.error("Error parsing date:", e);
+      }
+    }
+    
+    // Handle option parameter - open modal with selected option
+    const optionParam = params.get("option");
+    if (optionParam) {
+      setSelectedWorkoutOption(optionParam);
+      setShowWorkoutOptions(false);
+      setShowCustomWorkoutModal(true);
+      
+      // Load the exercises for this option
+      const storedOptions = localStorage.getItem("workoutOptions");
+      if (storedOptions) {
+        try {
+          const options = JSON.parse(storedOptions);
+          const option = options.find((o: WorkoutOption) => o.id === optionParam);
+          if (option) {
+            const convertToCustom = (exercises: any[]): any[] => {
+              if (!exercises || exercises.length === 0) return [{ name: "", sets: 3, reps: 10 }];
+              return exercises.map(ex => ({
+                name: ex.name || "",
+                sets: ex.goalSets || ex.sets || 3,
+                reps: ex.goalReps || ex.reps || 10,
+              }));
+            };
+            setCustomWorkoutPlan({
+              pushDay: option.days.day1.length > 0 
+                ? convertToCustom(option.days.day1)
+                : [{ name: "", sets: 3, reps: 10 }],
+              pullDay: option.days.day2.length > 0
+                ? convertToCustom(option.days.day2)
+                : [{ name: "", sets: 3, reps: 10 }],
+              legsDay: option.days.day3.length > 0
+                ? convertToCustom(option.days.day3)
+                : [{ name: "", sets: 3, reps: 10 }],
+            });
+          }
+        } catch (e) {
+          console.error("Error loading workout option:", e);
+        }
       }
     }
   }, [typeof window !== "undefined" ? window.location.search : ""]);
