@@ -386,30 +386,6 @@ export default function WorkoutPage() {
           </button>
         </div>
 
-        {/* Workout Overview */}
-        {currentDayWorkoutName !== "Rest Day" && (
-          <div className="mb-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-white/10">
-            <h2 className="text-xl font-bold text-white mb-1">{currentDayWorkoutName}</h2>
-            <p className="text-sm text-gray-400 mb-3">
-              {selectedDate.toLocaleDateString("en-GB", { weekday: "long" })} • {
-                currentDayWorkoutName === "Push Day" ? "Chest / Shoulders / Triceps" :
-                currentDayWorkoutName === "Pull Day" ? "Back / Biceps" :
-                currentDayWorkoutName === "Legs Day" ? "Quads / Hamstrings / Glutes / Calves" :
-                ""
-              }
-            </p>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs text-gray-400">Progress</span>
-              <div className="flex-1 bg-white/10 rounded-full h-2 overflow-hidden">
-                <div 
-                  className="bg-gradient-to-r from-teal-400 to-cyan-500 h-full transition-all duration-300 rounded-full"
-                  style={{ width: `${totals.progress}%` }}
-                />
-              </div>
-              <span className="text-teal-400 font-bold text-xs min-w-[3rem] text-right">{totals.progress}% {totals.totalVolume} kg</span>
-            </div>
-          </div>
-        )}
 
         {/* Exercises List */}
         {currentDayWorkoutName === "Rest Day" ? (
