@@ -9,7 +9,7 @@ export default function BottomNav() {
 
   const navItems = [
     { href: "/", icon: Home, label: "Home" },
-    { href: "/nutrition", icon: UtensilsCrossed, label: "Calories" },
+    { href: "/nutrition", icon: UtensilsCrossed, label: "Nutrition" },
     { href: "/addictions", icon: Shield, label: "Addiction" },
     { href: "/gym", icon: Dumbbell, label: "Fitness" },
     { href: "/calendar", icon: Calendar, label: "Calendar" },
