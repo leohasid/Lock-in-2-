@@ -102,8 +102,8 @@ export default function WorkoutsPage() {
   }, []);
 
   const handleSelectOption = (optionId: string) => {
-    // Navigate to workout page with the selected option
-    router.push(`/gym/workout?option=${optionId}`);
+    // Navigate to the workout option editing page
+    router.push(`/gym/workouts/${optionId}`);
   };
 
   return (
@@ -120,7 +120,12 @@ export default function WorkoutsPage() {
           <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
             Select Workout Option
           </h1>
-          <div className="w-9" /> {/* Spacer for centering */}
+          <Link
+            href="/gym/workouts/new"
+            className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
+          >
+            Add Workout
+          </Link>
         </div>
 
         {/* Workout Options */}
