@@ -257,12 +257,40 @@ export default function WorkoutPage() {
     return null;
   };
 
-  // Get current day's exercises
+  // Get current day's exercises - check workoutOptions first if an option is selected
   const currentDayExercises = useMemo(() => {
     const workoutType = getWorkoutTypeForDate(selectedDate);
     if (!workoutType) return [];
+    
+    // Check if there's a selected workout option
+    if (selectedWorkoutOption && workoutOptions.length > 0) {
+      const option = workoutOptions.find((o: WorkoutOption) => o.id === selectedWorkoutOption);
+      if (option) {
+        // Combine all exercises from the option (they're all in day1 now)
+        const allExercises = [
+          ...(option.days.day1 || []),
+          ...(option.days.day2 || []),
+          ...(option.days.day3 || []),
+        ];
+        // Convert to Exercise format
+        return allExercises.map((ex: any) => ({
+          id: ex.id || `ex-${Date.now()}-${Math.random()}`,
+          name: ex.name || "",
+          goalSets: ex.goalSets || ex.sets || 3,
+          goalReps: ex.goalReps || ex.reps || 10,
+          goalWeight: ex.goalWeight || 0,
+          sets: ex.sets || Array.from({ length: ex.goalSets || ex.sets || 3 }, () => ({
+            reps: ex.goalReps || ex.reps || 10,
+            weight: ex.goalWeight || 0,
+            completed: false,
+          })),
+        }));
+      }
+    }
+    
+    // Fall back to workoutPlan
     return workoutPlan[workoutType] || [];
-  }, [selectedDate, workoutPlan, workoutSchedule]);
+  }, [selectedDate, workoutPlan, workoutSchedule, selectedWorkoutOption, workoutOptions]);
 
   // Get current day's workout name - must match main page logic exactly
   const currentDayWorkoutName = useMemo(() => {
