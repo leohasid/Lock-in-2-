@@ -25,6 +25,21 @@ interface WorkoutPlanByDay {
   legsDay: Exercise[];
 }
 
+interface WorkoutOption {
+  id: string;
+  name: string;
+  days: {
+    day1: Exercise[];
+    day2: Exercise[];
+    day3: Exercise[];
+  };
+  dayNames: {
+    day1: string;
+    day2: string;
+    day3: string;
+  };
+}
+
 interface WorkoutSchedule {
   date: string;
   workoutName: string;
@@ -64,6 +79,9 @@ export default function WorkoutPage() {
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
   const [workoutSchedule, setWorkoutSchedule] = useState<WorkoutSchedule[]>([]);
   const [showCustomWorkoutModal, setShowCustomWorkoutModal] = useState(false);
+  const [showWorkoutOptions, setShowWorkoutOptions] = useState(true);
+  const [selectedWorkoutOption, setSelectedWorkoutOption] = useState<string | null>(null);
+  const [workoutOptions, setWorkoutOptions] = useState<WorkoutOption[]>([]);
   const [customWorkoutPlan, setCustomWorkoutPlan] = useState<{
     pushDay: CustomExercise[];
     pullDay: CustomExercise[];
@@ -109,6 +127,63 @@ export default function WorkoutPage() {
       } catch (e) {
         console.error("Error loading workout schedule:", e);
       }
+    }
+    // Load workout options
+    const storedOptions = localStorage.getItem("workoutOptions");
+    if (storedOptions) {
+      try {
+        setWorkoutOptions(JSON.parse(storedOptions));
+      } catch (e) {
+        console.error("Error loading workout options:", e);
+      }
+    } else {
+      // Initialize with default options
+      const defaultOptions: WorkoutOption[] = [
+        {
+          id: "option1",
+          name: "Option 1",
+          days: {
+            day1: [],
+            day2: [],
+            day3: [],
+          },
+          dayNames: {
+            day1: "Push Day",
+            day2: "Pull Day",
+            day3: "Legs Day",
+          },
+        },
+        {
+          id: "option2",
+          name: "Option 2",
+          days: {
+            day1: [],
+            day2: [],
+            day3: [],
+          },
+          dayNames: {
+            day1: "Back & Triceps",
+            day2: "Chest & Biceps",
+            day3: "Legs Day",
+          },
+        },
+        {
+          id: "option3",
+          name: "Option 3",
+          days: {
+            day1: [],
+            day2: [],
+            day3: [],
+          },
+          dayNames: {
+            day1: "Upper Body",
+            day2: "Lower Body",
+            day3: "Full Body",
+          },
+        },
+      ];
+      setWorkoutOptions(defaultOptions);
+      localStorage.setItem("workoutOptions", JSON.stringify(defaultOptions));
     }
   }, []);
 
@@ -648,13 +723,13 @@ export default function WorkoutPage() {
             <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-white/10">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-white">
-                  {workoutPlan.pushDay.length > 0 || workoutPlan.pullDay.length > 0 || workoutPlan.legsDay.length > 0
-                    ? "Edit Your Workout Plan"
-                    : "Create Your Workout Plan"}
+                  {showWorkoutOptions ? "Select Workout Option" : "Edit Your Workout Plan"}
                 </h2>
                 <button
                   onClick={() => {
                     setShowCustomWorkoutModal(false);
+                    setShowWorkoutOptions(true);
+                    setSelectedWorkoutOption(null);
                     setCustomWorkoutPlan({
                       pushDay: [{ name: "", sets: 3, reps: 10 }],
                       pullDay: [{ name: "", sets: 3, reps: 10 }],
@@ -667,10 +742,68 @@ export default function WorkoutPage() {
                 </button>
               </div>
 
+              {/* Workout Options Selection */}
+              {showWorkoutOptions ? (
+                <div className="space-y-4">
+                  <p className="text-gray-400 mb-4">Choose a workout split that fits your training style:</p>
+                  <div className="grid grid-cols-1 gap-4">
+                    {workoutOptions.map((option) => (
+                      <button
+                        key={option.id}
+                        onClick={() => {
+                          setSelectedWorkoutOption(option.id);
+                          setShowWorkoutOptions(false);
+                          // Load the exercises for this option
+                          const convertToCustom = (exercises: Exercise[]): any[] => {
+                            return exercises.map(ex => ({
+                              name: ex.name,
+                              sets: ex.goalSets,
+                              reps: ex.goalReps,
+                            }));
+                          };
+                          setCustomWorkoutPlan({
+                            pushDay: option.days.day1.length > 0 
+                              ? convertToCustom(option.days.day1)
+                              : [{ name: "", sets: 3, reps: 10 }],
+                            pullDay: option.days.day2.length > 0
+                              ? convertToCustom(option.days.day2)
+                              : [{ name: "", sets: 3, reps: 10 }],
+                            legsDay: option.days.day3.length > 0
+                              ? convertToCustom(option.days.day3)
+                              : [{ name: "", sets: 3, reps: 10 }],
+                          });
+                        }}
+                        className="p-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-xl hover:border-cyan-400/50 transition-colors text-left"
+                      >
+                        <h3 className="text-lg font-bold text-white mb-2">{option.name}</h3>
+                        <div className="space-y-1 text-sm text-gray-400">
+                          <p>• {option.dayNames.day1}</p>
+                          <p>• {option.dayNames.day2}</p>
+                          <p>• {option.dayNames.day3}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
               <div className="space-y-6 mb-6">
-                {/* Push Day Section */}
+                {/* Back button */}
+                <button
+                  onClick={() => {
+                    setShowWorkoutOptions(true);
+                    setSelectedWorkoutOption(null);
+                  }}
+                  className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 mb-4"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Back to Options</span>
+                </button>
+
+                {/* Day 1 Section */}
                 <div className="bg-[rgba(20,30,35,0.85)] rounded-lg p-4 border border-white/10">
-                  <h3 className="text-xl font-bold text-teal-400 mb-4">💪 Push Day</h3>
+                  <h3 className="text-xl font-bold text-teal-400 mb-4">
+                    💪 {selectedWorkoutOption ? workoutOptions.find(o => o.id === selectedWorkoutOption)?.dayNames.day1 || "Day 1" : "Day 1"}
+                  </h3>
                   <div className="space-y-3">
                     {customWorkoutPlan.pushDay.length === 0 ? (
                       <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-lg p-4 border border-white/10 text-center">
@@ -775,9 +908,11 @@ export default function WorkoutPage() {
                   </div>
                 </div>
 
-                {/* Pull Day Section */}
+                {/* Day 2 Section */}
                 <div className="bg-[rgba(20,30,35,0.85)] rounded-lg p-4 border border-white/10">
-                  <h3 className="text-xl font-bold text-blue-400 mb-4">🏋️ Pull Day</h3>
+                  <h3 className="text-xl font-bold text-blue-400 mb-4">
+                    🏋️ {selectedWorkoutOption ? workoutOptions.find(o => o.id === selectedWorkoutOption)?.dayNames.day2 || "Day 2" : "Day 2"}
+                  </h3>
                   <div className="space-y-3">
                     {customWorkoutPlan.pullDay.length === 0 ? (
                       <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-lg p-4 border border-white/10 text-center">
@@ -882,9 +1017,11 @@ export default function WorkoutPage() {
                   </div>
                 </div>
 
-                {/* Legs Day Section */}
+                {/* Day 3 Section */}
                 <div className="bg-[rgba(20,30,35,0.85)] rounded-lg p-4 border border-white/10">
-                  <h3 className="text-xl font-bold text-green-400 mb-4">🦵 Legs Day</h3>
+                  <h3 className="text-xl font-bold text-green-400 mb-4">
+                    🦵 {selectedWorkoutOption ? workoutOptions.find(o => o.id === selectedWorkoutOption)?.dayNames.day3 || "Day 3" : "Day 3"}
+                  </h3>
                   <div className="space-y-3">
                     {customWorkoutPlan.legsDay.length === 0 ? (
                       <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-lg p-4 border border-white/10 text-center">
@@ -994,6 +1131,8 @@ export default function WorkoutPage() {
                 <button
                   onClick={() => {
                     setShowCustomWorkoutModal(false);
+                    setShowWorkoutOptions(true);
+                    setSelectedWorkoutOption(null);
                     setCustomWorkoutPlan({
                       pushDay: [{ name: "", sets: 3, reps: 10 }],
                       pullDay: [{ name: "", sets: 3, reps: 10 }],
@@ -1050,6 +1189,7 @@ export default function WorkoutPage() {
                   Save Workout Plan
                 </button>
               </div>
+              )}
             </div>
           </div>
         )}
