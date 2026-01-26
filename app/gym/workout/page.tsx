@@ -427,9 +427,7 @@ export default function WorkoutPage() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
-            {currentDayWorkoutName}
-          </h1>
+          <div className="flex-1" />
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => {
