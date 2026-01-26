@@ -110,11 +110,11 @@ export default function WorkoutOptionPage() {
 
     const convertedExercises = convertExercises(exercises);
 
-    // Split exercises evenly across the three days for backward compatibility
-    const third = Math.ceil(convertedExercises.length / 3);
-    const day1Exercises = convertedExercises.slice(0, third);
-    const day2Exercises = convertedExercises.slice(third, third * 2);
-    const day3Exercises = convertedExercises.slice(third * 2);
+    // Put all exercises into day1 for this workout option
+    // This way all exercises will be available when the workout is selected
+    const day1Exercises = convertedExercises;
+    const day2Exercises: any[] = [];
+    const day3Exercises: any[] = [];
 
     // Update the workout option
     const updatedOptions = workoutOptions.map(opt => 
@@ -135,7 +135,8 @@ export default function WorkoutOptionPage() {
       localStorage.setItem("workoutOptions", JSON.stringify(updatedOptions));
     }
 
-    // Also save to the main workout plan (for backward compatibility)
+    // Also save to the main workout plan - put all exercises in pushDay so they show up
+    // The workout page will load from workoutOptions when an option is selected anyway
     const newPlan = {
       pushDay: day1Exercises,
       pullDay: day2Exercises,

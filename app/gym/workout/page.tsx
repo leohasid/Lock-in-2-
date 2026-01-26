@@ -115,37 +115,38 @@ export default function WorkoutPage() {
       setShowWorkoutOptions(false);
       setShowCustomWorkoutModal(true);
       
-      // Load the exercises for this option
-      const storedOptions = localStorage.getItem("workoutOptions");
-      if (storedOptions) {
-        try {
-          const options = JSON.parse(storedOptions);
-          const option = options.find((o: WorkoutOption) => o.id === optionParam);
-          if (option) {
-            const convertToCustom = (exercises: any[]): any[] => {
-              if (!exercises || exercises.length === 0) return [{ name: "", sets: 3, reps: 10 }];
-              return exercises.map(ex => ({
-                name: ex.name || "",
-                sets: ex.goalSets || ex.sets || 3,
-                reps: ex.goalReps || ex.reps || 10,
-              }));
-            };
-            setCustomWorkoutPlan({
-              pushDay: option.days.day1.length > 0 
-                ? convertToCustom(option.days.day1)
-                : [{ name: "", sets: 3, reps: 10 }],
-              pullDay: option.days.day2.length > 0
-                ? convertToCustom(option.days.day2)
-                : [{ name: "", sets: 3, reps: 10 }],
-              legsDay: option.days.day3.length > 0
-                ? convertToCustom(option.days.day3)
-                : [{ name: "", sets: 3, reps: 10 }],
-            });
+          // Load the exercises for this option - combine all days into one
+          const storedOptions = localStorage.getItem("workoutOptions");
+          if (storedOptions) {
+            try {
+              const options = JSON.parse(storedOptions);
+              const option = options.find((o: WorkoutOption) => o.id === optionParam);
+              if (option) {
+                const convertToCustom = (exercises: any[]): any[] => {
+                  if (!exercises || exercises.length === 0) return [];
+                  return exercises.map(ex => ({
+                    name: ex.name || "",
+                    sets: ex.goalSets || ex.sets || 3,
+                    reps: ex.goalReps || ex.reps || 10,
+                  }));
+                };
+                // Combine all exercises from all three days
+                const allExercises = [
+                  ...convertToCustom(option.days.day1),
+                  ...convertToCustom(option.days.day2),
+                  ...convertToCustom(option.days.day3),
+                ];
+                // Put all exercises into pushDay so they all show up
+                setCustomWorkoutPlan({
+                  pushDay: allExercises.length > 0 ? allExercises : [{ name: "", sets: 3, reps: 10 }],
+                  pullDay: [],
+                  legsDay: [],
+                });
+              }
+            } catch (e) {
+              console.error("Error loading workout option:", e);
+            }
           }
-        } catch (e) {
-          console.error("Error loading workout option:", e);
-        }
-      }
     }
   }, [typeof window !== "undefined" ? window.location.search : ""]);
 
@@ -773,24 +774,26 @@ export default function WorkoutPage() {
                         onClick={() => {
                           setSelectedWorkoutOption(option.id);
                           setShowWorkoutOptions(false);
-                          // Load the exercises for this option
+                          // Load the exercises for this option - combine all days into one
                           const convertToCustom = (exercises: Exercise[]): any[] => {
+                            if (!exercises || exercises.length === 0) return [];
                             return exercises.map(ex => ({
                               name: ex.name,
                               sets: ex.goalSets,
                               reps: ex.goalReps,
                             }));
                           };
+                          // Combine all exercises from all three days
+                          const allExercises = [
+                            ...convertToCustom(option.days.day1),
+                            ...convertToCustom(option.days.day2),
+                            ...convertToCustom(option.days.day3),
+                          ];
+                          // Put all exercises into pushDay so they all show up
                           setCustomWorkoutPlan({
-                            pushDay: option.days.day1.length > 0 
-                              ? convertToCustom(option.days.day1)
-                              : [{ name: "", sets: 3, reps: 10 }],
-                            pullDay: option.days.day2.length > 0
-                              ? convertToCustom(option.days.day2)
-                              : [{ name: "", sets: 3, reps: 10 }],
-                            legsDay: option.days.day3.length > 0
-                              ? convertToCustom(option.days.day3)
-                              : [{ name: "", sets: 3, reps: 10 }],
+                            pushDay: allExercises.length > 0 ? allExercises : [{ name: "", sets: 3, reps: 10 }],
+                            pullDay: [],
+                            legsDay: [],
                           });
                         }}
                         className="p-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-xl hover:border-cyan-400/50 transition-colors text-left"
