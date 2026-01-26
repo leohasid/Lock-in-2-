@@ -389,32 +389,12 @@ export default function WorkoutPage() {
           <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
             {currentDayWorkoutName}
           </h1>
-          <button
-            onClick={() => {
-              const convertToCustom = (exercises: Exercise[]): any[] => {
-                return exercises.map(ex => ({
-                  name: ex.name,
-                  sets: ex.goalSets,
-                  reps: ex.goalReps,
-                }));
-              };
-              setCustomWorkoutPlan({
-                pushDay: workoutPlan.pushDay.length > 0 
-                  ? convertToCustom(workoutPlan.pushDay)
-                  : [{ name: "", sets: 3, reps: 10 }],
-                pullDay: workoutPlan.pullDay.length > 0
-                  ? convertToCustom(workoutPlan.pullDay)
-                  : [{ name: "", sets: 3, reps: 10 }],
-                legsDay: workoutPlan.legsDay.length > 0
-                  ? convertToCustom(workoutPlan.legsDay)
-                  : [{ name: "", sets: 3, reps: 10 }],
-              });
-              setShowCustomWorkoutModal(true);
-            }}
+          <Link
+            href="/gym/workouts"
             className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
           >
             View Workouts
-          </button>
+          </Link>
         </div>
 
         {/* Date Selector with Left/Right Arrows */}
