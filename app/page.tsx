@@ -5,7 +5,7 @@ import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { 
   CheckCircle2, Calendar, 
-  Check, Play, BookOpen, MessageCircle, Sparkles
+  Check, Play, Sparkles
 } from "lucide-react";
 
 interface Goal {
@@ -97,42 +97,6 @@ export default function Home() {
     localStorage.setItem("goals", JSON.stringify(updatedGoals));
   };
 
-  // Check if today's reflection exists
-  const [hasTodayReflection, setHasTodayReflection] = useState(false);
-  const [reflectionPreview, setReflectionPreview] = useState("");
-  const [aiFeedback, setAiFeedback] = useState("");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const todayStr = new Date().toISOString().split("T")[0];
-    const stored = localStorage.getItem(`reflection_${todayStr}`);
-    if (stored) {
-      try {
-        const data = JSON.parse(stored);
-        setHasTodayReflection(true);
-        // Show a preview of how the day was
-        if (data.howWasDay) {
-          setReflectionPreview(data.howWasDay.length > 60 ? data.howWasDay.substring(0, 60) + "..." : data.howWasDay);
-        } else {
-          setReflectionPreview("Reflection saved");
-        }
-        // Get AI feedback if it exists
-        if (data.aiFeedback) {
-          setAiFeedback(data.aiFeedback.length > 120 ? data.aiFeedback.substring(0, 120) + "..." : data.aiFeedback);
-        } else {
-          setAiFeedback("");
-        }
-      } catch (e) {
-        setHasTodayReflection(false);
-        setReflectionPreview("");
-        setAiFeedback("");
-      }
-    } else {
-      setHasTodayReflection(false);
-      setReflectionPreview("");
-      setAiFeedback("");
-    }
-  }, []);
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -312,55 +276,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Reflection Section */}
-          <div className="bg-gray-900/50 rounded-xl p-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <BookOpen className="w-4 h-4 text-cyan-400" />
-                <h2 className="text-sm font-semibold text-white">Reflection</h2>
-              </div>
-              <Link 
-                href="/reflections"
-                className="text-xs font-medium text-cyan-400"
-              >
-                View All
-              </Link>
-            </div>
-            {hasTodayReflection ? (
-              <div className="space-y-2">
-                <div className="p-2 bg-black/60 rounded-lg">
-                  <p className="text-white text-xs mb-1">Today's Reflection</p>
-                  <p className="text-gray-400 text-[10px] leading-tight">{reflectionPreview}</p>
-                </div>
-                {aiFeedback && (
-                  <div className="p-2 bg-black/60 rounded-lg">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <MessageCircle className="w-3 h-3 text-cyan-400" />
-                      <p className="text-white text-xs">AI Response</p>
-                    </div>
-                    <p className="text-gray-300 text-[10px] leading-tight">{aiFeedback}</p>
-        </div>
-                )}
-                <Link
-                  href="/consultation?from=reflection"
-                  className="flex items-center justify-center gap-1.5 w-full py-1.5 px-3 bg-cyan-400/20 hover:bg-cyan-400/30 border border-cyan-400/50 rounded-lg text-cyan-400 text-xs font-medium transition-colors"
-                >
-                  <MessageCircle className="w-3 h-3" />
-                  Chat with AI
-                </Link>
-              </div>
-            ) : (
-              <div className="p-2 bg-black/60 rounded-lg">
-                <p className="text-gray-400 text-xs text-center">No reflection for today yet</p>
-                <Link
-                  href="/reflections"
-                  className="block text-center mt-1 text-cyan-400 text-xs hover:underline"
-                >
-                  Start reflecting
-                </Link>
-              </div>
-            )}
-          </div>
         </div>
         </div>
 
