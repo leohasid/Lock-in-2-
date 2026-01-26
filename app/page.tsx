@@ -5,7 +5,7 @@ import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { 
   CheckCircle2, Calendar, 
-  Check, Play, Sparkles, Plus, X, TrendingUp, List
+  Check, Play, Sparkles, TrendingUp, List
 } from "lucide-react";
 
 interface Goal {
@@ -20,17 +20,19 @@ interface Goal {
   lastUpdated?: string;
 }
 
-interface Task {
+interface Reminder {
   id: string;
-  name: string;
+  title: string;
+  type: "supplement" | "task" | "habit";
+  time: string;
+  date: string;
   completed: boolean;
+  repeatFrequency?: string;
 }
 
 export default function Home() {
   const [allGoals, setAllGoals] = useState<Goal[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [newTaskName, setNewTaskName] = useState("");
-  const [showTaskInput, setShowTaskInput] = useState(false);
+  const [tasks, setTasks] = useState<Reminder[]>([]);
   const [strengthIncrease, setStrengthIncrease] = useState<number | null>(null);
       
   // Load goals from localStorage
@@ -66,13 +68,19 @@ export default function Home() {
     }
   }, []);
 
-  // Load tasks from localStorage
+  // Load tasks from reminders (routine/schedule)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const storedTasks = localStorage.getItem("scheduleTasks");
-    if (storedTasks) {
+    const storedReminders = localStorage.getItem("reminders");
+    if (storedReminders) {
       try {
-        setTasks(JSON.parse(storedTasks));
+        const reminders: Reminder[] = JSON.parse(storedReminders);
+        const todayStr = new Date().toISOString().split("T")[0];
+        // Filter for today's tasks
+        const todayTasks = reminders.filter(
+          (r) => r.type === "task" && r.date === todayStr
+        );
+        setTasks(todayTasks);
       } catch (e) {
         setTasks([]);
       }
@@ -174,32 +182,26 @@ export default function Home() {
     localStorage.setItem("goals", JSON.stringify(updatedGoals));
   };
 
-  const handleAddTask = () => {
-    if (!newTaskName.trim()) return;
-    const newTask: Task = {
-      id: Date.now().toString(),
-      name: newTaskName.trim(),
-      completed: false,
-    };
-    const updatedTasks = [...tasks, newTask];
-    setTasks(updatedTasks);
-    localStorage.setItem("scheduleTasks", JSON.stringify(updatedTasks));
-    setNewTaskName("");
-    setShowTaskInput(false);
-  };
-
   const handleToggleTask = (taskId: string) => {
-    const updatedTasks = tasks.map(task =>
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    );
-    setTasks(updatedTasks);
-    localStorage.setItem("scheduleTasks", JSON.stringify(updatedTasks));
-  };
-
-  const handleDeleteTask = (taskId: string) => {
-    const updatedTasks = tasks.filter(task => task.id !== taskId);
-    setTasks(updatedTasks);
-    localStorage.setItem("scheduleTasks", JSON.stringify(updatedTasks));
+    if (typeof window === "undefined") return;
+    const storedReminders = localStorage.getItem("reminders");
+    if (storedReminders) {
+      try {
+        const reminders: Reminder[] = JSON.parse(storedReminders);
+        const updatedReminders = reminders.map((r) =>
+          r.id === taskId ? { ...r, completed: !r.completed } : r
+        );
+        localStorage.setItem("reminders", JSON.stringify(updatedReminders));
+        // Update local state
+        const todayStr = new Date().toISOString().split("T")[0];
+        const todayTasks = updatedReminders.filter(
+          (r) => r.type === "task" && r.date === todayStr
+        );
+        setTasks(todayTasks);
+      } catch (e) {
+        console.error("Error updating task:", e);
+      }
+    }
   };
 
 
@@ -249,62 +251,27 @@ export default function Home() {
                           task.completed ? "line-through text-gray-500" : ""
                         }`}
                       >
-                        {task.name}
+                        {task.title}
+                        {task.time && (
+                          <span className="text-gray-400 ml-2">• {task.time}</span>
+                        )}
                       </span>
                     </div>
-                    <button
-                      onClick={() => handleDeleteTask(task.id)}
-                      className="text-red-400 hover:text-red-300 ml-2"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
                   </div>
                 ))
               ) : (
                 <div className="p-2 bg-black/60 rounded-lg text-gray-400 text-center text-xs">
-                  No tasks yet
+                  No tasks scheduled for today
                 </div>
               )}
             </div>
-            {showTaskInput ? (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newTaskName}
-                  onChange={(e) => setNewTaskName(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      handleAddTask();
-                    }
-                  }}
-                  placeholder="Task name..."
-                  className="flex-1 bg-black/60 border border-white/10 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-cyan-400"
-                  autoFocus
-                />
-                <button
-                  onClick={handleAddTask}
-                  className="px-3 py-2 bg-cyan-400 hover:bg-cyan-500 text-black text-xs font-medium rounded-lg transition-colors"
-                >
-                  Add
-                </button>
-                <button
-                  onClick={() => {
-                    setShowTaskInput(false);
-                    setNewTaskName("");
-                  }}
-                  className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white text-xs font-medium rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowTaskInput(true)}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-cyan-400/20 hover:bg-cyan-400/30 border border-cyan-400/50 rounded-lg text-cyan-400 text-xs font-medium transition-colors"
+            {tasks.length > 0 && (
+              <Link
+                href="/calendar"
+                className="block text-center mt-2 text-cyan-400 text-xs hover:underline"
               >
-                <Plus className="w-3 h-3" />
-                Add Task
-              </button>
+                View all tasks
+              </Link>
             )}
           </div>
 
