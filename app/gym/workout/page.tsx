@@ -447,51 +447,6 @@ export default function WorkoutPage() {
           </div>
         </div>
 
-        {/* Date Selector with Left/Right Arrows */}
-        <div className="mb-4 flex items-center justify-center gap-3">
-          <button
-            onClick={() => {
-              const prevDate = new Date(selectedDate);
-              prevDate.setDate(prevDate.getDate() - 1);
-              prevDate.setHours(0, 0, 0, 0);
-              setSelectedDate(prevDate);
-              // Update URL
-              const dateStr = prevDate.toISOString().split("T")[0];
-              router.push(`/gym/workout?date=${dateStr}`);
-            }}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <div className="flex flex-col items-center min-w-[140px] px-3 py-2 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-lg border border-white/10">
-            <span className="text-sm font-semibold text-white">
-              {selectedDate.toLocaleDateString("en-GB", { weekday: "long" })}
-            </span>
-            <span className="text-xs text-gray-400">
-              {selectedDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-            </span>
-          </div>
-          <button
-            onClick={() => {
-              const nextDate = new Date(selectedDate);
-              nextDate.setDate(nextDate.getDate() + 1);
-              nextDate.setHours(0, 0, 0, 0);
-              setSelectedDate(nextDate);
-              // Update URL
-              const dateStr = nextDate.toISOString().split("T")[0];
-              router.push(`/gym/workout?date=${dateStr}`);
-            }}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-
-
         {/* Exercises List */}
         {currentDayWorkoutName === "Rest Day" ? (
           <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-6 border border-white/10 text-center">
