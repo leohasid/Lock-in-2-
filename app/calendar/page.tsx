@@ -151,8 +151,9 @@ Check if they specified days. If not, ask specifically about days.`
   const processAndAddReminders = (userPreferences: string) => {
     if (!scheduleContext?.generatedReminders) return;
 
-    // Parse user preferences to determine days and repeat settings
-    const lowerPrefs = userPreferences.toLowerCase();
+    // Combine all conversation messages to find day specifications
+    const allMessages = scheduleChatMessages.map(m => m.content).join(' ') + ' ' + userPreferences;
+    const lowerPrefs = allMessages.toLowerCase();
     const daysOfWeek = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
     const selectedDays: string[] = [];
     
