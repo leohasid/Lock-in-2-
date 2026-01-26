@@ -442,7 +442,7 @@ export default function WorkoutPage() {
               href="/gym/workouts"
               className="px-2 py-1 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-[10px] font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
             >
-              View
+              View Workout
             </Link>
           </div>
         </div>
