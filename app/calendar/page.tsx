@@ -37,6 +37,11 @@ export default function CalendarPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedReminders, setGeneratedReminders] = useState<Reminder[]>([]);
   const [showGeneratedPreview, setShowGeneratedPreview] = useState(false);
+  const [showScheduleChat, setShowScheduleChat] = useState(false);
+  const [scheduleChatMessages, setScheduleChatMessages] = useState<Array<{role: "user" | "assistant", content: string}>>([]);
+  const [scheduleChatInput, setScheduleChatInput] = useState("");
+  const [isScheduleChatLoading, setIsScheduleChatLoading] = useState(false);
+  const [scheduleContext, setScheduleContext] = useState<any>(null);
   const [activeView, setActiveView] = useState<"calendar" | "routine">("calendar");
   const [selectedWeek, setSelectedWeek] = useState(new Date());
   const [routineView, setRoutineView] = useState<"fullWeek" | "today">("fullWeek");
@@ -1092,7 +1097,7 @@ export default function CalendarPage() {
                       ✨ Generated {generatedReminders.length} reminders for {monthNames[selectedDate.getMonth()]} {selectedDate.getFullYear()}
                     </p>
                     <p className="text-gray-400 text-xs">
-                      Review the schedule below and click "Add to Calendar" to apply it
+                      Review the schedule below and click "Add to Schedule" to customize it
                     </p>
                   </div>
                   <div className="max-h-[400px] overflow-y-auto space-y-2">
@@ -1127,16 +1132,20 @@ export default function CalendarPage() {
                   <div className="flex gap-3 pt-2">
                     <button
                       onClick={() => {
-                        setReminders([...reminders, ...generatedReminders]);
-                        setShowAIGenerator(false);
-                        setAiPreferences("");
-                        setGeneratedReminders([]);
+                        // Store the generated reminders in context and start chat
+                        setScheduleContext({ generatedReminders, aiPreferences });
+                        setScheduleChatMessages([
+                          {
+                            role: "assistant",
+                            content: `I've generated ${generatedReminders.length} schedule items for you. Before I add them to your schedule, I'd like to ask a few questions:\n\n1. Which days of the week should these activities be scheduled? (e.g., Monday-Friday, Weekends, All days)\n2. Should these repeat forever, or for a specific period?\n3. Are there any specific times you prefer for certain activities?\n4. Would you like to modify any of the activities before adding them?\n\nPlease let me know your preferences!`
+                          }
+                        ]);
                         setShowGeneratedPreview(false);
-                        alert(`Successfully added ${generatedReminders.length} reminders to your calendar!`);
+                        setShowScheduleChat(true);
                       }}
                       className="flex-1 bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-black px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg shadow-green-500/30"
                     >
-                      Add to Calendar
+                      Add to Schedule
                     </button>
                     <button
                       onClick={() => {
