@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Edit2, Check, X } from "lucide-react";
 
 interface WorkoutOption {
   id: string;
@@ -35,6 +35,8 @@ export default function WorkoutOptionPage() {
   const [workoutOptions, setWorkoutOptions] = useState<WorkoutOption[]>([]);
   const [currentOption, setCurrentOption] = useState<WorkoutOption | null>(null);
   const [workoutName, setWorkoutName] = useState("");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [tempWorkoutName, setTempWorkoutName] = useState("");
   const [customWorkoutPlan, setCustomWorkoutPlan] = useState<{
     day1: CustomExercise[];
     day2: CustomExercise[];
@@ -58,6 +60,7 @@ export default function WorkoutOptionPage() {
         if (option) {
           setCurrentOption(option);
           setWorkoutName(option.name);
+          setTempWorkoutName(option.name);
           
           // Load exercises for this option
           const convertToCustom = (exercises: any[]): CustomExercise[] => {
@@ -91,6 +94,11 @@ export default function WorkoutOptionPage() {
     if (!currentOption || !workoutName.trim()) {
       alert("Please enter a workout name");
       return;
+    }
+
+    // Save the workout name if it was edited
+    if (isEditingName) {
+      setIsEditingName(false);
     }
 
     // Convert exercises to Exercise format
@@ -168,24 +176,51 @@ export default function WorkoutOptionPage() {
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
-            Edit Workout
-          </h1>
-          <div className="w-9" /> {/* Spacer for centering */}
-        </div>
-
-        {/* Workout Name Input */}
-        <div className="mb-6">
-          <label className="block text-sm font-semibold text-white mb-2">
-            Workout Name
-          </label>
-          <input
-            type="text"
-            value={workoutName}
-            onChange={(e) => setWorkoutName(e.target.value)}
-            placeholder="e.g., Push Day, Chest & Biceps"
-            className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-cyan-400"
-          />
+          {isEditingName ? (
+            <div className="flex items-center gap-2 flex-1 mx-4">
+              <input
+                type="text"
+                value={tempWorkoutName}
+                onChange={(e) => setTempWorkoutName(e.target.value)}
+                placeholder="e.g., Push Day, Chest & Biceps"
+                className="flex-1 bg-black/40 border border-cyan-400 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-cyan-400"
+                autoFocus
+              />
+              <button
+                onClick={() => {
+                  setWorkoutName(tempWorkoutName);
+                  setIsEditingName(false);
+                }}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-green-400"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => {
+                  setTempWorkoutName(workoutName);
+                  setIsEditingName(false);
+                }}
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-red-400"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent flex-1 text-center">
+              {workoutName || "Workout"}
+            </h1>
+          )}
+          {!isEditingName && (
+            <button
+              onClick={() => {
+                setTempWorkoutName(workoutName);
+                setIsEditingName(true);
+              }}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            >
+              <Edit2 className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Day Sections */}
