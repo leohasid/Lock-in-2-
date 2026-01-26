@@ -135,12 +135,33 @@ export default function WorkoutOptionPage() {
       localStorage.setItem("workoutOptions", JSON.stringify(updatedOptions));
     }
 
-    // Also save to the main workout plan - put all exercises in pushDay so they show up
-    // The workout page will load from workoutOptions when an option is selected anyway
+    // Also save to the main workout plan - determine which day type based on option name
+    // Load existing plan first to preserve other days
+    let existingPlan = { pushDay: [], pullDay: [], legsDay: [] };
+    if (typeof window !== "undefined") {
+      const storedPlan = localStorage.getItem("workoutPlan");
+      if (storedPlan) {
+        try {
+          existingPlan = JSON.parse(storedPlan);
+        } catch (e) {
+          console.error("Error loading existing workout plan:", e);
+        }
+      }
+    }
+    
+    // Determine which day type to update based on option name or default to pushDay
+    const optionNameLower = workoutName.toLowerCase();
+    let targetDayType = "pushDay";
+    if (optionNameLower.includes("pull") || optionNameLower.includes("back")) {
+      targetDayType = "pullDay";
+    } else if (optionNameLower.includes("leg") || optionNameLower.includes("lower")) {
+      targetDayType = "legsDay";
+    }
+    
+    // Update the plan with all exercises for the target day
     const newPlan = {
-      pushDay: day1Exercises,
-      pullDay: day2Exercises,
-      legsDay: day3Exercises,
+      ...existingPlan,
+      [targetDayType]: day1Exercises, // All exercises go to the target day
     };
     if (typeof window !== "undefined") {
       localStorage.setItem("workoutPlan", JSON.stringify(newPlan));

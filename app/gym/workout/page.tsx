@@ -188,7 +188,46 @@ export default function WorkoutPage() {
     const storedPlan = localStorage.getItem("workoutPlan");
     if (storedPlan) {
       try {
-        setWorkoutPlan(JSON.parse(storedPlan));
+        const plan = JSON.parse(storedPlan);
+        setWorkoutPlan(plan);
+        
+        // Also check workoutOptions and sync if needed
+        const storedOptions = localStorage.getItem("workoutOptions");
+        if (storedOptions) {
+          try {
+            const options = JSON.parse(storedOptions);
+            // Find options with exercises and ensure they're in workoutPlan
+            options.forEach((option: WorkoutOption) => {
+              const allExercises = [
+                ...(option.days.day1 || []),
+                ...(option.days.day2 || []),
+                ...(option.days.day3 || []),
+              ];
+              if (allExercises.length > 0) {
+                // Determine day type from option name
+                const optionNameLower = option.name.toLowerCase();
+                let targetDayType: "pushDay" | "pullDay" | "legsDay" = "pushDay";
+                if (optionNameLower.includes("pull") || optionNameLower.includes("back")) {
+                  targetDayType = "pullDay";
+                } else if (optionNameLower.includes("leg") || optionNameLower.includes("lower")) {
+                  targetDayType = "legsDay";
+                }
+                
+                // If the target day is empty or has fewer exercises, update it
+                if (!plan[targetDayType] || plan[targetDayType].length < allExercises.length) {
+                  const updatedPlan = {
+                    ...plan,
+                    [targetDayType]: allExercises,
+                  };
+                  setWorkoutPlan(updatedPlan);
+                  localStorage.setItem("workoutPlan", JSON.stringify(updatedPlan));
+                }
+              }
+            });
+          } catch (e) {
+            console.error("Error syncing workout options:", e);
+          }
+        }
       } catch (e) {
         console.error("Error loading workout plan:", e);
       }
