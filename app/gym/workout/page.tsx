@@ -1125,10 +1125,9 @@ export default function WorkoutPage() {
                     )}
                   </div>
                 </div>
-              </div>
-              )}
-
-              <div className="flex gap-4">
+              
+                {/* Buttons - only show when editing workout plan */}
+                <div className="flex gap-4 mt-6">
                 <button
                   onClick={() => {
                     setShowCustomWorkoutModal(false);
@@ -1189,6 +1188,7 @@ export default function WorkoutPage() {
                 >
                   Save Workout Plan
                 </button>
+                </div>
               </div>
               )}
             </div>
