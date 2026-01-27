@@ -157,19 +157,39 @@ export default function NutritionPage() {
 
   // Ensure video plays when camera is shown
   useEffect(() => {
-    if (showCamera && videoRef.current && streamRef.current) {
-      const video = videoRef.current;
+    if (showCamera && streamRef.current) {
       const stream = streamRef.current;
       
-      if (video.srcObject !== stream) {
-        video.srcObject = stream;
-      }
+      // Use a small delay to ensure DOM is ready
+      const timer = setTimeout(() => {
+        if (videoRef.current) {
+          const video = videoRef.current;
+          
+          // Set the stream
+          if (video.srcObject !== stream) {
+            video.srcObject = stream;
+          }
+          
+          // Force play with multiple attempts
+          const attemptPlay = () => {
+            video.play()
+              .then(() => {
+                console.log("Video playing successfully");
+              })
+              .catch((err) => {
+                console.error("Error playing video:", err);
+                // Retry after a short delay
+                setTimeout(attemptPlay, 100);
+              });
+          };
+          
+          attemptPlay();
+        }
+      }, 200);
       
-      video.play().catch((err) => {
-        console.error("Error playing video:", err);
-      });
+      return () => clearTimeout(timer);
     }
-  }, [showCamera]);
+  }, [showCamera, streamRef.current]);
 
   const totals = useMemo(() => {
     return meals.reduce(
@@ -1075,14 +1095,39 @@ Provide a helpful, conversational response.`;
               
       {/* CAMERA VIEW */}
       {showCamera && (
-        <div className="fixed inset-0 bg-black z-[100] flex flex-col">
-          <div className="relative flex-1 w-full h-full min-h-0 overflow-hidden">
+        <div 
+          className="fixed inset-0 bg-black z-[9999] flex flex-col"
+          style={{ 
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 9999
+          }}
+        >
+          <div 
+            className="relative flex-1 w-full h-full overflow-hidden"
+            style={{ 
+              width: '100%',
+              height: '100%',
+              position: 'relative'
+            }}
+          >
             <video
               ref={videoRef}
               autoPlay
               playsInline
               muted
               className="w-full h-full object-cover"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                backgroundColor: '#000'
+              }}
               onLoadedMetadata={() => {
                 if (videoRef.current) {
                   videoRef.current.play().catch((err) => {
@@ -1090,18 +1135,58 @@ Provide a helpful, conversational response.`;
                   });
                 }
               }}
+              onCanPlay={() => {
+                if (videoRef.current) {
+                  videoRef.current.play().catch((err) => {
+                    console.error("Error playing video on canPlay:", err);
+                  });
+                }
+              }}
             />
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/90 to-transparent pb-20 pt-16 px-4">
-              <div className="flex justify-center gap-4 mb-2">
+            <div 
+              className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent"
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                paddingBottom: '100px',
+                paddingTop: '40px',
+                paddingLeft: '16px',
+                paddingRight: '16px',
+                zIndex: 10000
+              }}
+            >
+              <div className="flex justify-center gap-4">
                 <button
                   onClick={stopCamera}
-                  className="px-8 py-4 bg-red-600 hover:bg-red-700 rounded-xl font-semibold text-base text-white shadow-2xl min-w-[120px]"
+                  className="px-10 py-5 bg-red-600 hover:bg-red-700 rounded-xl font-bold text-lg text-white shadow-2xl min-w-[140px]"
+                  style={{
+                    backgroundColor: '#dc2626',
+                    color: 'white',
+                    padding: '20px 40px',
+                    borderRadius: '12px',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    minWidth: '140px',
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={capturePhoto}
-                  className="px-8 py-4 bg-[#14f1d9] hover:bg-[#12d9c5] text-black rounded-xl font-semibold text-base shadow-2xl min-w-[120px]"
+                  className="px-10 py-5 bg-[#14f1d9] hover:bg-[#12d9c5] text-black rounded-xl font-bold text-lg shadow-2xl min-w-[140px]"
+                  style={{
+                    backgroundColor: '#14f1d9',
+                    color: 'black',
+                    padding: '20px 40px',
+                    borderRadius: '12px',
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    minWidth: '140px',
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                  }}
                 >
                   Capture
                 </button>
