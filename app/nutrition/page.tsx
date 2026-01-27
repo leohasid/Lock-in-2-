@@ -1047,31 +1047,34 @@ Provide a helpful, conversational response.`;
               
       {/* CAMERA VIEW */}
       {showCamera && (
-        <div className="fixed inset-0 bg-black z-50">
-          <div className="relative w-full h-full">
+        <div className="fixed inset-0 bg-black z-50 flex flex-col">
+          <div className="relative flex-1 w-full h-full">
             <video
               ref={videoRef}
               autoPlay
               playsInline
+              muted
               className="w-full h-full object-cover"
             />
-            <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-4">
-                    <button
-                onClick={stopCamera}
-                className="px-6 py-3 bg-red-600 rounded-lg font-medium text-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={capturePhoto}
-                className="px-6 py-3 bg-[#14f1d9] text-black rounded-lg font-medium text-sm"
-                    >
-                Capture
-                    </button>
-                  </div>
-                  </div>
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent pb-safe">
+              <div className="flex justify-center gap-4 px-4 py-6">
+                <button
+                  onClick={stopCamera}
+                  className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-medium text-sm text-white shadow-lg z-10"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={capturePhoto}
+                  className="px-6 py-3 bg-[#14f1d9] hover:bg-[#12d9c5] text-black rounded-lg font-medium text-sm shadow-lg z-10"
+                >
+                  Capture
+                </button>
+              </div>
             </div>
-          )}
+          </div>
+        </div>
+      )}
 
       {/* AI ESTIMATE MODAL */}
       {isAnalyzing && (
