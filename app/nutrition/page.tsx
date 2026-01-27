@@ -166,9 +166,23 @@ export default function NutritionPage() {
       
       // Check if stream is still active, if not, re-request
       if (!stream.active) {
-        console.error("[Camera] Stream is not active! Re-requesting...");
-        startCamera();
+        console.error("[Camera] Stream is not active!");
         return;
+      }
+      
+      // Verify we have the back camera
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        const settings = videoTrack.getSettings();
+        console.log("[Camera] Video track settings:", settings);
+        console.log("[Camera] Facing mode:", settings.facingMode);
+        
+        // If we have front camera, warn but continue
+        if (settings.facingMode === "user") {
+          console.warn("[Camera] ⚠️ Using front camera instead of back camera!");
+        } else if (settings.facingMode === "environment") {
+          console.log("[Camera] ✅ Using back camera (correct)");
+        }
       }
       
       // Use requestAnimationFrame for better timing
@@ -1320,8 +1334,8 @@ Provide a helpful, conversational response.`;
               height: '100vh',
               objectFit: 'cover',
               backgroundColor: '#000000',
-              zIndex: 1,
-              transform: 'scaleX(-1)' // Mirror for front camera, but we want back camera
+              zIndex: 1
+              // NO mirror transform - we want back camera as-is for iOS
             }}
             onLoadedMetadata={(e) => {
               const video = e.currentTarget;
