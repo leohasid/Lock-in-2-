@@ -1048,7 +1048,7 @@ Provide a helpful, conversational response.`;
       {/* CAMERA VIEW */}
       {showCamera && (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
-          <div className="relative flex-1 w-full h-full">
+          <div className="relative flex-1 w-full h-full min-h-0">
             <video
               ref={videoRef}
               autoPlay
@@ -1056,17 +1056,17 @@ Provide a helpful, conversational response.`;
               muted
               className="w-full h-full object-cover"
             />
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/60 to-transparent pb-safe">
-              <div className="flex justify-center gap-4 px-4 py-6">
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent pb-4 pt-8 px-4">
+              <div className="flex justify-center gap-4">
                 <button
                   onClick={stopCamera}
-                  className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-medium text-sm text-white shadow-lg z-10"
+                  className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-medium text-sm text-white shadow-lg"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={capturePhoto}
-                  className="px-6 py-3 bg-[#14f1d9] hover:bg-[#12d9c5] text-black rounded-lg font-medium text-sm shadow-lg z-10"
+                  className="px-6 py-3 bg-[#14f1d9] hover:bg-[#12d9c5] text-black rounded-lg font-medium text-sm shadow-lg"
                 >
                   Capture
                 </button>
