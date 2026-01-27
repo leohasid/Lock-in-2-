@@ -1342,6 +1342,24 @@ Provide a helpful, conversational response.`;
             WebkitOverflowScrolling: 'touch'
           }}
         >
+          {/* Debug indicator - shows if stream is active */}
+          {streamRef.current && (
+            <div style={{
+              position: 'absolute',
+              top: '60px',
+              right: '20px',
+              backgroundColor: streamRef.current.active ? 'rgba(0, 255, 0, 0.8)' : 'rgba(255, 0, 0, 0.8)',
+              color: 'white',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              zIndex: 100001,
+              fontWeight: 'bold'
+            }}>
+              {streamRef.current.active ? '✓ Stream Active' : '✗ Stream Inactive'}
+            </div>
+          )}
+          
           <video
             ref={videoRef}
             autoPlay
