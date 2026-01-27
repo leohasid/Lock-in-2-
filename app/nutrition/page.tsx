@@ -1300,17 +1300,12 @@ Provide a helpful, conversational response.`;
               position: 'absolute',
               top: 0,
               left: 0,
-              width: '100vw',
-              height: '100vh',
+              width: '100%',
+              height: '100%',
               objectFit: 'cover',
               backgroundColor: '#000000',
-              zIndex: 1,
-              WebkitPlaysinline: true,
-              playsInline: true
-              // NO mirror transform - we want back camera as-is for iOS
+              zIndex: 1
             }}
-            playsInline={true}
-            webkit-playsinline="true"
             onLoadedMetadata={(e) => {
               const video = e.currentTarget;
               console.log("[Camera] onLoadedMetadata - video dimensions:", video.videoWidth, "x", video.videoHeight);
