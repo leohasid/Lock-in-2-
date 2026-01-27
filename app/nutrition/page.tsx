@@ -1251,7 +1251,8 @@ Provide a helpful, conversational response.`;
             zIndex: 99999,
             display: 'flex',
             flexDirection: 'column',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            WebkitOverflowScrolling: 'touch'
           }}
         >
           <video
@@ -1263,10 +1264,11 @@ Provide a helpful, conversational response.`;
               position: 'absolute',
               top: 0,
               left: 0,
-              width: '100%',
-              height: '100%',
+              width: '100vw',
+              height: '100vh',
               objectFit: 'cover',
-              backgroundColor: '#000000'
+              backgroundColor: '#000000',
+              zIndex: 1
             }}
             onLoadedMetadata={(e) => {
               const video = e.currentTarget;
@@ -1297,58 +1299,77 @@ Provide a helpful, conversational response.`;
             }}
           />
           
-          {/* Control Buttons Overlay */}
+          {/* Top Cancel Button */}
+          <div 
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              paddingTop: 'env(safe-area-inset-top, 20px)',
+              paddingBottom: '20px',
+              paddingLeft: '20px',
+              paddingRight: '20px',
+              zIndex: 100000,
+              display: 'flex',
+              justifyContent: 'flex-start',
+              alignItems: 'center'
+            }}
+          >
+            <button
+              onClick={stopCamera}
+              style={{
+                backgroundColor: 'rgba(220, 38, 38, 0.9)',
+                color: 'white',
+                padding: '14px 28px',
+                borderRadius: '12px',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                border: 'none',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+                cursor: 'pointer'
+              }}
+            >
+              ✕ Cancel
+            </button>
+          </div>
+          
+          {/* Bottom Capture Button - CENTERED AND LARGE */}
           <div 
             style={{
               position: 'absolute',
               bottom: 0,
               left: 0,
               right: 0,
-              background: 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 50%, transparent 100%)',
-              paddingTop: '60px',
-              paddingBottom: '120px',
+              paddingTop: '40px',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 40px)',
               paddingLeft: '20px',
               paddingRight: '20px',
               zIndex: 100000,
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              gap: '20px'
+              background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 60%, transparent 100%)'
             }}
           >
-            <button
-              onClick={stopCamera}
-              style={{
-                backgroundColor: '#dc2626',
-                color: 'white',
-                padding: '18px 36px',
-                borderRadius: '16px',
-                fontSize: '20px',
-                fontWeight: 'bold',
-                minWidth: '150px',
-                border: 'none',
-                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.8)',
-                cursor: 'pointer'
-              }}
-            >
-              Cancel
-            </button>
             <button
               onClick={capturePhoto}
               style={{
                 backgroundColor: '#14f1d9',
                 color: '#000000',
-                padding: '18px 36px',
-                borderRadius: '16px',
-                fontSize: '20px',
+                padding: '24px 48px',
+                borderRadius: '50px',
+                fontSize: '24px',
                 fontWeight: 'bold',
-                minWidth: '150px',
-                border: 'none',
-                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.8)',
-                cursor: 'pointer'
+                minWidth: '200px',
+                border: '4px solid rgba(255, 255, 255, 0.3)',
+                boxShadow: '0 8px 40px rgba(20, 241, 217, 0.4), 0 0 0 8px rgba(20, 241, 217, 0.1)',
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
               }}
             >
-              Capture
+              📷 CAPTURE
             </button>
           </div>
         </div>
