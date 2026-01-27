@@ -395,7 +395,13 @@ export default function NutritionPage() {
 
   const startCamera = async () => {
     try {
-      // Get back camera for iOS - simple constraints
+      // Stop any existing stream first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
+      // Get back camera stream
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment" // Back camera
@@ -404,32 +410,47 @@ export default function NutritionPage() {
       
       streamRef.current = stream;
       
-      // Show camera UI
+      // Show camera UI FIRST
       setShowCamera(true);
       setShowScanOptions(false);
       setShowScanIntro(false);
       
-      // Set video source immediately when element is ready
-      const setVideoSource = () => {
-        const video = videoRef.current;
-        if (video && stream && stream.active) {
+      // Wait for DOM to render video element, then attach stream
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          const video = videoRef.current;
+          if (!video) {
+            console.error("[Camera] Video element not found");
+            return;
+          }
+          
+          if (!stream || !stream.active) {
+            console.error("[Camera] Stream not active");
+            return;
+          }
+          
+          // Explicitly set video properties for iOS
           video.srcObject = stream;
           video.muted = true;
           video.setAttribute('playsinline', 'true');
           video.setAttribute('webkit-playsinline', 'true');
+          video.setAttribute('autoplay', 'true');
           
-          // Play video
-          video.play().catch(err => {
-            console.error("[Camera] Play error:", err);
-          });
-        } else if (video && stream) {
-          // Retry if video element exists but stream not ready
-          setTimeout(setVideoSource, 100);
-        }
-      };
-      
-      // Wait for React to render video element
-      setTimeout(setVideoSource, 100);
+          // Ensure video element is visible and has dimensions
+          video.style.display = 'block';
+          video.style.visibility = 'visible';
+          video.style.opacity = '1';
+          
+          // Force play
+          video.play()
+            .then(() => {
+              console.log("[Camera] Video playing, dimensions:", video.videoWidth, "x", video.videoHeight);
+            })
+            .catch(err => {
+              console.error("[Camera] Play error:", err);
+            });
+        }, 100);
+      });
     } catch (err: any) {
       console.error("Error accessing camera:", err);
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
