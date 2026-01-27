@@ -1297,14 +1297,15 @@ Provide a helpful, conversational response.`;
             playsInline
             muted
             style={{
-              position: 'absolute',
+              position: 'fixed',
               top: 0,
               left: 0,
-              width: '100%',
-              height: '100%',
+              width: '100vw',
+              height: '100vh',
               objectFit: 'cover',
-              backgroundColor: '#000000',
-              zIndex: 1
+              backgroundColor: '#ff0000',
+              zIndex: 1,
+              display: 'block'
             }}
             onLoadedMetadata={(e) => {
               const video = e.currentTarget;
