@@ -395,105 +395,36 @@ export default function NutritionPage() {
 
   const startCamera = async () => {
     try {
-      // Check if permissions API is available and check current permission status
-      if (navigator.permissions) {
-        try {
-          const permissionStatus = await navigator.permissions.query({ name: "camera" as PermissionName });
-          if (permissionStatus.state === "denied") {
-            alert("Camera permission is denied. Please enable camera access in your browser settings and reload the page.");
-            return;
-          }
-        } catch (permError) {
-          // Permissions API might not support camera query, continue anyway
-          console.log("Permissions API query not supported, continuing...");
-        }
-      }
-
-      // iOS Safari requires specific constraints for back camera
-      const constraints: MediaStreamConstraints = {
+      // Simple, direct approach for iOS
+      const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: { ideal: "environment" }, // Back camera
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          facingMode: "environment" // Back camera
         }
-      };
+      });
       
-      // Try to get back camera first
-      let stream = await navigator.mediaDevices.getUserMedia(constraints);
-      
-      // Verify we got the back camera by checking track settings
-      const videoTrack = stream.getVideoTracks()[0];
-      const settings = videoTrack.getSettings();
-      console.log("[Camera] Camera settings:", settings);
-      console.log("[Camera] Facing mode:", settings.facingMode);
-      
-      // If we got front camera, try to get back camera explicitly
-      if (settings.facingMode === "user") {
-        console.log("[Camera] Got front camera, trying to get back camera...");
-        // Stop the front camera stream
-        stream.getTracks().forEach(track => track.stop());
-        
-        // Try with more explicit constraints
-        const backCameraConstraints: MediaStreamConstraints = {
-          video: {
-            facingMode: "environment"
-          }
-        };
-        
-        try {
-          stream = await navigator.mediaDevices.getUserMedia(backCameraConstraints);
-          const newSettings = stream.getVideoTracks()[0].getSettings();
-          console.log("[Camera] New camera facing mode:", newSettings.facingMode);
-        } catch (backCameraError) {
-          console.error("[Camera] Failed to get back camera:", backCameraError);
-          // Continue with whatever camera we got
-        }
-      }
-      
-      console.log("[Camera] ✅ Stream obtained successfully");
-      console.log("[Camera] Stream active:", stream.active);
-      console.log("[Camera] Stream id:", stream.id);
-      const videoTracks = stream.getVideoTracks();
-      console.log("[Camera] Video tracks count:", videoTracks.length);
-      if (videoTracks.length > 0) {
-        const track = videoTracks[0];
-        console.log("[Camera] Track settings:", track.getSettings());
-        console.log("[Camera] Track constraints:", track.getConstraints());
-        console.log("[Camera] Track readyState:", track.readyState);
-      }
+      console.log("[Camera] Stream obtained, active:", stream.active);
       
       streamRef.current = stream;
       
-      // Show camera UI first
+      // Show camera UI
       setShowCamera(true);
       setShowScanOptions(false);
       setShowScanIntro(false);
       
-      // IMMEDIATELY try to set video source (don't wait for useEffect)
-      // This is critical for iOS Safari
+      // Wait for React to render, then set video
       setTimeout(() => {
-        if (videoRef.current && stream) {
-          const video = videoRef.current;
-          console.log("[Camera] Setting video srcObject immediately after UI shows");
+        const video = videoRef.current;
+        if (video && stream) {
+          console.log("[Camera] Setting video srcObject");
           video.srcObject = stream;
-          
-          // Force iOS to recognize the video
-          video.setAttribute('playsinline', 'true');
-          video.setAttribute('webkit-playsinline', 'true');
           video.muted = true;
           
-          // Try to play immediately
-          video.play()
-            .then(() => {
-              console.log("[Camera] ✅ Video playing immediately after setting srcObject");
-            })
-            .catch((err) => {
-              console.error("[Camera] Error playing immediately:", err);
-            });
+          // Force play
+          video.play().catch(err => {
+            console.error("[Camera] Play error:", err);
+          });
         }
-      }, 100);
-      
-      console.log("[Camera] Camera UI shown, waiting for video element to render...");
+      }, 200);
     } catch (err: any) {
       console.error("Error accessing camera:", err);
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
