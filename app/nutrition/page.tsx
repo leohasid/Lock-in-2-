@@ -469,8 +469,30 @@ export default function NutritionPage() {
       setShowScanOptions(false);
       setShowScanIntro(false);
       
-      // Wait for React to render the video element, then initialize
-      // The useEffect will handle the actual video initialization
+      // IMMEDIATELY try to set video source (don't wait for useEffect)
+      // This is critical for iOS Safari
+      setTimeout(() => {
+        if (videoRef.current && stream) {
+          const video = videoRef.current;
+          console.log("[Camera] Setting video srcObject immediately after UI shows");
+          video.srcObject = stream;
+          
+          // Force iOS to recognize the video
+          video.setAttribute('playsinline', 'true');
+          video.setAttribute('webkit-playsinline', 'true');
+          video.muted = true;
+          
+          // Try to play immediately
+          video.play()
+            .then(() => {
+              console.log("[Camera] ✅ Video playing immediately after setting srcObject");
+            })
+            .catch((err) => {
+              console.error("[Camera] Error playing immediately:", err);
+            });
+        }
+      }, 100);
+      
       console.log("[Camera] Camera UI shown, waiting for video element to render...");
     } catch (err: any) {
       console.error("Error accessing camera:", err);
@@ -1325,7 +1347,6 @@ Provide a helpful, conversational response.`;
             autoPlay
             playsInline
             muted
-            webkit-playsinline="true"
             style={{
               position: 'absolute',
               top: 0,
@@ -1334,9 +1355,13 @@ Provide a helpful, conversational response.`;
               height: '100vh',
               objectFit: 'cover',
               backgroundColor: '#000000',
-              zIndex: 1
+              zIndex: 1,
+              WebkitPlaysinline: true,
+              playsInline: true
               // NO mirror transform - we want back camera as-is for iOS
             }}
+            playsInline={true}
+            webkit-playsinline="true"
             onLoadedMetadata={(e) => {
               const video = e.currentTarget;
               console.log("[Camera] onLoadedMetadata - video dimensions:", video.videoWidth, "x", video.videoHeight);
