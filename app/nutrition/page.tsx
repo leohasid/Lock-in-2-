@@ -164,49 +164,67 @@ export default function NutritionPage() {
       console.log("[Camera] Stream active:", stream.active);
       console.log("[Camera] Video tracks:", stream.getVideoTracks().length);
       
-      // Check if stream is still active
+      // Check if stream is still active, if not, re-request
       if (!stream.active) {
-        console.error("[Camera] Stream is not active!");
+        console.error("[Camera] Stream is not active! Re-requesting...");
+        startCamera();
         return;
       }
       
       // Use requestAnimationFrame for better timing
       const initVideo = () => {
         if (!videoRef.current) {
-          console.error("[Camera] Video element not found in DOM");
+          console.error("[Camera] Video element not found in DOM, retrying...");
+          setTimeout(initVideo, 100);
           return;
         }
         
         const video = videoRef.current;
-        console.log("[Camera] Video element found:", video);
+        console.log("[Camera] Video element found");
         console.log("[Camera] Video readyState:", video.readyState);
+        console.log("[Camera] Video srcObject:", video.srcObject ? "SET" : "NOT SET");
         
-        // Set the stream
-        if (video.srcObject !== stream) {
-          console.log("[Camera] Setting video srcObject");
-          video.srcObject = stream;
-        } else {
-          console.log("[Camera] Video srcObject already set");
-        }
+        // Always set the stream (even if already set, to ensure it's correct)
+        console.log("[Camera] Setting video srcObject");
+        video.srcObject = stream;
+        
+        // Force load and play
+        video.load();
         
         // Wait for video to be ready, then play
         const playVideo = () => {
+          console.log("[Camera] Attempting to play, readyState:", video.readyState);
+          
           if (video.readyState >= 2) { // HAVE_CURRENT_DATA
             console.log("[Camera] Video ready, attempting to play");
-            video.play()
-              .then(() => {
-                console.log("[Camera] ✅ Video playing successfully");
-                console.log("[Camera] Video dimensions:", video.videoWidth, "x", video.videoHeight);
-              })
-              .catch((err) => {
-                console.error("[Camera] ❌ Error playing video:", err);
-                // Retry after a short delay
-                setTimeout(playVideo, 200);
-              });
+            const playPromise = video.play();
+            
+            if (playPromise !== undefined) {
+              playPromise
+                .then(() => {
+                  console.log("[Camera] ✅ Video playing successfully");
+                  console.log("[Camera] Video dimensions:", video.videoWidth, "x", video.videoHeight);
+                  console.log("[Camera] Video paused:", video.paused);
+                })
+                .catch((err) => {
+                  console.error("[Camera] ❌ Error playing video:", err);
+                  // Retry after a short delay
+                  setTimeout(playVideo, 300);
+                });
+            }
           } else {
             console.log("[Camera] Video not ready yet, readyState:", video.readyState);
             // Wait for loadedmetadata event
-            video.addEventListener('loadedmetadata', playVideo, { once: true });
+            const handler = () => {
+              console.log("[Camera] loadedmetadata event fired");
+              playVideo();
+            };
+            video.addEventListener('loadedmetadata', handler, { once: true });
+            // Also try after a timeout
+            setTimeout(() => {
+              video.removeEventListener('loadedmetadata', handler);
+              playVideo();
+            }, 1000);
           }
         };
         
@@ -216,7 +234,7 @@ export default function NutritionPage() {
       
       // Use multiple strategies to ensure DOM is ready
       requestAnimationFrame(() => {
-        setTimeout(initVideo, 100);
+        setTimeout(initVideo, 200);
       });
     }
   }, [showCamera]);
