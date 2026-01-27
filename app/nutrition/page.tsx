@@ -1270,15 +1270,30 @@ Provide a helpful, conversational response.`;
             }}
             onLoadedMetadata={(e) => {
               const video = e.currentTarget;
+              console.log("[Camera] onLoadedMetadata - video dimensions:", video.videoWidth, "x", video.videoHeight);
+              console.log("[Camera] onLoadedMetadata - readyState:", video.readyState);
               video.play().catch((err) => {
-                console.error("Error playing video after metadata:", err);
+                console.error("[Camera] Error playing video after metadata:", err);
               });
+            }}
+            onLoadedData={(e) => {
+              const video = e.currentTarget;
+              console.log("[Camera] onLoadedData - readyState:", video.readyState);
             }}
             onCanPlay={(e) => {
               const video = e.currentTarget;
+              console.log("[Camera] onCanPlay - readyState:", video.readyState);
               video.play().catch((err) => {
-                console.error("Error playing video on canPlay:", err);
+                console.error("[Camera] Error playing video on canPlay:", err);
               });
+            }}
+            onPlaying={(e) => {
+              const video = e.currentTarget;
+              console.log("[Camera] ✅ Video is now playing!");
+              console.log("[Camera] Video dimensions:", video.videoWidth, "x", video.videoHeight);
+            }}
+            onError={(e) => {
+              console.error("[Camera] ❌ Video element error:", e);
             }}
           />
           
