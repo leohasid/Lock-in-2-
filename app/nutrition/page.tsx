@@ -155,6 +155,22 @@ export default function NutritionPage() {
     window.dispatchEvent(new CustomEvent("mealsUpdated"));
   }, [meals, isLoaded]);
 
+  // Ensure video plays when camera is shown
+  useEffect(() => {
+    if (showCamera && videoRef.current && streamRef.current) {
+      const video = videoRef.current;
+      const stream = streamRef.current;
+      
+      if (video.srcObject !== stream) {
+        video.srcObject = stream;
+      }
+      
+      video.play().catch((err) => {
+        console.error("Error playing video:", err);
+      });
+    }
+  }, [showCamera]);
+
   const totals = useMemo(() => {
     return meals.reduce(
     (acc, meal) => ({
@@ -319,12 +335,19 @@ export default function NutritionPage() {
         },
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
       setShowCamera(true);
       setShowScanOptions(false);
       setShowScanIntro(false);
+      
+      // Wait a bit for the state to update, then set video source
+      setTimeout(() => {
+        if (videoRef.current && stream) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch((err) => {
+            console.error("Error playing video:", err);
+          });
+        }
+      }, 100);
     } catch (err: any) {
       console.error("Error accessing camera:", err);
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
@@ -341,12 +364,17 @@ export default function NutritionPage() {
             video: { facingMode: "environment" },
           });
           streamRef.current = stream;
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
           setShowCamera(true);
           setShowScanOptions(false);
           setShowScanIntro(false);
+          setTimeout(() => {
+            if (videoRef.current && stream) {
+              videoRef.current.srcObject = stream;
+              videoRef.current.play().catch((err) => {
+                console.error("Error playing video:", err);
+              });
+            }
+          }, 100);
         } catch (retryErr: any) {
           alert("Unable to access camera. Please check your browser settings and try again.");
         }
@@ -1047,7 +1075,7 @@ Provide a helpful, conversational response.`;
               
       {/* CAMERA VIEW */}
       {showCamera && (
-        <div className="fixed inset-0 bg-black z-50 flex flex-col">
+        <div className="fixed inset-0 bg-black z-[100] flex flex-col">
           <div className="relative flex-1 w-full h-full min-h-0 overflow-hidden">
             <video
               ref={videoRef}
@@ -1055,19 +1083,25 @@ Provide a helpful, conversational response.`;
               playsInline
               muted
               className="w-full h-full object-cover"
-              style={{ transform: 'scaleX(-1)' }}
+              onLoadedMetadata={() => {
+                if (videoRef.current) {
+                  videoRef.current.play().catch((err) => {
+                    console.error("Error playing video after metadata loaded:", err);
+                  });
+                }
+              }}
             />
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/80 to-transparent pb-safe pt-12 px-4">
-              <div className="flex justify-center gap-4 mb-4">
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/90 to-transparent pb-20 pt-16 px-4">
+              <div className="flex justify-center gap-4 mb-2">
                 <button
                   onClick={stopCamera}
-                  className="px-8 py-4 bg-red-600 hover:bg-red-700 rounded-xl font-semibold text-base text-white shadow-2xl min-w-[100px]"
+                  className="px-8 py-4 bg-red-600 hover:bg-red-700 rounded-xl font-semibold text-base text-white shadow-2xl min-w-[120px]"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={capturePhoto}
-                  className="px-8 py-4 bg-[#14f1d9] hover:bg-[#12d9c5] text-black rounded-xl font-semibold text-base shadow-2xl min-w-[100px]"
+                  className="px-8 py-4 bg-[#14f1d9] hover:bg-[#12d9c5] text-black rounded-xl font-semibold text-base shadow-2xl min-w-[120px]"
                 >
                   Capture
                 </button>
