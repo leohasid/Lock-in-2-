@@ -92,7 +92,7 @@ export default function WorkoutPage() {
     legsDay: [{ name: "", sets: 3, reps: 10 }],
   });
 
-  // Update selectedDate when URL changes and handle option parameter
+  // Update selectedDate when URL changes
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -101,86 +101,95 @@ export default function WorkoutPage() {
       try {
         const newDate = new Date(urlDateParam + "T00:00:00");
         if (!isNaN(newDate.getTime())) {
-          setSelectedDate(newDate);
+          const currentDateStr = selectedDate.toISOString().split("T")[0];
+          const newDateStr = newDate.toISOString().split("T")[0];
+          // Only update if date actually changed
+          if (currentDateStr !== newDateStr) {
+            setSelectedDate(newDate);
+          }
         }
       } catch (e) {
         console.error("Error parsing date:", e);
       }
     }
-    
-    // Handle option parameter - open modal with selected option
+  }, [typeof window !== "undefined" ? window.location.search : ""]);
+
+  // Handle option parameter - separate effect to avoid infinite loop
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
     const optionParam = params.get("option");
-    if (optionParam) {
+    
+    if (optionParam && optionParam !== selectedWorkoutOption) {
       setSelectedWorkoutOption(optionParam);
       setShowWorkoutOptions(false);
       setShowCustomWorkoutModal(true);
       
-          // Load the exercises for this option - combine all days into one
-          const storedOptions = localStorage.getItem("workoutOptions");
-          if (storedOptions) {
-            try {
-              const options = JSON.parse(storedOptions);
-              const option = options.find((o: WorkoutOption) => o.id === optionParam);
-              if (option) {
-                const convertToCustom = (exercises: any[]): any[] => {
-                  if (!exercises || exercises.length === 0) return [];
-                  return exercises.map(ex => ({
-                    name: ex.name || "",
-                    sets: ex.goalSets || ex.sets || 3,
+      // Load the exercises for this option - combine all days into one
+      const storedOptions = localStorage.getItem("workoutOptions");
+      if (storedOptions) {
+        try {
+          const options = JSON.parse(storedOptions);
+          const option = options.find((o: WorkoutOption) => o.id === optionParam);
+          if (option) {
+            const convertToCustom = (exercises: any[]): any[] => {
+              if (!exercises || exercises.length === 0) return [];
+              return exercises.map(ex => ({
+                name: ex.name || "",
+                sets: ex.goalSets || ex.sets || 3,
+                reps: ex.goalReps || ex.reps || 10,
+              }));
+            };
+            // Combine all exercises from all three days
+            const allExercises = [
+              ...convertToCustom(option.days.day1),
+              ...convertToCustom(option.days.day2),
+              ...convertToCustom(option.days.day3),
+            ];
+            // Put all exercises into pushDay so they all show up
+            setCustomWorkoutPlan({
+              pushDay: allExercises.length > 0 ? allExercises : [{ name: "", sets: 3, reps: 10 }],
+              pullDay: [],
+              legsDay: [],
+            });
+            
+            // Also automatically apply to workoutPlan so they show up on the main page
+            if (allExercises.length > 0) {
+              const workoutType = getWorkoutTypeForDate(selectedDate);
+              if (workoutType) {
+                const convertedExercises = allExercises.map((ex: any) => ({
+                  id: ex.id || `ex-${Date.now()}-${Math.random()}`,
+                  name: ex.name || "",
+                  goalSets: ex.goalSets || ex.sets || 3,
+                  goalReps: ex.goalReps || ex.reps || 10,
+                  goalWeight: ex.goalWeight || 0,
+                  sets: ex.sets || Array.from({ length: ex.goalSets || ex.sets || 3 }, () => ({
                     reps: ex.goalReps || ex.reps || 10,
-                  }));
-                };
-                // Combine all exercises from all three days
-                const allExercises = [
-                  ...convertToCustom(option.days.day1),
-                  ...convertToCustom(option.days.day2),
-                  ...convertToCustom(option.days.day3),
-                ];
-                // Put all exercises into pushDay so they all show up
-                setCustomWorkoutPlan({
-                  pushDay: allExercises.length > 0 ? allExercises : [{ name: "", sets: 3, reps: 10 }],
-                  pullDay: [],
-                  legsDay: [],
-                });
+                    weight: ex.goalWeight || 0,
+                    completed: false,
+                  })),
+                }));
                 
-                // Also automatically apply to workoutPlan so they show up on the main page
-                if (allExercises.length > 0) {
-                  const workoutType = getWorkoutTypeForDate(selectedDate);
-                  if (workoutType) {
-                    const convertedExercises = allExercises.map((ex: any) => ({
-                      id: ex.id || `ex-${Date.now()}-${Math.random()}`,
-                      name: ex.name || "",
-                      goalSets: ex.goalSets || ex.sets || 3,
-                      goalReps: ex.goalReps || ex.reps || 10,
-                      goalWeight: ex.goalWeight || 0,
-                      sets: ex.sets || Array.from({ length: ex.goalSets || ex.sets || 3 }, () => ({
-                        reps: ex.goalReps || ex.reps || 10,
-                        weight: ex.goalWeight || 0,
-                        completed: false,
-                      })),
-                    }));
-                    
-                    setWorkoutPlan((prev) => ({
-                      ...prev,
-                      [workoutType]: convertedExercises,
-                    }));
-                    
-                    if (typeof window !== "undefined") {
-                      const updatedPlan = {
-                        ...workoutPlan,
-                        [workoutType]: convertedExercises,
-                      };
-                      localStorage.setItem("workoutPlan", JSON.stringify(updatedPlan));
-                    }
+                setWorkoutPlan((prev) => {
+                  const updated = {
+                    ...prev,
+                    [workoutType]: convertedExercises,
+                  };
+                  // Save to localStorage
+                  if (typeof window !== "undefined") {
+                    localStorage.setItem("workoutPlan", JSON.stringify(updated));
                   }
-                }
+                  return updated;
+                });
               }
-            } catch (e) {
-              console.error("Error loading workout option:", e);
             }
           }
+        } catch (e) {
+          console.error("Error loading workout option:", e);
+        }
+      }
     }
-  }, [typeof window !== "undefined" ? window.location.search : "", selectedDate, workoutPlan]);
+  }, [typeof window !== "undefined" ? window.location.search : "", selectedDate, selectedWorkoutOption]);
 
   // Load workout plan and schedule
   useEffect(() => {
