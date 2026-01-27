@@ -429,26 +429,40 @@ export default function NutritionPage() {
             return;
           }
           
-          // Explicitly set video properties for iOS
+          // CRITICAL FIX: Set srcObject FIRST, then wait for metadata before play()
           video.srcObject = stream;
           video.muted = true;
           video.setAttribute('playsinline', 'true');
           video.setAttribute('webkit-playsinline', 'true');
-          video.setAttribute('autoplay', 'true');
           
           // Ensure video element is visible and has dimensions
           video.style.display = 'block';
           video.style.visibility = 'visible';
           video.style.opacity = '1';
+          video.style.width = '100vw';
+          video.style.height = '100vh';
           
-          // Force play
-          video.play()
-            .then(() => {
-              console.log("[Camera] Video playing, dimensions:", video.videoWidth, "x", video.videoHeight);
-            })
-            .catch(err => {
-              console.error("[Camera] Play error:", err);
-            });
+          // ROOT CAUSE FIX: iOS Safari requires loadedmetadata before play()
+          const playWhenReady = () => {
+            if (video.readyState >= 1) { // HAVE_METADATA
+              video.play()
+                .then(() => {
+                  console.log("[Camera] Video playing, dimensions:", video.videoWidth, "x", video.videoHeight);
+                })
+                .catch(err => {
+                  console.error("[Camera] Play error:", err);
+                  // Retry once
+                  setTimeout(() => video.play().catch(() => {}), 200);
+                });
+            } else {
+              // Wait for metadata event
+              video.addEventListener('loadedmetadata', playWhenReady, { once: true });
+              // Fallback timeout
+              setTimeout(playWhenReady, 500);
+            }
+          };
+          
+          playWhenReady();
         }, 100);
       });
     } catch (err: any) {
