@@ -34,9 +34,21 @@ export async function POST(request: Request) {
     }
 
     // Validate image data format
+    if (typeof imageData !== "string") {
+      console.error("[Food Estimate API] Image data is not a string, type:", typeof imageData);
+      return NextResponse.json({ error: "Invalid image data type" }, { status: 400 });
+    }
+    
     if (!imageData.startsWith("data:image/")) {
-      console.error("[Food Estimate API] Invalid image format");
-      return NextResponse.json({ error: "Invalid image format" }, { status: 400 });
+      console.error("[Food Estimate API] Invalid image format. First 100 chars:", imageData.substring(0, 100));
+      console.error("[Food Estimate API] Image data length:", imageData.length);
+      return NextResponse.json({ error: "Invalid image format. Expected data URL starting with 'data:image/'" }, { status: 400 });
+    }
+    
+    // Check if it's a valid base64 data URL
+    if (!imageData.includes("base64,")) {
+      console.error("[Food Estimate API] Image data URL missing base64 marker");
+      return NextResponse.json({ error: "Invalid image format. Missing base64 data" }, { status: 400 });
     }
 
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");

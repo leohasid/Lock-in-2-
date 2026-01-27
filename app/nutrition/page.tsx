@@ -435,16 +435,46 @@ export default function NutritionPage() {
 
   const capturePhoto = () => {
     if (videoRef.current) {
+      const video = videoRef.current;
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
+      
+      // Validate video dimensions
+      if (!videoWidth || !videoHeight || videoWidth === 0 || videoHeight === 0) {
+        console.error("Invalid video dimensions:", videoWidth, videoHeight);
+        alert("Camera is not ready. Please wait a moment and try again.");
+        return;
+      }
+      
       const canvas = document.createElement("canvas");
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
+      canvas.width = videoWidth;
+      canvas.height = videoHeight;
       const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0);
-        const imageData = canvas.toDataURL("image/jpeg");
+      
+      if (!ctx) {
+        console.error("Failed to get canvas context");
+        alert("Failed to capture photo. Please try again.");
+        return;
+      }
+      
+      try {
+        ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
+        const imageData = canvas.toDataURL("image/jpeg", 0.9);
+        
+        // Validate the data URL
+        if (!imageData || !imageData.startsWith("data:image/")) {
+          console.error("Invalid image data URL generated");
+          alert("Failed to capture photo. Please try again.");
+          return;
+        }
+        
+        console.log("Photo captured successfully, size:", imageData.length, "bytes");
         setCapturedImage(imageData);
         stopCamera();
         analyzeFood(imageData);
+      } catch (error) {
+        console.error("Error capturing photo:", error);
+        alert("Failed to capture photo. Please try again.");
       }
     }
   };
@@ -464,30 +494,73 @@ export default function NutritionPage() {
   };
 
   const compressImage = (dataUrl: string, maxWidth: number = 1024, quality: number = 0.8): Promise<string> => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      // Validate input
+      if (!dataUrl || !dataUrl.startsWith("data:image/")) {
+        console.error("Invalid data URL format:", dataUrl?.substring(0, 50));
+        reject(new Error("Invalid image data format"));
+        return;
+      }
+      
       const img = new Image();
       img.onload = () => {
-        const canvas = document.createElement("canvas");
-        let width = img.width;
-        let height = img.height;
+        try {
+          // Validate image dimensions
+          if (img.width === 0 || img.height === 0) {
+            console.error("Invalid image dimensions:", img.width, img.height);
+            reject(new Error("Invalid image dimensions"));
+            return;
+          }
+          
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
 
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
-        }
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
 
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
+          // Ensure minimum dimensions
+          if (width < 1 || height < 1) {
+            console.error("Compressed dimensions too small:", width, height);
+            reject(new Error("Image too small to compress"));
+            return;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          
+          if (!ctx) {
+            console.error("Failed to get canvas context for compression");
+            reject(new Error("Failed to compress image"));
+            return;
+          }
+          
           ctx.drawImage(img, 0, 0, width, height);
           const compressed = canvas.toDataURL("image/jpeg", quality);
+          
+          // Validate compressed output
+          if (!compressed || !compressed.startsWith("data:image/jpeg")) {
+            console.error("Compression produced invalid data URL");
+            reject(new Error("Compression failed"));
+            return;
+          }
+          
+          console.log("Image compressed successfully, size:", compressed.length, "bytes");
           resolve(compressed);
-        } else {
-          resolve(dataUrl);
+        } catch (error) {
+          console.error("Error during image compression:", error);
+          reject(error);
         }
       };
-      img.onerror = () => resolve(dataUrl);
+      
+      img.onerror = (error) => {
+        console.error("Error loading image for compression:", error);
+        reject(new Error("Failed to load image"));
+      };
+      
       img.src = dataUrl;
     });
   };
@@ -496,7 +569,38 @@ export default function NutritionPage() {
     setIsAnalyzing(true);
     setAiEstimate(null);
     try {
-      const compressedImage = await compressImage(imageData, 1024, 0.8);
+      // Validate input image data
+      if (!imageData || !imageData.startsWith("data:image/")) {
+        console.error("Invalid image data format in analyzeFood:", imageData?.substring(0, 50));
+        alert("Invalid image format. Please try capturing the photo again.");
+        setIsAnalyzing(false);
+        return;
+      }
+      
+      let compressedImage: string;
+      try {
+        compressedImage = await compressImage(imageData, 1024, 0.8);
+        
+        // Validate compressed image
+        if (!compressedImage || !compressedImage.startsWith("data:image/jpeg")) {
+          console.error("Compression failed, using original image");
+          compressedImage = imageData;
+        }
+      } catch (compressError) {
+        console.error("Image compression failed, using original:", compressError);
+        // Fallback to original image if compression fails
+        compressedImage = imageData;
+      }
+      
+      // Final validation before sending
+      if (!compressedImage || !compressedImage.startsWith("data:image/")) {
+        console.error("Final validation failed - invalid image format");
+        alert("Invalid image format. Please try capturing the photo again.");
+        setIsAnalyzing(false);
+        return;
+      }
+      
+      console.log("Sending image to API, size:", compressedImage.length, "bytes");
       
       const response = await fetch("/api/food-estimate", {
         method: "POST",
