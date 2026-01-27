@@ -1114,10 +1114,9 @@ Provide a helpful, conversational response.`;
                 </div>
               )}
               
-      {/* CAMERA VIEW */}
+      {/* CAMERA VIEW - Full Screen Overlay */}
       {showCamera && (
         <div 
-          className="fixed inset-0 bg-black z-[9999] flex flex-col"
           style={{ 
             position: 'fixed',
             top: 0,
@@ -1126,93 +1125,94 @@ Provide a helpful, conversational response.`;
             bottom: 0,
             width: '100vw',
             height: '100vh',
-            zIndex: 9999
+            backgroundColor: '#000000',
+            zIndex: 99999,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
           }}
         >
-          <div 
-            className="relative flex-1 w-full h-full overflow-hidden"
-            style={{ 
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
               width: '100%',
               height: '100%',
-              position: 'relative'
+              objectFit: 'cover',
+              backgroundColor: '#000000'
+            }}
+            onLoadedMetadata={(e) => {
+              const video = e.currentTarget;
+              video.play().catch((err) => {
+                console.error("Error playing video after metadata:", err);
+              });
+            }}
+            onCanPlay={(e) => {
+              const video = e.currentTarget;
+              video.play().catch((err) => {
+                console.error("Error playing video on canPlay:", err);
+              });
+            }}
+          />
+          
+          {/* Control Buttons Overlay */}
+          <div 
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              background: 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 50%, transparent 100%)',
+              paddingTop: '60px',
+              paddingBottom: '120px',
+              paddingLeft: '20px',
+              paddingRight: '20px',
+              zIndex: 100000,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: '20px'
             }}
           >
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
+            <button
+              onClick={stopCamera}
               style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                backgroundColor: '#000'
-              }}
-              onLoadedMetadata={() => {
-                if (videoRef.current) {
-                  videoRef.current.play().catch((err) => {
-                    console.error("Error playing video after metadata loaded:", err);
-                  });
-                }
-              }}
-              onCanPlay={() => {
-                if (videoRef.current) {
-                  videoRef.current.play().catch((err) => {
-                    console.error("Error playing video on canPlay:", err);
-                  });
-                }
-              }}
-            />
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent"
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                paddingBottom: '100px',
-                paddingTop: '40px',
-                paddingLeft: '16px',
-                paddingRight: '16px',
-                zIndex: 10000
+                backgroundColor: '#dc2626',
+                color: 'white',
+                padding: '18px 36px',
+                borderRadius: '16px',
+                fontSize: '20px',
+                fontWeight: 'bold',
+                minWidth: '150px',
+                border: 'none',
+                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.8)',
+                cursor: 'pointer'
               }}
             >
-              <div className="flex justify-center gap-4">
-                <button
-                  onClick={stopCamera}
-                  className="px-10 py-5 bg-red-600 hover:bg-red-700 rounded-xl font-bold text-lg text-white shadow-2xl min-w-[140px]"
-                  style={{
-                    backgroundColor: '#dc2626',
-                    color: 'white',
-                    padding: '20px 40px',
-                    borderRadius: '12px',
-                    fontSize: '18px',
-                    fontWeight: 'bold',
-                    minWidth: '140px',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={capturePhoto}
-                  className="px-10 py-5 bg-[#14f1d9] hover:bg-[#12d9c5] text-black rounded-xl font-bold text-lg shadow-2xl min-w-[140px]"
-                  style={{
-                    backgroundColor: '#14f1d9',
-                    color: 'black',
-                    padding: '20px 40px',
-                    borderRadius: '12px',
-                    fontSize: '18px',
-                    fontWeight: 'bold',
-                    minWidth: '140px',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
-                  }}
-                >
-                  Capture
-                </button>
-              </div>
-            </div>
+              Cancel
+            </button>
+            <button
+              onClick={capturePhoto}
+              style={{
+                backgroundColor: '#14f1d9',
+                color: '#000000',
+                padding: '18px 36px',
+                borderRadius: '16px',
+                fontSize: '20px',
+                fontWeight: 'bold',
+                minWidth: '150px',
+                border: 'none',
+                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.8)',
+                cursor: 'pointer'
+              }}
+            >
+              Capture
+            </button>
           </div>
         </div>
       )}
