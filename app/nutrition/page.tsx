@@ -395,14 +395,12 @@ export default function NutritionPage() {
 
   const startCamera = async () => {
     try {
-      // Simple, direct approach for iOS
+      // Get back camera for iOS - simple constraints
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment" // Back camera
         }
       });
-      
-      console.log("[Camera] Stream obtained, active:", stream.active);
       
       streamRef.current = stream;
       
@@ -411,20 +409,27 @@ export default function NutritionPage() {
       setShowScanOptions(false);
       setShowScanIntro(false);
       
-      // Wait for React to render, then set video
-      setTimeout(() => {
+      // Set video source immediately when element is ready
+      const setVideoSource = () => {
         const video = videoRef.current;
-        if (video && stream) {
-          console.log("[Camera] Setting video srcObject");
+        if (video && stream && stream.active) {
           video.srcObject = stream;
           video.muted = true;
+          video.setAttribute('playsinline', 'true');
+          video.setAttribute('webkit-playsinline', 'true');
           
-          // Force play
+          // Play video
           video.play().catch(err => {
             console.error("[Camera] Play error:", err);
           });
+        } else if (video && stream) {
+          // Retry if video element exists but stream not ready
+          setTimeout(setVideoSource, 100);
         }
-      }, 200);
+      };
+      
+      // Wait for React to render video element
+      setTimeout(setVideoSource, 100);
     } catch (err: any) {
       console.error("Error accessing camera:", err);
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
@@ -470,8 +475,13 @@ export default function NutritionPage() {
   };
 
   const capturePhoto = () => {
-    if (videoRef.current) {
+    if (videoRef.current && streamRef.current) {
       const video = videoRef.current;
+      const stream = streamRef.current;
+      
+      // Stop the stream IMMEDIATELY to prevent iOS recording dialog
+      stream.getTracks().forEach(track => track.stop());
+      
       const videoWidth = video.videoWidth;
       const videoHeight = video.videoHeight;
       
@@ -479,6 +489,7 @@ export default function NutritionPage() {
       if (!videoWidth || !videoHeight || videoWidth === 0 || videoHeight === 0) {
         console.error("Invalid video dimensions:", videoWidth, videoHeight);
         alert("Camera is not ready. Please wait a moment and try again.");
+        stopCamera();
         return;
       }
       
@@ -490,6 +501,7 @@ export default function NutritionPage() {
       if (!ctx) {
         console.error("Failed to get canvas context");
         alert("Failed to capture photo. Please try again.");
+        stopCamera();
         return;
       }
       
@@ -501,6 +513,7 @@ export default function NutritionPage() {
         if (!imageData || !imageData.startsWith("data:image/")) {
           console.error("Invalid image data URL generated");
           alert("Failed to capture photo. Please try again.");
+          stopCamera();
           return;
         }
         
@@ -511,6 +524,7 @@ export default function NutritionPage() {
       } catch (error) {
         console.error("Error capturing photo:", error);
         alert("Failed to capture photo. Please try again.");
+        stopCamera();
       }
     }
   };
@@ -1297,15 +1311,14 @@ Provide a helpful, conversational response.`;
             playsInline
             muted
             style={{
-              position: 'fixed',
+              position: 'absolute',
               top: 0,
               left: 0,
-              width: '100vw',
-              height: '100vh',
+              width: '100%',
+              height: '100%',
               objectFit: 'cover',
-              backgroundColor: '#ff0000',
-              zIndex: 1,
-              display: 'block'
+              backgroundColor: '#000000',
+              zIndex: 1
             }}
             onLoadedMetadata={(e) => {
               const video = e.currentTarget;
