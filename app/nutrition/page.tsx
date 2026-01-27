@@ -354,20 +354,41 @@ export default function NutritionPage() {
           height: { ideal: 720 }
         },
       });
+      
+      console.log("Camera stream obtained:", stream);
+      console.log("Stream active:", stream.active);
+      console.log("Video tracks:", stream.getVideoTracks());
+      
       streamRef.current = stream;
+      
+      // Set video source immediately if element exists
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        console.log("Video srcObject set immediately");
+      }
+      
       setShowCamera(true);
       setShowScanOptions(false);
       setShowScanIntro(false);
       
-      // Wait a bit for the state to update, then set video source
+      // Wait for DOM update, then ensure video plays
       setTimeout(() => {
         if (videoRef.current && stream) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch((err) => {
-            console.error("Error playing video:", err);
-          });
+          const video = videoRef.current;
+          if (video.srcObject !== stream) {
+            video.srcObject = stream;
+            console.log("Video srcObject set in timeout");
+          }
+          
+          video.play()
+            .then(() => {
+              console.log("Video playing successfully");
+            })
+            .catch((err) => {
+              console.error("Error playing video:", err);
+            });
         }
-      }, 100);
+      }, 300);
     } catch (err: any) {
       console.error("Error accessing camera:", err);
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
@@ -1362,7 +1383,7 @@ Provide a helpful, conversational response.`;
         </div>
       )}
 
-      <BottomNav />
+      {!showCamera && <BottomNav />}
     </div>
   );
 }
