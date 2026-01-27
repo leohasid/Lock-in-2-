@@ -395,13 +395,46 @@ export default function NutritionPage() {
         }
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          facingMode: "environment",
+      // iOS Safari requires specific constraints for back camera
+      const constraints: MediaStreamConstraints = {
+        video: {
+          facingMode: { ideal: "environment" }, // Back camera
           width: { ideal: 1280 },
           height: { ideal: 720 }
-        },
-      });
+        }
+      };
+      
+      // Try to get back camera first
+      let stream = await navigator.mediaDevices.getUserMedia(constraints);
+      
+      // Verify we got the back camera by checking track settings
+      const videoTrack = stream.getVideoTracks()[0];
+      const settings = videoTrack.getSettings();
+      console.log("[Camera] Camera settings:", settings);
+      console.log("[Camera] Facing mode:", settings.facingMode);
+      
+      // If we got front camera, try to get back camera explicitly
+      if (settings.facingMode === "user") {
+        console.log("[Camera] Got front camera, trying to get back camera...");
+        // Stop the front camera stream
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Try with more explicit constraints
+        const backCameraConstraints: MediaStreamConstraints = {
+          video: {
+            facingMode: "environment"
+          }
+        };
+        
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(backCameraConstraints);
+          const newSettings = stream.getVideoTracks()[0].getSettings();
+          console.log("[Camera] New camera facing mode:", newSettings.facingMode);
+        } catch (backCameraError) {
+          console.error("[Camera] Failed to get back camera:", backCameraError);
+          // Continue with whatever camera we got
+        }
+      }
       
       console.log("[Camera] ✅ Stream obtained successfully");
       console.log("[Camera] Stream active:", stream.active);
@@ -1278,6 +1311,7 @@ Provide a helpful, conversational response.`;
             autoPlay
             playsInline
             muted
+            webkit-playsinline="true"
             style={{
               position: 'absolute',
               top: 0,
@@ -1286,7 +1320,8 @@ Provide a helpful, conversational response.`;
               height: '100vh',
               objectFit: 'cover',
               backgroundColor: '#000000',
-              zIndex: 1
+              zIndex: 1,
+              transform: 'scaleX(-1)' // Mirror for front camera, but we want back camera
             }}
             onLoadedMetadata={(e) => {
               const video = e.currentTarget;
