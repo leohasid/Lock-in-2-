@@ -160,36 +160,66 @@ export default function NutritionPage() {
     if (showCamera && streamRef.current) {
       const stream = streamRef.current;
       
-      // Use a small delay to ensure DOM is ready
-      const timer = setTimeout(() => {
-        if (videoRef.current) {
-          const video = videoRef.current;
-          
-          // Set the stream
-          if (video.srcObject !== stream) {
-            video.srcObject = stream;
-          }
-          
-          // Force play with multiple attempts
-          const attemptPlay = () => {
+      console.log("[Camera] useEffect triggered - showCamera:", showCamera);
+      console.log("[Camera] Stream active:", stream.active);
+      console.log("[Camera] Video tracks:", stream.getVideoTracks().length);
+      
+      // Check if stream is still active
+      if (!stream.active) {
+        console.error("[Camera] Stream is not active!");
+        return;
+      }
+      
+      // Use requestAnimationFrame for better timing
+      const initVideo = () => {
+        if (!videoRef.current) {
+          console.error("[Camera] Video element not found in DOM");
+          return;
+        }
+        
+        const video = videoRef.current;
+        console.log("[Camera] Video element found:", video);
+        console.log("[Camera] Video readyState:", video.readyState);
+        
+        // Set the stream
+        if (video.srcObject !== stream) {
+          console.log("[Camera] Setting video srcObject");
+          video.srcObject = stream;
+        } else {
+          console.log("[Camera] Video srcObject already set");
+        }
+        
+        // Wait for video to be ready, then play
+        const playVideo = () => {
+          if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+            console.log("[Camera] Video ready, attempting to play");
             video.play()
               .then(() => {
-                console.log("Video playing successfully");
+                console.log("[Camera] ✅ Video playing successfully");
+                console.log("[Camera] Video dimensions:", video.videoWidth, "x", video.videoHeight);
               })
               .catch((err) => {
-                console.error("Error playing video:", err);
+                console.error("[Camera] ❌ Error playing video:", err);
                 // Retry after a short delay
-                setTimeout(attemptPlay, 100);
+                setTimeout(playVideo, 200);
               });
-          };
-          
-          attemptPlay();
-        }
-      }, 200);
+          } else {
+            console.log("[Camera] Video not ready yet, readyState:", video.readyState);
+            // Wait for loadedmetadata event
+            video.addEventListener('loadedmetadata', playVideo, { once: true });
+          }
+        };
+        
+        // Try to play immediately
+        playVideo();
+      };
       
-      return () => clearTimeout(timer);
+      // Use multiple strategies to ensure DOM is ready
+      requestAnimationFrame(() => {
+        setTimeout(initVideo, 100);
+      });
     }
-  }, [showCamera, streamRef.current]);
+  }, [showCamera]);
 
   const totals = useMemo(() => {
     return meals.reduce(
@@ -355,40 +385,28 @@ export default function NutritionPage() {
         },
       });
       
-      console.log("Camera stream obtained:", stream);
-      console.log("Stream active:", stream.active);
-      console.log("Video tracks:", stream.getVideoTracks());
+      console.log("[Camera] ✅ Stream obtained successfully");
+      console.log("[Camera] Stream active:", stream.active);
+      console.log("[Camera] Stream id:", stream.id);
+      const videoTracks = stream.getVideoTracks();
+      console.log("[Camera] Video tracks count:", videoTracks.length);
+      if (videoTracks.length > 0) {
+        const track = videoTracks[0];
+        console.log("[Camera] Track settings:", track.getSettings());
+        console.log("[Camera] Track constraints:", track.getConstraints());
+        console.log("[Camera] Track readyState:", track.readyState);
+      }
       
       streamRef.current = stream;
       
-      // Set video source immediately if element exists
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        console.log("Video srcObject set immediately");
-      }
-      
+      // Show camera UI first
       setShowCamera(true);
       setShowScanOptions(false);
       setShowScanIntro(false);
       
-      // Wait for DOM update, then ensure video plays
-      setTimeout(() => {
-        if (videoRef.current && stream) {
-          const video = videoRef.current;
-          if (video.srcObject !== stream) {
-            video.srcObject = stream;
-            console.log("Video srcObject set in timeout");
-          }
-          
-          video.play()
-            .then(() => {
-              console.log("Video playing successfully");
-            })
-            .catch((err) => {
-              console.error("Error playing video:", err);
-            });
-        }
-      }, 300);
+      // Wait for React to render the video element, then initialize
+      // The useEffect will handle the actual video initialization
+      console.log("[Camera] Camera UI shown, waiting for video element to render...");
     } catch (err: any) {
       console.error("Error accessing camera:", err);
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
