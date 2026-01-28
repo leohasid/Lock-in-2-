@@ -24,7 +24,6 @@ export default function NutritionPage() {
   const [showAddMeal, setShowAddMeal] = useState(false);
   const [showScanIntro, setShowScanIntro] = useState(false);
   const [showScanOptions, setShowScanOptions] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [foodToScan, setFoodToScan] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -39,8 +38,7 @@ export default function NutritionPage() {
     carbs: number;
     fats: number;
   } | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newMeal, setNewMeal] = useState({
     name: "",
@@ -155,103 +153,6 @@ export default function NutritionPage() {
     window.dispatchEvent(new CustomEvent("mealsUpdated"));
   }, [meals, isLoaded]);
 
-  // Ensure video plays when camera is shown
-  useEffect(() => {
-    if (showCamera && streamRef.current) {
-      const stream = streamRef.current;
-      
-      console.log("[Camera] useEffect triggered - showCamera:", showCamera);
-      console.log("[Camera] Stream active:", stream.active);
-      console.log("[Camera] Video tracks:", stream.getVideoTracks().length);
-      
-      // Check if stream is still active, if not, re-request
-      if (!stream.active) {
-        console.error("[Camera] Stream is not active!");
-        return;
-      }
-      
-      // Verify we have the back camera
-      const videoTrack = stream.getVideoTracks()[0];
-      if (videoTrack) {
-        const settings = videoTrack.getSettings();
-        console.log("[Camera] Video track settings:", settings);
-        console.log("[Camera] Facing mode:", settings.facingMode);
-        
-        // If we have front camera, warn but continue
-        if (settings.facingMode === "user") {
-          console.warn("[Camera] ⚠️ Using front camera instead of back camera!");
-        } else if (settings.facingMode === "environment") {
-          console.log("[Camera] ✅ Using back camera (correct)");
-        }
-      }
-      
-      // Use requestAnimationFrame for better timing
-      const initVideo = () => {
-        if (!videoRef.current) {
-          console.error("[Camera] Video element not found in DOM, retrying...");
-          setTimeout(initVideo, 100);
-          return;
-        }
-        
-        const video = videoRef.current;
-        console.log("[Camera] Video element found");
-        console.log("[Camera] Video readyState:", video.readyState);
-        console.log("[Camera] Video srcObject:", video.srcObject ? "SET" : "NOT SET");
-        
-        // Always set the stream (even if already set, to ensure it's correct)
-        console.log("[Camera] Setting video srcObject");
-        video.srcObject = stream;
-        
-        // Force load and play
-        video.load();
-        
-        // Wait for video to be ready, then play
-        const playVideo = () => {
-          console.log("[Camera] Attempting to play, readyState:", video.readyState);
-          
-          if (video.readyState >= 2) { // HAVE_CURRENT_DATA
-            console.log("[Camera] Video ready, attempting to play");
-            const playPromise = video.play();
-            
-            if (playPromise !== undefined) {
-              playPromise
-                .then(() => {
-                  console.log("[Camera] ✅ Video playing successfully");
-                  console.log("[Camera] Video dimensions:", video.videoWidth, "x", video.videoHeight);
-                  console.log("[Camera] Video paused:", video.paused);
-                })
-                .catch((err) => {
-                  console.error("[Camera] ❌ Error playing video:", err);
-                  // Retry after a short delay
-                  setTimeout(playVideo, 300);
-                });
-            }
-          } else {
-            console.log("[Camera] Video not ready yet, readyState:", video.readyState);
-            // Wait for loadedmetadata event
-            const handler = () => {
-              console.log("[Camera] loadedmetadata event fired");
-              playVideo();
-            };
-            video.addEventListener('loadedmetadata', handler, { once: true });
-            // Also try after a timeout
-            setTimeout(() => {
-              video.removeEventListener('loadedmetadata', handler);
-              playVideo();
-            }, 1000);
-          }
-        };
-        
-        // Try to play immediately
-        playVideo();
-      };
-      
-      // Use multiple strategies to ensure DOM is ready
-      requestAnimationFrame(() => {
-        setTimeout(initVideo, 200);
-      });
-    }
-  }, [showCamera]);
 
   const totals = useMemo(() => {
     return meals.reduce(
@@ -393,174 +294,27 @@ export default function NutritionPage() {
     }
   };
 
-  const startCamera = async () => {
-    try {
-      // Stop any existing stream first
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
-      }
-      
-      // Get back camera stream
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "environment" // Back camera
-        }
-      });
-      
-      streamRef.current = stream;
-      
-      // Show camera UI FIRST
-      setShowCamera(true);
-      setShowScanOptions(false);
-      setShowScanIntro(false);
-      
-      // Wait for DOM to render video element, then attach stream
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          const video = videoRef.current;
-          if (!video) {
-            console.error("[Camera] Video element not found");
-            return;
-          }
-          
-          if (!stream || !stream.active) {
-            console.error("[Camera] Stream not active");
-            return;
-          }
-          
-          // CRITICAL FIX: Set srcObject FIRST, then wait for metadata before play()
-          video.srcObject = stream;
-          video.muted = true;
-          video.setAttribute('playsinline', 'true');
-          video.setAttribute('webkit-playsinline', 'true');
-          
-          // Ensure video element is visible and has dimensions
-          video.style.display = 'block';
-          video.style.visibility = 'visible';
-          video.style.opacity = '1';
-          video.style.width = '100vw';
-          video.style.height = '100vh';
-          
-          // ROOT CAUSE FIX: iOS Safari requires loadedmetadata before play()
-          const playWhenReady = () => {
-            if (video.readyState >= 1) { // HAVE_METADATA
-              video.play()
-                .then(() => {
-                  console.log("[Camera] Video playing, dimensions:", video.videoWidth, "x", video.videoHeight);
-                })
-                .catch(err => {
-                  console.error("[Camera] Play error:", err);
-                  // Retry once
-                  setTimeout(() => video.play().catch(() => {}), 200);
-                });
-            } else {
-              // Wait for metadata event
-              video.addEventListener('loadedmetadata', playWhenReady, { once: true });
-              // Fallback timeout
-              setTimeout(playWhenReady, 500);
-            }
-          };
-          
-          playWhenReady();
-        }, 100);
-      });
-    } catch (err: any) {
-      console.error("Error accessing camera:", err);
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-        alert("Camera permission was denied. Please allow camera access in your browser settings and try again. On mobile, you may need to enable camera permissions in your device settings.");
-      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
-        alert("No camera found. Please connect a camera device.");
-      } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
-        alert("Camera is already in use by another application. Please close other apps using the camera.");
-      } else if (err.name === "OverconstrainedError") {
-        alert("Camera doesn't support the requested settings. Trying with default settings...");
-        // Retry with simpler constraints
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" },
-          });
-          streamRef.current = stream;
-          setShowCamera(true);
-          setShowScanOptions(false);
-          setShowScanIntro(false);
-          setTimeout(() => {
-            if (videoRef.current && stream) {
-              videoRef.current.srcObject = stream;
-              videoRef.current.play().catch((err) => {
-                console.error("Error playing video:", err);
-              });
-            }
-          }, 100);
-        } catch (retryErr: any) {
-          alert("Unable to access camera. Please check your browser settings and try again.");
-        }
-      } else {
-        alert("Unable to access camera. Please check your browser settings and try again.");
-      }
-    }
+  const openCamera = () => {
+    // Open native iOS camera using file input with capture attribute
+    cameraInputRef.current?.click();
   };
 
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    setShowCamera(false);
-  };
-
-  const capturePhoto = () => {
-    if (videoRef.current && streamRef.current) {
-      const video = videoRef.current;
-      const stream = streamRef.current;
-      
-      // Stop the stream IMMEDIATELY to prevent iOS recording dialog
-      stream.getTracks().forEach(track => track.stop());
-      
-      const videoWidth = video.videoWidth;
-      const videoHeight = video.videoHeight;
-      
-      // Validate video dimensions
-      if (!videoWidth || !videoHeight || videoWidth === 0 || videoHeight === 0) {
-        console.error("Invalid video dimensions:", videoWidth, videoHeight);
-        alert("Camera is not ready. Please wait a moment and try again.");
-        stopCamera();
-        return;
-      }
-      
-      const canvas = document.createElement("canvas");
-      canvas.width = videoWidth;
-      canvas.height = videoHeight;
-      const ctx = canvas.getContext("2d");
-      
-      if (!ctx) {
-        console.error("Failed to get canvas context");
-        alert("Failed to capture photo. Please try again.");
-        stopCamera();
-        return;
-      }
-      
-      try {
-        ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
-        const imageData = canvas.toDataURL("image/jpeg", 0.9);
-        
-        // Validate the data URL
-        if (!imageData || !imageData.startsWith("data:image/")) {
-          console.error("Invalid image data URL generated");
-          alert("Failed to capture photo. Please try again.");
-          stopCamera();
-          return;
-        }
-        
-        console.log("Photo captured successfully, size:", imageData.length, "bytes");
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const imageData = reader.result as string;
         setCapturedImage(imageData);
-        stopCamera();
+        setShowScanOptions(false);
+        setShowScanIntro(false);
         analyzeFood(imageData);
-      } catch (error) {
-        console.error("Error capturing photo:", error);
-        alert("Failed to capture photo. Please try again.");
-        stopCamera();
-      }
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset input so same file can be selected again
+    if (e.target) {
+      e.target.value = '';
     }
   };
 
@@ -1278,11 +1032,11 @@ Provide a helpful, conversational response.`;
           </div>
             <div className="space-y-2">
                 <button
-                onClick={startCamera}
+                onClick={openCamera}
                 className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   <Camera className="w-4 h-4" />
-                Use Camera
+                Take Photo
                 </button>
                 <button
                 onClick={() => fileInputRef.current?.click()}
@@ -1292,6 +1046,16 @@ Provide a helpful, conversational response.`;
                 Upload Photo
                 </button>
               </div>
+            {/* Native iOS camera input - opens native camera UI */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleCameraCapture}
+              className="hidden"
+            />
+            {/* File upload input */}
             <input
               ref={fileInputRef}
               type="file"
@@ -1303,167 +1067,6 @@ Provide a helpful, conversational response.`;
                 </div>
               )}
               
-      {/* CAMERA VIEW - Full Screen Overlay */}
-      {showCamera && (
-        <div 
-          style={{ 
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            width: '100vw',
-            height: '100vh',
-            backgroundColor: '#000000',
-            zIndex: 99999,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            WebkitOverflowScrolling: 'touch'
-          }}
-        >
-          {/* Debug indicator - shows if stream is active */}
-          {streamRef.current && (
-            <div style={{
-              position: 'absolute',
-              top: '60px',
-              right: '20px',
-              backgroundColor: streamRef.current.active ? 'rgba(0, 255, 0, 0.8)' : 'rgba(255, 0, 0, 0.8)',
-              color: 'white',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              fontSize: '12px',
-              zIndex: 100001,
-              fontWeight: 'bold'
-            }}>
-              {streamRef.current.active ? '✓ Stream Active' : '✗ Stream Inactive'}
-            </div>
-          )}
-          
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100vw',
-              height: '100vh',
-              minWidth: '100vw',
-              minHeight: '100vh',
-              objectFit: 'cover',
-              backgroundColor: '#000000',
-              zIndex: 1,
-              display: 'block',
-              visibility: 'visible',
-              opacity: 1
-            }}
-            onLoadedMetadata={(e) => {
-              const video = e.currentTarget;
-              console.log("[Camera] onLoadedMetadata - video dimensions:", video.videoWidth, "x", video.videoHeight);
-              console.log("[Camera] onLoadedMetadata - readyState:", video.readyState);
-              video.play().catch((err) => {
-                console.error("[Camera] Error playing video after metadata:", err);
-              });
-            }}
-            onLoadedData={(e) => {
-              const video = e.currentTarget;
-              console.log("[Camera] onLoadedData - readyState:", video.readyState);
-            }}
-            onCanPlay={(e) => {
-              const video = e.currentTarget;
-              console.log("[Camera] onCanPlay - readyState:", video.readyState);
-              video.play().catch((err) => {
-                console.error("[Camera] Error playing video on canPlay:", err);
-              });
-            }}
-            onPlaying={(e) => {
-              const video = e.currentTarget;
-              console.log("[Camera] ✅ Video is now playing!");
-              console.log("[Camera] Video dimensions:", video.videoWidth, "x", video.videoHeight);
-            }}
-            onError={(e) => {
-              console.error("[Camera] ❌ Video element error:", e);
-            }}
-          />
-          
-          {/* Top Cancel Button */}
-          <div 
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              paddingTop: 'env(safe-area-inset-top, 20px)',
-              paddingBottom: '20px',
-              paddingLeft: '20px',
-              paddingRight: '20px',
-              zIndex: 100000,
-              display: 'flex',
-              justifyContent: 'flex-start',
-              alignItems: 'center'
-            }}
-          >
-            <button
-              onClick={stopCamera}
-              style={{
-                backgroundColor: 'rgba(220, 38, 38, 0.9)',
-                color: 'white',
-                padding: '14px 28px',
-                borderRadius: '12px',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                border: 'none',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
-                cursor: 'pointer'
-              }}
-            >
-              ✕ Cancel
-            </button>
-          </div>
-          
-          {/* Bottom Capture Button - CENTERED AND LARGE */}
-          <div 
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              paddingTop: '40px',
-              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 40px)',
-              paddingLeft: '20px',
-              paddingRight: '20px',
-              zIndex: 100000,
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 60%, transparent 100%)'
-            }}
-          >
-            <button
-              onClick={capturePhoto}
-              style={{
-                backgroundColor: '#14f1d9',
-                color: '#000000',
-                padding: '24px 48px',
-                borderRadius: '50px',
-                fontSize: '24px',
-                fontWeight: 'bold',
-                minWidth: '200px',
-                border: '4px solid rgba(255, 255, 255, 0.3)',
-                boxShadow: '0 8px 40px rgba(20, 241, 217, 0.4), 0 0 0 8px rgba(20, 241, 217, 0.1)',
-                cursor: 'pointer',
-                textTransform: 'uppercase',
-                letterSpacing: '1px'
-              }}
-            >
-              📷 CAPTURE
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* AI ESTIMATE MODAL */}
       {isAnalyzing && (
