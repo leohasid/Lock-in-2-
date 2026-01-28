@@ -1234,7 +1234,7 @@ Provide a helpful, conversational response.`;
         </div>
       )}
 
-      {!showCamera && <BottomNav />}
+      <BottomNav />
     </div>
   );
 }
