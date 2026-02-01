@@ -54,7 +54,7 @@ export default function ProgressPage() {
             </div>
           </div>
           <Link
-            href="/gym"
+            href="/gym/workout"
             className="inline-block mt-4 text-orange-400 hover:text-orange-300"
           >
             View Gym Details →

@@ -11,7 +11,7 @@ export default function BottomNav() {
     { href: "/", icon: Home, label: "Home" },
     { href: "/nutrition", icon: UtensilsCrossed, label: "Nutrition" },
     { href: "/addictions", icon: Shield, label: "Addiction" },
-    { href: "/gym", icon: Dumbbell, label: "Fitness" },
+    { href: "/gym/workout", icon: Dumbbell, label: "Fitness" },
     { href: "/calendar", icon: Calendar, label: "Calendar" },
   ];
 
@@ -20,7 +20,7 @@ export default function BottomNav() {
       <div className="flex justify-between items-center px-4 py-3 max-w-md mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href === "/gym/workout" && pathname?.startsWith("/gym"));
           return (
             <Link
               key={item.href}
