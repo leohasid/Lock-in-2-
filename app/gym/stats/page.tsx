@@ -288,7 +288,7 @@ export default function GymStatsPage() {
       <div className="container mx-auto px-4 py-4">
         {/* Header */}
         <div className="mb-4">
-          <Link href="/gym" className="text-orange-400 hover:text-orange-300 mb-1.5 inline-block flex items-center gap-2 text-sm">
+          <Link href="/gym/workout" className="text-orange-400 hover:text-orange-300 mb-1.5 inline-block flex items-center gap-2 text-sm">
             <ArrowLeft className="w-3.5 h-3.5" />
             Back to Workout
           </Link>
