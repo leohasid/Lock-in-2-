@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { ArrowLeft, X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, Dumbbell } from "lucide-react";
+import { X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, Dumbbell } from "lucide-react";
 
 interface Exercise {
   id: string;
@@ -554,16 +554,9 @@ export default function WorkoutPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white pb-20">
-      <div className="max-w-md mx-auto px-4 py-6">
+      <div className="max-w-md mx-auto px-3 py-3">
         {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <button
-            onClick={() => router.push("/gym")}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="flex-1" />
+        <div className="flex items-center justify-end mb-2">
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => {
@@ -597,74 +590,70 @@ export default function WorkoutPage() {
             <p className="text-gray-400 text-[10px]">Add your own workout or use AI to get started!</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-2">
             {/* Workout day name header */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-white">{currentDayWorkoutName}</h2>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-semibold text-white">{currentDayWorkoutName}</h2>
               <button className="text-cyan-400 hover:text-cyan-300">
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 h-4" />
               </button>
             </div>
             
-            {/* Exercise List */}
-            {currentDayExercises.map((ex) => {
-              const completedSets = ex.sets.filter(s => s.completed).length;
-              const totalSets = ex.sets.length;
-              const firstSet = ex.sets[0];
-              const weightDisplay = firstSet?.weight || ex.goalWeight || 0;
-              
-              return (
-                <div
-                  key={ex.id}
-                  onClick={() => setActiveExerciseId(ex.id)}
-                  className="bg-black/40 border border-white/10 rounded-lg p-3 flex items-center gap-3 cursor-pointer hover:bg-black/60 transition-colors"
-                >
-                  {/* Exercise thumbnail placeholder */}
-                  <div className="w-16 h-16 bg-gray-800 rounded-lg flex-shrink-0 flex items-center justify-center">
-                    <Dumbbell className="w-8 h-8 text-gray-600" />
-                  </div>
-                  
-                  {/* Exercise info */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-white mb-1 truncate">{ex.name}</h3>
-                    <p className="text-xs text-gray-400">
-                      {totalSets} sets • {ex.goalReps} reps • {weightDisplay} {weightDisplay > 0 ? 'lb' : ''}
-                    </p>
-                  </div>
-                  
-                  {/* Three dot menu */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveExerciseId(ex.id);
-                    }}
-                    className="text-gray-400 hover:text-white p-1"
+            {/* Exercise List - 2 column grid */}
+            <div className="grid grid-cols-2 gap-2">
+              {currentDayExercises.map((ex) => {
+                const completedSets = ex.sets.filter(s => s.completed).length;
+                const totalSets = ex.sets.length;
+                const firstSet = ex.sets[0];
+                const weightDisplay = firstSet?.weight || ex.goalWeight || 0;
+                
+                return (
+                  <div
+                    key={ex.id}
+                    onClick={() => setActiveExerciseId(ex.id)}
+                    className="bg-black/40 border border-white/10 rounded-lg p-2 cursor-pointer hover:bg-black/60 transition-colors"
                   >
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
-                </div>
-              );
-            })}
+                    {/* Exercise thumbnail placeholder */}
+                    <div className="w-full h-20 bg-gray-800 rounded-lg mb-2 flex items-center justify-center">
+                      <Dumbbell className="w-6 h-6 text-gray-600" />
+                    </div>
+                    
+                    {/* Exercise info */}
+                    <div className="min-w-0">
+                      <h3 className="text-xs font-semibold text-white mb-1 truncate">{ex.name}</h3>
+                      <p className="text-[10px] text-gray-400">
+                        {totalSets} sets • {ex.goalReps} reps
+                      </p>
+                      {weightDisplay > 0 && (
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          {weightDisplay} lb
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
         {/* Strength Progress Section */}
         {currentDayWorkoutName !== "Rest Day" && (
-          <section className="mb-4 mt-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-xl p-3">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-bold text-white">Progress</h2>
-              <Link href="/gym/stats" className="text-[10px] text-teal-400 hover:text-teal-300">
+          <section className="mb-2 mt-2 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-lg p-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <h2 className="text-xs font-bold text-white">Progress</h2>
+              <Link href="/gym/stats" className="text-[9px] text-teal-400 hover:text-teal-300">
                 View All →
               </Link>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-white/5 rounded-lg p-2 border border-white/10">
-                <p className="text-base font-bold text-teal-400 mb-0.5">+12%</p>
-                <p className="text-[9px] text-gray-400">Volume</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              <div className="bg-white/5 rounded-lg p-1.5 border border-white/10">
+                <p className="text-sm font-bold text-teal-400 mb-0.5">+12%</p>
+                <p className="text-[8px] text-gray-400">Volume</p>
               </div>
-              <div className="bg-white/5 rounded-lg p-2 border border-white/10">
-                <p className="text-base font-bold text-teal-400 mb-0.5">+5 kg</p>
-                <p className="text-[9px] text-gray-400">Bench PB</p>
+              <div className="bg-white/5 rounded-lg p-1.5 border border-white/10">
+                <p className="text-sm font-bold text-teal-400 mb-0.5">+5 kg</p>
+                <p className="text-[8px] text-gray-400">Bench PB</p>
               </div>
             </div>
           </section>
@@ -918,8 +907,7 @@ export default function WorkoutPage() {
                   }}
                   className="flex items-center gap-2 text-cyan-400 hover:text-cyan-300 mb-4"
                 >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Back to Options</span>
+                  <span>← Back to Options</span>
                 </button>
 
                 {/* Day 1 Section */}
