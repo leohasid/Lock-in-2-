@@ -45,13 +45,6 @@ interface CustomWorkoutPlan {
   legsDay: CustomExercise[];
 }
 
-interface WeightEntry {
-  id: string;
-  date: string;
-  weight: number;
-  bodyFat?: number;
-  notes?: string;
-}
 
 export default function GymPage() {
   const router = useRouter();
@@ -75,10 +68,6 @@ export default function GymPage() {
     pullDay: [{ name: "", sets: 3, reps: 10 }],
     legsDay: [{ name: "", sets: 3, reps: 10 }],
   });
-  const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
-  const [showWeightModal, setShowWeightModal] = useState(false);
-  const [newWeight, setNewWeight] = useState({ weight: "", bodyFat: "", notes: "" });
-  const [selectedTimeframe, setSelectedTimeframe] = useState<"1M" | "3M" | "1Y">("1Y");
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
@@ -112,24 +101,6 @@ export default function GymPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Load weight entries from localStorage
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = localStorage.getItem("weightEntries");
-    if (stored) {
-      try {
-        setWeightEntries(JSON.parse(stored));
-      } catch (e) {
-        console.error("Error loading weight entries:", e);
-      }
-    }
-  }, []);
-
-  // Save weight entries to localStorage
-  useEffect(() => {
-    if (typeof window === "undefined" || !isLoaded) return;
-    localStorage.setItem("weightEntries", JSON.stringify(weightEntries));
-  }, [weightEntries, isLoaded]);
 
   // Load workout plan from localStorage on mount
   useEffect(() => {
@@ -807,201 +778,6 @@ export default function GymPage() {
         )}
 
 
-        {/* Weight Tracking Section - Image Style */}
-        <div className="mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-white/10">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-white">Body Weight</h3>
-            <div className="flex gap-1">
-              {(["1M", "3M", "1Y"] as const).map((timeframe) => (
-                <button
-                  key={timeframe}
-                  onClick={() => setSelectedTimeframe(timeframe)}
-                  className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                    selectedTimeframe === timeframe
-                      ? "bg-teal-400 text-black"
-                      : "text-gray-400 hover:text-white"
-                  }`}
-                >
-                  {timeframe}
-                </button>
-              ))}
-            </div>
-          </div>
-          {latestWeight ? (
-            <>
-              <div className="mb-3">
-                <p className="text-2xl font-bold text-white mb-1">{latestWeight} kg</p>
-                {weightChange !== null && (
-                  <p className={`text-sm ${weightChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {weightChange >= 0 ? '+' : ''}{weightChange.toFixed(1)} kg last year
-                  </p>
-                )}
-              </div>
-              {sortedWeightEntries.length > 1 && (() => {
-                const displayEntries = sortedWeightEntries.slice(-10);
-                const sortedEntries = [...displayEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                const minWeight = Math.min(...sortedEntries.map(e => e.weight));
-                const maxWeight = Math.max(...sortedEntries.map(e => e.weight));
-                const range = maxWeight - minWeight || 1;
-                const padding = 10;
-                const chartWidth = 300;
-                const chartHeight = 100;
-                const graphHeight = chartHeight - padding * 2;
-                const graphWidth = chartWidth - padding * 2;
-                
-                // Generate points for the line
-                const points = sortedEntries.map((entry, idx) => {
-                  const x = padding + (idx / Math.max(sortedEntries.length - 1, 1)) * graphWidth;
-                  const y = padding + graphHeight - ((entry.weight - minWeight) / range) * graphHeight;
-                  return { x, y, weight: entry.weight, date: entry.date };
-                });
-                
-                // Generate area polygon points
-                const areaPoints = `M${padding},${padding + graphHeight} ${points.map(p => `L${p.x},${p.y}`).join(' ')} L${padding + graphWidth},${padding + graphHeight} Z`;
-                
-                // Generate line path
-                const linePath = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
-                
-                // Calculate Y-axis labels
-                const yStep = range / 3;
-                const yLabels = [
-                  Math.round(maxWeight),
-                  Math.round(maxWeight - yStep),
-                  Math.round(minWeight)
-                ];
-                
-                // Generate X-axis labels (first, middle, last dates)
-                const xLabels = [];
-                if (sortedEntries.length > 0) {
-                  xLabels.push(new Date(sortedEntries[0].date));
-                  if (sortedEntries.length > 2) {
-                    xLabels.push(new Date(sortedEntries[Math.floor(sortedEntries.length / 2)].date));
-                  }
-                  xLabels.push(new Date(sortedEntries[sortedEntries.length - 1].date));
-                }
-                
-                return (
-                  <div className="h-32 relative mt-2">
-                    <svg className="w-full h-full" viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="xMidYMid meet">
-                      <defs>
-                        <linearGradient id="weightGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.4" />
-                          <stop offset="100%" stopColor="#14b8a6" stopOpacity="0" />
-                        </linearGradient>
-                        <filter id="glow">
-                          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-                          <feMerge>
-                            <feMergeNode in="coloredBlur"/>
-                            <feMergeNode in="SourceGraphic"/>
-                          </feMerge>
-                        </filter>
-                      </defs>
-                      
-                      {/* Grid lines */}
-                      {[0, 1, 2].map((i) => {
-                        const y = padding + (i / 2) * graphHeight;
-                        return (
-                          <line
-                            key={i}
-                            x1={padding}
-                            y1={y}
-                            x2={padding + graphWidth}
-                            y2={y}
-                            stroke="rgba(255,255,255,0.08)"
-                            strokeWidth="1"
-                          />
-                        );
-                      })}
-                      
-                      {/* Area under curve */}
-                      <path
-                        d={areaPoints}
-                        fill="url(#weightGradient)"
-                      />
-                      
-                      {/* Graph line */}
-                      <path
-                        d={linePath}
-                        fill="none"
-                        stroke="#14b8a6"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        filter="url(#glow)"
-                      />
-                      
-                      {/* Data points */}
-                      {points.map((point, idx) => (
-                        <g key={idx}>
-                          <circle
-                            cx={point.x}
-                            cy={point.y}
-                            r="3"
-                            fill="#14b8a6"
-                            stroke="#0c1422"
-                            strokeWidth="1.5"
-                            className="drop-shadow-lg"
-                          />
-                        </g>
-                      ))}
-                    </svg>
-                    
-                    {/* X-axis labels */}
-                    <div className="absolute bottom-0 left-0 right-0 flex justify-between text-[9px] text-gray-500 px-2 pb-1">
-                      {xLabels.map((date, idx) => (
-                        <span key={idx}>
-                          {date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                        </span>
-                      ))}
-                    </div>
-                    
-                    {/* Y-axis labels */}
-                    <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[9px] text-gray-500 py-2 pl-1">
-                      {yLabels.map((label, idx) => (
-                        <span key={idx}>{label}</span>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-              {/* Statistics Row */}
-              {sortedWeightEntries.length > 1 && (
-                <div className="mt-4 flex items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-                    </svg>
-                    <span className="text-gray-400">Avg: <span className="text-white font-semibold">{averageWeight?.toFixed(1)} kg</span></span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <svg className={`w-4 h-4 ${weightChange && weightChange >= 0 ? 'text-red-400' : 'text-red-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                    <span className={`${weightChange && weightChange >= 0 ? 'text-red-400' : 'text-red-400'}`}>
-                      Change: <span className="font-semibold">{weightChange !== null ? (weightChange >= 0 ? '+' : '') + weightChange.toFixed(1) : '0.0'} kg</span>
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <svg className={`w-4 h-4 ${bmi && bmi >= 18.5 && bmi <= 24.9 ? 'text-green-400' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="text-gray-400">
-                      BMI: <span className="text-white font-semibold">{bmi?.toFixed(1) || 'N/A'} {bmi && bmi >= 18.5 && bmi <= 24.9 ? 'Normal' : bmi && bmi < 18.5 ? 'Underweight' : bmi && bmi > 24.9 ? 'Overweight' : ''}</span>
-                    </span>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="text-xs text-gray-500 text-center py-4">No weight entries yet</p>
-          )}
-          <button
-            onClick={() => setShowWeightModal(true)}
-            className="mt-4 w-full px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-lg text-xs font-bold transition-all shadow-lg shadow-teal-500/30"
-          >
-            Log Weight
-          </button>
-        </div>
 
         {/* Custom Workout Plan Modal */}
         {showCustomWorkoutModal && (
@@ -1411,63 +1187,6 @@ export default function GymPage() {
           </div>
         )}
 
-        {/* Weight Entry Modal */}
-        {showWeightModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-5 max-w-md w-full border border-white/10">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold">Add Weight Entry</h2>
-                <button
-                  onClick={() => {
-                    setShowWeightModal(false);
-                    setNewWeight({ weight: "", bodyFat: "", notes: "" });
-                  }}
-                  className="text-white/40 hover:text-white"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-      </div>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Weight (kg)</label>
-                  <input
-                    type="number"
-                    value={newWeight.weight}
-                    onChange={(e) => setNewWeight({ ...newWeight, weight: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-teal-400"
-                    placeholder="70.5"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Body Fat % (optional)</label>
-                  <input
-                    type="number"
-                    value={newWeight.bodyFat}
-                    onChange={(e) => setNewWeight({ ...newWeight, bodyFat: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-teal-400"
-                    placeholder="15"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Notes (optional)</label>
-                  <textarea
-                    value={newWeight.notes}
-                    onChange={(e) => setNewWeight({ ...newWeight, notes: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-teal-400 resize-none"
-                    rows={2}
-                    placeholder="Morning weight, after workout, etc."
-                  />
-                </div>
-                <button
-                  onClick={handleAddWeight}
-                  className="w-full py-2.5 bg-teal-400 text-black rounded-lg font-semibold hover:bg-teal-500 transition-colors text-sm"
-                >
-                  Add Entry
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       <BottomNav />
