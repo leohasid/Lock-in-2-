@@ -626,69 +626,6 @@ export default function GymPage() {
     setMissedWorkoutDate(null);
   };
 
-  // Calculate weight progress
-  // Sort weight entries by date
-  const sortedWeightEntries = useMemo(() => {
-    return [...weightEntries].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [weightEntries]);
-
-  const latestWeight = sortedWeightEntries.length > 0 ? sortedWeightEntries[sortedWeightEntries.length - 1].weight : null;
-  
-  // Calculate weight change from one year ago (or oldest entry if less than a year)
-  const weightChange = useMemo(() => {
-    if (!latestWeight || sortedWeightEntries.length === 0) return null;
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    const oneYearAgoStr = oneYearAgo.toISOString().split("T")[0];
-    
-    // Find the oldest entry or entry from one year ago
-    const oldestEntry = sortedWeightEntries[0];
-    const oneYearAgoEntry = sortedWeightEntries.find(e => e.date <= oneYearAgoStr);
-    const referenceEntry = oneYearAgoEntry || oldestEntry;
-    
-    if (referenceEntry && referenceEntry.weight) {
-      return latestWeight - referenceEntry.weight;
-    }
-    return null;
-  }, [latestWeight, sortedWeightEntries]);
-
-  // Calculate average weight
-  const averageWeight = useMemo(() => {
-    if (sortedWeightEntries.length === 0) return null;
-    const sum = sortedWeightEntries.reduce((acc, entry) => acc + entry.weight, 0);
-    return sum / sortedWeightEntries.length;
-  }, [sortedWeightEntries]);
-
-  // Calculate BMI (if height is available from onboarding)
-  const bmi = useMemo(() => {
-    if (!latestWeight) return null;
-    if (typeof window === "undefined") return null;
-    const onboardingData = localStorage.getItem("onboardingData");
-    if (!onboardingData) return null;
-    try {
-      const data = JSON.parse(onboardingData);
-      const heightInMeters = data.height ? data.height / 100 : null;
-      if (!heightInMeters) return null;
-      const bmiValue = latestWeight / (heightInMeters * heightInMeters);
-      return bmiValue;
-    } catch {
-      return null;
-    }
-  }, [latestWeight]);
-
-  const handleAddWeight = () => {
-    if (!newWeight.weight) return;
-    const entry: WeightEntry = {
-      id: Date.now().toString(),
-      date: new Date().toISOString().split("T")[0],
-      weight: parseFloat(newWeight.weight),
-      bodyFat: newWeight.bodyFat ? parseFloat(newWeight.bodyFat) : undefined,
-      notes: newWeight.notes || undefined,
-    };
-    setWeightEntries([...weightEntries, entry]);
-    setNewWeight({ weight: "", bodyFat: "", notes: "" });
-    setShowWeightModal(false);
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-4 pt-4 pb-28">
