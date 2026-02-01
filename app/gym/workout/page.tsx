@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
@@ -12,7 +12,7 @@ interface Exercise {
   goalSets: number;
   goalReps: number;
   goalWeight: number;
-  imageUrl?: string; // Optional image URL for the exercise
+  imageUrl?: string;
   sets: Array<{
     reps: number;
     weight: number;
@@ -51,6 +51,7 @@ interface CustomExercise {
   name: string;
   sets: number;
   reps: number;
+  imageUrl?: string;
 }
 
 export default function WorkoutPage() {
@@ -92,6 +93,7 @@ export default function WorkoutPage() {
     pullDay: [{ name: "", sets: 3, reps: 10 }],
     legsDay: [{ name: "", sets: 3, reps: 10 }],
   });
+  const imageInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
   // Update selectedDate when URL changes
   useEffect(() => {
@@ -139,6 +141,7 @@ export default function WorkoutPage() {
                 name: ex.name || "",
                 sets: ex.goalSets || ex.sets || 3,
                 reps: ex.goalReps || ex.reps || 10,
+                imageUrl: ex.imageUrl,
               }));
             };
             // Combine all exercises from all three days
@@ -164,6 +167,7 @@ export default function WorkoutPage() {
                   goalSets: ex.goalSets || ex.sets || 3,
                   goalReps: ex.goalReps || ex.reps || 10,
                   goalWeight: ex.goalWeight || 0,
+                  imageUrl: ex.imageUrl,
                   sets: ex.sets || Array.from({ length: ex.goalSets || ex.sets || 3 }, () => ({
                     reps: ex.goalReps || ex.reps || 10,
                     weight: ex.goalWeight || 0,
@@ -343,6 +347,24 @@ export default function WorkoutPage() {
     const workoutType = getWorkoutTypeForDate(selectedDate);
     if (!workoutType) return [];
     
+    // Load saved exercise images
+    let savedImages: Record<string, string> = {};
+    if (typeof window !== "undefined") {
+      try {
+        const storedImages = localStorage.getItem("exerciseImages");
+        if (storedImages) {
+          savedImages = JSON.parse(storedImages);
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+    
+    // Helper to get image for exercise
+    const getImageUrl = (ex: any): string | undefined => {
+      return ex.imageUrl || savedImages[ex.name?.toLowerCase()];
+    };
+    
     // First, check if there's a selected workout option from URL
     if (selectedWorkoutOption && workoutOptions.length > 0) {
       const option = workoutOptions.find((o: WorkoutOption) => o.id === selectedWorkoutOption);
@@ -360,6 +382,7 @@ export default function WorkoutPage() {
           goalSets: ex.goalSets || ex.sets || 3,
           goalReps: ex.goalReps || ex.reps || 10,
           goalWeight: ex.goalWeight || 0,
+          imageUrl: getImageUrl(ex),
           sets: ex.sets || Array.from({ length: ex.goalSets || ex.sets || 3 }, () => ({
             reps: ex.goalReps || ex.reps || 10,
             weight: ex.goalWeight || 0,
@@ -387,6 +410,7 @@ export default function WorkoutPage() {
             goalSets: ex.goalSets || ex.sets || 3,
             goalReps: ex.goalReps || ex.reps || 10,
             goalWeight: ex.goalWeight || 0,
+            imageUrl: getImageUrl(ex),
             sets: ex.sets || Array.from({ length: ex.goalSets || ex.sets || 3 }, () => ({
               reps: ex.goalReps || ex.reps || 10,
               weight: ex.goalWeight || 0,
@@ -398,7 +422,11 @@ export default function WorkoutPage() {
     }
     
     // Fall back to workoutPlan
-    return workoutPlan[workoutType] || [];
+    const exercises = workoutPlan[workoutType] || [];
+    return exercises.map((ex: Exercise) => ({
+      ...ex,
+      imageUrl: ex.imageUrl || savedImages[ex.name?.toLowerCase()],
+    }));
   }, [selectedDate, workoutPlan, workoutSchedule, selectedWorkoutOption, workoutOptions]);
 
   // Get current day's workout name - must match main page logic exactly
@@ -527,6 +555,38 @@ export default function WorkoutPage() {
     }
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, dayType: "pushDay" | "pullDay" | "legsDay", index: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      alert("Please select an image file");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image must be less than 5MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      const updated = [...customWorkoutPlan[dayType]];
+      updated[index] = { ...updated[index], imageUrl: base64String };
+      setCustomWorkoutPlan({ ...customWorkoutPlan, [dayType]: updated });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = (dayType: "pushDay" | "pullDay" | "legsDay", index: number) => {
+    const updated = [...customWorkoutPlan[dayType]];
+    updated[index] = { ...updated[index], imageUrl: undefined };
+    setCustomWorkoutPlan({ ...customWorkoutPlan, [dayType]: updated });
+  };
+
   const activeExercise = useMemo(() => {
     if (!activeExerciseId) return null;
     return currentDayExercises.find((ex) => ex.id === activeExerciseId) || null;
@@ -537,7 +597,7 @@ export default function WorkoutPage() {
     let totalSets = 0;
     let completedSets = 0;
     currentDayExercises.forEach((ex) => {
-      ex.sets.forEach((s) => {
+      ex.sets.forEach((s: { reps: number; weight: number; completed: boolean }) => {
         totalSets++;
         if (s.completed) {
           completedSets++;
@@ -603,11 +663,10 @@ export default function WorkoutPage() {
             {/* Exercise List - 2 column grid */}
             <div className="grid grid-cols-2 gap-2">
               {currentDayExercises.map((ex) => {
-                const completedSets = ex.sets.filter(s => s.completed).length;
+                const completedSets = ex.sets.filter((s: { reps: number; weight: number; completed: boolean }) => s.completed).length;
                 const totalSets = ex.sets.length;
                 const firstSet = ex.sets[0];
                 const weightDisplay = firstSet?.weight || ex.goalWeight || 0;
-                const exerciseImage = getExerciseImage(ex);
                 
                 return (
                   <div
@@ -615,25 +674,13 @@ export default function WorkoutPage() {
                     onClick={() => setActiveExerciseId(ex.id)}
                     className="bg-black/40 border border-white/10 rounded-lg p-2 cursor-pointer hover:bg-black/60 transition-colors"
                   >
-                    {/* Exercise image or placeholder */}
-                    <div className="w-full h-20 bg-gray-800 rounded-lg mb-2 overflow-hidden flex items-center justify-center relative">
-                      {exerciseImage ? (
+                    {/* Exercise thumbnail */}
+                    <div className="w-full h-20 bg-gray-800 rounded-lg mb-2 flex items-center justify-center overflow-hidden relative">
+                      {ex.imageUrl ? (
                         <img 
-                          src={exerciseImage} 
+                          src={ex.imageUrl} 
                           alt={ex.name}
                           className="w-full h-full object-cover"
-                          onError={(e) => {
-                            // Fallback to icon if image fails to load
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const parent = target.parentElement;
-                            if (parent) {
-                              const icon = document.createElement('div');
-                              icon.className = 'flex items-center justify-center';
-                              icon.innerHTML = '<svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
-                              parent.appendChild(icon);
-                            }
-                          }}
                         />
                       ) : (
                         <Dumbbell className="w-6 h-6 text-gray-600" />
@@ -697,30 +744,15 @@ export default function WorkoutPage() {
             <div className="flex-1 overflow-y-auto">
               {/* Exercise image */}
               <div className="w-full h-48 bg-gray-900 flex items-center justify-center relative overflow-hidden">
-                {activeExercise && getExerciseImage(activeExercise) ? (
+                {activeExercise.imageUrl ? (
                   <img 
-                    src={getExerciseImage(activeExercise)!} 
+                    src={activeExercise.imageUrl} 
                     alt={activeExercise.name}
                     className="w-full h-full object-cover"
-                    onError={(e) => {
-                      // Fallback to icon if image fails to load
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      const parent = target.parentElement;
-                      if (parent && !parent.querySelector('.fallback-icon')) {
-                        const icon = document.createElement('div');
-                        icon.className = 'fallback-icon flex items-center justify-center';
-                        icon.innerHTML = '<svg class="w-20 h-20 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
-                        parent.appendChild(icon);
-                      }
-                    }}
                   />
                 ) : (
                   <Dumbbell className="w-20 h-20 text-gray-700" />
                 )}
-                <button className="absolute top-4 right-4 w-8 h-8 bg-black/80 rounded-full flex items-center justify-center text-white">
-                  <X className="w-4 h-4" />
-                </button>
               </div>
 
               <div className="p-4 space-y-4">
@@ -751,9 +783,9 @@ export default function WorkoutPage() {
 
                 {/* Sets */}
                 <div className="space-y-3">
-                  {activeExercise.sets.map((set, setIndex) => {
+                  {activeExercise.sets.map((set: { reps: number; weight: number; completed: boolean }, setIndex: number) => {
                     const isCompleted = set.completed;
-                    const isActive = !isCompleted && setIndex === activeExercise.sets.findIndex(s => !s.completed);
+                    const isActive = !isCompleted && setIndex === activeExercise.sets.findIndex((s: { reps: number; weight: number; completed: boolean }) => !s.completed);
                     
                     return (
                       <div
@@ -912,6 +944,7 @@ export default function WorkoutPage() {
                               name: ex.name,
                               sets: ex.goalSets,
                               reps: ex.goalReps,
+                              imageUrl: ex.imageUrl,
                             }));
                           };
                           // Combine all exercises from all three days
@@ -1310,6 +1343,7 @@ export default function WorkoutPage() {
                             goalSets: ex.sets,
                             goalReps: ex.reps,
                             goalWeight: 0,
+                            imageUrl: ex.imageUrl,
                             sets: Array.from({ length: ex.sets }, () => ({
                               reps: ex.reps,
                               weight: 0,

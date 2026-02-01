@@ -15,24 +15,10 @@
 3. Go to **Settings** → **Environment Variables**
 4. Click **Add New**
 5. Add:
-   - **Name:** `NEXT_PUBLIC_RAILWAY_API_URL` 
-     - 💡 **Quick Copy:** Visit `/copy-env-var.html` on your site for a click-to-copy button
-     - Or copy this: `NEXT_PUBLIC_RAILWAY_API_URL`
-   - **Value:** Your Railway URL (e.g., `https://your-app.up.railway.app`)
+   - **Name:** `NEXT_PUBLIC_RAILWAY_API_URL`
+   - **Value:** `https://your-app.up.railway.app` (your Railway URL)
    - **Environment:** Select all (Production, Preview, Development)
 6. Click **Save**
-
-### Quick Copy Helper
-
-Visit this URL on your deployed site for an easy copy button:
-```
-https://your-vercel-site.vercel.app/copy-env-var.html
-```
-
-Or copy this variable name directly:
-```
-NEXT_PUBLIC_RAILWAY_API_URL
-```
 
 ## Step 3: Redeploy Vercel
 
