@@ -12,6 +12,7 @@ interface Exercise {
   goalSets: number;
   goalReps: number;
   goalWeight: number;
+  imageUrl?: string; // Optional image URL for the exercise
   sets: Array<{
     reps: number;
     weight: number;
@@ -606,6 +607,7 @@ export default function WorkoutPage() {
                 const totalSets = ex.sets.length;
                 const firstSet = ex.sets[0];
                 const weightDisplay = firstSet?.weight || ex.goalWeight || 0;
+                const exerciseImage = getExerciseImage(ex);
                 
                 return (
                   <div
@@ -613,9 +615,29 @@ export default function WorkoutPage() {
                     onClick={() => setActiveExerciseId(ex.id)}
                     className="bg-black/40 border border-white/10 rounded-lg p-2 cursor-pointer hover:bg-black/60 transition-colors"
                   >
-                    {/* Exercise thumbnail placeholder */}
-                    <div className="w-full h-20 bg-gray-800 rounded-lg mb-2 flex items-center justify-center">
-                      <Dumbbell className="w-6 h-6 text-gray-600" />
+                    {/* Exercise image or placeholder */}
+                    <div className="w-full h-20 bg-gray-800 rounded-lg mb-2 overflow-hidden flex items-center justify-center relative">
+                      {exerciseImage ? (
+                        <img 
+                          src={exerciseImage} 
+                          alt={ex.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // Fallback to icon if image fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              const icon = document.createElement('div');
+                              icon.className = 'flex items-center justify-center';
+                              icon.innerHTML = '<svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                              parent.appendChild(icon);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <Dumbbell className="w-6 h-6 text-gray-600" />
+                      )}
                     </div>
                     
                     {/* Exercise info */}
