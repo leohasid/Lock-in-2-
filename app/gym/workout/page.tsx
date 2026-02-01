@@ -695,9 +695,29 @@ export default function WorkoutPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto">
-              {/* Exercise image placeholder */}
-              <div className="w-full h-48 bg-gray-900 flex items-center justify-center relative">
-                <Dumbbell className="w-20 h-20 text-gray-700" />
+              {/* Exercise image */}
+              <div className="w-full h-48 bg-gray-900 flex items-center justify-center relative overflow-hidden">
+                {activeExercise && getExerciseImage(activeExercise) ? (
+                  <img 
+                    src={getExerciseImage(activeExercise)!} 
+                    alt={activeExercise.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to icon if image fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent && !parent.querySelector('.fallback-icon')) {
+                        const icon = document.createElement('div');
+                        icon.className = 'fallback-icon flex items-center justify-center';
+                        icon.innerHTML = '<svg class="w-20 h-20 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                        parent.appendChild(icon);
+                      }
+                    }}
+                  />
+                ) : (
+                  <Dumbbell className="w-20 h-20 text-gray-700" />
+                )}
                 <button className="absolute top-4 right-4 w-8 h-8 bg-black/80 rounded-full flex items-center justify-center text-white">
                   <X className="w-4 h-4" />
                 </button>
