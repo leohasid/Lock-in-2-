@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { Shield, Clock, AlertTriangle, Lock, Unlock, Settings, X, Zap, ChevronRight, PiggyBank, Star, CheckCircle2 } from "lucide-react";
+import { Shield, Clock, AlertTriangle, Lock, Unlock, Settings, X, Zap, ChevronRight, PiggyBank, Star, CheckCircle2, MessageCircle, Heart } from "lucide-react";
 
 interface AppBlock {
   appName: string;
@@ -599,7 +599,14 @@ export default function AddictionsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-5 pt-6 pb-28">
       {/* HEADER */}
-      <div className="mb-6 flex items-center justify-end">
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <Link
+          href="/addictions/support"
+          className="flex-1 px-4 py-2.5 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-xl text-sm font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 flex items-center justify-center gap-2"
+        >
+          <MessageCircle className="w-5 h-5" />
+          <span>Support Community</span>
+        </Link>
         <button
           onClick={() => setShowAddForm(true)}
           className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-xl text-sm font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 flex items-center gap-2"

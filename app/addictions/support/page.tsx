@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { ArrowLeft, Send, Heart, MessageCircle, Plus, X, Search, Image } from "lucide-react";
+import { ArrowLeft, Send, Heart, MessageCircle, Plus, X, Search, Image, Filter } from "lucide-react";
 
 interface Post {
   id: string;
@@ -12,6 +12,7 @@ interface Post {
   timestamp: string;
   likes: string[];
   imageUrl?: string; // Base64 image data
+  addictionType?: "phone" | "vape" | "goon" | "other" | "all"; // Optional for backward compatibility
   comments: Array<{
     id: string;
     username: string;
@@ -46,6 +47,8 @@ export default function SupportPage() {
   const [newMessageContent, setNewMessageContent] = useState("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [addictionFilter, setAddictionFilter] = useState<"all" | "phone" | "vape" | "goon" | "other">("all");
+  const [newPostAddictionType, setNewPostAddictionType] = useState<"phone" | "vape" | "goon" | "other" | "all">("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showUsernameModal, setShowUsernameModal] = useState(false);
   const [usernameInput, setUsernameInput] = useState("");
@@ -159,6 +162,7 @@ export default function SupportPage() {
       timestamp: new Date().toISOString(),
       likes: [],
       comments: [],
+      addictionType: newPostAddictionType !== "all" ? newPostAddictionType : undefined,
       ...(newPostImage && { imageUrl: newPostImage }),
     };
 
@@ -166,6 +170,7 @@ export default function SupportPage() {
     savePosts(updatedPosts);
     setNewPostContent("");
     setNewPostImage(null);
+    setNewPostAddictionType("all");
     setShowPostForm(false);
   };
 
@@ -293,18 +298,24 @@ export default function SupportPage() {
     return date.toLocaleDateString();
   };
 
-  const filteredPosts = posts.filter((post) =>
-    post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    post.username.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredPosts = posts.filter((post) => {
+    const matchesSearch = post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      post.username.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesFilter = addictionFilter === "all" || 
+      (post.addictionType === addictionFilter) ||
+      (!post.addictionType && addictionFilter === "all"); // Backward compatibility: posts without addictionType show in "all"
+    
+    return matchesSearch && matchesFilter;
+  });
 
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white">
       <div className="container mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-6">
-          <Link href="/addictions" className="text-orange-400 hover:text-orange-300 mb-2 inline-block flex items-center gap-2">
+          <Link href="/addictions" className="text-teal-400 hover:text-teal-300 mb-2 inline-block flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" />
             Back to Addictions
           </Link>
@@ -313,12 +324,12 @@ export default function SupportPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-gray-800">
+        <div className="flex gap-2 mb-6 border-b border-teal-500/30">
           <button
             onClick={() => setActiveTab("feed")}
             className={`px-4 py-2 font-semibold transition-colors ${
               activeTab === "feed"
-                ? "text-orange-400 border-b-2 border-orange-400"
+                ? "text-teal-400 border-b-2 border-teal-400"
                 : "text-gray-400 hover:text-white"
             }`}
           >
@@ -328,7 +339,7 @@ export default function SupportPage() {
             onClick={() => setActiveTab("messages")}
             className={`px-4 py-2 font-semibold transition-colors relative ${
               activeTab === "messages"
-                ? "text-orange-400 border-b-2 border-orange-400"
+                ? "text-teal-400 border-b-2 border-teal-400"
                 : "text-gray-400 hover:text-white"
             }`}
           >
@@ -352,14 +363,44 @@ export default function SupportPage() {
                 placeholder="Search posts..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-800 rounded-lg pl-10 pr-4 py-2 text-white focus:border-orange-500 focus:outline-none"
+                className="w-full bg-gray-900 border border-gray-800 rounded-lg pl-10 pr-4 py-2 text-white focus:border-teal-500 focus:outline-none"
               />
+            </div>
+
+            {/* Addiction Filter */}
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Filter className="w-4 h-4 text-gray-400" />
+                <span className="text-sm text-gray-400">Filter by addiction:</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {[
+                  { value: "all", label: "All", emoji: "🌐" },
+                  { value: "phone", label: "Phone", emoji: "📱" },
+                  { value: "vape", label: "Vape", emoji: "💨" },
+                  { value: "goon", label: "Alcohol", emoji: "🍷" },
+                  { value: "other", label: "Other", emoji: "🚫" },
+                ].map((filter) => (
+                  <button
+                    key={filter.value}
+                    onClick={() => setAddictionFilter(filter.value as any)}
+                    className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                      addictionFilter === filter.value
+                        ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black shadow-lg shadow-teal-500/30"
+                        : "bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700"
+                    }`}
+                  >
+                    <span className="mr-1.5">{filter.emoji}</span>
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Create Post Button */}
             <button
               onClick={() => setShowPostForm(true)}
-              className="w-full mb-6 bg-orange-500 hover:bg-orange-600 text-black px-4 py-3 rounded-lg flex items-center justify-center gap-2 font-semibold transition-colors"
+              className="w-full mb-6 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-4 py-3 rounded-lg flex items-center justify-center gap-2 font-semibold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
             >
               <Plus className="w-5 h-5" />
               Share Your Journey
@@ -374,10 +415,20 @@ export default function SupportPage() {
                 </div>
               ) : (
                 filteredPosts.map((post) => (
-                  <div key={post.id} className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                  <div key={post.id} className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/20 rounded-xl p-4 hover:border-teal-400/40 transition-all">
                     <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <p className="font-semibold text-white">@{post.username}</p>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-semibold text-white">@{post.username}</p>
+                          {post.addictionType && post.addictionType !== "all" && (
+                            <span className="px-2 py-0.5 bg-gradient-to-r from-teal-500/20 to-cyan-500/20 border border-teal-500/30 rounded-full text-xs text-teal-300 font-medium">
+                              {post.addictionType === "phone" && "📱 Phone"}
+                              {post.addictionType === "vape" && "💨 Vape"}
+                              {post.addictionType === "goon" && "🍷 Alcohol"}
+                              {post.addictionType === "other" && "🚫 Other"}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-gray-400">{formatTime(post.timestamp)}</p>
                       </div>
                     </div>
@@ -450,7 +501,7 @@ export default function SupportPage() {
                         setShowMessages(true);
                         markMessagesAsRead(conv.user);
                       }}
-                      className="w-full bg-gray-900 border border-gray-800 rounded-xl p-4 text-left hover:bg-gray-800 transition-colors"
+                      className="w-full bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/20 rounded-xl p-4 text-left hover:border-teal-400/40 transition-all"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
@@ -490,7 +541,7 @@ export default function SupportPage() {
         {/* Username Modal - Shows on first visit */}
         {showUsernameModal && (
           <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-2xl p-8 max-w-md w-full border border-gray-800">
+            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-8 max-w-md w-full border border-teal-500/20">
               <h2 className="text-2xl font-bold text-white mb-2">Choose Your Username</h2>
               <p className="text-gray-400 mb-6">
                 This will be your identity in the community. Make it unique!
@@ -522,7 +573,7 @@ export default function SupportPage() {
                       }
                     }}
                     placeholder="Enter your username"
-                    className="w-full bg-gray-800 text-white p-4 rounded-lg border-2 border-gray-700 focus:border-orange-500 focus:outline-none"
+                    className="w-full bg-gray-800 text-white p-4 rounded-lg border-2 border-gray-700 focus:border-teal-500 focus:outline-none"
                     autoFocus
                   />
                   {usernameError && (
@@ -535,7 +586,7 @@ export default function SupportPage() {
                 <button
                   onClick={handleSetUsername}
                   disabled={!usernameInput.trim() || !!usernameError || !checkUsernameAvailability(usernameInput.trim())}
-                  className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-black px-6 py-3 rounded-lg font-semibold transition-colors"
+                  className="w-full bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-black px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
                 >
                   Continue
                 </button>
@@ -547,7 +598,7 @@ export default function SupportPage() {
         {/* Create Post Modal */}
         {showPostForm && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-900 rounded-2xl p-6 max-w-md w-full border border-gray-800">
+            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full border border-teal-500/20">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-white">Share Your Journey</h2>
                 <button
@@ -555,17 +606,46 @@ export default function SupportPage() {
                     setShowPostForm(false);
                     setNewPostContent("");
                     setNewPostImage(null);
+                    setNewPostAddictionType("all");
                   }}
                   className="text-gray-400 hover:text-white"
                 >
                   <X className="w-6 h-6" />
                 </button>
               </div>
+              {/* Addiction Type Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Addiction Type (Optional)</label>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { value: "all", label: "All", emoji: "🌐" },
+                    { value: "phone", label: "Phone", emoji: "📱" },
+                    { value: "vape", label: "Vape", emoji: "💨" },
+                    { value: "goon", label: "Alcohol", emoji: "🍷" },
+                    { value: "other", label: "Other", emoji: "🚫" },
+                  ].map((type) => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => setNewPostAddictionType(type.value as any)}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        newPostAddictionType === type.value
+                          ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black shadow-lg shadow-teal-500/30"
+                          : "bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700"
+                      }`}
+                    >
+                      <span className="mr-1">{type.emoji}</span>
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <textarea
                 value={newPostContent}
                 onChange={(e) => setNewPostContent(e.target.value)}
                 placeholder="Share your progress, ask for advice, or motivate others..."
-                className="w-full bg-gray-800 text-white p-4 rounded-lg border border-gray-700 focus:border-orange-500 focus:outline-none min-h-[150px] resize-none"
+                className="w-full bg-gray-800 text-white p-4 rounded-lg border border-gray-700 focus:border-teal-500 focus:outline-none min-h-[150px] resize-none"
                 maxLength={500}
               />
               
@@ -608,22 +688,23 @@ export default function SupportPage() {
                 <p className="text-sm text-gray-400">{newPostContent.length}/500</p>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => {
-                      setShowPostForm(false);
-                      setNewPostContent("");
-                      setNewPostImage(null);
-                    }}
-                    className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleCreatePost}
-                    disabled={!newPostContent.trim() && !newPostImage}
-                    className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-black rounded-lg transition-colors font-semibold"
-                  >
-                    Post
-                  </button>
+                  onClick={() => {
+                    setShowPostForm(false);
+                    setNewPostContent("");
+                    setNewPostImage(null);
+                    setNewPostAddictionType("all");
+                  }}
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreatePost}
+                  disabled={!newPostContent.trim() && !newPostImage}
+                  className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-black rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 font-semibold"
+                >
+                  Post
+                </button>
                 </div>
               </div>
             </div>
@@ -651,7 +732,7 @@ function CommentForm({ postId, onAddComment }: { postId: string; onAddComment: (
           }
         }}
         placeholder="Add a comment..."
-        className="flex-1 bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-orange-500 focus:outline-none text-sm"
+        className="flex-1 bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 focus:border-teal-500 focus:outline-none text-sm"
       />
       <button
         onClick={() => {
@@ -660,7 +741,7 @@ function CommentForm({ postId, onAddComment }: { postId: string; onAddComment: (
             setComment("");
           }
         }}
-        className="bg-orange-500 hover:bg-orange-600 text-black px-4 py-2 rounded-lg transition-colors"
+        className="bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
       >
         <Send className="w-4 h-4" />
       </button>
@@ -708,7 +789,7 @@ function MessageView({
             <div
               className={`max-w-[70%] rounded-lg p-3 ${
                 msg.from === currentUser
-                  ? "bg-orange-500 text-black"
+                  ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black"
                   : "bg-gray-800 text-white"
               }`}
             >
@@ -732,12 +813,12 @@ function MessageView({
             }
           }}
           placeholder="Type a message..."
-          className="flex-1 bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-700 focus:border-orange-500 focus:outline-none"
+          className="flex-1 bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-700 focus:border-teal-500 focus:outline-none"
         />
         <button
           onClick={() => onSendMessage(user)}
           disabled={!newMessageContent.trim()}
-          className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-black px-4 py-2 rounded-lg transition-colors"
+          className="bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-black px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
         >
           <Send className="w-5 h-5" />
         </button>

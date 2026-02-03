@@ -379,55 +379,55 @@ function RecipesView({ onAddMeal }: { onAddMeal: (meal: Recipe) => void }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {categories.map((category) => {
         const categoryRecipes = getRecipesByCategory(category);
         if (categoryRecipes.length === 0) return null;
 
         return (
-          <div key={category} className="space-y-3">
+          <div key={category} className="space-y-2">
             {/* Category Header */}
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">{category}</h2>
-              <button className="w-8 h-8 rounded-full bg-teal-400/20 flex items-center justify-center text-teal-400 hover:bg-teal-400/30 transition-colors">
-                <ChevronRight className="w-5 h-5" />
+              <h2 className="text-lg font-bold text-white">{category}</h2>
+              <button className="w-7 h-7 rounded-full bg-teal-400/20 flex items-center justify-center text-teal-400 hover:bg-teal-400/30 transition-colors">
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
 
             {/* Horizontal Scrollable Recipe Cards */}
-            <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {categoryRecipes.map((recipe) => (
                 <div
                   key={recipe.id}
-                  className="flex-shrink-0 w-[280px] bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl overflow-hidden border border-teal-500/20 hover:border-teal-400/40 transition-all"
+                  className="flex-shrink-0 w-[220px] bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-lg overflow-hidden border border-teal-500/20 hover:border-teal-400/40 transition-all"
                 >
                   {/* Food Image Placeholder */}
-                  <div className="w-full h-40 bg-gradient-to-br from-gray-700 to-gray-900 relative">
+                  <div className="w-full h-28 bg-gradient-to-br from-gray-700 to-gray-900 relative">
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-4xl">🍽️</span>
+                      <span className="text-3xl">🍽️</span>
                     </div>
                     {/* Favourite Button */}
                     <button
                       onClick={() => toggleFavourite(recipe.id)}
-                      className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm transition-colors ${
+                      className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm transition-colors ${
                         favourites.includes(recipe.id)
                           ? "bg-red-500/90 text-white"
                           : "bg-white/20 text-gray-300 hover:bg-white/30"
                       }`}
                     >
-                      <svg className="w-4 h-4" fill={favourites.includes(recipe.id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5" fill={favourites.includes(recipe.id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                       </svg>
                     </button>
                   </div>
 
                   {/* Recipe Info */}
-                  <div className="p-4">
-                    <h3 className="text-base font-bold text-white mb-1">{recipe.name}</h3>
-                    <p className="text-xs text-gray-400 mb-3 line-clamp-2">{recipe.description}</p>
+                  <div className="p-3">
+                    <h3 className="text-sm font-bold text-white mb-1">{recipe.name}</h3>
+                    <p className="text-[10px] text-gray-400 mb-2 line-clamp-2">{recipe.description}</p>
                     
                     {/* Nutrition Info */}
-                    <div className="flex items-center gap-2 text-[10px] text-gray-300 mb-3">
+                    <div className="flex items-center gap-1.5 text-[9px] text-gray-300 mb-2">
                       <span className="font-semibold text-teal-400">{recipe.calories} kcal</span>
                       <span>•</span>
                       <span>P: {recipe.protein}g</span>
@@ -440,7 +440,7 @@ function RecipesView({ onAddMeal }: { onAddMeal: (meal: Recipe) => void }) {
                     {/* Add Button */}
                     <button
                       onClick={() => onAddMeal(recipe)}
-                      className="w-full py-2.5 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-lg font-bold text-sm transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
+                      className="w-full py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-lg font-bold text-xs transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
                     >
                       Add
                     </button>
