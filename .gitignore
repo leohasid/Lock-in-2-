@@ -58,3 +58,9 @@ Thumbs.db
 push-changes.sh
 ADD_SSH_KEY.md
 backend/node_modules/
+
+Lock-in-2-/
+node_modules
+.next
+.env
+.DS_Store
