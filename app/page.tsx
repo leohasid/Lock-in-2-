@@ -4,499 +4,276 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
-import { 
-  CheckCircle2, Calendar, 
-  Check, Play, Sparkles, TrendingUp, List
-} from "lucide-react";
+import { Sparkles, Check } from "lucide-react";
 
-interface Goal {
+interface Task {
   id: string;
+  title: string;
   type: string;
-  goalType: "daily" | "long-term";
-  title: string;
-  current: number;
-  target: number;
-  unit: string;
-  targetDate: string;
-  lastUpdated?: string;
-}
-
-interface Reminder {
-  id: string;
-  title: string;
-  type: "supplement" | "task" | "habit";
   time: string;
   date: string;
   completed: boolean;
-  repeatFrequency?: string;
+}
+
+interface UpcomingItem {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  type: string;
 }
 
 export default function Home() {
-  const [allGoals, setAllGoals] = useState<Goal[]>([]);
-  const [tasks, setTasks] = useState<Reminder[]>([]);
-  const [strengthIncrease, setStrengthIncrease] = useState<number | null>(null);
-      
-  // Load goals from localStorage
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    
-    const storedGoals = localStorage.getItem("goals");
-    if (storedGoals) {
-      try {
-        const goals = JSON.parse(storedGoals);
-        const todayStr = new Date().toISOString().split("T")[0];
-        
-        const updatedGoals = goals.map((goal: Goal) => {
-          if (goal.goalType === "daily" && goal.lastUpdated !== todayStr) {
-            return { ...goal, current: 0, lastUpdated: todayStr };
-          }
-          return goal;
-        });
-        
-        const hasChanges = updatedGoals.some((g: Goal, i: number) => 
-          g.current !== goals[i]?.current || g.lastUpdated !== goals[i]?.lastUpdated
-        );
-        
-        if (hasChanges) {
-          setAllGoals(updatedGoals);
-          localStorage.setItem("goals", JSON.stringify(updatedGoals));
-        } else {
-          setAllGoals(goals);
-        }
-      } catch (e) {
-        setAllGoals([]);
-      }
-    }
-  }, []);
-
-  // Load tasks from reminders (routine/schedule)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const storedReminders = localStorage.getItem("reminders");
-    if (storedReminders) {
-      try {
-        const reminders: Reminder[] = JSON.parse(storedReminders);
-        const todayStr = new Date().toISOString().split("T")[0];
-        // Filter for today's tasks
-        const todayTasks = reminders.filter(
-          (r) => r.type === "task" && r.date === todayStr
-        );
-        setTasks(todayTasks);
-      } catch (e) {
-        setTasks([]);
-      }
-    }
-  }, []);
-
-  // Calculate strength increase from workout data
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    
-    const calculateStrengthIncrease = () => {
-      // Get all workout data keys
-      const workoutKeys = Object.keys(localStorage).filter(key => key.startsWith("workout_data_"));
-      
-      if (workoutKeys.length < 2) {
-        setStrengthIncrease(null);
-        return;
-      }
-
-      // Sort by date
-      const sortedKeys = workoutKeys.sort();
-      const firstWorkout = sortedKeys[0];
-      const lastWorkout = sortedKeys[sortedKeys.length - 1];
-
-      try {
-        const firstData = JSON.parse(localStorage.getItem(firstWorkout) || "[]");
-        const lastData = JSON.parse(localStorage.getItem(lastWorkout) || "[]");
-
-        // Calculate average weight per exercise for first and last workouts
-        const getAverageWeight = (data: any[]) => {
-          let totalWeight = 0;
-          let totalSets = 0;
-          data.forEach((ex: any) => {
-            ex.sets?.forEach((set: any) => {
-              if (set.completed && set.weight > 0) {
-                totalWeight += set.weight;
-                totalSets += 1;
-              }
-            });
-          });
-          return totalSets > 0 ? totalWeight / totalSets : 0;
-        };
-
-        const firstAvg = getAverageWeight(firstData);
-        const lastAvg = getAverageWeight(lastData);
-
-        if (firstAvg > 0 && lastAvg > 0) {
-          const increase = ((lastAvg - firstAvg) / firstAvg) * 100;
-          setStrengthIncrease(increase);
-        } else {
-          setStrengthIncrease(null);
-        }
-      } catch (e) {
-        setStrengthIncrease(null);
-      }
-    };
-
-    calculateStrengthIncrease();
-  }, []);
-
-  const dailyGoals = allGoals.filter(goal => goal.goalType === "daily");
-  const longTermGoals = allGoals.filter(goal => goal.goalType === "long-term");
-
-  // Filter goals by time period
-  const weeklyGoals = longTermGoals.filter(goal => {
-    if (!goal.targetDate) return false;
-    const targetDate = new Date(goal.targetDate);
-    const today = new Date();
-    const daysDiff = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return daysDiff <= 7 && daysDiff > 0;
-  });
-
-  const monthlyGoals = longTermGoals.filter(goal => {
-    if (!goal.targetDate) return false;
-    const targetDate = new Date(goal.targetDate);
-    const today = new Date();
-    const daysDiff = Math.ceil((targetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return daysDiff <= 30 && daysDiff > 7;
-  });
-
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
-
-  // Calculate savings goal progress (mock - you can enhance this)
-  const savingsGoal = longTermGoals.find(g => g.type === "financial");
-  const savingsProgress = savingsGoal ? Math.min(savingsGoal.current / savingsGoal.target, 1) : 0.75;
-
-  const handleMarkComplete = (goalId: string) => {
-    const updatedGoals = allGoals.map(g => {
-      if (g.id === goalId && g.goalType === "daily") {
-        return { ...g, current: g.target, lastUpdated: new Date().toISOString().split("T")[0] };
-      }
-      return g;
-    });
-    setAllGoals(updatedGoals);
-    localStorage.setItem("goals", JSON.stringify(updatedGoals));
-  };
-
   const pathname = usePathname();
+  const todayStr = new Date().toISOString().split("T")[0];
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split("T")[0];
+
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [calories, setCalories] = useState(0);
+  const [calorieGoal, setCalorieGoal] = useState(2000);
+  const [daysClean, setDaysClean] = useState<number | null>(null);
+  const [upcoming, setUpcoming] = useState<UpcomingItem[]>([]);
+
+  const loadData = () => {
+    if (typeof window === "undefined") return;
+
+    // Tasks
+    const reminders = JSON.parse(localStorage.getItem("reminders") || "[]");
+    const todayTasks = reminders.filter((r: Task) => r.type === "task" && r.date === todayStr);
+    setTasks(todayTasks);
+
+    // Calories
+    const storedMeals = localStorage.getItem("meals");
+    if (storedMeals) {
+      try {
+        const allMeals = JSON.parse(storedMeals);
+        const todayMeals = allMeals.filter((m: { date?: string }) => m.date === todayStr);
+        const total = todayMeals.reduce((sum: number, m: { calories?: number }) => sum + (m.calories || 0), 0);
+        setCalories(total);
+      } catch (_) {}
+    }
+    const goals = JSON.parse(localStorage.getItem("macroGoals") || "{}");
+    if (goals.calories) setCalorieGoal(goals.calories);
+
+    // Days clean (from addictions)
+    const addictions = JSON.parse(localStorage.getItem("addictions") || "[]");
+    if (addictions.length > 0) {
+      const getDaysClean = (startDate: string) => {
+        const start = new Date(startDate);
+        const today = new Date();
+        return Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      };
+      const maxDays = Math.max(...addictions.map((a: { startDate: string }) => getDaysClean(a.startDate)));
+      setDaysClean(maxDays);
+    } else {
+      setDaysClean(null);
+    }
+
+    // Upcoming (today + tomorrow reminders, exclude tasks - or include all)
+    const todayAndTomorrow = reminders.filter(
+      (r: { date: string }) => r.date === todayStr || r.date === tomorrowStr
+    );
+    const sorted = todayAndTomorrow.sort((a: UpcomingItem, b: UpcomingItem) => {
+      const d = a.date.localeCompare(b.date);
+      if (d !== 0) return d;
+      return (a.time || "").localeCompare(b.time || "");
+    });
+    setUpcoming(sorted.slice(0, 4));
+  };
+
+  useEffect(() => {
+    loadData();
+    window.addEventListener("storage", loadData);
+    return () => window.removeEventListener("storage", loadData);
+  }, []);
 
   const handleToggleTask = (taskId: string) => {
-    if (typeof window === "undefined") return;
-    const storedReminders = localStorage.getItem("reminders");
-    if (storedReminders) {
-      try {
-        const reminders: Reminder[] = JSON.parse(storedReminders);
-        const updatedReminders = reminders.map((r) =>
-          r.id === taskId ? { ...r, completed: !r.completed } : r
-        );
-        localStorage.setItem("reminders", JSON.stringify(updatedReminders));
-        // Update local state
-        const todayStr = new Date().toISOString().split("T")[0];
-        const todayTasks = updatedReminders.filter(
-          (r) => r.type === "task" && r.date === todayStr
-        );
-        setTasks(todayTasks);
-      } catch (e) {
-        console.error("Error updating task:", e);
-      }
-    }
+    const reminders = JSON.parse(localStorage.getItem("reminders") || "[]");
+    const updated = reminders.map((r: Task) =>
+      r.id === taskId ? { ...r, completed: !r.completed } : r
+    );
+    localStorage.setItem("reminders", JSON.stringify(updated));
+    setTasks(updated.filter((r: Task) => r.type === "task" && r.date === todayStr));
   };
 
+  const tasksDone = tasks.filter((t) => t.completed).length;
+  const tasksTotal = tasks.length;
+  const caloriePct = calorieGoal > 0 ? Math.min((calories / calorieGoal) * 100, 100) : 0;
+
+  const formatEventDate = (date: string, time: string) => {
+    const d = new Date(date + (time ? "T" + time : ""));
+    if (date === todayStr) return `Today at ${time || "All day"}`;
+    if (date === tomorrowStr) return `Tomorrow at ${time || "All day"}`;
+    return new Date(date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) + (time ? ` at ${time}` : "");
+  };
+
+  const getHoursUntil = (date: string, time: string) => {
+    if (date !== todayStr || !time) return null;
+    const [h, m] = time.split(":").map(Number);
+    const event = new Date();
+    event.setHours(h || 0, m || 0, 0, 0);
+    const diff = event.getTime() - Date.now();
+    if (diff < 0) return null;
+    return Math.round(diff / (1000 * 60 * 60));
+  };
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="max-w-md mx-auto pb-20">
-      {/* Tab Selection Bar - At the very top (like Nutrition page) */}
-      <div className="flex gap-2 mb-4 border-b border-teal-500/30 px-4">
-        <Link
-          href="/"
-          className={`flex-1 px-4 py-2 font-semibold transition-all transform hover:scale-105 text-center ${
-            pathname === "/"
-              ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
-              : "text-gray-400 hover:text-teal-300"
-          }`}
-        >
-          Home
-        </Link>
-        <Link
-          href="/goals"
-          className={`flex-1 px-4 py-2 font-semibold transition-all transform hover:scale-105 text-center ${
-            pathname === "/goals"
-              ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
-              : "text-gray-400 hover:text-teal-300"
-          }`}
-        >
-          Goals
-        </Link>
-      </div>
-
-      <>
-      {/* Header - Only on Home tab */}
-        <div className="px-4 pt-3 pb-1 flex items-center justify-between">
+      <div className="max-w-md mx-auto pb-24 px-5">
+        {/* Tab Bar */}
+        <div className="flex gap-2 mb-6 pt-4 border-b border-[#2A2A2A]">
           <Link
-            href="/consultation?from=reflection"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-cyan-400/20 hover:bg-cyan-400/30 border border-cyan-400/50 rounded-lg text-cyan-400 text-xs font-medium transition-colors"
+            href="/"
+            className={`flex-1 py-2 font-semibold text-center text-sm ${
+              pathname === "/" ? "text-[#00D9D9] border-b-2 border-[#00D9D9]" : "text-gray-500 hover:text-[#00D9D9]"
+            }`}
           >
-            <Sparkles className="w-3 h-3" />
-            AI Reflection
+            Home
           </Link>
-          <h1 className="text-base font-semibold text-white">Goals Dashboard</h1>
-          <div className="w-24" /> {/* Spacer for centering */}
+          <Link
+            href="/goals"
+            className={`flex-1 py-2 font-semibold text-center text-sm ${
+              pathname === "/goals" ? "text-[#00D9D9] border-b-2 border-[#00D9D9]" : "text-gray-500 hover:text-[#00D9D9]"
+            }`}
+          >
+            Goals
+          </Link>
         </div>
 
-        <div className="px-4 space-y-3">
-          {/* Schedule Tasks Section */}
-          <div className="bg-gray-900/50 rounded-xl p-3">
-            <div className="flex items-center gap-1.5 mb-2">
-              <List className="w-4 h-4 text-cyan-400" />
-              <h2 className="text-sm font-semibold text-white">Schedule Tasks</h2>
+        {/* AI Reflection */}
+        <Link
+          href="/consultation?from=reflection"
+          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#00D9D9]/10 border border-[#00D9D9]/30 text-[#00D9D9] font-medium hover:bg-[#00D9D9]/20 transition-colors mb-6"
+        >
+          <Sparkles className="w-5 h-5" />
+          AI Reflection
+        </Link>
+
+        {/* Quick Stats Row */}
+        <p className="text-[11px] font-semibold text-[#666666] tracking-wider mb-3">QUICK STATS</p>
+        <div className="grid grid-cols-3 gap-3 mb-8">
+          {/* Tasks */}
+          <div className="rounded-xl bg-[#0F1419] border border-[#1F2937] p-4">
+            <p className="text-[#00D9D9] font-bold text-2xl">{tasksDone}</p>
+            <p className="text-[#888888] text-sm">/ {tasksTotal || 0}</p>
+            <p className="text-[#888888] text-xs mt-1">Tasks done</p>
+            <div className="flex gap-1.5 mt-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-2 h-2 rounded-full ${
+                    i < tasksDone ? "bg-[#00D9D9]" : "border border-[#444444] bg-transparent"
+                  }`}
+                />
+              ))}
             </div>
-            <div className="space-y-1.5 mb-2">
-              {tasks.length > 0 ? (
-                tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="flex items-center justify-between p-2 bg-black/60 rounded-lg"
-                  >
-                    <div className="flex items-center gap-2 flex-1">
-                      <div
-                        onClick={() => handleToggleTask(task.id)}
-                        className={`w-4 h-4 border-2 rounded cursor-pointer ${
-                          task.completed
-                            ? "bg-cyan-400 border-cyan-400 flex items-center justify-center"
-                            : "border-gray-500"
-                        }`}
-                      >
-                        {task.completed && <Check className="w-2.5 h-2.5 text-black" />}
-                      </div>
-                      <span
-                        className={`text-white text-xs flex-1 ${
-                          task.completed ? "line-through text-gray-500" : ""
-                        }`}
-                      >
-                        {task.title}
-                        {task.time && (
-                          <span className="text-gray-400 ml-2">• {task.time}</span>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-2 bg-black/60 rounded-lg text-gray-400 text-center text-xs">
-                  No tasks scheduled for today
-                </div>
-              )}
+          </div>
+          {/* Calories */}
+          <div className="rounded-xl bg-[#0F1419] border border-[#1F2937] p-4">
+            <p className="text-[#00D9D9] font-bold text-2xl">{calories.toLocaleString()}</p>
+            <p className="text-[#888888] text-xs mt-1">Calories today</p>
+            <div className="mt-2 h-1.5 rounded-full bg-[#1A1A1A] overflow-hidden">
+              <div
+                className="h-1.5 rounded-full bg-[#00D9D9] transition-all"
+                style={{ width: `${caloriePct}%` }}
+              />
             </div>
-            {tasks.length > 0 && (
-              <Link
-                href="/calendar"
-                className="block text-center mt-2 text-cyan-400 text-xs hover:underline"
-              >
-                View all tasks
-              </Link>
+            <p className="text-[#666666] text-[10px] mt-1">/ {calorieGoal.toLocaleString()}</p>
+          </div>
+          {/* Days clean */}
+          <div className="rounded-xl bg-[#0F1419] border border-[#1F2937] p-4">
+            <p className="text-[#00D9D9] font-bold text-2xl">{daysClean ?? "—"}</p>
+            <p className="text-[#888888] text-xs mt-1">Days clean</p>
+            <div className="flex gap-1 mt-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    daysClean !== null && i < Math.min(4, Math.floor(daysClean / 7) + 1)
+                      ? "bg-[#00D9D9]"
+                      : "bg-[#1A1A1A]"
+                  }`}
+                />
+              ))}
+            </div>
+            {daysClean !== null && (
+              <p className="text-[#666666] text-[9px] mt-1">
+                Week {Math.min(5, Math.floor(daysClean / 7) + 1)}/5
+              </p>
             )}
           </div>
+        </div>
 
-          {/* Daily Goals Section */}
-          <div className="bg-gray-900/50 rounded-xl p-3">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <div className="relative">
-                  <Calendar className="w-4 h-4 text-cyan-400" />
-                  <CheckCircle2 className="w-2.5 h-2.5 text-white absolute -bottom-0.5 -right-0.5 bg-cyan-400 rounded-full" />
-                </div>
-                <h2 className="text-sm font-semibold text-white">Daily Goals</h2>
+        {/* Today's Tasks */}
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[11px] font-semibold text-[#666666] tracking-wider">TODAY&apos;S TASKS</p>
+          <span className="text-[11px] font-semibold text-[#00D9D9]">{tasksDone}/{tasksTotal}</span>
+        </div>
+        <div className="space-y-2 mb-4">
+          {tasks.slice(0, 5).map((task) => (
+            <div
+              key={task.id}
+              className="flex items-center gap-4 rounded-xl bg-[#0F1419] border border-[#1F2937] px-4 py-3"
+            >
+              <button
+                onClick={() => handleToggleTask(task.id)}
+                className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 border-2 ${
+                  task.completed ? "bg-[#00D9D9] border-[#00D9D9]" : "border-[#00D9D9] bg-transparent"
+                }`}
+              >
+                {task.completed && <Check className="w-5 h-5 text-black" strokeWidth={3} />}
+              </button>
+              <span
+                className={`flex-1 text-[15px] ${
+                  task.completed ? "text-[#555555] line-through" : "text-white"
+                }`}
+              >
+                {task.title}
+              </span>
+              <span className={`text-xs ${task.completed ? "text-[#555555]" : "text-[#666666]"}`}>
+                {task.completed ? "Done" : task.time || "—"}
+              </span>
+            </div>
+          ))}
         </div>
         <Link
-                href="/goals?filter=daily"
-                className="text-xs font-medium text-cyan-400"
+          href="/goals"
+          className="block text-center text-[#00D9D9] text-sm font-medium mb-8"
         >
-                View All
+          View all tasks →
         </Link>
-        </div>
 
-            <div className="space-y-1.5">
-              {dailyGoals.length > 0 ? (
-                dailyGoals.slice(0, 3).map((goal) => {
-                  const isCompleted = goal.current >= goal.target;
-                  return (
-                    <div
-                      key={goal.id}
-                      className="flex items-center justify-between p-2 bg-black/60 rounded-lg"
-                    >
-          <div className="flex items-center gap-2">
-                        <div className={`w-4 h-4 border-2 rounded ${
-                          isCompleted 
-                            ? "bg-cyan-400 border-cyan-400 flex items-center justify-center" 
-                            : "border-gray-500"
-                        }`}>
-                          {isCompleted && <Check className="w-2.5 h-2.5 text-black" />}
-                        </div>
-                        <span className="text-white text-xs">{goal.title}</span>
-                      </div>
-                      {!isCompleted && (
-                        <button
-                          onClick={() => handleMarkComplete(goal.id)}
-                          className="px-2 py-0.5 bg-gray-700 text-white text-[10px] rounded hover:bg-gray-600 transition-colors"
-                        >
-                          Mark
-                        </button>
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="p-2 bg-black/60 rounded-lg text-gray-400 text-center text-xs">
-                  No daily goals yet
+        {/* Upcoming */}
+        <p className="text-[11px] font-semibold text-[#666666] tracking-wider mb-3">UPCOMING</p>
+        <div className="space-y-2">
+          {upcoming.slice(0, 3).map((item) => {
+            const hoursUntil = getHoursUntil(item.date, item.time);
+            return (
+              <div
+                key={item.id}
+                className="flex items-center gap-4 rounded-xl bg-[#0F1419] border border-[#1F2937] px-4 py-3"
+              >
+                <div
+                  className={`w-1 h-9 rounded flex-shrink-0 ${
+                    item.date === todayStr ? "bg-[#00D9D9]" : "bg-[#555555]"
+                  }`}
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-white text-[15px]">{item.title}</p>
+                  <p className="text-[#666666] text-[13px]">{formatEventDate(item.date, item.time)}</p>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Scheduled Goals Section */}
-          <div className="bg-gray-900/50 rounded-xl p-3">
-            <div className="flex items-center gap-1.5 mb-2">
-              <div className="relative">
-                <Calendar className="w-4 h-4 text-cyan-400" />
-                <Play className="w-2.5 h-2.5 text-white absolute -bottom-0.5 -right-0.5 bg-cyan-400 rounded-full" />
+                {hoursUntil !== null && (
+                  <span className="text-[#00D9D9] text-xs">{hoursUntil}h</span>
+                )}
               </div>
-              <h2 className="text-sm font-semibold text-white">Scheduled Goals</h2>
-            </div>
-
-            {/* Weekly Goals */}
-            <div className="mb-2">
-              <h3 className="text-xs font-semibold text-white mb-1">Weekly Goals</h3>
-              {weeklyGoals.length > 0 ? (
-                <div className="p-2 bg-black/60 rounded-lg">
-          <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 border-2 rounded flex-shrink-0 ${
-                      weeklyGoals[0].current >= weeklyGoals[0].target
-                        ? "bg-cyan-400 border-cyan-400 flex items-center justify-center" 
-                        : "border-gray-500"
-                    }`}>
-                      {weeklyGoals[0].current >= weeklyGoals[0].target && <Check className="w-2.5 h-2.5 text-black" />}
-          </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-white text-xs block truncate">{weeklyGoals[0].title}</span>
-                      {weeklyGoals[0].targetDate && (
-                        <p className="text-gray-400 text-[10px]">Due: {formatDate(weeklyGoals[0].targetDate)}</p>
-                      )}
-          </div>
-          </div>
+            );
+          })}
         </div>
-              ) : (
-                <div className="p-2 bg-black/60 rounded-lg text-gray-400 text-center text-xs">
-                  No weekly goals yet
-                </div>
-              )}
-            </div>
-
-            {/* Monthly Goals */}
-            <div className="mb-2">
-              <h3 className="text-xs font-semibold text-white mb-1">Monthly Goals</h3>
-              {monthlyGoals.length > 0 ? (
-                <div className="p-2 bg-black/60 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 border-2 rounded flex-shrink-0 ${
-                      monthlyGoals[0].current >= monthlyGoals[0].target
-                        ? "bg-cyan-400 border-cyan-400 flex items-center justify-center" 
-                        : "border-gray-500"
-                    }`}>
-                      {monthlyGoals[0].current >= monthlyGoals[0].target && <Check className="w-2.5 h-2.5 text-black" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-white text-xs block truncate">{monthlyGoals[0].title}</span>
-                      {monthlyGoals[0].targetDate && (
-                        <p className="text-gray-400 text-[10px]">Due: {formatDate(monthlyGoals[0].targetDate)}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-2 bg-black/60 rounded-lg text-gray-400 text-center text-xs">
-                  No monthly goals yet
-                </div>
-                  )}
-            </div>
-
-            {/* Long-Term Goals */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <h3 className="text-xs font-semibold text-white">Long-Term Goals</h3>
-                {longTermGoals.length > 1 && (
-                  <Link 
-                    href="/goals"
-                    className="text-xs font-medium text-cyan-400"
-                  >
-                    View All
-                  </Link>
-                  )}
-              </div>
-              {longTermGoals.length > 0 ? (
-                <div className="p-2 bg-black/60 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 border-2 rounded flex-shrink-0 ${
-                      longTermGoals[0].current >= longTermGoals[0].target
-                        ? "bg-cyan-400 border-cyan-400 flex items-center justify-center" 
-                        : "border-gray-500"
-                    }`}>
-                      {longTermGoals[0].current >= longTermGoals[0].target && <Check className="w-2.5 h-2.5 text-black" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-white text-xs block truncate">{longTermGoals[0].title}</span>
-                      {longTermGoals[0].targetDate && (
-                        <p className="text-gray-400 text-[10px]">Due: {formatDate(longTermGoals[0].targetDate)}</p>
-                      )}
-                    </div>
-                  </div>
-        </div>
-              ) : (
-                <div className="p-2 bg-black/60 rounded-lg text-gray-400 text-center text-xs">
-                  No long-term goals yet
-          </div>
+        {upcoming.length === 0 && (
+          <p className="text-[#555555] text-sm py-4 text-center">No upcoming events</p>
         )}
-            </div>
-          </div>
-
-          {/* Strength Increase Chart */}
-          {strengthIncrease !== null && (
-            <div className="bg-gray-900/50 rounded-xl p-3">
-              <div className="flex items-center gap-1.5 mb-2">
-                <TrendingUp className="w-4 h-4 text-cyan-400" />
-                <h2 className="text-sm font-semibold text-white">Strength Progress</h2>
-              </div>
-              <div className="p-3 bg-black/60 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white text-xs">Overall Increase</span>
-                  <span className={`text-sm font-bold ${
-                    strengthIncrease >= 0 ? "text-green-400" : "text-red-400"
-                  }`}>
-                    {strengthIncrease >= 0 ? "+" : ""}{strengthIncrease.toFixed(1)}%
-                  </span>
-                </div>
-                <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
-                  <div
-                    className={`h-2 rounded-full transition-all ${
-                      strengthIncrease >= 0 ? "bg-green-400" : "bg-red-400"
-                    }`}
-                    style={{ width: `${Math.min(Math.abs(strengthIncrease), 100)}%` }}
-                  />
-                </div>
-                <p className="text-gray-400 text-[10px] mt-2">
-                  Based on weight progression from workouts
-                </p>
-              </div>
-            </div>
-          )}
-
-        </div>
-      </>
       </div>
 
       <BottomNav />
