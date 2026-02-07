@@ -302,9 +302,7 @@ export default function SupportPage() {
     const matchesSearch = post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
       post.username.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesFilter = addictionFilter === "all" || 
-      (post.addictionType === addictionFilter) ||
-      (!post.addictionType && addictionFilter === "all"); // Backward compatibility: posts without addictionType show in "all"
+    const matchesFilter = addictionFilter === "all" || (post.addictionType === addictionFilter);
     
     return matchesSearch && matchesFilter;
   });
