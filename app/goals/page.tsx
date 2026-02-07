@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import GoalProgressCard from "@/components/GoalProgressCard";
 import { ArrowLeft, Edit2, Check, X, Plus, Trash2 } from "lucide-react";
@@ -279,8 +279,30 @@ export default function GoalsPage() {
     localStorage.setItem("goals", JSON.stringify(updatedGoals));
   };
 
+  const pathname = usePathname();
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white p-6 flex flex-col">
+      {/* Tab Selection Bar - Same as Home page */}
+      <div className="flex gap-2 mb-6 -mx-6 px-6 border-b border-teal-500/30">
+        <Link
+          href="/"
+          className="flex-1 px-4 py-2 font-semibold transition-all transform hover:scale-105 text-center text-gray-400 hover:text-teal-300"
+        >
+          Home
+        </Link>
+        <Link
+          href="/goals"
+          className={`flex-1 px-4 py-2 font-semibold transition-all transform hover:scale-105 text-center ${
+            pathname === "/goals"
+              ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
+              : "text-gray-400 hover:text-teal-300"
+          }`}
+        >
+          Goals
+        </Link>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <Link href="/" className="flex items-center gap-2 text-gray-400 hover:text-teal-400 transition-colors">

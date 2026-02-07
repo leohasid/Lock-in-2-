@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { 
   CheckCircle2, Calendar, 
@@ -182,6 +183,8 @@ export default function Home() {
     localStorage.setItem("goals", JSON.stringify(updatedGoals));
   };
 
+  const pathname = usePathname();
+
   const handleToggleTask = (taskId: string) => {
     if (typeof window === "undefined") return;
     const storedReminders = localStorage.getItem("reminders");
@@ -208,7 +211,32 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="max-w-md mx-auto pb-20">
-      {/* Header */}
+      {/* Tab Selection Bar - At the very top (like Nutrition page) */}
+      <div className="flex gap-2 mb-4 border-b border-teal-500/30 px-4">
+        <Link
+          href="/"
+          className={`flex-1 px-4 py-2 font-semibold transition-all transform hover:scale-105 text-center ${
+            pathname === "/"
+              ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
+              : "text-gray-400 hover:text-teal-300"
+          }`}
+        >
+          Home
+        </Link>
+        <Link
+          href="/goals"
+          className={`flex-1 px-4 py-2 font-semibold transition-all transform hover:scale-105 text-center ${
+            pathname === "/goals"
+              ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
+              : "text-gray-400 hover:text-teal-300"
+          }`}
+        >
+          Goals
+        </Link>
+      </div>
+
+      <>
+      {/* Header - Only on Home tab */}
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
           <Link
             href="/consultation?from=reflection"
@@ -468,7 +496,8 @@ export default function Home() {
           )}
 
         </div>
-        </div>
+      </>
+      </div>
 
       <BottomNav />
     </div>
