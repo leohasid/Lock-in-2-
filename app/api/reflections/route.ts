@@ -65,11 +65,11 @@ Provide your feedback in a warm, conversational tone.`;
 - How was your day: ${currentReflection.howWasDay}
 - What are you grateful for: ${currentReflection.grateful}
 - What will you focus on tomorrow: ${currentReflection.focusTomorrow}
-- Ratings:
-  * Time Management: ${currentReflection.timeManagement}/3
-  * Discipline: ${currentReflection.discipline}/3
-  * Energy: ${currentReflection.energy}/3
-  * Clarity: ${currentReflection.clarity}/3
+- Ratings (1-5 scale):
+  * Time Management: ${currentReflection.timeManagement}/5
+  * Discipline: ${currentReflection.discipline}/5
+  * Energy: ${currentReflection.energy}/5
+  * Clarity: ${currentReflection.clarity}/5
 ${contextText}
 
 Please provide:

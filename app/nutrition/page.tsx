@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Upload, Camera, X, Settings, MessageSquare, Sparkles, ChevronRight } from "lucide-react";
+import { Upload, Camera, X, Settings, MessageSquare, Sparkles, ChevronRight, Plus } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
 interface Meal {
@@ -456,45 +456,182 @@ function RecipesView({ onAddMeal }: { onAddMeal: (meal: Recipe) => void }) {
 }
 
 // Favourites View Component
-function FavouritesView({ meals }: { meals: Meal[] }) {
+function FavouritesView({ meals, onAddMeal }: { meals: Meal[]; onAddMeal: (meal: Recipe) => void }) {
   const [favourites, setFavourites] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
     const stored = localStorage.getItem("favouriteRecipes");
     return stored ? JSON.parse(stored) : [];
   });
+  const [personalRecipes, setPersonalRecipes] = useState<Recipe[]>(() => {
+    if (typeof window === "undefined") return [];
+    const stored = localStorage.getItem("personalRecipes");
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [showAddRecipe, setShowAddRecipe] = useState(false);
+  const [newRecipe, setNewRecipe] = useState({
+    name: "",
+    calories: "",
+    protein: "",
+    carbs: "",
+    fats: "",
+    description: "",
+  });
 
   const favouriteRecipes = recommendedRecipes.filter(r => favourites.includes(r.id));
+  const allRecipes = [...favouriteRecipes, ...personalRecipes];
 
-  if (favouriteRecipes.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <div className="text-4xl mb-4">❤️</div>
-        <p className="text-gray-400 mb-2">No favourite recipes yet</p>
-        <p className="text-xs text-gray-500">Go to Recipes tab and heart your favorites!</p>
-      </div>
-    );
-  }
+  const savePersonalRecipes = (recipes: Recipe[]) => {
+    setPersonalRecipes(recipes);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("personalRecipes", JSON.stringify(recipes));
+    }
+  };
+
+  const handleAddPersonalRecipe = () => {
+    if (!newRecipe.name.trim() || !newRecipe.calories) return;
+    const recipe: Recipe = {
+      id: `personal-${Date.now()}`,
+      name: newRecipe.name.trim(),
+      calories: parseInt(newRecipe.calories) || 0,
+      protein: parseInt(newRecipe.protein) || 0,
+      carbs: parseInt(newRecipe.carbs) || 0,
+      fats: parseInt(newRecipe.fats) || 0,
+      description: newRecipe.description.trim() || "Personal recipe",
+      category: "Personal",
+    };
+    savePersonalRecipes([...personalRecipes, recipe]);
+    setNewRecipe({ name: "", calories: "", protein: "", carbs: "", fats: "", description: "" });
+    setShowAddRecipe(false);
+  };
+
+  const handleRemovePersonalRecipe = (id: string) => {
+    savePersonalRecipes(personalRecipes.filter(r => r.id !== id));
+  };
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4">
-        {favouriteRecipes.map((recipe) => (
-          <div
-            key={recipe.id}
-            className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-teal-500/20"
-          >
-            <h3 className="text-base font-bold text-white mb-1">{recipe.name}</h3>
-            <p className="text-xs text-gray-400 mb-2">{recipe.description}</p>
-            <div className="flex items-center gap-3 text-[10px] text-gray-300">
-              <span className="font-semibold text-teal-400">{recipe.calories} kcal</span>
-              <span>•</span>
-              <span>P: {recipe.protein}g</span>
-              <span>C: {recipe.carbs}g</span>
-              <span>F: {recipe.fats}g</span>
+      <button
+        onClick={() => setShowAddRecipe(true)}
+        className="w-full py-3 rounded-xl border-2 border-dashed border-teal-500/40 text-teal-400 font-semibold flex items-center justify-center gap-2 hover:bg-teal-500/10 transition-colors"
+      >
+        <Plus className="w-5 h-5" />
+        Add personal recipe
+      </button>
+
+      {allRecipes.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="text-4xl mb-4">❤️</div>
+          <p className="text-gray-400 mb-2">No favourite recipes yet</p>
+          <p className="text-xs text-gray-500 mb-4">Go to Recipes tab and heart your favorites, or add a personal recipe above!</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4">
+          {allRecipes.map((recipe) => (
+            <div
+              key={recipe.id}
+              className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-teal-500/20"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-bold text-white mb-1">{recipe.name}</h3>
+                  <p className="text-xs text-gray-400 mb-2">{recipe.description}</p>
+                  <div className="flex items-center gap-3 text-[10px] text-gray-300">
+                    <span className="font-semibold text-teal-400">{recipe.calories} kcal</span>
+                    <span>•</span>
+                    <span>P: {recipe.protein}g</span>
+                    <span>C: {recipe.carbs}g</span>
+                    <span>F: {recipe.fats}g</span>
+                  </div>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => onAddMeal(recipe)}
+                    className="py-2 px-3 bg-teal-400 hover:bg-teal-500 text-black text-xs font-bold rounded-lg transition-colors"
+                  >
+                    Add
+                  </button>
+                  {recipe.id.startsWith("personal-") && (
+                    <button
+                      onClick={() => handleRemovePersonalRecipe(recipe.id)}
+                      className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                      title="Remove"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showAddRecipe && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 w-full max-w-md border border-teal-500/30">
+            <h3 className="text-lg font-bold text-white mb-4">Add personal recipe</h3>
+            <div className="space-y-3">
+              <input
+                value={newRecipe.name}
+                onChange={(e) => setNewRecipe(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Recipe name *"
+                className="w-full bg-black/40 border border-teal-500/30 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
+              />
+              <input
+                type="number"
+                value={newRecipe.calories}
+                onChange={(e) => setNewRecipe(prev => ({ ...prev, calories: e.target.value }))}
+                placeholder="Calories *"
+                className="w-full bg-black/40 border border-teal-500/30 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
+              />
+              <div className="grid grid-cols-3 gap-2">
+                <input
+                  type="number"
+                  value={newRecipe.protein}
+                  onChange={(e) => setNewRecipe(prev => ({ ...prev, protein: e.target.value }))}
+                  placeholder="Protein (g)"
+                  className="w-full bg-black/40 border border-teal-500/30 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400 text-sm"
+                />
+                <input
+                  type="number"
+                  value={newRecipe.carbs}
+                  onChange={(e) => setNewRecipe(prev => ({ ...prev, carbs: e.target.value }))}
+                  placeholder="Carbs (g)"
+                  className="w-full bg-black/40 border border-teal-500/30 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400 text-sm"
+                />
+                <input
+                  type="number"
+                  value={newRecipe.fats}
+                  onChange={(e) => setNewRecipe(prev => ({ ...prev, fats: e.target.value }))}
+                  placeholder="Fats (g)"
+                  className="w-full bg-black/40 border border-teal-500/30 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400 text-sm"
+                />
+              </div>
+              <input
+                value={newRecipe.description}
+                onChange={(e) => setNewRecipe(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Description (optional)"
+                className="w-full bg-black/40 border border-teal-500/30 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
+              />
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => { setShowAddRecipe(false); setNewRecipe({ name: "", calories: "", protein: "", carbs: "", fats: "", description: "" }); }}
+                className="flex-1 py-3 bg-white/10 text-white rounded-xl font-semibold hover:bg-white/15 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddPersonalRecipe}
+                disabled={!newRecipe.name.trim() || !newRecipe.calories}
+                className="flex-1 py-3 bg-teal-400 hover:bg-teal-500 disabled:opacity-50 disabled:cursor-not-allowed text-black rounded-xl font-semibold transition-colors"
+              >
+                Add recipe
+              </button>
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1204,7 +1341,22 @@ Provide a helpful, conversational response.`;
           setShowAddMeal(true);
         }} />
       ) : activeTab === "favourites" ? (
-        <FavouritesView meals={meals} />
+        <FavouritesView
+          meals={meals}
+          onAddMeal={(meal) => {
+            setNewMeal({
+              name: meal.name,
+              calories: meal.calories.toString(),
+              protein: meal.protein.toString(),
+              carbs: meal.carbs.toString(),
+              fats: meal.fats.toString(),
+              sugar: "",
+              sodium: "",
+              fiber: "",
+            });
+            setShowAddMeal(true);
+          }}
+        />
       ) : (
         <>
       {/* CALORIES CIRCLE + MACROS - No box, on hard background */}
