@@ -106,6 +106,13 @@ export default function WorkoutsPage() {
     router.push(`/gym/workouts/${optionId}`);
   };
 
+  const handleUseOption = (optionId: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("selectedWorkoutOption", optionId);
+    }
+    router.push(`/gym/workout?option=${optionId}`);
+  };
+
   const handleAddWorkout = () => {
     // Find the highest option number
     const optionNumbers = workoutOptions.map(opt => {
@@ -161,13 +168,26 @@ export default function WorkoutsPage() {
         {/* Workout Options */}
         <div className="grid grid-cols-1 gap-3">
           {workoutOptions.map((option) => (
-            <button
+            <div
               key={option.id}
-              onClick={() => handleSelectOption(option.id)}
-              className="p-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-lg hover:border-cyan-400/50 transition-colors text-left"
+              className="p-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-lg flex items-center justify-between gap-2"
             >
-              <h3 className="text-sm font-semibold text-white">{option.name}</h3>
-            </button>
+              <button
+                onClick={() => handleSelectOption(option.id)}
+                className="flex-1 text-left hover:opacity-90"
+              >
+                <h3 className="text-sm font-semibold text-white">{option.name}</h3>
+                <p className="text-[10px] text-gray-400 mt-0.5">
+                  {option.dayNames.day1} • {option.dayNames.day2} • {option.dayNames.day3}
+                </p>
+              </button>
+              <button
+                onClick={() => handleUseOption(option.id)}
+                className="px-3 py-1.5 bg-teal-500 hover:bg-teal-400 text-black text-xs font-semibold rounded-lg shrink-0"
+              >
+                Use
+              </button>
+            </div>
           ))}
         </div>
       </div>

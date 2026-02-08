@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
+import { getBuiltInImageUrl } from "@/lib/built-in-exercise-images";
 import { X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, ChevronLeft, Dumbbell, TrendingUp, Target, Zap, Calendar, Activity, Sparkles } from "lucide-react";
 
 interface Exercise {
@@ -220,8 +221,8 @@ export default function WorkoutPage() {
     
     if (optionParam && optionParam !== selectedWorkoutOption) {
       setSelectedWorkoutOption(optionParam);
+      localStorage.setItem("selectedWorkoutOption", optionParam);
       setShowWorkoutOptions(false);
-      setShowCustomWorkoutModal(true);
       
       // Load the exercises for this option - combine all days into one
       const storedOptions = localStorage.getItem("workoutOptions");
@@ -357,7 +358,13 @@ export default function WorkoutPage() {
       } catch (e) {
         console.error("Error loading workout options:", e);
       }
-    } else {
+    }
+    // Load selected workout option (which plan is active)
+    const storedOption = localStorage.getItem("selectedWorkoutOption");
+    if (storedOption) {
+      setSelectedWorkoutOption(storedOption);
+    }
+    if (!storedOptions) {
       // Initialize with default options
       const defaultOptions: WorkoutOption[] = [
         {
@@ -438,7 +445,7 @@ export default function WorkoutPage() {
   };
 
   // Get current day's exercises - prioritize workoutOptions if available
-  const currentDayExercises = useMemo(() => {
+  const currentDayExercises: Exercise[] = useMemo(() => {
     const workoutType = getWorkoutTypeForDate(selectedDate);
     if (!workoutType) return [];
     
@@ -457,36 +464,37 @@ export default function WorkoutPage() {
     
     // Helper to get image for exercise
     const getImageUrl = (ex: any): string | undefined => {
-      return ex.imageUrl || savedImages[ex.name?.toLowerCase()];
+      return ex.imageUrl || savedImages[ex.name?.toLowerCase()] || getBuiltInImageUrl(ex.name);
     };
     
-    // First, check if there's a selected workout option from URL
+    // First, check if there's a selected workout option - map workoutType to option's day1/day2/day3
     if (selectedWorkoutOption && workoutOptions.length > 0) {
       const option = workoutOptions.find((o: WorkoutOption) => o.id === selectedWorkoutOption);
-      if (option && option.days.day1.length > 0) {
-        // Combine all exercises from the option (they're all in day1 now)
-        const allExercises = [
-          ...(option.days.day1 || []),
-          ...(option.days.day2 || []),
-          ...(option.days.day3 || []),
-        ];
-        // Convert to Exercise format
-        return allExercises.map((ex: any) => ({
-          id: ex.id || `ex-${Date.now()}-${Math.random()}`,
-          name: ex.name || "",
-          goalSets: ex.goalSets || ex.sets || 3,
-          goalReps: ex.goalReps || ex.reps || 10,
-          goalWeight: ex.goalWeight || 0,
-          imageUrl: getImageUrl(ex),
-          sets: ex.sets || Array.from({ length: ex.goalSets || ex.sets || 3 }, () => ({
-            reps: ex.goalReps || ex.reps || 10,
-            weight: ex.goalWeight || 0,
-            completed: false,
-          })),
-        }));
+      if (option) {
+        const dayExercises =
+          workoutType === "pushDay"
+            ? option.days.day1
+            : workoutType === "pullDay"
+              ? option.days.day2
+              : option.days.day3;
+        if (dayExercises && dayExercises.length > 0) {
+          return dayExercises.map((ex: any) => ({
+            id: ex.id || `ex-${Date.now()}-${Math.random()}`,
+            name: ex.name || "",
+            goalSets: ex.goalSets || ex.sets || 3,
+            goalReps: ex.goalReps || ex.reps || 10,
+            goalWeight: ex.goalWeight || 0,
+            imageUrl: getImageUrl(ex),
+            sets: ex.sets || Array.from({ length: ex.goalSets || ex.sets || 3 }, () => ({
+              reps: ex.goalReps || ex.reps || 10,
+              weight: ex.goalWeight || 0,
+              completed: false,
+            })),
+          }));
+        }
       }
     }
-    
+
     // If no option selected, try to find the option that matches current workout type
     // and has exercises
     if (workoutOptions.length > 0 && workoutPlan[workoutType]?.length === 0) {
@@ -520,7 +528,7 @@ export default function WorkoutPage() {
     const exercises = workoutPlan[workoutType] || [];
     return exercises.map((ex: Exercise) => ({
       ...ex,
-      imageUrl: ex.imageUrl || savedImages[ex.name?.toLowerCase()],
+      imageUrl: ex.imageUrl || savedImages[ex.name?.toLowerCase()] || getBuiltInImageUrl(ex.name),
     }));
   }, [selectedDate, workoutPlan, workoutSchedule, selectedWorkoutOption, workoutOptions]);
 
@@ -872,14 +880,14 @@ export default function WorkoutPage() {
 
   const activeExercise = useMemo(() => {
     if (!activeExerciseId) return null;
-    return currentDayExercises.find((ex) => ex.id === activeExerciseId) || null;
+    return (currentDayExercises ?? []).find((ex) => ex.id === activeExerciseId) || null;
   }, [activeExerciseId, currentDayExercises]);
 
   const totals = useMemo(() => {
     let totalVolume = 0;
     let totalSets = 0;
     let completedSets = 0;
-    currentDayExercises.forEach((ex) => {
+    (currentDayExercises ?? []).forEach((ex) => {
       ex.sets.forEach((s: { reps: number; weight: number; completed: boolean }) => {
         totalSets++;
         if (s.completed) {
@@ -1074,55 +1082,46 @@ export default function WorkoutPage() {
           </div>
         ) : (
           <>
-        {/* Header */}
-        <div className="flex items-center justify-end mb-2">
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => {
-                alert("AI Coach feature coming soon!");
-              }}
-              className="px-2 py-1 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-[10px] font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
-            >
-              AI Coach
-            </button>
-            <Link
-              href="/gym/workouts"
-              className="px-2 py-1 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-[10px] font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
-            >
-              View Workout
-            </Link>
-          </div>
+        {/* Header - linked to workout options */}
+        <div className="flex items-center justify-between mb-2">
+          <Link
+            href="/gym/workouts"
+            className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] font-medium hover:bg-white/10 transition-colors"
+          >
+            <Dumbbell className="w-4 h-4 text-teal-400" />
+            {selectedWorkoutOption && workoutOptions.find((o) => o.id === selectedWorkoutOption) ? (
+              <span className="text-teal-400">{workoutOptions.find((o) => o.id === selectedWorkoutOption)?.name}</span>
+            ) : (
+              <span className="text-gray-400">Select plan</span>
+            )}
+            <ChevronRight className="w-4 h-4 text-gray-500" />
+          </Link>
+          <button
+            onClick={() => alert("AI Coach feature coming soon!")}
+            className="px-2 py-1 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-[10px] font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
+          >
+            AI Coach
+          </button>
         </div>
 
-        {/* Week Date Strip - shows workout per day */}
-        <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-1">
+        {/* Week strip - Mon, Tue, Wed... linked to workout options */}
+        <div className="flex items-center gap-2 mb-4">
           <button
             onClick={() => setShowManualScheduleModal(true)}
-            className="p-1 text-gray-400 hover:text-teal-400 shrink-0"
+            className="p-1.5 text-gray-400 hover:text-teal-400 shrink-0"
             title="Edit schedule"
           >
             <Calendar className="w-5 h-5" />
           </button>
-          <button
-            onClick={() => {
-              const prev = new Date(selectedDate);
-              prev.setDate(prev.getDate() - 7);
-              setSelectedDate(prev);
-              const dateStr = prev.toISOString().split("T")[0];
-              router.push(`/gym/workout?date=${dateStr}`);
-            }}
-            className="p-1 text-gray-400 hover:text-white shrink-0"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div className="flex gap-1.5 flex-1 min-w-0 justify-between">
+          <div className="flex gap-1 flex-1 min-w-0 justify-between overflow-x-auto pb-1">
             {weekDays.map((day) => {
               const dateStr = day.toISOString().split("T")[0];
               const workoutName = getWorkoutNameForDate(day);
               const isSelected = selectedDate.toISOString().split("T")[0] === dateStr;
-              const isToday =
-                new Date().toISOString().split("T")[0] === dateStr;
-              const dayLabel = ["M", "T", "W", "T", "F", "S", "S"][day.getDay() === 0 ? 6 : day.getDay() - 1];
+              const isToday = new Date().toISOString().split("T")[0] === dateStr;
+              const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+              const dayLabel = dayLabels[day.getDay() === 0 ? 6 : day.getDay() - 1];
+              const workoutShort = workoutName === "Rest Day" ? "Rest" : workoutName.replace(" Day", "");
               return (
                 <button
                   key={dateStr}
@@ -1130,7 +1129,7 @@ export default function WorkoutPage() {
                     setSelectedDate(day);
                     router.push(`/gym/workout?date=${dateStr}`);
                   }}
-                  className={`flex flex-col items-center py-2 px-2 rounded-lg min-w-[44px] transition-colors ${
+                  className={`flex flex-col items-center py-2 px-1.5 rounded-lg min-w-[48px] shrink-0 transition-colors ${
                     isSelected
                       ? "bg-teal-500/30 border border-teal-400/50"
                       : "bg-white/5 border border-transparent hover:bg-white/10"
@@ -1139,26 +1138,13 @@ export default function WorkoutPage() {
                   <span className={`text-[10px] font-medium ${isToday ? "text-teal-400" : "text-gray-400"}`}>
                     {dayLabel}
                   </span>
-                  <span className="text-[9px] text-gray-500 mt-0.5">{day.getDate()}</span>
                   <span className="text-[8px] text-gray-500 mt-1 truncate w-full text-center" title={workoutName}>
-                    {workoutName.replace(" Day", "")}
+                    {workoutShort}
                   </span>
                 </button>
               );
             })}
           </div>
-          <button
-            onClick={() => {
-              const next = new Date(selectedDate);
-              next.setDate(next.getDate() + 7);
-              setSelectedDate(next);
-              const dateStr = next.toISOString().split("T")[0];
-              router.push(`/gym/workout?date=${dateStr}`);
-            }}
-            className="p-1 text-gray-400 hover:text-white shrink-0"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
         </div>
 
         {/* Exercises List */}
@@ -1168,7 +1154,7 @@ export default function WorkoutPage() {
             <p className="text-base font-bold text-gray-300 mb-1">Rest Day</p>
             <p className="text-gray-400 text-xs">Take a break and recover!</p>
           </div>
-        ) : currentDayExercises.length === 0 ? (
+        ) : (currentDayExercises ?? []).length === 0 ? (
           <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-6 border border-white/10 text-center">
             <div className="text-4xl mb-2">💪</div>
             <p className="text-sm font-bold text-gray-300 mb-1">No exercises for {currentDayWorkoutName}</p>
@@ -1186,7 +1172,7 @@ export default function WorkoutPage() {
             
             {/* Exercise List - 2 column grid */}
             <div className="grid grid-cols-2 gap-2">
-              {currentDayExercises.map((ex) => {
+              {(currentDayExercises ?? []).map((ex) => {
                 const completedSets = ex.sets.filter((s: { reps: number; weight: number; completed: boolean }) => s.completed).length;
                 const totalSets = ex.sets.length;
                 const firstSet = ex.sets[0];
@@ -1948,19 +1934,24 @@ export default function WorkoutPage() {
           </div>
         )}
 
-        {/* Manual Schedule Modal */}
+        {/* Manual Schedule Modal - linked to selected workout option */}
         {showManualScheduleModal && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
             <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto border border-white/10">
               <h2 className="text-xl font-bold text-white mb-2">Select training days</h2>
+              {selectedWorkoutOption && workoutOptions.find((o) => o.id === selectedWorkoutOption) && (
+                <p className="text-teal-400 text-xs mb-2">
+                  Using: {workoutOptions.find((o) => o.id === selectedWorkoutOption)?.name}
+                </p>
+              )}
               <p className="text-gray-400 text-sm mb-4">
                 Choose which days you want to do each workout.
               </p>
               <div className="space-y-4">
                 {[
-                  { key: "pushDays" as const, label: "Push Day", color: "teal" },
-                  { key: "pullDays" as const, label: "Pull Day", color: "cyan" },
-                  { key: "legsDays" as const, label: "Legs Day", color: "orange" },
+                  { key: "pushDays" as const, label: (workoutOptions.find((o) => o.id === selectedWorkoutOption)?.dayNames.day1) || "Push Day" },
+                  { key: "pullDays" as const, label: (workoutOptions.find((o) => o.id === selectedWorkoutOption)?.dayNames.day2) || "Pull Day" },
+                  { key: "legsDays" as const, label: (workoutOptions.find((o) => o.id === selectedWorkoutOption)?.dayNames.day3) || "Legs Day" },
                 ].map(({ key, label }) => (
                   <div key={key}>
                     <p className="text-sm font-medium text-white mb-2">{label}</p>
