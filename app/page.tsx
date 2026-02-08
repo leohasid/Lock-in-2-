@@ -4,16 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
-import { Sparkles, Check } from "lucide-react";
-
-interface Task {
-  id: string;
-  title: string;
-  type: string;
-  time: string;
-  date: string;
-  completed: boolean;
-}
+import { Sparkles } from "lucide-react";
 
 interface UpcomingItem {
   id: string;
@@ -30,48 +21,40 @@ export default function Home() {
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = tomorrow.toISOString().split("T")[0];
 
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [calories, setCalories] = useState(0);
-  const [calorieGoal, setCalorieGoal] = useState(2000);
-  const [daysClean, setDaysClean] = useState<number | null>(null);
+  const [macros, setMacros] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
+  const [macroGoals, setMacroGoals] = useState({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
   const [upcoming, setUpcoming] = useState<UpcomingItem[]>([]);
 
   const loadData = () => {
     if (typeof window === "undefined") return;
 
-    // Tasks
-    const reminders = JSON.parse(localStorage.getItem("reminders") || "[]");
-    const todayTasks = reminders.filter((r: Task) => r.type === "task" && r.date === todayStr);
-    setTasks(todayTasks);
-
-    // Calories
     const storedMeals = localStorage.getItem("meals");
     if (storedMeals) {
       try {
         const allMeals = JSON.parse(storedMeals);
         const todayMeals = allMeals.filter((m: { date?: string }) => m.date === todayStr);
-        const total = todayMeals.reduce((sum: number, m: { calories?: number }) => sum + (m.calories || 0), 0);
-        setCalories(total);
+        const totals = todayMeals.reduce(
+          (acc: { calories: number; protein: number; carbs: number; fats: number }, m: any) => ({
+            calories: acc.calories + (m.calories || 0),
+            protein: acc.protein + (m.protein || 0),
+            carbs: acc.carbs + (m.carbs || 0),
+            fats: acc.fats + (m.fats || 0),
+          }),
+          { calories: 0, protein: 0, carbs: 0, fats: 0 }
+        );
+        setMacros(totals);
       } catch (_) {}
     }
     const goals = JSON.parse(localStorage.getItem("macroGoals") || "{}");
-    if (goals.calories) setCalorieGoal(goals.calories);
+    setMacroGoals({
+      calories: goals.calories || 2000,
+      protein: goals.protein || 150,
+      carbs: goals.carbs || 250,
+      fats: goals.fats || 65,
+    });
 
-    // Days clean (from addictions)
-    const addictions = JSON.parse(localStorage.getItem("addictions") || "[]");
-    if (addictions.length > 0) {
-      const getDaysClean = (startDate: string) => {
-        const start = new Date(startDate);
-        const today = new Date();
-        return Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-      };
-      const maxDays = Math.max(...addictions.map((a: { startDate: string }) => getDaysClean(a.startDate)));
-      setDaysClean(maxDays);
-    } else {
-      setDaysClean(null);
-    }
-
-    // Upcoming (today + tomorrow reminders, exclude tasks - or include all)
+    // Upcoming
+    const reminders = JSON.parse(localStorage.getItem("reminders") || "[]");
     const todayAndTomorrow = reminders.filter(
       (r: { date: string }) => r.date === todayStr || r.date === tomorrowStr
     );
@@ -89,18 +72,12 @@ export default function Home() {
     return () => window.removeEventListener("storage", loadData);
   }, []);
 
-  const handleToggleTask = (taskId: string) => {
-    const reminders = JSON.parse(localStorage.getItem("reminders") || "[]");
-    const updated = reminders.map((r: Task) =>
-      r.id === taskId ? { ...r, completed: !r.completed } : r
-    );
-    localStorage.setItem("reminders", JSON.stringify(updated));
-    setTasks(updated.filter((r: Task) => r.type === "task" && r.date === todayStr));
+  const macroPcts = {
+    calories: macroGoals.calories > 0 ? Math.min((macros.calories / macroGoals.calories) * 100, 100) : 0,
+    protein: macroGoals.protein > 0 ? Math.min((macros.protein / macroGoals.protein) * 100, 100) : 0,
+    carbs: macroGoals.carbs > 0 ? Math.min((macros.carbs / macroGoals.carbs) * 100, 100) : 0,
+    fats: macroGoals.fats > 0 ? Math.min((macros.fats / macroGoals.fats) * 100, 100) : 0,
   };
-
-  const tasksDone = tasks.filter((t) => t.completed).length;
-  const tasksTotal = tasks.length;
-  const caloriePct = calorieGoal > 0 ? Math.min((calories / calorieGoal) * 100, 100) : 0;
 
   const formatEventDate = (date: string, time: string) => {
     const d = new Date(date + (time ? "T" + time : ""));
@@ -151,98 +128,35 @@ export default function Home() {
           AI Reflection
         </Link>
 
-        {/* Quick Stats Row */}
-        <p className="text-[11px] font-semibold text-[#666666] tracking-wider mb-3">QUICK STATS</p>
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          {/* Tasks */}
-          <div className="rounded-xl bg-[#0F1419] border border-[#1F2937] p-4">
-            <p className="text-[#00D9D9] font-bold text-2xl">{tasksDone}</p>
-            <p className="text-[#888888] text-sm">/ {tasksTotal || 0}</p>
-            <p className="text-[#888888] text-xs mt-1">Tasks done</p>
-            <div className="flex gap-1.5 mt-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-2 h-2 rounded-full ${
-                    i < tasksDone ? "bg-[#00D9D9]" : "border border-[#444444] bg-transparent"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-          {/* Calories */}
-          <div className="rounded-xl bg-[#0F1419] border border-[#1F2937] p-4">
-            <p className="text-[#00D9D9] font-bold text-2xl">{calories.toLocaleString()}</p>
-            <p className="text-[#888888] text-xs mt-1">Calories today</p>
-            <div className="mt-2 h-1.5 rounded-full bg-[#1A1A1A] overflow-hidden">
-              <div
-                className="h-1.5 rounded-full bg-[#00D9D9] transition-all"
-                style={{ width: `${caloriePct}%` }}
-              />
-            </div>
-            <p className="text-[#666666] text-[10px] mt-1">/ {calorieGoal.toLocaleString()}</p>
-          </div>
-          {/* Days clean */}
-          <div className="rounded-xl bg-[#0F1419] border border-[#1F2937] p-4">
-            <p className="text-[#00D9D9] font-bold text-2xl">{daysClean ?? "—"}</p>
-            <p className="text-[#888888] text-xs mt-1">Days clean</p>
-            <div className="flex gap-1 mt-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    daysClean !== null && i < Math.min(4, Math.floor(daysClean / 7) + 1)
-                      ? "bg-[#00D9D9]"
-                      : "bg-[#1A1A1A]"
-                  }`}
-                />
-              ))}
-            </div>
-            {daysClean !== null && (
-              <p className="text-[#666666] text-[9px] mt-1">
-                Week {Math.min(5, Math.floor(daysClean / 7) + 1)}/5
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Today's Tasks */}
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[11px] font-semibold text-[#666666] tracking-wider">TODAY&apos;S TASKS</p>
-          <span className="text-[11px] font-semibold text-[#00D9D9]">{tasksDone}/{tasksTotal}</span>
-        </div>
-        <div className="space-y-2 mb-4">
-          {tasks.slice(0, 5).map((task) => (
-            <div
-              key={task.id}
-              className="flex items-center gap-4 rounded-xl bg-[#0F1419] border border-[#1F2937] px-4 py-3"
-            >
-              <button
-                onClick={() => handleToggleTask(task.id)}
-                className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 border-2 ${
-                  task.completed ? "bg-[#00D9D9] border-[#00D9D9]" : "border-[#00D9D9] bg-transparent"
-                }`}
-              >
-                {task.completed && <Check className="w-5 h-5 text-black" strokeWidth={3} />}
-              </button>
-              <span
-                className={`flex-1 text-[15px] ${
-                  task.completed ? "text-[#555555] line-through" : "text-white"
-                }`}
-              >
-                {task.title}
-              </span>
-              <span className={`text-xs ${task.completed ? "text-[#555555]" : "text-[#666666]"}`}>
-                {task.completed ? "Done" : task.time || "—"}
-              </span>
-            </div>
-          ))}
-        </div>
+        {/* Macros - compact grid */}
+        <p className="text-[11px] font-semibold text-[#666666] tracking-wider mb-2">TODAY&apos;S MACROS</p>
         <Link
-          href="/goals"
-          className="block text-center text-[#00D9D9] text-sm font-medium mb-8"
+          href="/nutrition"
+          className="block mb-6"
         >
-          View all tasks →
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { key: "calories", label: "Cal", value: macros.calories, goal: macroGoals.calories, pct: macroPcts.calories },
+              { key: "protein", label: "P", value: macros.protein, goal: macroGoals.protein, pct: macroPcts.protein, unit: "g" },
+              { key: "carbs", label: "C", value: macros.carbs, goal: macroGoals.carbs, pct: macroPcts.carbs, unit: "g" },
+              { key: "fats", label: "F", value: macros.fats, goal: macroGoals.fats, pct: macroPcts.fats, unit: "g" },
+            ].map(({ key, label, value, goal, pct, unit = "" }) => (
+              <div
+                key={key}
+                className="rounded-lg bg-[#0F1419] border border-[#1F2937] p-2.5 hover:border-[#00D9D9]/30 transition-colors"
+              >
+                <p className="text-[#666666] text-[9px] uppercase tracking-wide">{label}</p>
+                <p className="text-[#00D9D9] font-bold text-sm">{value}{unit}</p>
+                <p className="text-[#555555] text-[9px]">/ {goal}{unit}</p>
+                <div className="mt-1 h-1 rounded-full bg-[#1A1A1A] overflow-hidden">
+                  <div
+                    className="h-1 rounded-full bg-[#00D9D9] transition-all"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </Link>
 
         {/* Upcoming */}

@@ -167,7 +167,7 @@ export default function WorkoutOptionPage() {
       localStorage.setItem("workoutPlan", JSON.stringify(newPlan));
     }
     
-    router.push("/gym/workouts");
+    router.push("/gym/workout?schedulePrompt=1");
   };
 
   if (!currentOption) {
