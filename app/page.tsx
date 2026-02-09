@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
-import { Sparkles } from "lucide-react";
 
 interface UpcomingItem {
   id: string;
@@ -14,56 +12,171 @@ interface UpcomingItem {
   type: string;
 }
 
-export default function Home() {
-  const pathname = usePathname();
-  const todayStr = new Date().toISOString().split("T")[0];
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().split("T")[0];
+function getDaysClean(startDate: string): number {
+  const start = new Date(startDate);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  start.setHours(0, 0, 0, 0);
+  const diffTime = today.getTime() - start.getTime();
+  return Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+}
 
-  const [macros, setMacros] = useState({ calories: 0, protein: 0, carbs: 0, fats: 0 });
-  const [macroGoals, setMacroGoals] = useState({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
-  const [upcoming, setUpcoming] = useState<UpcomingItem[]>([]);
+function MacroCircle({
+  label,
+  current,
+  goal,
+  unit,
+  progressColor,
+}: {
+  label: string;
+  current: number;
+  goal: number;
+  unit: string;
+  progressColor: string;
+}) {
+  const pct = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
+  const size = 64;
+  const stroke = 5;
+  const r = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference - (pct / 100) * circumference;
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="-rotate-90">
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke="#1e293b"
+            strokeWidth={stroke}
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke={progressColor}
+            strokeWidth={stroke}
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-white font-bold text-sm leading-tight">
+            {current}{unit}
+          </span>
+          <span className="text-white text-[10px]">/{goal}{unit}</span>
+        </div>
+      </div>
+      <span className="text-white text-[10px] mt-1.5">{label}</span>
+      <span className="text-[10px] mt-0.5" style={{ color: "#8FA3B0" }}>
+        {goal}{unit === "" ? " cal" : unit}
+      </span>
+    </div>
+  );
+}
+
+export default function Home() {
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  const [firstName, setFirstName] = useState("Leo");
+  const [nutrition, setNutrition] = useState({
+    calories: { consumed: 0, goal: 2000 },
+    protein: { consumed: 0, goal: 150 },
+    carbs: { consumed: 0, goal: 200 },
+    fat: { consumed: 0, goal: 65 },
+  });
+  const [upcomingEvents, setUpcomingEvents] = useState<UpcomingItem[]>([]);
+  const [daysClean, setDaysClean] = useState<number>(0);
+  const [todayWorkout, setTodayWorkout] = useState<{ name: string; time: string } | null>(null);
+
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good morning";
+    if (h < 17) return "Good afternoon";
+    return "Good evening";
+  };
 
   const loadData = () => {
     if (typeof window === "undefined") return;
 
+    const name = localStorage.getItem("userName");
+    if (name) setFirstName(name);
+
+    const goals = JSON.parse(localStorage.getItem("macroGoals") || "{}");
+    let consumed = { calories: 0, protein: 0, carbs: 0, fats: 0 };
     const storedMeals = localStorage.getItem("meals");
     if (storedMeals) {
       try {
         const allMeals = JSON.parse(storedMeals);
         const todayMeals = allMeals.filter((m: { date?: string }) => m.date === todayStr);
-        const totals = todayMeals.reduce(
+        consumed = todayMeals.reduce(
           (acc: { calories: number; protein: number; carbs: number; fats: number }, m: any) => ({
             calories: acc.calories + (m.calories || 0),
             protein: acc.protein + (m.protein || 0),
             carbs: acc.carbs + (m.carbs || 0),
             fats: acc.fats + (m.fats || 0),
           }),
-          { calories: 0, protein: 0, carbs: 0, fats: 0 }
+          consumed
         );
-        setMacros(totals);
       } catch (_) {}
     }
-    const goals = JSON.parse(localStorage.getItem("macroGoals") || "{}");
-    setMacroGoals({
-      calories: goals.calories || 2000,
-      protein: goals.protein || 150,
-      carbs: goals.carbs || 250,
-      fats: goals.fats || 65,
+    setNutrition({
+      calories: { consumed: consumed.calories, goal: goals.calories ?? 2000 },
+      protein: { consumed: consumed.protein, goal: goals.protein ?? 150 },
+      carbs: { consumed: consumed.carbs, goal: goals.carbs ?? 200 },
+      fat: { consumed: consumed.fats, goal: goals.fats ?? 65 },
     });
 
-    // Upcoming
     const reminders = JSON.parse(localStorage.getItem("reminders") || "[]");
-    const todayAndTomorrow = reminders.filter(
-      (r: { date: string }) => r.date === todayStr || r.date === tomorrowStr
-    );
-    const sorted = todayAndTomorrow.sort((a: UpcomingItem, b: UpcomingItem) => {
-      const d = a.date.localeCompare(b.date);
-      if (d !== 0) return d;
-      return (a.time || "").localeCompare(b.time || "");
-    });
-    setUpcoming(sorted.slice(0, 4));
+    const todayReminders = reminders
+      .filter((r: { date: string }) => r.date === todayStr)
+      .sort((a: UpcomingItem, b: UpcomingItem) => (a.time || "").localeCompare(b.time || ""));
+    setUpcomingEvents(todayReminders.slice(0, 4));
+
+    const addictions = JSON.parse(localStorage.getItem("addictions") || "[]");
+    if (addictions.length > 0) {
+      const days = addictions.map((a: { startDate?: string }) =>
+        a.startDate ? getDaysClean(a.startDate) : 0
+      );
+      setDaysClean(Math.min(...days));
+    } else {
+      setDaysClean(0);
+    }
+
+    const schedule = JSON.parse(localStorage.getItem("workoutSchedule") || "[]");
+    const todayEntry = schedule.find((w: { date: string }) => w.date === todayStr);
+    if (todayEntry && todayEntry.workoutName && todayEntry.workoutName !== "Rest Day") {
+      const firstReminder = todayReminders.find(
+        (r: { title?: string }) =>
+          r.title &&
+          (r.title.toLowerCase().includes("workout") ||
+            r.title.toLowerCase().includes("gym") ||
+            r.title.toLowerCase().includes("upper") ||
+            r.title.toLowerCase().includes("push") ||
+            r.title.toLowerCase().includes("pull") ||
+            r.title.toLowerCase().includes("legs"))
+      );
+      const time = firstReminder?.time || "6pm";
+      const formattedTime = time.includes(":")
+        ? (() => {
+            const [h, m] = time.split(":");
+            const hour = parseInt(h, 10);
+            const ampm = hour >= 12 ? "pm" : "am";
+            const h12 = hour % 12 || 12;
+            return m === "00" ? `${h12}${ampm}` : `${h12}:${m}${ampm}`;
+          })()
+        : time;
+      setTodayWorkout({
+        name: todayEntry.workoutName.replace(" Day", ""),
+        time: formattedTime,
+      });
+    } else {
+      setTodayWorkout(null);
+    }
   };
 
   useEffect(() => {
@@ -72,122 +185,171 @@ export default function Home() {
     return () => window.removeEventListener("storage", loadData);
   }, []);
 
-  const macroPcts = {
-    calories: macroGoals.calories > 0 ? Math.min((macros.calories / macroGoals.calories) * 100, 100) : 0,
-    protein: macroGoals.protein > 0 ? Math.min((macros.protein / macroGoals.protein) * 100, 100) : 0,
-    carbs: macroGoals.carbs > 0 ? Math.min((macros.carbs / macroGoals.carbs) * 100, 100) : 0,
-    fats: macroGoals.fats > 0 ? Math.min((macros.fats / macroGoals.fats) * 100, 100) : 0,
-  };
-
-  const formatEventDate = (date: string, time: string) => {
-    const d = new Date(date + (time ? "T" + time : ""));
-    if (date === todayStr) return `Today at ${time || "All day"}`;
-    if (date === tomorrowStr) return `Tomorrow at ${time || "All day"}`;
-    return new Date(date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) + (time ? ` at ${time}` : "");
-  };
-
-  const getHoursUntil = (date: string, time: string) => {
-    if (date !== todayStr || !time) return null;
-    const [h, m] = time.split(":").map(Number);
-    const event = new Date();
-    event.setHours(h || 0, m || 0, 0, 0);
-    const diff = event.getTime() - Date.now();
-    if (diff < 0) return null;
-    return Math.round(diff / (1000 * 60 * 60));
+  const formatTime = (time: string) => {
+    if (!time) return "6pm";
+    if (time.length <= 2) return `${time}pm`;
+    if (time.includes(":")) {
+      const [h, m] = time.split(":");
+      const hour = parseInt(h, 10);
+      const ampm = hour >= 12 ? "pm" : "am";
+      const h12 = hour % 12 || 12;
+      return m === "00" ? `${h12}${ampm}` : `${h12}:${m}${ampm}`;
+    }
+    return time;
   };
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="max-w-md mx-auto pb-24 px-5">
-        {/* Tab Bar */}
-        <div className="flex gap-2 mb-6 pt-4 border-b border-[#2A2A2A]">
-          <Link
-            href="/"
-            className={`flex-1 py-2 font-semibold text-center text-sm ${
-              pathname === "/" ? "text-[#00D9D9] border-b-2 border-[#00D9D9]" : "text-gray-500 hover:text-[#00D9D9]"
-            }`}
-          >
-            Home
-          </Link>
-          <Link
-            href="/goals"
-            className={`flex-1 py-2 font-semibold text-center text-sm ${
-              pathname === "/goals" ? "text-[#00D9D9] border-b-2 border-[#00D9D9]" : "text-gray-500 hover:text-[#00D9D9]"
-            }`}
-          >
-            Goals
-          </Link>
-        </div>
+    <div className="min-h-screen pb-24" style={{ backgroundColor: "#0B0F14" }}>
+      <div className="max-w-md mx-auto px-4 pt-6">
+        {/* Header */}
+        <header className="mb-5">
+          <h1 className="text-[26px] font-bold text-white leading-tight">
+            {getGreeting()}, {firstName}
+          </h1>
+          <p className="mt-1" style={{ color: "#8FA3B0" }}>Lock in. One day at a time.</p>
+        </header>
 
-        {/* AI Reflection */}
+        {/* AI Reflection - text only with ✨, match photo */}
         <Link
           href="/consultation?from=reflection"
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-[#00D9D9]/10 border border-[#00D9D9]/30 text-[#00D9D9] font-medium hover:bg-[#00D9D9]/20 transition-colors mb-6"
+          className="block rounded-[18px] p-5 mb-6 hover:opacity-90 transition-opacity"
+          style={{ backgroundColor: "#0F766E" }}
         >
-          <Sparkles className="w-5 h-5" />
-          AI Reflection
+          <p className="text-lg font-semibold" style={{ color: "#E6FFFA" }}>
+            ✨ AI Reflection
+          </p>
+          <p className="mt-1 flex items-center justify-between" style={{ color: "#99F6E4" }}>
+            <span>Review yesterday • Set today</span>
+            <span>&gt;</span>
+          </p>
         </Link>
 
-        {/* Macros - compact grid */}
-        <p className="text-[11px] font-semibold text-[#666666] tracking-wider mb-2">TODAY&apos;S MACROS</p>
-        <Link
-          href="/nutrition"
-          className="block mb-6"
+        {/* Today at a glance - single card, row + progress bars */}
+        <div
+          className="rounded-[18px] p-4 mb-5"
+          style={{ backgroundColor: "#121826" }}
         >
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              { key: "calories", label: "Cal", value: macros.calories, goal: macroGoals.calories, pct: macroPcts.calories },
-              { key: "protein", label: "P", value: macros.protein, goal: macroGoals.protein, pct: macroPcts.protein, unit: "g" },
-              { key: "carbs", label: "C", value: macros.carbs, goal: macroGoals.carbs, pct: macroPcts.carbs, unit: "g" },
-              { key: "fats", label: "F", value: macros.fats, goal: macroGoals.fats, pct: macroPcts.fats, unit: "g" },
-            ].map(({ key, label, value, goal, pct, unit = "" }) => (
-              <div
-                key={key}
-                className="rounded-lg bg-[#0F1419] border border-[#1F2937] p-2.5 hover:border-[#00D9D9]/30 transition-colors"
-              >
-                <p className="text-[#666666] text-[9px] uppercase tracking-wide">{label}</p>
-                <p className="text-[#00D9D9] font-bold text-sm">{value}{unit}</p>
-                <p className="text-[#555555] text-[9px]">/ {goal}{unit}</p>
-                <div className="mt-1 h-1 rounded-full bg-[#1A1A1A] overflow-hidden">
-                  <div
-                    className="h-1 rounded-full bg-[#00D9D9] transition-all"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </Link>
-
-        {/* Upcoming */}
-        <p className="text-[11px] font-semibold text-[#666666] tracking-wider mb-3">UPCOMING</p>
-        <div className="space-y-2">
-          {upcoming.slice(0, 3).map((item) => {
-            const hoursUntil = getHoursUntil(item.date, item.time);
-            return (
-              <div
-                key={item.id}
-                className="flex items-center gap-4 rounded-xl bg-[#0F1419] border border-[#1F2937] px-4 py-3"
-              >
+          <p className="text-xs uppercase mb-2.5" style={{ color: "#8FA3B0" }}>
+            Today at a glance
+          </p>
+          <div className="flex justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-sm">
+                🛡 {daysClean} days clean
+              </p>
+              <div className="h-1 rounded-full mt-1.5 overflow-hidden" style={{ backgroundColor: "#1e293b" }}>
                 <div
-                  className={`w-1 h-9 rounded flex-shrink-0 ${
-                    item.date === todayStr ? "bg-[#00D9D9]" : "bg-[#555555]"
-                  }`}
+                  className="h-full rounded-full bg-green-500 transition-all"
+                  style={{ width: `${Math.min((daysClean / 30) * 100, 100)}%` }}
                 />
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-white text-[15px]">{item.title}</p>
-                  <p className="text-[#666666] text-[13px]">{formatEventDate(item.date, item.time)}</p>
-                </div>
-                {hoursUntil !== null && (
-                  <span className="text-[#00D9D9] text-xs">{hoursUntil}h</span>
-                )}
               </div>
-            );
-          })}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-white text-sm">
+                🏋️ {todayWorkout ? `${todayWorkout.name} – ${formatTime(todayWorkout.time)}` : "Rest day"}
+              </p>
+              <div className="h-1 rounded-full mt-1.5 overflow-hidden" style={{ backgroundColor: "#1e293b" }}>
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: todayWorkout ? "33%" : "0%",
+                    backgroundColor: "#64748b",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
-        {upcoming.length === 0 && (
-          <p className="text-[#555555] text-sm py-4 text-center">No upcoming events</p>
-        )}
+
+        {/* Today's macros - circular progress + Log food link */}
+        <div
+          className="rounded-[18px] p-4 mb-5"
+          style={{ backgroundColor: "#121826" }}
+        >
+          <p className="text-xs uppercase mb-4" style={{ color: "#8FA3B0" }}>
+            Today&apos;s macros
+          </p>
+          <div className="flex justify-between gap-2 mb-4">
+            <MacroCircle
+              label="Calories"
+              current={nutrition.calories.consumed}
+              goal={nutrition.calories.goal}
+              unit=""
+              progressColor="#86efac"
+            />
+            <MacroCircle
+              label="Protein"
+              current={nutrition.protein.consumed}
+              goal={nutrition.protein.goal}
+              unit="g"
+              progressColor="#2DD4BF"
+            />
+            <MacroCircle
+              label="Carbs"
+              current={nutrition.carbs.consumed}
+              goal={nutrition.carbs.goal}
+              unit="g"
+              progressColor="#2DD4BF"
+            />
+            <MacroCircle
+              label="Fat"
+              current={nutrition.fat.consumed}
+              goal={nutrition.fat.goal}
+              unit="g"
+              progressColor="#facc15"
+            />
+          </div>
+          <Link
+            href="/nutrition"
+            className="inline-block mt-2 font-semibold hover:underline"
+            style={{ color: "#2DD4BF" }}
+          >
+            Log food →
+          </Link>
+        </div>
+
+        {/* Upcoming - single card, muted text + Edit routine link */}
+        <div
+          className="rounded-[18px] p-4 mb-5"
+          style={{ backgroundColor: "#121826" }}
+        >
+          <p className="text-xs uppercase mb-2.5" style={{ color: "#8FA3B0" }}>
+            Upcoming
+          </p>
+          {upcomingEvents.length === 0 ? (
+            <p className="text-sm" style={{ color: "#8FA3B0" }}>
+              🏠 No upcoming events — stay disciplined.
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {upcomingEvents.map((event) => (
+                <p key={event.id} className="text-white text-sm">
+                  {event.time} — {event.title}
+                </p>
+              ))}
+            </div>
+          )}
+          <Link
+            href="/calendar"
+            className="inline-block mt-3 font-semibold hover:underline"
+            style={{ color: "#2DD4BF" }}
+          >
+            Edit routine →
+          </Link>
+        </div>
+
+        {/* Motivation - centered, Stay locked in. in teal */}
+        <div
+          className="rounded-2xl p-4 text-center"
+          style={{ backgroundColor: "#0F172A" }}
+        >
+          <p className="text-sm" style={{ color: "#E5E7EB" }}>
+            ✨ Remember why you started.{" "}
+            <Link href="/goals" className="font-semibold hover:underline" style={{ color: "#2DD4BF" }}>
+              Stay locked in.
+            </Link>
+          </p>
+        </div>
       </div>
 
       <BottomNav />

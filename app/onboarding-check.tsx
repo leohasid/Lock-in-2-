@@ -9,25 +9,25 @@ export default function OnboardingCheck({ children }: { children: React.ReactNod
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
+    // Only run in browser (localStorage exists)
+    if (typeof window === "undefined") return;
+
     // Skip check for onboarding and subscribe pages
     if (pathname === "/onboarding" || pathname === "/subscribe") {
-      // Use setTimeout to avoid setState in effect
-      setTimeout(() => setIsChecking(false), 0);
+      setIsChecking(false);
       return;
     }
 
     // IMPORTANT: Check subscription first - if subscribed, grant access immediately
-    // (they've already completed onboarding, so skip it)
     const subscriptionStatus = localStorage.getItem("subscriptionStatus");
     if (subscriptionStatus === "active") {
-      setTimeout(() => setIsChecking(false), 0);
+      setIsChecking(false);
       return;
     }
 
     // If not subscribed, check if onboarding is completed
     const onboardingCompleted = localStorage.getItem("onboardingCompleted");
     if (!onboardingCompleted) {
-      // New user - redirect to onboarding questions
       router.push("/onboarding");
       return;
     }
@@ -35,6 +35,12 @@ export default function OnboardingCheck({ children }: { children: React.ReactNod
     // Onboarding completed but not subscribed - redirect to subscription
     router.push("/subscribe");
   }, [pathname, router]);
+
+  // Fallback: stop showing loading after 2s in case something gets stuck
+  useEffect(() => {
+    const t = setTimeout(() => setIsChecking(false), 2000);
+    return () => clearTimeout(t);
+  }, []);
 
   // Show loading state while checking
   if (isChecking && pathname !== "/onboarding" && pathname !== "/subscribe") {
