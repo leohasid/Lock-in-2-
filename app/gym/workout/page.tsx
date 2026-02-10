@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { getBuiltInImageUrl } from "@/lib/built-in-exercise-images";
-import { X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, ChevronLeft, Dumbbell, TrendingUp, Target, Zap, Calendar, Activity, Sparkles } from "lucide-react";
+import { X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, ChevronLeft, Dumbbell, TrendingUp, Target, Zap, Calendar, Activity, Sparkles, Play } from "lucide-react";
+import GuidedWorkoutView from "@/components/GuidedWorkoutView";
 
 interface Exercise {
   id: string;
@@ -14,6 +15,7 @@ interface Exercise {
   goalReps: number;
   goalWeight: number;
   imageUrl?: string;
+  restSeconds?: number;
   sets: Array<{
     reps: number;
     weight: number;
@@ -158,6 +160,8 @@ export default function WorkoutPage() {
     legsDay: [],
   });
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
+  const [workoutMode, setWorkoutMode] = useState<"browse" | "active">("browse");
+  const [guidedExercises, setGuidedExercises] = useState<Exercise[] | null>(null);
   const [workoutSchedule, setWorkoutSchedule] = useState<WorkoutSchedule[]>([]);
   const [showCustomWorkoutModal, setShowCustomWorkoutModal] = useState(false);
   const [showWorkoutOptions, setShowWorkoutOptions] = useState(true);
@@ -751,6 +755,28 @@ export default function WorkoutPage() {
     };
   }, []);
 
+  const handleSwapExercise = (exId: string, newName: string) => {
+    const workoutType = getWorkoutTypeForDate(selectedDate);
+    if (!workoutType) return;
+    setWorkoutPlan((prev) => ({
+      ...prev,
+      [workoutType]: prev[workoutType].map((ex) =>
+        ex.id === exId ? { ...ex, name: newName } : ex
+      ),
+    }));
+  };
+
+  const handleUpdateRest = (exId: string, restSeconds: number) => {
+    const workoutType = getWorkoutTypeForDate(selectedDate);
+    if (!workoutType) return;
+    setWorkoutPlan((prev) => ({
+      ...prev,
+      [workoutType]: prev[workoutType].map((ex) =>
+        ex.id === exId ? { ...ex, restSeconds } : ex
+      ),
+    }));
+  };
+
   const saveExercise = (exId: string) => {
     const workoutType = getWorkoutTypeForDate(selectedDate);
     if (!workoutType) return;
@@ -1161,13 +1187,10 @@ export default function WorkoutPage() {
             <p className="text-gray-400 text-[10px]">Add your own workout or use AI to get started!</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 pb-24">
             {/* Workout day name header */}
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-white">{currentDayWorkoutName}</h2>
-              <button className="text-cyan-400 hover:text-cyan-300">
-                <Plus className="w-4 h-4" />
-              </button>
             </div>
             
             {/* Exercise List - 2 column grid */}
@@ -1213,6 +1236,27 @@ export default function WorkoutPage() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Fixed Start Workout button - only when exercises exist */}
+        {currentDayWorkoutName !== "Rest Day" && (currentDayExercises ?? []).length > 0 && (
+          <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-40">
+            <button
+              onClick={() => {
+                setWorkoutMode("active");
+                setGuidedExercises(
+                  (currentDayExercises ?? []).map((ex) => ({
+                    ...ex,
+                    sets: ex.sets.map((s) => ({ ...s })),
+                  }))
+                );
+              }}
+              className="w-full max-w-md flex items-center justify-center gap-2 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-semibold rounded-xl text-base shadow-lg"
+            >
+              <Play className="w-5 h-5 fill-current" />
+              Start Workout
+            </button>
           </div>
         )}
 
@@ -1387,6 +1431,70 @@ export default function WorkoutPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Guided Workout Flow */}
+        {workoutMode === "active" && guidedExercises && guidedExercises.length > 0 && (
+          <GuidedWorkoutView
+            exercises={guidedExercises.map((ex) => ({
+              ...ex,
+              restSeconds: ex.restSeconds ?? 90,
+            }))}
+            onUpdateSet={(exId, setIndex, patch) => {
+              setGuidedExercises((prev) =>
+                prev
+                  ? prev.map((ex) =>
+                      ex.id === exId
+                        ? {
+                            ...ex,
+                            sets: ex.sets.map((s, i) =>
+                              i === setIndex ? { ...s, ...patch } : s
+                            ),
+                          }
+                        : ex
+                    )
+                  : prev
+              );
+            }}
+            onSwapExercise={(exId, newName) => {
+              setGuidedExercises((prev) =>
+                prev ? prev.map((ex) => (ex.id === exId ? { ...ex, name: newName } : ex)) : prev
+              );
+            }}
+            onUpdateRest={(exId, restSeconds) => {
+              setGuidedExercises((prev) =>
+                prev ? prev.map((ex) => (ex.id === exId ? { ...ex, restSeconds } : ex)) : prev
+              );
+            }}
+            onFinish={() => {
+              const workoutType = getWorkoutTypeForDate(selectedDate);
+              if (workoutType && guidedExercises) {
+                setWorkoutPlan((prev) => ({
+                  ...prev,
+                  [workoutType]: guidedExercises,
+                }));
+                const dateStr = selectedDate.toISOString().split("T")[0];
+                const workoutData = guidedExercises.map((ex) => ({
+                  id: ex.id,
+                  name: ex.name,
+                  sets: ex.sets,
+                }));
+                localStorage.setItem(`workout_data_${dateStr}`, JSON.stringify(workoutData));
+                const allCompleted = guidedExercises.every((ex) =>
+                  ex.sets.every((s) => s.completed)
+                );
+                if (allCompleted) {
+                  localStorage.setItem(`workout_${dateStr}`, "completed");
+                  setWorkoutSchedule((prev) =>
+                    prev.map((w) => (w.date === dateStr ? { ...w, completed: true } : w))
+                  );
+                }
+                loadWeeklyStats();
+              }
+              setWorkoutMode("browse");
+              setGuidedExercises(null);
+            }}
+          />
         )}
 
         {/* Custom Workout Plan Modal */}
