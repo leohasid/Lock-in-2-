@@ -1466,6 +1466,25 @@ export default function WorkoutPage() {
                 prev ? prev.map((ex) => (ex.id === exId ? { ...ex, restSeconds } : ex)) : prev
               );
             }}
+            onExit={() => {
+              const workoutType = getWorkoutTypeForDate(selectedDate);
+              if (workoutType && guidedExercises) {
+                setWorkoutPlan((prev) => ({
+                  ...prev,
+                  [workoutType]: guidedExercises,
+                }));
+                const dateStr = selectedDate.toISOString().split("T")[0];
+                const workoutData = guidedExercises.map((ex) => ({
+                  id: ex.id,
+                  name: ex.name,
+                  sets: ex.sets,
+                }));
+                localStorage.setItem(`workout_data_${dateStr}`, JSON.stringify(workoutData));
+                loadWeeklyStats();
+              }
+              setWorkoutMode("browse");
+              setGuidedExercises(null);
+            }}
             onFinish={() => {
               const workoutType = getWorkoutTypeForDate(selectedDate);
               if (workoutType && guidedExercises) {
