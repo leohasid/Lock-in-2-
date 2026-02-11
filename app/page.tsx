@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 
 interface UpcomingItem {
@@ -80,6 +81,7 @@ function MacroCircle({
 }
 
 export default function Home() {
+  const pathname = usePathname();
   const todayStr = new Date().toISOString().split("T")[0];
 
   const [firstName, setFirstName] = useState("Leo");
@@ -92,13 +94,6 @@ export default function Home() {
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingItem[]>([]);
   const [daysClean, setDaysClean] = useState<number>(0);
   const [todayWorkout, setTodayWorkout] = useState<{ name: string; time: string } | null>(null);
-
-  const getGreeting = () => {
-    const h = new Date().getHours();
-    if (h < 12) return "Good morning";
-    if (h < 17) return "Good afternoon";
-    return "Good evening";
-  };
 
   const loadData = () => {
     if (typeof window === "undefined") return;
@@ -201,13 +196,25 @@ export default function Home() {
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: "#0B0F14" }}>
       <div className="max-w-md mx-auto px-4 pt-6">
-        {/* Header */}
-        <header className="mb-5">
-          <h1 className="text-[26px] font-bold text-white leading-tight">
-            {getGreeting()}, {firstName}
-          </h1>
-          <p className="mt-1" style={{ color: "#8FA3B0" }}>Lock in. One day at a time.</p>
-        </header>
+        {/* Tab Bar - Home | Goals */}
+        <div className="flex gap-2 mb-6 pt-4 border-b border-[#2A2A2A]">
+          <Link
+            href="/"
+            className={`flex-1 py-2 font-semibold text-center text-sm ${
+              pathname === "/" ? "text-[#00D9D9] border-b-2 border-[#00D9D9]" : "text-gray-500 hover:text-[#00D9D9]"
+            }`}
+          >
+            Home
+          </Link>
+          <Link
+            href="/goals"
+            className={`flex-1 py-2 font-semibold text-center text-sm ${
+              pathname === "/goals" ? "text-[#00D9D9] border-b-2 border-[#00D9D9]" : "text-gray-500 hover:text-[#00D9D9]"
+            }`}
+          >
+            Goals
+          </Link>
+        </div>
 
         {/* AI Reflection - text only with ✨, match photo */}
         <Link

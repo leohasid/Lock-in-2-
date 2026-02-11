@@ -37,10 +37,34 @@ export async function POST(request: Request) {
     } else if (requestBody.messages && Array.isArray(requestBody.messages)) {
       // Legacy format: convert messages array to prompt
       const { messages, context } = requestBody;
-    const workoutData = context?.workoutStats || {};
-      
-      // Build system context
-      const systemContext = `You are an expert fitness and nutrition AI coach named "Mogifi AI Coach". You are a knowledgeable, friendly, and helpful assistant who can answer ANY questions the user has - whether about fitness, nutrition, health, workouts, or general topics.
+      const workoutData = context?.workoutStats || {};
+      const isFitnessMode = context?.mode === "fitness";
+
+      const fitnessContextBlock = isFitnessMode
+        ? `
+**User's current workout setup in the app:**
+- Plans in use: ${context?.selectedPlanNames || "None yet"}
+- Training days (this week): ${context?.trainingDaysSummary || "Not set"}
+${context?.plansInUse?.length ? `- Each plan has day types (e.g. Push/Pull/Legs or custom names). The user can assign which weekdays to each day type in "Training days" and pick which plans to use in "Workout plan".` : "- They can select plans in Workout plan and set which days to train in Training days."}
+
+**Your role as AI Fitness Coach:**
+- Help with workout-related questions: form, substitutes, volume, rest, progression.
+- Help them use the app: suggest which days to train, which plan to use, how to change or add exercises.
+- You cannot change the app yourself; give clear, step-by-step instructions (e.g. "Go to Workout plan, tap Option 1, then open Training days and set Push to Mon/Wed").
+- Be supportive and practical. If they want to change their plan or training days, tell them exactly where to go in the app and what to tap.
+- Keep answers focused on fitness and their workout plan unless they ask something else.`
+        : "";
+
+      const systemContext = isFitnessMode
+        ? `You are the Mogifi AI Fitness Coach. You help users with their workouts and with using the workout section of the app (workout plans, training days, exercises).${fitnessContextBlock}
+
+**How to respond:**
+- Be clear and actionable. When suggesting changes, say where in the app to go (Workout plan, Training days, or a specific option).
+- You can suggest modifying which days they train, which plan to use, exercise swaps, sets/reps, or rest.
+- Be friendly and supportive. Keep responses concise but complete.
+
+**Conversation History:**`
+        : `You are an expert fitness and nutrition AI coach named "Mogifi AI Coach". You are a knowledgeable, friendly, and helpful assistant who can answer ANY questions the user has - whether about fitness, nutrition, health, workouts, or general topics.
 
 **Your Primary Role:**
 - Answer ANY question the user asks - be it fitness-related, nutrition, health, general knowledge, or casual conversation

@@ -24,6 +24,24 @@ interface WorkoutOption {
 export default function WorkoutsPage() {
   const router = useRouter();
   const [workoutOptions, setWorkoutOptions] = useState<WorkoutOption[]>([]);
+  const [selectedWorkoutOptions, setSelectedWorkoutOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = localStorage.getItem("selectedWorkoutOptions");
+    if (stored) {
+      try {
+        const arr = JSON.parse(stored);
+        setSelectedWorkoutOptions(Array.isArray(arr) ? arr : []);
+      } catch {
+        const single = localStorage.getItem("selectedWorkoutOption");
+        setSelectedWorkoutOptions(single ? [single] : []);
+      }
+    } else {
+      const single = localStorage.getItem("selectedWorkoutOption");
+      setSelectedWorkoutOptions(single ? [single] : []);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -84,17 +102,15 @@ export default function WorkoutsPage() {
         {
           id: "option4",
           name: "Option 4",
-          days: {
-            day1: [],
-            day2: [],
-            day3: [],
-          },
-          dayNames: {
-            day1: "Day 1",
-            day2: "Day 2",
-            day3: "Day 3",
-          },
+          days: { day1: [], day2: [], day3: [] },
+          dayNames: { day1: "Day 1", day2: "Day 2", day3: "Day 3" },
         },
+        { id: "option5", name: "Option 5", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Day 1", day2: "Day 2", day3: "Day 3" } },
+        { id: "option6", name: "Option 6", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Day 1", day2: "Day 2", day3: "Day 3" } },
+        { id: "option7", name: "Option 7", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Day 1", day2: "Day 2", day3: "Day 3" } },
+        { id: "option8", name: "Option 8", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Day 1", day2: "Day 2", day3: "Day 3" } },
+        { id: "option9", name: "Option 9", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Day 1", day2: "Day 2", day3: "Day 3" } },
+        { id: "option10", name: "Option 10", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Day 1", day2: "Day 2", day3: "Day 3" } },
       ];
       setWorkoutOptions(defaultOptions);
       localStorage.setItem("workoutOptions", JSON.stringify(defaultOptions));
@@ -107,10 +123,24 @@ export default function WorkoutsPage() {
   };
 
   const handleUseOption = (optionId: string) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("selectedWorkoutOption", optionId);
+    const isCurrentlySelected = selectedWorkoutOptions.includes(optionId);
+    if (isCurrentlySelected) {
+      const next = selectedWorkoutOptions.filter((id) => id !== optionId);
+      setSelectedWorkoutOptions(next);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("selectedWorkoutOptions", JSON.stringify(next));
+        localStorage.setItem("selectedWorkoutOption", next[0] || "");
+        if (next.length === 0) localStorage.removeItem("selectedWorkoutOption");
+      }
+    } else {
+      if (selectedWorkoutOptions.length >= 10) return;
+      const next = [...selectedWorkoutOptions, optionId];
+      setSelectedWorkoutOptions(next);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("selectedWorkoutOptions", JSON.stringify(next));
+        localStorage.setItem("selectedWorkoutOption", optionId);
+      }
     }
-    router.push(`/gym/workout?option=${optionId}`);
   };
 
   const handleAddWorkout = () => {
@@ -183,9 +213,14 @@ export default function WorkoutsPage() {
               </button>
               <button
                 onClick={() => handleUseOption(option.id)}
-                className="px-3 py-1.5 bg-teal-500 hover:bg-teal-400 text-black text-xs font-semibold rounded-lg shrink-0"
+                disabled={!selectedWorkoutOptions.includes(option.id) && selectedWorkoutOptions.length >= 10}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  selectedWorkoutOptions.includes(option.id)
+                    ? "bg-white/20 text-gray-300 hover:bg-white/30"
+                    : "bg-teal-500 hover:bg-teal-400 text-black"
+                }`}
               >
-                Use
+                {selectedWorkoutOptions.includes(option.id) ? "Unsave" : "Use"}
               </button>
             </div>
           ))}

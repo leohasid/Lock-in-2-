@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { getBuiltInImageUrl } from "@/lib/built-in-exercise-images";
@@ -133,6 +133,7 @@ const fallbackPlan: Exercise[] = [
 
 export default function WorkoutPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<"workout" | "progress">("workout");
   const [weeklyVolume, setWeeklyVolume] = useState<number[]>(Array(7).fill(0));
   const [totalWorkoutsLogged, setTotalWorkoutsLogged] = useState(0);
@@ -166,13 +167,11 @@ export default function WorkoutPage() {
   const [showCustomWorkoutModal, setShowCustomWorkoutModal] = useState(false);
   const [showWorkoutOptions, setShowWorkoutOptions] = useState(true);
   const [selectedWorkoutOption, setSelectedWorkoutOption] = useState<string | null>(null);
+  const [selectedWorkoutOptions, setSelectedWorkoutOptions] = useState<string[]>([]);
   const [showSchedulePromptModal, setShowSchedulePromptModal] = useState(false);
   const [showManualScheduleModal, setShowManualScheduleModal] = useState(false);
-  const [manualSchedule, setManualSchedule] = useState<{
-    pushDays: number[];
-    pullDays: number[];
-    legsDays: number[];
-  }>({ pushDays: [1, 4], pullDays: [2, 5], legsDays: [3, 6] }); // Mon,Thu | Tue,Fri | Wed,Sat (0=Sun)
+  // Per-plan schedule: { [optionId]: { pushDays, pullDays, legsDays } }
+  const [manualSchedule, setManualSchedule] = useState<Record<string, { pushDays: number[]; pullDays: number[]; legsDays: number[] }>>({});
   const [workoutOptions, setWorkoutOptions] = useState<WorkoutOption[]>([]);
   const [customWorkoutPlan, setCustomWorkoutPlan] = useState<{
     pushDay: CustomExercise[];
@@ -296,6 +295,14 @@ export default function WorkoutPage() {
     }
   }, [typeof window !== "undefined" ? window.location.search : "", selectedDate, selectedWorkoutOption]);
 
+  // When arriving from "Use" on workouts page, open Training days modal (after plan loads)
+  useEffect(() => {
+    if (searchParams.get("openTrainingDays") !== "1") return;
+    router.replace("/gym/workout", { scroll: false });
+    const t = setTimeout(() => setShowManualScheduleModal(true), 50);
+    return () => clearTimeout(t);
+  }, [searchParams, router]);
+
   // Load workout plan and schedule
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -363,95 +370,83 @@ export default function WorkoutPage() {
         console.error("Error loading workout options:", e);
       }
     }
-    // Load selected workout option (which plan is active)
-    const storedOption = localStorage.getItem("selectedWorkoutOption");
-    if (storedOption) {
-      setSelectedWorkoutOption(storedOption);
+    // Load selected workout options - use plans user selected with "Use" only
+    const storedSelected = localStorage.getItem("selectedWorkoutOptions");
+    if (storedSelected) {
+      try {
+        const arr = JSON.parse(storedSelected);
+        if (Array.isArray(arr) && arr.length > 0) {
+          setSelectedWorkoutOptions(arr);
+          const activeId = arr[arr.length - 1];
+          setSelectedWorkoutOption(activeId);
+          localStorage.setItem("selectedWorkoutOption", activeId);
+        } else {
+          setSelectedWorkoutOptions([]);
+          setSelectedWorkoutOption(null);
+          localStorage.removeItem("selectedWorkoutOption");
+        }
+      } catch { /* ignore */ }
+    } else {
+      const storedOption = localStorage.getItem("selectedWorkoutOption");
+      setSelectedWorkoutOption(storedOption || null);
+      setSelectedWorkoutOptions(storedOption ? [storedOption] : []);
+    }
+    // Load per-plan manual schedule
+    const storedManual = localStorage.getItem("manualScheduleByPlan");
+    if (storedManual) {
+      try {
+        const parsed = JSON.parse(storedManual);
+        if (parsed && typeof parsed === "object") setManualSchedule(parsed);
+      } catch { /* ignore */ }
     }
     if (!storedOptions) {
-      // Initialize with default options
+      // Initialize with 10 default options
       const defaultOptions: WorkoutOption[] = [
-        {
-          id: "option1",
-          name: "Option 1",
-          days: {
-            day1: [],
-            day2: [],
-            day3: [],
-          },
-          dayNames: {
-            day1: "Push Day",
-            day2: "Pull Day",
-            day3: "Legs Day",
-          },
-        },
-        {
-          id: "option2",
-          name: "Option 2",
-          days: {
-            day1: [],
-            day2: [],
-            day3: [],
-          },
-          dayNames: {
-            day1: "Back & Triceps",
-            day2: "Chest & Biceps",
-            day3: "Legs Day",
-          },
-        },
-        {
-          id: "option3",
-          name: "Option 3",
-          days: {
-            day1: [],
-            day2: [],
-            day3: [],
-          },
-          dayNames: {
-            day1: "Upper Body",
-            day2: "Lower Body",
-            day3: "Full Body",
-          },
-        },
+        { id: "option1", name: "Option 1", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Push Day", day2: "Pull Day", day3: "Legs Day" } },
+        { id: "option2", name: "Option 2", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Back & Triceps", day2: "Chest & Biceps", day3: "Legs Day" } },
+        { id: "option3", name: "Option 3", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Upper Body", day2: "Lower Body", day3: "Full Body" } },
+        { id: "option4", name: "Option 4", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Day 1", day2: "Day 2", day3: "Day 3" } },
+        { id: "option5", name: "Option 5", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Day 1", day2: "Day 2", day3: "Day 3" } },
+        { id: "option6", name: "Option 6", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Day 1", day2: "Day 2", day3: "Day 3" } },
+        { id: "option7", name: "Option 7", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Day 1", day2: "Day 2", day3: "Day 3" } },
+        { id: "option8", name: "Option 8", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Day 1", day2: "Day 2", day3: "Day 3" } },
+        { id: "option9", name: "Option 9", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Day 1", day2: "Day 2", day3: "Day 3" } },
+        { id: "option10", name: "Option 10", days: { day1: [], day2: [], day3: [] }, dayNames: { day1: "Day 1", day2: "Day 2", day3: "Day 3" } },
       ];
       setWorkoutOptions(defaultOptions);
       localStorage.setItem("workoutOptions", JSON.stringify(defaultOptions));
     }
   }, []);
 
-  // Get workout type for selected date - must match main page logic exactly
-  const getWorkoutTypeForDate = (date: Date): "pushDay" | "pullDay" | "legsDay" | null => {
-    // Normalize date to start of day for consistent comparison
+  // Get workout info for date - returns { optionId, workoutType } or null
+  const getWorkoutInfoForDate = (date: Date): { optionId: string; workoutType: "pushDay" | "pullDay" | "legsDay" } | null => {
     const normalizedDate = new Date(date);
     normalizedDate.setHours(0, 0, 0, 0);
     const dateStr = normalizedDate.toISOString().split("T")[0];
-    
     const scheduledWorkout = workoutSchedule.find(w => w.date === dateStr);
-    
-    if (!scheduledWorkout) {
-      // Calculate based on day of week if not in schedule - must match main page
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const dayIndex = Math.floor((normalizedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      const workoutNames = ["Push Day", "Pull Day", "Legs Day", "Rest Day", "Push Day", "Pull Day", "Legs Day"];
-      const workoutName = workoutNames[((dayIndex % 7) + 7) % 7];
-      
-      if (workoutName === "Push Day") return "pushDay";
-      if (workoutName === "Pull Day") return "pullDay";
-      if (workoutName === "Legs Day") return "legsDay";
-      return null;
+    if (!scheduledWorkout) return null;
+    const name = scheduledWorkout.workoutName;
+    for (const option of workoutOptions) {
+      if (name === option.dayNames.day1) return { optionId: option.id, workoutType: "pushDay" };
+      if (name === option.dayNames.day2) return { optionId: option.id, workoutType: "pullDay" };
+      if (name === option.dayNames.day3) return { optionId: option.id, workoutType: "legsDay" };
     }
-    
-    if (scheduledWorkout.workoutName === "Push Day") return "pushDay";
-    if (scheduledWorkout.workoutName === "Pull Day") return "pullDay";
-    if (scheduledWorkout.workoutName === "Legs Day") return "legsDay";
+    if (name === "Push Day") return { optionId: selectedWorkoutOption || "option1", workoutType: "pushDay" };
+    if (name === "Pull Day") return { optionId: selectedWorkoutOption || "option1", workoutType: "pullDay" };
+    if (name === "Legs Day") return { optionId: selectedWorkoutOption || "option1", workoutType: "legsDay" };
     return null;
+  };
+
+  const getWorkoutTypeForDate = (date: Date): "pushDay" | "pullDay" | "legsDay" | null => {
+    const info = getWorkoutInfoForDate(date);
+    return info?.workoutType ?? null;
   };
 
   // Get current day's exercises - prioritize workoutOptions if available
   const currentDayExercises: Exercise[] = useMemo(() => {
-    const workoutType = getWorkoutTypeForDate(selectedDate);
-    if (!workoutType) return [];
+    const info = getWorkoutInfoForDate(selectedDate);
+    if (!info) return [];
+    const { optionId, workoutType } = info;
     
     // Load saved exercise images
     let savedImages: Record<string, string> = {};
@@ -471,9 +466,9 @@ export default function WorkoutPage() {
       return ex.imageUrl || savedImages[ex.name?.toLowerCase()] || getBuiltInImageUrl(ex.name);
     };
     
-    // First, check if there's a selected workout option - map workoutType to option's day1/day2/day3
-    if (selectedWorkoutOption && workoutOptions.length > 0) {
-      const option = workoutOptions.find((o: WorkoutOption) => o.id === selectedWorkoutOption);
+    // Load from the plan that has this workout
+    const option = workoutOptions.find((o: WorkoutOption) => o.id === optionId);
+    if (option && workoutOptions.length > 0) {
       if (option) {
         const dayExercises =
           workoutType === "pushDay"
@@ -536,18 +531,14 @@ export default function WorkoutPage() {
     }));
   }, [selectedDate, workoutPlan, workoutSchedule, selectedWorkoutOption, workoutOptions]);
 
-  // Get workout name for any date
+  // Get workout name for any date - from Training days only; Rest Day if none selected
   const getWorkoutNameForDate = (date: Date): string => {
     const normalizedDate = new Date(date);
     normalizedDate.setHours(0, 0, 0, 0);
     const dateStr = normalizedDate.toISOString().split("T")[0];
     const scheduledWorkout = workoutSchedule.find((w) => w.date === dateStr);
     if (scheduledWorkout) return scheduledWorkout.workoutName;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dayIndex = Math.floor((normalizedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    const workoutNames = ["Push Day", "Pull Day", "Legs Day", "Rest Day", "Push Day", "Pull Day", "Legs Day"];
-    return workoutNames[((dayIndex % 7) + 7) % 7];
+    return "Rest Day";
   };
 
   // Week days for date strip (Mon-Sun of current week)
@@ -566,27 +557,19 @@ export default function WorkoutPage() {
     return days;
   }, [selectedDate]);
 
-  // Get current day's workout name - must match main page logic exactly
+  // Get current day's workout name - from Training days only; Rest Day if none selected
   const currentDayWorkoutName = useMemo(() => {
-    // Normalize date to start of day for consistent comparison
     const normalizedDate = new Date(selectedDate);
     normalizedDate.setHours(0, 0, 0, 0);
     const dateStr = normalizedDate.toISOString().split("T")[0];
-    
     const scheduledWorkout = workoutSchedule.find(w => w.date === dateStr);
     if (scheduledWorkout) return scheduledWorkout.workoutName;
-    
-    // Calculate based on day of week if not in schedule - must match main page
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dayIndex = Math.floor((normalizedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    const workoutNames = ["Push Day", "Pull Day", "Legs Day", "Rest Day", "Push Day", "Pull Day", "Legs Day"];
-    return workoutNames[((dayIndex % 7) + 7) % 7];
+    return "Rest Day";
   }, [selectedDate, workoutSchedule]);
 
   // Load workout data for selected date
   const selectedDateStr = useMemo(() => selectedDate.toISOString().split("T")[0], [selectedDate]);
-  const selectedDateWorkoutType = useMemo(() => getWorkoutTypeForDate(selectedDate), [selectedDate, workoutSchedule]);
+  const selectedDateWorkoutType = useMemo(() => getWorkoutTypeForDate(selectedDate), [selectedDate, workoutSchedule, selectedWorkoutOption, workoutOptions]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !selectedDateWorkoutType) return;
@@ -1108,37 +1091,35 @@ export default function WorkoutPage() {
           </div>
         ) : (
           <>
-        {/* Header - linked to workout options */}
-        <div className="flex items-center justify-between mb-2">
+        {/* Header - (Workout plan + Training days) | AI Coach */}
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href="/gym/workouts"
+              className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] font-medium hover:bg-white/10 transition-colors"
+            >
+              <Dumbbell className="w-4 h-4 text-teal-400" />
+              <span className="text-gray-400">Workout plan</span>
+              <ChevronRight className="w-4 h-4 text-gray-500" />
+            </Link>
+            <button
+              onClick={() => setShowManualScheduleModal(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] font-medium hover:bg-white/10 transition-colors shrink-0"
+            >
+              <Calendar className="w-4 h-4 text-teal-400" />
+              <span className="text-gray-400">Training days</span>
+            </button>
+          </div>
           <Link
-            href="/gym/workouts"
-            className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] font-medium hover:bg-white/10 transition-colors"
-          >
-            <Dumbbell className="w-4 h-4 text-teal-400" />
-            {selectedWorkoutOption && workoutOptions.find((o) => o.id === selectedWorkoutOption) ? (
-              <span className="text-teal-400">{workoutOptions.find((o) => o.id === selectedWorkoutOption)?.name}</span>
-            ) : (
-              <span className="text-gray-400">Select plan</span>
-            )}
-            <ChevronRight className="w-4 h-4 text-gray-500" />
-          </Link>
-          <button
-            onClick={() => alert("AI Coach feature coming soon!")}
-            className="px-2 py-1 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-[10px] font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
+            href="/gym/ai-coach"
+            className="px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-[11px] font-medium transition-colors shrink-0 inline-block"
           >
             AI Coach
-          </button>
+          </Link>
         </div>
 
-        {/* Week strip - Mon, Tue, Wed... linked to workout options */}
+        {/* Week strip - driven by Training days (Rest if none selected) */}
         <div className="flex items-center gap-2 mb-4">
-          <button
-            onClick={() => setShowManualScheduleModal(true)}
-            className="p-1.5 text-gray-400 hover:text-teal-400 shrink-0"
-            title="Edit schedule"
-          >
-            <Calendar className="w-5 h-5" />
-          </button>
           <div className="flex gap-1 flex-1 min-w-0 justify-between overflow-x-auto pb-1">
             {weekDays.map((day) => {
               const dateStr = day.toISOString().split("T")[0];
@@ -2030,16 +2011,14 @@ export default function WorkoutPage() {
                 Do you want to schedule your workouts? Speak to the AI Coach or manually select what days you want to train.
               </p>
               <div className="space-y-3">
-                <button
-                  onClick={() => {
-                    setShowSchedulePromptModal(false);
-                    alert("AI Coach feature coming soon!");
-                  }}
+                <Link
+                  href="/gym/ai-coach"
+                  onClick={() => setShowSchedulePromptModal(false)}
                   className="w-full flex items-center justify-center gap-2 py-3 bg-teal-500/20 border border-teal-400/50 text-teal-400 rounded-xl font-semibold hover:bg-teal-500/30 transition-colors"
                 >
                   <Sparkles className="w-5 h-5" />
                   Speak to AI Coach
-                </button>
+                </Link>
                 <button
                   onClick={() => {
                     setShowSchedulePromptModal(false);
@@ -2061,97 +2040,138 @@ export default function WorkoutPage() {
           </div>
         )}
 
-        {/* Manual Schedule Modal - linked to selected workout option */}
+        {/* Manual Schedule Modal - one section per selected plan */}
         {showManualScheduleModal && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
             <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto border border-white/10">
-              <h2 className="text-xl font-bold text-white mb-2">Select training days</h2>
-              {selectedWorkoutOption && workoutOptions.find((o) => o.id === selectedWorkoutOption) && (
-                <p className="text-teal-400 text-xs mb-2">
-                  Using: {workoutOptions.find((o) => o.id === selectedWorkoutOption)?.name}
-                </p>
-              )}
-              <p className="text-gray-400 text-sm mb-4">
-                Choose which days you want to do each workout.
-              </p>
-              <div className="space-y-4">
-                {[
-                  { key: "pushDays" as const, label: (workoutOptions.find((o) => o.id === selectedWorkoutOption)?.dayNames.day1) || "Push Day" },
-                  { key: "pullDays" as const, label: (workoutOptions.find((o) => o.id === selectedWorkoutOption)?.dayNames.day2) || "Pull Day" },
-                  { key: "legsDays" as const, label: (workoutOptions.find((o) => o.id === selectedWorkoutOption)?.dayNames.day3) || "Legs Day" },
-                ].map(({ key, label }) => (
-                  <div key={key}>
-                    <p className="text-sm font-medium text-white mb-2">{label}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, i) => {
-                        const isSelected = manualSchedule[key].includes(i);
-                        return (
-                          <button
-                            key={i}
-                            onClick={() => {
-                              setManualSchedule((prev) => ({
-                                ...prev,
-                                [key]: isSelected
-                                  ? prev[key].filter((d) => d !== i)
-                                  : [...prev[key], i].sort((a, b) => a - b),
-                              }));
-                            }}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                              isSelected
-                                ? "bg-teal-500/30 border border-teal-400/50 text-teal-300"
-                                : "bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10"
-                            }`}
-                          >
-                            {day}
-                          </button>
-                        );
-                      })}
-                    </div>
+              {selectedWorkoutOptions.length > 0 ? (
+                <>
+                  <h2 className="text-xl font-bold text-white mb-2">Select training days</h2>
+                  <p className="text-gray-400 text-sm mb-4">
+                    Choose which days you want to do each workout.
+                  </p>
+                  <div className="space-y-6">
+                    {selectedWorkoutOptions.map((optId) => {
+                      const opt = workoutOptions.find((o) => o.id === optId);
+                      if (!opt) return null;
+                      const sched = manualSchedule[optId] ?? { pushDays: [], pullDays: [], legsDays: [] };
+                      const dayRows = [
+                        { key: "pushDays" as const, label: opt.dayNames.day1 },
+                        { key: "pullDays" as const, label: opt.dayNames.day2 },
+                        { key: "legsDays" as const, label: opt.dayNames.day3 },
+                      ];
+                      return (
+                        <div key={optId} className="border border-white/10 rounded-xl p-3">
+                          <h3 className="text-sm font-semibold text-teal-400 mb-3">{opt.name}</h3>
+                          {dayRows.map(({ key, label }) => (
+                            <div key={key} className="mb-3 last:mb-0">
+                              <p className="text-xs font-medium text-gray-400 mb-1.5">{label}</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, i) => {
+                                  const isSelected = sched[key].includes(i);
+                                  return (
+                                    <button
+                                      key={i}
+                                      onClick={() => {
+                                        setManualSchedule((prev) => {
+                                          const curr = prev[optId] ?? { pushDays: [], pullDays: [], legsDays: [] };
+                                          return {
+                                            ...prev,
+                                            [optId]: {
+                                              ...curr,
+                                              [key]: isSelected
+                                                ? curr[key].filter((d) => d !== i)
+                                                : [...curr[key], i].sort((a, b) => a - b),
+                                            },
+                                          };
+                                        });
+                                      }}
+                                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                                        isSelected ? "bg-teal-500/30 border border-teal-400/50 text-teal-300" : "bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10"
+                                      }`}
+                                    >
+                                      {day}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setShowManualScheduleModal(false)}
-                  className="flex-1 py-3 bg-white/5 text-gray-400 rounded-xl font-semibold hover:bg-white/10 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const newSchedule: WorkoutSchedule[] = [];
-                    for (let i = 0; i < 28; i++) {
-                      const d = new Date(today);
-                      d.setDate(today.getDate() + i);
-                      const dateStr = d.toISOString().split("T")[0];
-                      const dayOfWeek = d.getDay();
-                      let workoutName = "Rest Day";
-                      if (manualSchedule.pushDays.includes(dayOfWeek)) workoutName = "Push Day";
-                      else if (manualSchedule.pullDays.includes(dayOfWeek)) workoutName = "Pull Day";
-                      else if (manualSchedule.legsDays.includes(dayOfWeek)) workoutName = "Legs Day";
-                      newSchedule.push({ date: dateStr, workoutName, completed: false });
-                    }
-                    const existingByDate = new Map(workoutSchedule.map((w) => [w.date, w]));
-                    newSchedule.forEach((entry) => {
-                      const existing = existingByDate.get(entry.date);
-                      existingByDate.set(entry.date, { ...entry, completed: existing?.completed ?? false });
-                    });
-                    const merged = Array.from(existingByDate.values()).sort(
-                      (a, b) => a.date.localeCompare(b.date)
-                    );
-                    setWorkoutSchedule(merged);
-                    if (typeof window !== "undefined") {
-                      localStorage.setItem("workoutSchedule", JSON.stringify(merged));
-                    }
-                    setShowManualScheduleModal(false);
-                  }}
-                  className="flex-1 py-3 bg-teal-400 hover:bg-teal-500 text-black rounded-xl font-semibold transition-colors"
-                >
-                  Save Schedule
-                </button>
-              </div>
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={() => setShowManualScheduleModal(false)}
+                      className="flex-1 py-3 bg-white/5 text-gray-400 rounded-xl font-semibold hover:bg-white/10 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const dayToWorkout = new Map<number, { name: string }>();
+                        for (const optId of selectedWorkoutOptions) {
+                          const opt = workoutOptions.find((o) => o.id === optId);
+                          if (!opt) continue;
+                          const sched = manualSchedule[optId] ?? { pushDays: [], pullDays: [], legsDays: [] };
+                          for (const d of sched.pushDays) if (!dayToWorkout.has(d)) dayToWorkout.set(d, { name: opt.dayNames.day1 });
+                          for (const d of sched.pullDays) if (!dayToWorkout.has(d)) dayToWorkout.set(d, { name: opt.dayNames.day2 });
+                          for (const d of sched.legsDays) if (!dayToWorkout.has(d)) dayToWorkout.set(d, { name: opt.dayNames.day3 });
+                        }
+                        const newSchedule: WorkoutSchedule[] = [];
+                        for (let i = 0; i < 28; i++) {
+                          const d = new Date(today);
+                          d.setDate(today.getDate() + i);
+                          const dateStr = d.toISOString().split("T")[0];
+                          const dayOfWeek = d.getDay();
+                          const assigned = dayToWorkout.get(dayOfWeek);
+                          newSchedule.push({ date: dateStr, workoutName: assigned?.name ?? "Rest Day", completed: false });
+                        }
+                        const existingByDate = new Map(workoutSchedule.map((w) => [w.date, w]));
+                        newSchedule.forEach((entry) => {
+                          const existing = existingByDate.get(entry.date);
+                          existingByDate.set(entry.date, { ...entry, completed: existing?.completed ?? false });
+                        });
+                        const merged = Array.from(existingByDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+                        setWorkoutSchedule(merged);
+                        if (typeof window !== "undefined") {
+                          localStorage.setItem("workoutSchedule", JSON.stringify(merged));
+                          localStorage.setItem("manualScheduleByPlan", JSON.stringify(manualSchedule));
+                        }
+                        setShowManualScheduleModal(false);
+                      }}
+                      className="flex-1 py-3 bg-teal-400 hover:bg-teal-500 text-black rounded-xl font-semibold transition-colors"
+                    >
+                      Save Schedule
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-white font-semibold mb-2">Select a plan first</p>
+                  <p className="text-gray-400 text-sm mb-4">
+                    Choose Option 1, Option 2, or create a custom plan. Then you can pick which days to do each workout.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowManualScheduleModal(false)}
+                      className="flex-1 py-3 bg-white/5 text-gray-400 rounded-xl font-semibold hover:bg-white/10 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <Link
+                      href="/gym/workouts"
+                      onClick={() => setShowManualScheduleModal(false)}
+                      className="flex-1 py-3 bg-teal-400 hover:bg-teal-500 text-black rounded-xl font-semibold transition-colors text-center"
+                    >
+                      Select plan
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
