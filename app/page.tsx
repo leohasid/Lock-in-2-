@@ -334,15 +334,6 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Motivation - centered */}
-        <div className="rounded-2xl p-4 text-center bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30">
-          <p className="text-sm text-gray-300">
-            ✨ Remember why you started.{" "}
-            <Link href="/goals" className="font-semibold text-teal-400 hover:text-teal-300 hover:underline">
-              Stay locked in.
-            </Link>
-          </p>
-        </div>
       </div>
 
       <BottomNav />

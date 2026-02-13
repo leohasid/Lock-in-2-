@@ -555,8 +555,18 @@ Check if they specified days. If not, ask specifically about days.`
 
         {/* Date Click Modal - Shows Reminders for Selected Date */}
         {showDateModal && clickedDate && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto border border-white/10">
+          <div
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+            onClick={() => {
+              setShowDateModal(false);
+              setClickedDate(null);
+              setSelectedDate(new Date());
+            }}
+          >
+            <div
+              className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto border border-white/10"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-white">
                   {clickedDate.toLocaleDateString("en-US", { 
@@ -570,6 +580,7 @@ Check if they specified days. If not, ask specifically about days.`
                   onClick={() => {
                     setShowDateModal(false);
                     setClickedDate(null);
+                    setSelectedDate(new Date());
                   }}
                   className="text-gray-400 hover:text-white text-2xl"
                 >

@@ -164,14 +164,12 @@ export default function WorkoutPage() {
   const [workoutMode, setWorkoutMode] = useState<"browse" | "active">("browse");
   const [guidedExercises, setGuidedExercises] = useState<Exercise[] | null>(null);
   const [workoutSchedule, setWorkoutSchedule] = useState<WorkoutSchedule[]>([]);
+  const [manualScheduleByPlan, setManualScheduleByPlan] = useState<Record<string, { days: number[] }>>({});
   const [showCustomWorkoutModal, setShowCustomWorkoutModal] = useState(false);
   const [showWorkoutOptions, setShowWorkoutOptions] = useState(true);
   const [selectedWorkoutOption, setSelectedWorkoutOption] = useState<string | null>(null);
   const [selectedWorkoutOptions, setSelectedWorkoutOptions] = useState<string[]>([]);
   const [showSchedulePromptModal, setShowSchedulePromptModal] = useState(false);
-  const [showManualScheduleModal, setShowManualScheduleModal] = useState(false);
-  // Per-plan schedule: { [optionId]: { pushDays, pullDays, legsDays } }
-  const [manualSchedule, setManualSchedule] = useState<Record<string, { pushDays: number[]; pullDays: number[]; legsDays: number[] }>>({});
   const [workoutOptions, setWorkoutOptions] = useState<WorkoutOption[]>([]);
   const [customWorkoutPlan, setCustomWorkoutPlan] = useState<{
     pushDay: CustomExercise[];
@@ -194,27 +192,24 @@ export default function WorkoutPage() {
     }
   }, [typeof window !== "undefined" ? window.location.search : ""]);
 
-  // Update selectedDate when URL changes
+  // Update selectedDate when URL changes (use searchParams so it reacts to client-side nav)
+  const urlDateParam = searchParams.get("date");
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const urlDateParam = params.get("date");
     if (urlDateParam) {
       try {
         const newDate = new Date(urlDateParam + "T00:00:00");
         if (!isNaN(newDate.getTime())) {
-          const currentDateStr = selectedDate.toISOString().split("T")[0];
-          const newDateStr = newDate.toISOString().split("T")[0];
-          // Only update if date actually changed
-          if (currentDateStr !== newDateStr) {
-            setSelectedDate(newDate);
-          }
+          setSelectedDate((prev) => {
+            const currentDateStr = prev.toISOString().split("T")[0];
+            const newDateStr = newDate.toISOString().split("T")[0];
+            return currentDateStr !== newDateStr ? newDate : prev;
+          });
         }
       } catch (e) {
         console.error("Error parsing date:", e);
       }
     }
-  }, [typeof window !== "undefined" ? window.location.search : ""]);
+  }, [urlDateParam]);
 
   // Handle option parameter - separate effect to avoid infinite loop
   useEffect(() => {
@@ -296,12 +291,6 @@ export default function WorkoutPage() {
   }, [typeof window !== "undefined" ? window.location.search : "", selectedDate, selectedWorkoutOption]);
 
   // When arriving from "Use" on workouts page, open Training days modal (after plan loads)
-  useEffect(() => {
-    if (searchParams.get("openTrainingDays") !== "1") return;
-    router.replace("/gym/workout", { scroll: false });
-    const t = setTimeout(() => setShowManualScheduleModal(true), 50);
-    return () => clearTimeout(t);
-  }, [searchParams, router]);
 
   // Load workout plan and schedule
   useEffect(() => {
@@ -361,6 +350,25 @@ export default function WorkoutPage() {
         console.error("Error loading workout schedule:", e);
       }
     }
+    const storedManual = localStorage.getItem("manualScheduleByPlan");
+    if (storedManual) {
+      try {
+        const parsed = JSON.parse(storedManual);
+        if (parsed && typeof parsed === "object") {
+          const migrated: Record<string, { days: number[] }> = {};
+          for (const [k, v] of Object.entries(parsed)) {
+            const old = v as { pushDays?: number[]; pullDays?: number[]; legsDays?: number[] };
+            if (old.pushDays || old.pullDays || old.legsDays) {
+              const all = [...(old.pushDays || []), ...(old.pullDays || []), ...(old.legsDays || [])];
+              migrated[k] = { days: [...new Set(all)].sort((a, b) => a - b) };
+            } else if (old && "days" in old && Array.isArray((old as any).days)) {
+              migrated[k] = { days: (old as any).days };
+            }
+          }
+          setManualScheduleByPlan(migrated);
+        }
+      } catch { /* ignore */ }
+    }
     // Load workout options
     const storedOptions = localStorage.getItem("workoutOptions");
     if (storedOptions) {
@@ -391,14 +399,6 @@ export default function WorkoutPage() {
       setSelectedWorkoutOption(storedOption || null);
       setSelectedWorkoutOptions(storedOption ? [storedOption] : []);
     }
-    // Load per-plan manual schedule
-    const storedManual = localStorage.getItem("manualScheduleByPlan");
-    if (storedManual) {
-      try {
-        const parsed = JSON.parse(storedManual);
-        if (parsed && typeof parsed === "object") setManualSchedule(parsed);
-      } catch { /* ignore */ }
-    }
     if (!storedOptions) {
       // Initialize with 10 default options
       const defaultOptions: WorkoutOption[] = [
@@ -418,22 +418,68 @@ export default function WorkoutPage() {
     }
   }, []);
 
-  // Get workout info for date - returns { optionId, workoutType } or null
+  // Get workout info for date - from workoutSchedule, or derived from manualScheduleByPlan
   const getWorkoutInfoForDate = (date: Date): { optionId: string; workoutType: "pushDay" | "pullDay" | "legsDay" } | null => {
     const normalizedDate = new Date(date);
     normalizedDate.setHours(0, 0, 0, 0);
     const dateStr = normalizedDate.toISOString().split("T")[0];
+    let workoutName: string | null = null;
+    let resolvedOptionId: string | null = null;
+
+    // 1. Try workoutSchedule first
     const scheduledWorkout = workoutSchedule.find(w => w.date === dateStr);
-    if (!scheduledWorkout) return null;
-    const name = scheduledWorkout.workoutName;
-    for (const option of workoutOptions) {
-      if (name === option.dayNames.day1) return { optionId: option.id, workoutType: "pushDay" };
-      if (name === option.dayNames.day2) return { optionId: option.id, workoutType: "pullDay" };
-      if (name === option.dayNames.day3) return { optionId: option.id, workoutType: "legsDay" };
+    if (scheduledWorkout && scheduledWorkout.workoutName !== "Rest Day") {
+      workoutName = scheduledWorkout.workoutName;
     }
-    if (name === "Push Day") return { optionId: selectedWorkoutOption || "option1", workoutType: "pushDay" };
-    if (name === "Pull Day") return { optionId: selectedWorkoutOption || "option1", workoutType: "pullDay" };
-    if (name === "Legs Day") return { optionId: selectedWorkoutOption || "option1", workoutType: "legsDay" };
+
+    // 2. Fall back to manualScheduleByPlan (day-of-week rules)
+    if (!workoutName && selectedWorkoutOptions.length > 0) {
+      const dayOfWeek = normalizedDate.getDay();
+      for (const optId of selectedWorkoutOptions) {
+        const opt = workoutOptions.find((o) => o.id === optId);
+        if (!opt) continue;
+        const days = (manualScheduleByPlan[optId] ?? { days: [] }).days;
+        const idx = days.indexOf(dayOfWeek);
+        if (idx >= 0) {
+          const names = [opt.dayNames.day1, opt.dayNames.day2, opt.dayNames.day3];
+          workoutName = names[idx % 3] ?? null;
+          resolvedOptionId = optId;
+          break;
+        }
+      }
+    }
+
+    // 3. Last resort: use selected option with day cycling by day-of-week (when no schedule saved)
+    if (!workoutName && selectedWorkoutOption) {
+      const opt = workoutOptions.find((o) => o.id === selectedWorkoutOption);
+      if (opt) {
+        const dayOfWeek = normalizedDate.getDay();
+        const dayIndex = dayOfWeek % 3;
+        const names = [opt.dayNames.day1, opt.dayNames.day2, opt.dayNames.day3];
+        workoutName = names[dayIndex] ?? opt.dayNames.day1;
+      }
+    }
+
+    if (!workoutName) return null;
+
+    // If we resolved from manualScheduleByPlan, use that option and workout type
+    if (resolvedOptionId) {
+      const opt = workoutOptions.find((o) => o.id === resolvedOptionId);
+      if (opt) {
+        if (workoutName === opt.dayNames.day1) return { optionId: resolvedOptionId, workoutType: "pushDay" };
+        if (workoutName === opt.dayNames.day2) return { optionId: resolvedOptionId, workoutType: "pullDay" };
+        if (workoutName === opt.dayNames.day3) return { optionId: resolvedOptionId, workoutType: "legsDay" };
+      }
+    }
+
+    for (const option of workoutOptions) {
+      if (workoutName === option.dayNames.day1) return { optionId: option.id, workoutType: "pushDay" };
+      if (workoutName === option.dayNames.day2) return { optionId: option.id, workoutType: "pullDay" };
+      if (workoutName === option.dayNames.day3) return { optionId: option.id, workoutType: "legsDay" };
+    }
+    if (workoutName === "Push Day") return { optionId: selectedWorkoutOption || "option1", workoutType: "pushDay" };
+    if (workoutName === "Pull Day") return { optionId: selectedWorkoutOption || "option1", workoutType: "pullDay" };
+    if (workoutName === "Legs Day") return { optionId: selectedWorkoutOption || "option1", workoutType: "legsDay" };
     return null;
   };
 
@@ -442,103 +488,117 @@ export default function WorkoutPage() {
     return info?.workoutType ?? null;
   };
 
-  // Get current day's exercises - prioritize workoutOptions if available
+  // Get current day's exercises - date-specific saved data first, then option template
   const currentDayExercises: Exercise[] = useMemo(() => {
-    const info = getWorkoutInfoForDate(selectedDate);
-    if (!info) return [];
-    const { optionId, workoutType } = info;
-    
+    const selectedDateStr = selectedDate.toISOString().split("T")[0];
+
     // Load saved exercise images
     let savedImages: Record<string, string> = {};
     if (typeof window !== "undefined") {
       try {
         const storedImages = localStorage.getItem("exerciseImages");
-        if (storedImages) {
-          savedImages = JSON.parse(storedImages);
-        }
-      } catch (e) {
-        // Ignore errors
+        if (storedImages) savedImages = JSON.parse(storedImages);
+      } catch (e) {}
+    }
+    const getImageUrl = (ex: any): string | undefined =>
+      ex.imageUrl || savedImages[ex.name?.toLowerCase()] || getBuiltInImageUrl(ex.name);
+
+    // 1. Always check date-specific saved data first (user's exercises for this date)
+    if (typeof window !== "undefined") {
+      const raw = localStorage.getItem(`workout_data_${selectedDateStr}`);
+      if (raw) {
+        try {
+          const savedData = JSON.parse(raw);
+          if (Array.isArray(savedData) && savedData.length > 0) {
+            return savedData.map((s: any) => ({
+              id: s.id || `ex-${Date.now()}-${Math.random()}`,
+              name: s.name || "",
+              goalSets: s.sets?.length || 3,
+              goalReps: 10,
+              goalWeight: 0,
+              imageUrl: getImageUrl(s),
+              sets: (s.sets || []).map((set: any) => ({
+                reps: set.reps ?? 10,
+                weight: set.weight ?? 0,
+                completed: set.completed ?? false,
+              })),
+            }));
+          }
+        } catch (e) {}
       }
     }
-    
-    // Helper to get image for exercise
-    const getImageUrl = (ex: any): string | undefined => {
-      return ex.imageUrl || savedImages[ex.name?.toLowerCase()] || getBuiltInImageUrl(ex.name);
-    };
-    
-    // Load from the plan that has this workout
+
+    // 2. Fall back to option template for this date's workout type (from schedule or manualScheduleByPlan)
+    const info = getWorkoutInfoForDate(selectedDate);
+    if (!info) return [];
+
+    const { optionId, workoutType } = info;
     const option = workoutOptions.find((o: WorkoutOption) => o.id === optionId);
     if (option && workoutOptions.length > 0) {
-      if (option) {
-        const dayExercises =
-          workoutType === "pushDay"
-            ? option.days.day1
-            : workoutType === "pullDay"
-              ? option.days.day2
-              : option.days.day3;
-        if (dayExercises && dayExercises.length > 0) {
-          return dayExercises.map((ex: any) => ({
-            id: ex.id || `ex-${Date.now()}-${Math.random()}`,
-            name: ex.name || "",
-            goalSets: ex.goalSets || ex.sets || 3,
-            goalReps: ex.goalReps || ex.reps || 10,
-            goalWeight: ex.goalWeight || 0,
-            imageUrl: getImageUrl(ex),
-            sets: ex.sets || Array.from({ length: ex.goalSets || ex.sets || 3 }, () => ({
-              reps: ex.goalReps || ex.reps || 10,
-              weight: ex.goalWeight || 0,
-              completed: false,
-            })),
-          }));
-        }
+      const dayExercises =
+        workoutType === "pushDay" ? option.days.day1 :
+        workoutType === "pullDay" ? option.days.day2 : option.days.day3;
+      if (dayExercises && dayExercises.length > 0) {
+        return dayExercises.map((ex: any) => ({
+          id: ex.id || `ex-${Date.now()}-${Math.random()}`,
+          name: ex.name || "",
+          goalSets: ex.goalSets || ex.sets || 3,
+          goalReps: ex.goalReps || ex.reps || 10,
+          goalWeight: ex.goalWeight || 0,
+          imageUrl: getImageUrl(ex),
+          sets: ex.sets || Array.from({ length: ex.goalSets || ex.sets || 3 }, () => ({
+            reps: ex.goalReps || ex.reps || 10,
+            weight: ex.goalWeight || 0,
+            completed: false,
+          })),
+        }));
       }
     }
 
-    // If no option selected, try to find the option that matches current workout type
-    // and has exercises
-    if (workoutOptions.length > 0 && workoutPlan[workoutType]?.length === 0) {
-      // Find the first option that has exercises for this day type
-      for (const option of workoutOptions) {
-        const allExercises = [
-          ...(option.days.day1 || []),
-          ...(option.days.day2 || []),
-          ...(option.days.day3 || []),
-        ];
-        if (allExercises.length > 0) {
-          // Convert to Exercise format
-          return allExercises.map((ex: any) => ({
-            id: ex.id || `ex-${Date.now()}-${Math.random()}`,
-            name: ex.name || "",
-            goalSets: ex.goalSets || ex.sets || 3,
-            goalReps: ex.goalReps || ex.reps || 10,
-            goalWeight: ex.goalWeight || 0,
-            imageUrl: getImageUrl(ex),
-            sets: ex.sets || Array.from({ length: ex.goalSets || ex.sets || 3 }, () => ({
-              reps: ex.goalReps || ex.reps || 10,
-              weight: ex.goalWeight || 0,
-              completed: false,
-            })),
-          }));
-        }
-      }
-    }
-    
-    // Fall back to workoutPlan
-    const exercises = workoutPlan[workoutType] || [];
-    return exercises.map((ex: Exercise) => ({
-      ...ex,
-      imageUrl: ex.imageUrl || savedImages[ex.name?.toLowerCase()] || getBuiltInImageUrl(ex.name),
-    }));
-  }, [selectedDate, workoutPlan, workoutSchedule, selectedWorkoutOption, workoutOptions]);
+    return [];
+  }, [selectedDate, workoutSchedule, selectedWorkoutOption, selectedWorkoutOptions, manualScheduleByPlan, workoutOptions, workoutPlan]);
 
-  // Get workout name for any date - from Training days only; Rest Day if none selected
+  // Get workout name for any date - from schedule or manualScheduleByPlan
   const getWorkoutNameForDate = (date: Date): string => {
     const normalizedDate = new Date(date);
     normalizedDate.setHours(0, 0, 0, 0);
     const dateStr = normalizedDate.toISOString().split("T")[0];
     const scheduledWorkout = workoutSchedule.find((w) => w.date === dateStr);
-    if (scheduledWorkout) return scheduledWorkout.workoutName;
+    if (scheduledWorkout && scheduledWorkout.workoutName !== "Rest Day") return scheduledWorkout.workoutName;
+    // Fall back to manualScheduleByPlan
+    if (selectedWorkoutOptions.length > 0) {
+      const dayOfWeek = normalizedDate.getDay();
+      for (const optId of selectedWorkoutOptions) {
+        const opt = workoutOptions.find((o) => o.id === optId);
+        if (!opt) continue;
+        const days = (manualScheduleByPlan[optId] ?? { days: [] }).days;
+        const idx = days.indexOf(dayOfWeek);
+        if (idx >= 0) {
+          const names = [opt.dayNames.day1, opt.dayNames.day2, opt.dayNames.day3];
+          return names[idx % 3] ?? "Rest Day";
+        }
+      }
+    }
+    // Last resort: cycle by day-of-week when no schedule saved
+    if (selectedWorkoutOption) {
+      const opt = workoutOptions.find((o) => o.id === selectedWorkoutOption);
+      if (opt) {
+        const dayOfWeek = normalizedDate.getDay();
+        const names = [opt.dayNames.day1, opt.dayNames.day2, opt.dayNames.day3];
+        return names[dayOfWeek % 3] ?? opt.dayNames.day1;
+      }
+    }
     return "Rest Day";
+  };
+
+  // Get display name for date - shows option name (e.g. "Option 2") instead of workout type (e.g. "Chest & Biceps")
+  const getWorkoutDisplayNameForDate = (date: Date): string => {
+    const info = getWorkoutInfoForDate(date);
+    if (info) {
+      const opt = workoutOptions.find((o) => o.id === info.optionId);
+      if (opt) return opt.name;
+    }
+    return getWorkoutNameForDate(date);
   };
 
   // Week days for date strip (Mon-Sun of current week)
@@ -557,15 +617,10 @@ export default function WorkoutPage() {
     return days;
   }, [selectedDate]);
 
-  // Get current day's workout name - from Training days only; Rest Day if none selected
+  // Get current day's workout display name - option name (e.g. "Option 2") or "Rest Day"
   const currentDayWorkoutName = useMemo(() => {
-    const normalizedDate = new Date(selectedDate);
-    normalizedDate.setHours(0, 0, 0, 0);
-    const dateStr = normalizedDate.toISOString().split("T")[0];
-    const scheduledWorkout = workoutSchedule.find(w => w.date === dateStr);
-    if (scheduledWorkout) return scheduledWorkout.workoutName;
-    return "Rest Day";
-  }, [selectedDate, workoutSchedule]);
+    return getWorkoutDisplayNameForDate(selectedDate);
+  }, [selectedDate, workoutSchedule, workoutOptions, selectedWorkoutOption, selectedWorkoutOptions, manualScheduleByPlan]);
 
   // Load workout data for selected date
   const selectedDateStr = useMemo(() => selectedDate.toISOString().split("T")[0], [selectedDate]);
@@ -1078,7 +1133,7 @@ export default function WorkoutPage() {
           </div>
         ) : (
           <>
-        {/* Header - (Workout plan + Training days) | AI Coach */}
+        {/* Header - Workout plan | AI Coach */}
         <div className="flex items-center justify-between gap-3 mb-2">
           <div className="flex items-center gap-2 shrink-0">
             <Link
@@ -1089,13 +1144,6 @@ export default function WorkoutPage() {
               <span className="text-gray-400">Workout plan</span>
               <ChevronRight className="w-4 h-4 text-gray-500" />
             </Link>
-            <button
-              onClick={() => setShowManualScheduleModal(true)}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] font-medium hover:bg-white/10 transition-colors shrink-0"
-            >
-              <Calendar className="w-4 h-4 text-teal-400" />
-              <span className="text-gray-400">Training days</span>
-            </button>
           </div>
           <Link
             href="/gym/ai-coach"
@@ -1110,12 +1158,12 @@ export default function WorkoutPage() {
           <div className="flex gap-1 flex-1 min-w-0 justify-between overflow-x-auto pb-1">
             {weekDays.map((day) => {
               const dateStr = day.toISOString().split("T")[0];
-              const workoutName = getWorkoutNameForDate(day);
+              const displayName = getWorkoutDisplayNameForDate(day);
               const isSelected = selectedDate.toISOString().split("T")[0] === dateStr;
               const isToday = new Date().toISOString().split("T")[0] === dateStr;
               const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
               const dayLabel = dayLabels[day.getDay() === 0 ? 6 : day.getDay() - 1];
-              const workoutShort = workoutName === "Rest Day" ? "Rest" : workoutName.replace(" Day", "");
+              const workoutShort = displayName === "Rest Day" ? "Rest" : displayName;
               return (
                 <button
                   key={dateStr}
@@ -1132,7 +1180,7 @@ export default function WorkoutPage() {
                   <span className={`text-[10px] font-medium ${isToday ? "text-teal-400" : "text-gray-400"}`}>
                     {dayLabel}
                   </span>
-                  <span className="text-[8px] text-gray-500 mt-1 truncate w-full text-center" title={workoutName}>
+                  <span className="text-[8px] text-gray-500 mt-1 truncate w-full text-center" title={displayName}>
                     {workoutShort}
                   </span>
                 </button>
@@ -2006,16 +2054,14 @@ export default function WorkoutPage() {
                   <Sparkles className="w-5 h-5" />
                   Speak to AI Coach
                 </Link>
-                <button
-                  onClick={() => {
-                    setShowSchedulePromptModal(false);
-                    setShowManualScheduleModal(true);
-                  }}
+                <Link
+                  href="/gym/workouts"
+                  onClick={() => setShowSchedulePromptModal(false)}
                   className="w-full flex items-center justify-center gap-2 py-3 bg-white/10 border border-white/20 text-white rounded-xl font-semibold hover:bg-white/15 transition-colors"
                 >
                   <Calendar className="w-5 h-5" />
-                  Manually select days
-                </button>
+                  Assign days to plans
+                </Link>
                 <button
                   onClick={() => setShowSchedulePromptModal(false)}
                   className="w-full py-3 text-gray-400 hover:text-white text-sm transition-colors"
@@ -2027,141 +2073,6 @@ export default function WorkoutPage() {
           </div>
         )}
 
-        {/* Manual Schedule Modal - one section per selected plan */}
-        {showManualScheduleModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto border border-white/10">
-              {selectedWorkoutOptions.length > 0 ? (
-                <>
-                  <h2 className="text-xl font-bold text-white mb-2">Select training days</h2>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Choose which days you want to do each workout.
-                  </p>
-                  <div className="space-y-6">
-                    {selectedWorkoutOptions.map((optId) => {
-                      const opt = workoutOptions.find((o) => o.id === optId);
-                      if (!opt) return null;
-                      const sched = manualSchedule[optId] ?? { pushDays: [], pullDays: [], legsDays: [] };
-                      const dayRows = [
-                        { key: "pushDays" as const, label: opt.dayNames.day1 },
-                        { key: "pullDays" as const, label: opt.dayNames.day2 },
-                        { key: "legsDays" as const, label: opt.dayNames.day3 },
-                      ];
-                      return (
-                        <div key={optId} className="border border-white/10 rounded-xl p-3">
-                          <h3 className="text-sm font-semibold text-teal-400 mb-3">{opt.name}</h3>
-                          {dayRows.map(({ key, label }) => (
-                            <div key={key} className="mb-3 last:mb-0">
-                              <p className="text-xs font-medium text-gray-400 mb-1.5">{label}</p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, i) => {
-                                  const isSelected = sched[key].includes(i);
-                                  return (
-                                    <button
-                                      key={i}
-                                      onClick={() => {
-                                        setManualSchedule((prev) => {
-                                          const curr = prev[optId] ?? { pushDays: [], pullDays: [], legsDays: [] };
-                                          return {
-                                            ...prev,
-                                            [optId]: {
-                                              ...curr,
-                                              [key]: isSelected
-                                                ? curr[key].filter((d) => d !== i)
-                                                : [...curr[key], i].sort((a, b) => a - b),
-                                            },
-                                          };
-                                        });
-                                      }}
-                                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                                        isSelected ? "bg-teal-500/30 border border-teal-400/50 text-teal-300" : "bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10"
-                                      }`}
-                                    >
-                                      {day}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="flex gap-3 mt-6">
-                    <button
-                      onClick={() => setShowManualScheduleModal(false)}
-                      className="flex-1 py-3 bg-white/5 text-gray-400 rounded-xl font-semibold hover:bg-white/10 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const dayToWorkout = new Map<number, { name: string }>();
-                        for (const optId of selectedWorkoutOptions) {
-                          const opt = workoutOptions.find((o) => o.id === optId);
-                          if (!opt) continue;
-                          const sched = manualSchedule[optId] ?? { pushDays: [], pullDays: [], legsDays: [] };
-                          for (const d of sched.pushDays) if (!dayToWorkout.has(d)) dayToWorkout.set(d, { name: opt.dayNames.day1 });
-                          for (const d of sched.pullDays) if (!dayToWorkout.has(d)) dayToWorkout.set(d, { name: opt.dayNames.day2 });
-                          for (const d of sched.legsDays) if (!dayToWorkout.has(d)) dayToWorkout.set(d, { name: opt.dayNames.day3 });
-                        }
-                        const newSchedule: WorkoutSchedule[] = [];
-                        for (let i = 0; i < 28; i++) {
-                          const d = new Date(today);
-                          d.setDate(today.getDate() + i);
-                          const dateStr = d.toISOString().split("T")[0];
-                          const dayOfWeek = d.getDay();
-                          const assigned = dayToWorkout.get(dayOfWeek);
-                          newSchedule.push({ date: dateStr, workoutName: assigned?.name ?? "Rest Day", completed: false });
-                        }
-                        const existingByDate = new Map(workoutSchedule.map((w) => [w.date, w]));
-                        newSchedule.forEach((entry) => {
-                          const existing = existingByDate.get(entry.date);
-                          existingByDate.set(entry.date, { ...entry, completed: existing?.completed ?? false });
-                        });
-                        const merged = Array.from(existingByDate.values()).sort((a, b) => a.date.localeCompare(b.date));
-                        setWorkoutSchedule(merged);
-                        if (typeof window !== "undefined") {
-                          localStorage.setItem("workoutSchedule", JSON.stringify(merged));
-                          localStorage.setItem("manualScheduleByPlan", JSON.stringify(manualSchedule));
-                        }
-                        setShowManualScheduleModal(false);
-                      }}
-                      className="flex-1 py-3 bg-teal-400 hover:bg-teal-500 text-black rounded-xl font-semibold transition-colors"
-                    >
-                      Save Schedule
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-white font-semibold mb-2">Select a plan first</p>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Choose Option 1, Option 2, or create a custom plan. Then you can pick which days to do each workout.
-                  </p>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setShowManualScheduleModal(false)}
-                      className="flex-1 py-3 bg-white/5 text-gray-400 rounded-xl font-semibold hover:bg-white/10 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <Link
-                      href="/gym/workouts"
-                      onClick={() => setShowManualScheduleModal(false)}
-                      className="flex-1 py-3 bg-teal-400 hover:bg-teal-500 text-black rounded-xl font-semibold transition-colors text-center"
-                    >
-                      Select plan
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
           </>
         )}
       </div>
