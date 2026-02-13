@@ -110,63 +110,26 @@ export default function WorkoutOptionPage() {
 
     const convertedExercises = convertExercises(exercises);
 
-    // Put all exercises into day1 for this workout option
-    // This way all exercises will be available when the workout is selected
+    // Each option is one workout - user names it (e.g. "Chest and Tri") and adds exercises
     const day1Exercises = convertedExercises;
     const day2Exercises: any[] = [];
     const day3Exercises: any[] = [];
 
-    // Update the workout option
-    const updatedOptions = workoutOptions.map(opt => 
+    const updatedOptions = workoutOptions.map(opt =>
       opt.id === optionId
-        ? {
-            ...opt,
-            name: workoutName,
-            days: {
-              day1: day1Exercises,
-              day2: day2Exercises,
-              day3: day3Exercises,
-            },
-          }
+        ? { ...opt, name: workoutName, days: { day1: day1Exercises, day2: day2Exercises, day3: day3Exercises } }
         : opt
     );
     setWorkoutOptions(updatedOptions);
     if (typeof window !== "undefined") {
       localStorage.setItem("workoutOptions", JSON.stringify(updatedOptions));
+      // Auto-select this option so exercises show on main workout page
+      const current = JSON.parse(localStorage.getItem("selectedWorkoutOptions") || "[]");
+      const next = current.includes(optionId) ? current : [...current, optionId];
+      localStorage.setItem("selectedWorkoutOptions", JSON.stringify(next));
+      localStorage.setItem("selectedWorkoutOption", optionId);
     }
 
-    // Also save to the main workout plan - determine which day type based on option name
-    // Load existing plan first to preserve other days
-    let existingPlan = { pushDay: [], pullDay: [], legsDay: [] };
-    if (typeof window !== "undefined") {
-      const storedPlan = localStorage.getItem("workoutPlan");
-      if (storedPlan) {
-        try {
-          existingPlan = JSON.parse(storedPlan);
-        } catch (e) {
-          console.error("Error loading existing workout plan:", e);
-        }
-      }
-    }
-    
-    // Determine which day type to update based on option name or default to pushDay
-    const optionNameLower = workoutName.toLowerCase();
-    let targetDayType = "pushDay";
-    if (optionNameLower.includes("pull") || optionNameLower.includes("back")) {
-      targetDayType = "pullDay";
-    } else if (optionNameLower.includes("leg") || optionNameLower.includes("lower")) {
-      targetDayType = "legsDay";
-    }
-    
-    // Update the plan with all exercises for the target day
-    const newPlan = {
-      ...existingPlan,
-      [targetDayType]: day1Exercises, // All exercises go to the target day
-    };
-    if (typeof window !== "undefined") {
-      localStorage.setItem("workoutPlan", JSON.stringify(newPlan));
-    }
-    
     router.push("/gym/workout?schedulePrompt=1");
   };
 

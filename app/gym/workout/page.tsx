@@ -48,6 +48,7 @@ interface WorkoutSchedule {
   date: string;
   workoutName: string;
   completed: boolean;
+  optionId?: string;
 }
 
 interface CustomExercise {
@@ -103,33 +104,6 @@ const CircularProgress = ({ percentage, size = 120, color = "#f97316", label }: 
     </div>
   );
 };
-
-const fallbackPlan: Exercise[] = [
-  {
-    id: "bench",
-    name: "Barbell Bench Press",
-    goalSets: 4,
-    goalReps: 10,
-    goalWeight: 60,
-    sets: Array.from({ length: 4 }, () => ({
-      reps: 10,
-      weight: 60,
-      completed: true,
-    })),
-  },
-  {
-    id: "squat",
-    name: "Back Squat",
-    goalSets: 5,
-    goalReps: 5,
-    goalWeight: 90,
-    sets: Array.from({ length: 5 }, () => ({
-      reps: 5,
-      weight: 90,
-      completed: true,
-    })),
-  },
-];
 
 export default function WorkoutPage() {
   const router = useRouter();
@@ -357,12 +331,15 @@ export default function WorkoutPage() {
         if (parsed && typeof parsed === "object") {
           const migrated: Record<string, { days: number[] }> = {};
           for (const [k, v] of Object.entries(parsed)) {
-            const old = v as { pushDays?: number[]; pullDays?: number[]; legsDays?: number[] };
-            if (old.pushDays || old.pullDays || old.legsDays) {
+            const old = v as any;
+            if (old && "days" in old && Array.isArray(old.days)) {
+              migrated[k] = { days: old.days };
+            } else if (old && "day1" in old && Array.isArray(old.day1)) {
+              const all = [...(old.day1 || []), ...(old.day2 || []), ...(old.day3 || [])];
+              migrated[k] = { days: [...new Set(all)].sort((a: number, b: number) => a - b) };
+            } else if (old?.pushDays || old?.pullDays || old?.legsDays) {
               const all = [...(old.pushDays || []), ...(old.pullDays || []), ...(old.legsDays || [])];
-              migrated[k] = { days: [...new Set(all)].sort((a, b) => a - b) };
-            } else if (old && "days" in old && Array.isArray((old as any).days)) {
-              migrated[k] = { days: (old as any).days };
+              migrated[k] = { days: [...new Set(all)].sort((a: number, b: number) => a - b) };
             }
           }
           setManualScheduleByPlan(migrated);
@@ -418,81 +395,52 @@ export default function WorkoutPage() {
     }
   }, []);
 
-  // Get workout info for date - from workoutSchedule, or derived from manualScheduleByPlan
-  const getWorkoutInfoForDate = (date: Date): { optionId: string; workoutType: "pushDay" | "pullDay" | "legsDay" } | null => {
+  // Get workout info for date - which option (workout) is scheduled for this day
+  const getWorkoutInfoForDate = (date: Date): { optionId: string } | null => {
     const normalizedDate = new Date(date);
     normalizedDate.setHours(0, 0, 0, 0);
     const dateStr = normalizedDate.toISOString().split("T")[0];
-    let workoutName: string | null = null;
-    let resolvedOptionId: string | null = null;
+    const dayOfWeek = normalizedDate.getDay();
 
-    // 1. Try workoutSchedule first
-    const scheduledWorkout = workoutSchedule.find(w => w.date === dateStr);
+    // 1. workoutSchedule - use optionId when stored, or match by workout name (for old schedules)
+    const scheduledWorkout = workoutSchedule.find((w) => w.date === dateStr);
     if (scheduledWorkout && scheduledWorkout.workoutName !== "Rest Day") {
-      workoutName = scheduledWorkout.workoutName;
+      if (scheduledWorkout.optionId) return { optionId: scheduledWorkout.optionId };
+      const byName = workoutOptions.find((o) => o.name === scheduledWorkout.workoutName);
+      if (byName) return { optionId: byName.id };
     }
 
-    // 2. Fall back to manualScheduleByPlan (day-of-week rules)
-    if (!workoutName && selectedWorkoutOptions.length > 0) {
-      const dayOfWeek = normalizedDate.getDay();
+    // 2. manualScheduleByPlan - which option runs on this weekday
+    if (selectedWorkoutOptions.length > 0) {
       for (const optId of selectedWorkoutOptions) {
-        const opt = workoutOptions.find((o) => o.id === optId);
-        if (!opt) continue;
-        const days = (manualScheduleByPlan[optId] ?? { days: [] }).days;
-        const idx = days.indexOf(dayOfWeek);
-        if (idx >= 0) {
-          const names = [opt.dayNames.day1, opt.dayNames.day2, opt.dayNames.day3];
-          workoutName = names[idx % 3] ?? null;
-          resolvedOptionId = optId;
-          break;
-        }
+        const days = (manualScheduleByPlan[optId] ?? { days: [] }).days || [];
+        if (days.includes(dayOfWeek)) return { optionId: optId };
       }
     }
 
-    // 3. Last resort: use selected option with day cycling by day-of-week (when no schedule saved)
-    if (!workoutName && selectedWorkoutOption) {
-      const opt = workoutOptions.find((o) => o.id === selectedWorkoutOption);
-      if (opt) {
-        const dayOfWeek = normalizedDate.getDay();
-        const dayIndex = dayOfWeek % 3;
-        const names = [opt.dayNames.day1, opt.dayNames.day2, opt.dayNames.day3];
-        workoutName = names[dayIndex] ?? opt.dayNames.day1;
-      }
-    }
-
-    if (!workoutName) return null;
-
-    // If we resolved from manualScheduleByPlan, use that option and workout type
-    if (resolvedOptionId) {
-      const opt = workoutOptions.find((o) => o.id === resolvedOptionId);
-      if (opt) {
-        if (workoutName === opt.dayNames.day1) return { optionId: resolvedOptionId, workoutType: "pushDay" };
-        if (workoutName === opt.dayNames.day2) return { optionId: resolvedOptionId, workoutType: "pullDay" };
-        if (workoutName === opt.dayNames.day3) return { optionId: resolvedOptionId, workoutType: "legsDay" };
-      }
-    }
-
-    for (const option of workoutOptions) {
-      if (workoutName === option.dayNames.day1) return { optionId: option.id, workoutType: "pushDay" };
-      if (workoutName === option.dayNames.day2) return { optionId: option.id, workoutType: "pullDay" };
-      if (workoutName === option.dayNames.day3) return { optionId: option.id, workoutType: "legsDay" };
-    }
-    if (workoutName === "Push Day") return { optionId: selectedWorkoutOption || "option1", workoutType: "pushDay" };
-    if (workoutName === "Pull Day") return { optionId: selectedWorkoutOption || "option1", workoutType: "pullDay" };
-    if (workoutName === "Legs Day") return { optionId: selectedWorkoutOption || "option1", workoutType: "legsDay" };
     return null;
   };
 
   const getWorkoutTypeForDate = (date: Date): "pushDay" | "pullDay" | "legsDay" | null => {
     const info = getWorkoutInfoForDate(date);
-    return info?.workoutType ?? null;
+    return info ? "pushDay" : null;
   };
 
-  // Get current day's exercises - date-specific saved data first, then option template
+  // Get current day's exercises - ONLY from the scheduled option. Never show another option's exercises.
   const currentDayExercises: Exercise[] = useMemo(() => {
     const selectedDateStr = selectedDate.toISOString().split("T")[0];
 
-    // Load saved exercise images
+    // 1. Get the scheduled option for this date
+    const info = getWorkoutInfoForDate(selectedDate);
+    if (!info) return [];
+
+    const option = workoutOptions.find((o: WorkoutOption) => o.id === info.optionId);
+    const dayExercises = option ? (option.days.day1 || []) : [];
+
+    // 2. If the scheduled option has no exercises, show nothing - never show workout_data from a different option
+    if (dayExercises.length === 0) return [];
+
+    // 3. Always use the OPTION's exercises as source - never use workout_data's exercise list (it may be from a different option)
     let savedImages: Record<string, string> = {};
     if (typeof window !== "undefined") {
       try {
@@ -503,90 +451,41 @@ export default function WorkoutPage() {
     const getImageUrl = (ex: any): string | undefined =>
       ex.imageUrl || savedImages[ex.name?.toLowerCase()] || getBuiltInImageUrl(ex.name);
 
-    // 1. Always check date-specific saved data first (user's exercises for this date)
-    if (typeof window !== "undefined") {
-      const raw = localStorage.getItem(`workout_data_${selectedDateStr}`);
-      if (raw) {
-        try {
-          const savedData = JSON.parse(raw);
-          if (Array.isArray(savedData) && savedData.length > 0) {
-            return savedData.map((s: any) => ({
-              id: s.id || `ex-${Date.now()}-${Math.random()}`,
-              name: s.name || "",
-              goalSets: s.sets?.length || 3,
-              goalReps: 10,
-              goalWeight: 0,
-              imageUrl: getImageUrl(s),
-              sets: (s.sets || []).map((set: any) => ({
-                reps: set.reps ?? 10,
-                weight: set.weight ?? 0,
-                completed: set.completed ?? false,
-              })),
-            }));
-          }
-        } catch (e) {}
-      }
-    }
+    const raw = typeof window !== "undefined" ? localStorage.getItem(`workout_data_${selectedDateStr}`) : null;
+    const savedData: { id?: string; name?: string; sets?: Array<{ reps?: number; weight?: number; completed?: boolean }> }[] = raw ? (() => { try { const d = JSON.parse(raw); return Array.isArray(d) ? d : []; } catch { return []; } })() : [];
 
-    // 2. Fall back to option template for this date's workout type (from schedule or manualScheduleByPlan)
-    const info = getWorkoutInfoForDate(selectedDate);
-    if (!info) return [];
-
-    const { optionId, workoutType } = info;
-    const option = workoutOptions.find((o: WorkoutOption) => o.id === optionId);
-    if (option && workoutOptions.length > 0) {
-      const dayExercises =
-        workoutType === "pushDay" ? option.days.day1 :
-        workoutType === "pullDay" ? option.days.day2 : option.days.day3;
-      if (dayExercises && dayExercises.length > 0) {
-        return dayExercises.map((ex: any) => ({
-          id: ex.id || `ex-${Date.now()}-${Math.random()}`,
-          name: ex.name || "",
-          goalSets: ex.goalSets || ex.sets || 3,
-          goalReps: ex.goalReps || ex.reps || 10,
-          goalWeight: ex.goalWeight || 0,
-          imageUrl: getImageUrl(ex),
-          sets: ex.sets || Array.from({ length: ex.goalSets || ex.sets || 3 }, () => ({
+    return dayExercises.map((ex: any) => {
+      const savedEx = savedData.find((s: any) => s.id === ex.id);
+      const sets = savedEx?.sets?.length
+        ? (savedEx.sets || []).map((set: any) => ({
+            reps: set.reps ?? ex.goalReps ?? 10,
+            weight: set.weight ?? ex.goalWeight ?? 0,
+            completed: set.completed ?? false,
+          }))
+        : ex.sets || Array.from({ length: ex.goalSets ?? (Array.isArray(ex.sets) ? ex.sets.length : 3) }, () => ({
             reps: ex.goalReps || ex.reps || 10,
             weight: ex.goalWeight || 0,
             completed: false,
-          })),
-        }));
-      }
-    }
-
-    return [];
+          }));
+      return {
+        id: ex.id || `ex-${Date.now()}-${Math.random()}`,
+        name: ex.name || "",
+        goalSets: sets.length,
+        goalReps: ex.goalReps || ex.reps || 10,
+        goalWeight: ex.goalWeight || 0,
+        imageUrl: getImageUrl(ex),
+        sets,
+      };
+    });
   }, [selectedDate, workoutSchedule, selectedWorkoutOption, selectedWorkoutOptions, manualScheduleByPlan, workoutOptions, workoutPlan]);
 
-  // Get workout name for any date - from schedule or manualScheduleByPlan
   const getWorkoutNameForDate = (date: Date): string => {
-    const normalizedDate = new Date(date);
-    normalizedDate.setHours(0, 0, 0, 0);
-    const dateStr = normalizedDate.toISOString().split("T")[0];
-    const scheduledWorkout = workoutSchedule.find((w) => w.date === dateStr);
+    const scheduledWorkout = workoutSchedule.find((w) => w.date === date.toISOString().split("T")[0]);
     if (scheduledWorkout && scheduledWorkout.workoutName !== "Rest Day") return scheduledWorkout.workoutName;
-    // Fall back to manualScheduleByPlan
-    if (selectedWorkoutOptions.length > 0) {
-      const dayOfWeek = normalizedDate.getDay();
-      for (const optId of selectedWorkoutOptions) {
-        const opt = workoutOptions.find((o) => o.id === optId);
-        if (!opt) continue;
-        const days = (manualScheduleByPlan[optId] ?? { days: [] }).days;
-        const idx = days.indexOf(dayOfWeek);
-        if (idx >= 0) {
-          const names = [opt.dayNames.day1, opt.dayNames.day2, opt.dayNames.day3];
-          return names[idx % 3] ?? "Rest Day";
-        }
-      }
-    }
-    // Last resort: cycle by day-of-week when no schedule saved
-    if (selectedWorkoutOption) {
-      const opt = workoutOptions.find((o) => o.id === selectedWorkoutOption);
-      if (opt) {
-        const dayOfWeek = normalizedDate.getDay();
-        const names = [opt.dayNames.day1, opt.dayNames.day2, opt.dayNames.day3];
-        return names[dayOfWeek % 3] ?? opt.dayNames.day1;
-      }
+    const info = getWorkoutInfoForDate(date);
+    if (info) {
+      const opt = workoutOptions.find((o) => o.id === info.optionId);
+      if (opt) return opt.name;
     }
     return "Rest Day";
   };
@@ -624,50 +523,50 @@ export default function WorkoutPage() {
 
   // Load workout data for selected date
   const selectedDateStr = useMemo(() => selectedDate.toISOString().split("T")[0], [selectedDate]);
-  const selectedDateWorkoutType = useMemo(() => getWorkoutTypeForDate(selectedDate), [selectedDate, workoutSchedule, selectedWorkoutOption, workoutOptions]);
 
+  // Sync current day's exercises into workoutPlan.pushDay for updateSet/save - so we have the right list to edit
   useEffect(() => {
-    if (typeof window === "undefined" || !selectedDateWorkoutType) return;
-    const workoutData = localStorage.getItem(`workout_data_${selectedDateStr}`);
-    
-    if (workoutData) {
+    if (typeof window === "undefined" || !getWorkoutInfoForDate(selectedDate)) return;
+    const raw = localStorage.getItem(`workout_data_${selectedDateStr}`);
+    const info = getWorkoutInfoForDate(selectedDate);
+    const option = info ? workoutOptions.find((o) => o.id === info.optionId) : null;
+    const baseExercises = option?.days?.day1 || [];
+
+    if (raw) {
       try {
-        const savedData = JSON.parse(workoutData);
-        
-        setWorkoutPlan((prev) => {
-          const dayExercises = prev[selectedDateWorkoutType] || [];
-          const updatedExercises = dayExercises.map(ex => {
-            const savedEx = savedData.find((s: any) => s.id === ex.id);
-            if (savedEx && savedEx.sets) {
-              return {
-                ...ex,
-                sets: ex.sets.map((s, i) => {
-                  const savedSet = savedEx.sets[i];
-                  if (savedSet) {
-                    return {
-                      ...s,
-                      completed: savedSet.completed || s.completed,
-                      reps: savedSet.reps !== undefined ? savedSet.reps : s.reps,
-                      weight: savedSet.weight !== undefined ? savedSet.weight : s.weight,
-                    };
-                  }
-                  return s;
-                }),
-              };
-            }
-            return ex;
-          });
-          
-          return {
-            ...prev,
-            [selectedDateWorkoutType]: updatedExercises,
-          };
-        });
-      } catch (e) {
-        console.error("Error loading workout data:", e);
-      }
+        const savedData = JSON.parse(raw);
+        if (Array.isArray(savedData) && savedData.length > 0) {
+          const converted = savedData.map((s: any) => ({
+            id: s.id || `ex-${Date.now()}-${Math.random()}`,
+            name: s.name || "",
+            goalSets: s.sets?.length || 3,
+            goalReps: 10,
+            goalWeight: 0,
+            sets: (s.sets || []).map((set: any) => ({
+              reps: set.reps ?? 10,
+              weight: set.weight ?? 0,
+              completed: set.completed ?? false,
+            })),
+          }));
+          setWorkoutPlan((prev) => ({ ...prev, pushDay: converted, pullDay: [], legsDay: [] }));
+          return;
+        }
+      } catch (e) {}
     }
-  }, [selectedDateStr, selectedDateWorkoutType]);
+    setWorkoutPlan((prev) => ({
+      ...prev,
+      pushDay: baseExercises.map((ex: any) => ({
+        id: ex.id,
+        name: ex.name,
+        goalSets: ex.goalSets ?? (ex.sets?.length || 3),
+        goalReps: ex.goalReps || ex.reps || 10,
+        goalWeight: ex.goalWeight || 0,
+        sets: ex.sets || Array.from({ length: ex.goalSets ?? 3 }, () => ({ reps: 10, weight: 0, completed: false })),
+      })),
+      pullDay: [],
+      legsDay: [],
+    }));
+  }, [selectedDateStr, selectedDate, workoutOptions, workoutSchedule, selectedWorkoutOptions, manualScheduleByPlan]);
 
   // Handle set updates
   function updateSet(exId: string, setIndex: number, patch: Partial<{ reps: number; weight: number; completed: boolean }>) {
@@ -880,7 +779,7 @@ export default function WorkoutPage() {
       ...workoutPlan.pullDay,
       ...workoutPlan.legsDay,
     ];
-    return merged.length > 0 ? merged : fallbackPlan;
+    return merged.length > 0 ? merged : [];
   }, [workoutPlan]);
 
   const progressTotals = useMemo(() => {

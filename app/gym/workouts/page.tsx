@@ -143,6 +143,7 @@ interface WorkoutSchedule {
   date: string;
   workoutName: string;
   completed: boolean;
+  optionId?: string;
 }
 
 export default function WorkoutsPage() {
@@ -248,12 +249,15 @@ export default function WorkoutsPage() {
         if (parsed && typeof parsed === "object") {
           const migrated: Record<string, { days: number[] }> = {};
           for (const [k, v] of Object.entries(parsed)) {
-            const old = v as { pushDays?: number[]; pullDays?: number[]; legsDays?: number[] };
-            if (old.pushDays || old.pullDays || old.legsDays) {
+            const old = v as any;
+            if (old && "days" in old && Array.isArray(old.days)) {
+              migrated[k] = { days: old.days };
+            } else if (old && "day1" in old && Array.isArray(old.day1)) {
+              const all = [...(old.day1 || []), ...(old.day2 || []), ...(old.day3 || [])];
+              migrated[k] = { days: [...new Set(all)].sort((a: number, b: number) => a - b) };
+            } else if (old?.pushDays || old?.pullDays || old?.legsDays) {
               const all = [...(old.pushDays || []), ...(old.pullDays || []), ...(old.legsDays || [])];
-              migrated[k] = { days: [...new Set(all)].sort((a, b) => a - b) };
-            } else if (old && "days" in old && Array.isArray((old as any).days)) {
-              migrated[k] = { days: (old as any).days };
+              migrated[k] = { days: [...new Set(all)].sort((a: number, b: number) => a - b) };
             }
           }
           setManualSchedule(migrated);
@@ -304,14 +308,15 @@ export default function WorkoutsPage() {
   const handleSaveSchedule = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const dayToWorkout = new Map<number, { name: string }>();
+    const dayToWorkout = new Map<number, { name: string; optionId: string }>();
     for (const optId of selectedWorkoutOptions) {
       const opt = workoutOptions.find((o) => o.id === optId);
       if (!opt) continue;
-      const days = (manualSchedule[optId] ?? { days: [] }).days.sort((a, b) => a - b);
-      const names = [opt.dayNames.day1, opt.dayNames.day2, opt.dayNames.day3];
-      days.forEach((d, i) => {
-        if (!dayToWorkout.has(d)) dayToWorkout.set(d, { name: names[i % 3] });
+      const days = (manualSchedule[optId] ?? { days: [] }).days || [];
+      days.forEach((d) => {
+        if (!dayToWorkout.has(d)) {
+          dayToWorkout.set(d, { name: opt.name, optionId: optId });
+        }
       });
     }
     const newSchedule: WorkoutSchedule[] = [];
@@ -321,7 +326,12 @@ export default function WorkoutsPage() {
       const dateStr = d.toISOString().split("T")[0];
       const dayOfWeek = d.getDay();
       const assigned = dayToWorkout.get(dayOfWeek);
-      newSchedule.push({ date: dateStr, workoutName: assigned?.name ?? "Rest Day", completed: false });
+      newSchedule.push({
+        date: dateStr,
+        workoutName: assigned?.name ?? "Rest Day",
+        completed: false,
+        optionId: assigned?.optionId,
+      });
     }
     const existing = JSON.parse(localStorage.getItem("workoutSchedule") || "[]") as WorkoutSchedule[];
     const existingByDate = new Map(existing.map((w) => [w.date, w]));
@@ -420,17 +430,19 @@ export default function WorkoutsPage() {
             <p className="text-sm text-gray-400 mb-4">
               Choose which days you train each plan. Or let AI Coach set this up for you.
             </p>
-            <div className="space-y-3 mb-4">
+            <div className="space-y-4 mb-4">
               {selectedWorkoutOptions.map((optId) => {
                 const opt = workoutOptions.find((o) => o.id === optId);
                 if (!opt) return null;
-                const days = (manualSchedule[optId] ?? { days: [] }).days;
+                const days = (manualSchedule[optId] ?? { days: [] }).days || [];
+                const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+                const dayIndices = [1, 2, 3, 4, 5, 6, 0];
                 return (
                   <div key={optId} className="border border-white/10 rounded-xl p-3">
                     <h4 className="text-sm font-medium text-teal-400 mb-2">{opt.name}</h4>
                     <div className="flex flex-wrap gap-1.5">
-                      {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, i) => {
-                        const dayIndex = i === 6 ? 0 : i + 1;
+                      {dayLabels.map((day, i) => {
+                        const dayIndex = dayIndices[i];
                         const isSelected = days.includes(dayIndex);
                         return (
                           <button
@@ -439,13 +451,21 @@ export default function WorkoutsPage() {
                             onClick={() => {
                               setManualSchedule((prev) => {
                                 const curr = prev[optId] ?? { days: [] };
-                                const next = isSelected
-                                  ? curr.days.filter((d) => d !== dayIndex)
-                                  : [...curr.days, dayIndex].sort((a, b) => a - b);
-                                return { ...prev, [optId]: { days: next } };
+                                const arr = [...(curr.days || [])];
+                                if (isSelected) {
+                                  const idx = arr.indexOf(dayIndex);
+                                  if (idx >= 0) arr.splice(idx, 1);
+                                  return { ...prev, [optId]: { days: arr } };
+                                }
+                                const next = { ...prev };
+                                for (const id of selectedWorkoutOptions) {
+                                  const d = (prev[id] ?? { days: [] }).days || [];
+                                  next[id] = { days: id === optId ? [...d, dayIndex].sort((a, b) => a - b) : d.filter((x) => x !== dayIndex) };
+                                }
+                                return next;
                               });
                             }}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                            className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
                               isSelected
                                 ? "bg-teal-500/30 border border-teal-400/50 text-teal-300"
                                 : "bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10"

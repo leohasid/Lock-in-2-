@@ -76,7 +76,7 @@ struct WebView: UIViewRepresentable {
                 let allowsCamera = parameters.allowsDirectories == false
                 let vc = self.findViewController(from: webView)
             
-            let alert = UIAlertController(title: "Choose Photo", message: nil, preferredStyle: .actionSheet)
+            let alert = UIAlertController(title: "Choose Photo", message: nil, preferredStyle: .alert)
             
             if allowsCamera && UIImagePickerController.isSourceTypeAvailable(.camera) {
                 alert.addAction(UIAlertAction(title: "Take Photo", style: .default) { [weak self] _ in
@@ -92,14 +92,54 @@ struct WebView: UIViewRepresentable {
                 completionHandler(nil)
             })
             
-            if let popover = alert.popoverPresentationController {
-                popover.sourceView = webView
-                popover.sourceRect = CGRect(x: webView.bounds.midX, y: webView.bounds.midY, width: 0, height: 0)
+            if let popover = alert.popoverPresentationController, let sourceView = vc?.view {
+                popover.sourceView = sourceView
+                popover.sourceRect = CGRect(x: sourceView.bounds.midX, y: sourceView.bounds.midY, width: 0, height: 0)
                 popover.permittedArrowDirections = []
             }
             
             vc?.present(alert, animated: true)
             }
+        }
+        
+        // MARK: - WKUIDelegate - JavaScript dialogs (centered on screen)
+        func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+            let vc = findViewController(from: webView)
+            let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler() })
+            if let popover = alert.popoverPresentationController, let sourceView = vc?.view {
+                popover.sourceView = sourceView
+                popover.sourceRect = CGRect(x: sourceView.bounds.midX, y: sourceView.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
+            }
+            vc?.present(alert, animated: true)
+        }
+        
+        func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+            let vc = findViewController(from: webView)
+            let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(false) })
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler(true) })
+            if let popover = alert.popoverPresentationController, let sourceView = vc?.view {
+                popover.sourceView = sourceView
+                popover.sourceRect = CGRect(x: sourceView.bounds.midX, y: sourceView.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
+            }
+            vc?.present(alert, animated: true)
+        }
+        
+        func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (String?) -> Void) {
+            let vc = findViewController(from: webView)
+            let alert = UIAlertController(title: nil, message: prompt, preferredStyle: .alert)
+            alert.addTextField { textField in textField.text = defaultText }
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(nil) })
+            alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler(alert.textFields?.first?.text ?? "") })
+            if let popover = alert.popoverPresentationController, let sourceView = vc?.view {
+                popover.sourceView = sourceView
+                popover.sourceRect = CGRect(x: sourceView.bounds.midX, y: sourceView.bounds.midY, width: 0, height: 0)
+                popover.permittedArrowDirections = []
+            }
+            vc?.present(alert, animated: true)
         }
         
         private func findViewController(from view: UIView) -> UIViewController? {
