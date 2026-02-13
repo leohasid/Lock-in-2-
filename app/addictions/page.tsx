@@ -597,7 +597,7 @@ export default function AddictionsPage() {
   }, [otherAddictions, currentTime, currencyInfo]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-5 pt-6 pb-28">
+    <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white px-5 pt-6 pb-28">
       {/* HEADER */}
       <div className="mb-6 flex items-center justify-between gap-3">
         <Link

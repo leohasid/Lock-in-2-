@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type FitnessGoal = "lose_weight" | "gain_weight" | "build_muscle";
 type Equipment = "full_gym" | "home_gym" | "minimal" | "bodyweight_only";
@@ -53,6 +54,10 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showSubscribeModal, setShowSubscribeModal] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const [planReady, setPlanReady] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
   const [data, setData] = useState<OnboardingData>({
     fitnessGoal: null,
     equipment: null,
@@ -193,8 +198,28 @@ export default function OnboardingPage() {
     }
   };
 
+  const handleSubscribeInModal = async () => {
+    setSubscribing(true);
+    try {
+      // TODO: Integrate with StoreKit/RevenueCat for iOS App Store
+      await new Promise((r) => setTimeout(r, 1200));
+      localStorage.setItem("subscriptionStatus", "active");
+      localStorage.setItem("subscriptionPlan", "monthly");
+      localStorage.setItem("subscriptionDate", new Date().toISOString());
+      setShowSubscribeModal(false);
+      setSubscribing(false);
+      setPlanReady(true);
+    } catch {
+      setSubscribing(false);
+    }
+  };
+
   const handleSubmit = async () => {
     setLoading(true);
+    setGenerationError(null);
+    const needsCustomPlan = data.wantsAIWorkoutPlan || data.wantsMacrosPlan;
+    if (needsCustomPlan) setShowSubscribeModal(true);
+
     try {
       // Store onboarding data
       localStorage.setItem("onboardingData", JSON.stringify(data));
@@ -433,8 +458,12 @@ export default function OnboardingPage() {
         localStorage.setItem("workoutPlan", JSON.stringify(workoutPlanByDay));
       }
 
-      // Redirect to subscription paywall
-      router.push("/subscribe");
+      if (needsCustomPlan) {
+        setLoading(false);
+        // Modal stays open; user subscribes → planReady
+      } else {
+        router.push("/subscribe");
+      }
     } catch (error) {
       console.error("Error saving onboarding data:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -458,9 +487,87 @@ export default function OnboardingPage() {
     });
   };
 
+  // Plan ready - show success and AI Coach CTA
+  if (planReady) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-md text-center space-y-6">
+          <div className="text-6xl mb-2">✨</div>
+          <h1 className="text-2xl font-bold text-white">Your custom plan is ready!</h1>
+          <p className="text-gray-400">
+            For further assistance, speak to the AI Coach to modify workouts, change training days, or get support.
+          </p>
+          <div className="flex flex-col gap-3 mt-8">
+            <Link
+              href="/gym/ai-coach"
+              className="w-full py-4 bg-teal-500 hover:bg-teal-400 text-black font-bold rounded-xl transition-colors"
+            >
+              Speak to AI Coach
+            </Link>
+            <Link
+              href="/"
+              className="w-full py-4 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl transition-colors border border-white/20"
+            >
+              Get Started
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-md">
+        {/* Subscribe Modal - during plan generation */}
+        {showSubscribeModal && (
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-sm w-full border border-teal-500/30">
+              {loading ? (
+                <>
+                  <div className="text-center mb-6">
+                    <div className="inline-block w-12 h-12 border-4 border-teal-500/30 border-t-teal-500 rounded-full animate-spin mb-4" />
+                    <h2 className="text-xl font-bold text-white mb-2">Creating your custom plan...</h2>
+                    <p className="text-gray-400 text-sm">Subscribe to unlock your workout and diet plan</p>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="bg-teal-500/10 border border-teal-400/30 rounded-xl p-4">
+                      <p className="text-teal-300 font-semibold">3 days free</p>
+                      <p className="text-2xl font-bold text-white mt-1">£2.99<span className="text-sm font-normal text-gray-400">/month after</span></p>
+                      <p className="text-xs text-gray-500 mt-1">Price may vary by region on App Store</p>
+                    </div>
+                    <button
+                      onClick={handleSubscribeInModal}
+                      disabled={subscribing || loading}
+                      className="w-full py-4 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-black font-bold rounded-xl transition-colors"
+                    >
+                      {subscribing ? "Processing..." : loading ? "Creating plan..." : "Subscribe"}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-xl font-bold text-white mb-2">Plan ready</h2>
+                  <p className="text-gray-400 text-sm mb-4">Subscribe to access your custom plan</p>
+                  <div className="space-y-4">
+                    <div className="bg-teal-500/10 border border-teal-400/30 rounded-xl p-4">
+                      <p className="text-teal-300 font-semibold">3 days free</p>
+                      <p className="text-2xl font-bold text-white mt-1">£2.99<span className="text-sm font-normal text-gray-400">/month after</span></p>
+                    </div>
+                    <button
+                      onClick={handleSubscribeInModal}
+                      disabled={subscribing}
+                      className="w-full py-4 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-black font-bold rounded-xl transition-colors"
+                    >
+                      {subscribing ? "Processing..." : "Subscribe"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="w-full bg-gradient-to-b from-[#0c1422] to-black rounded-full h-2.5 border border-white/10 shadow-inner">

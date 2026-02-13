@@ -508,7 +508,7 @@ Check if they specified days. If not, ask specifically about days.`
   const weekDayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-4 pt-4 pb-28">
+    <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white px-4 pt-4 pb-28">
       <div className="container mx-auto px-4 py-4">
         {/* Header */}
         <div className="mb-5 flex items-start justify-end">

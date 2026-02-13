@@ -16,6 +16,8 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
+            Color.black
+                .ignoresSafeArea()
             WebView(url: Self.appURL, isLoading: $isLoading, loadError: $loadError)
                 .ignoresSafeArea(.all, edges: .bottom)
             

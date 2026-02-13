@@ -73,7 +73,7 @@ function MacroCircle({
         </div>
       </div>
       <span className="text-white text-[10px] mt-1.5">{label}</span>
-      <span className="text-[10px] mt-0.5" style={{ color: "#8FA3B0" }}>
+      <span className="text-[10px] mt-0.5 text-gray-500">
         {goal}{unit === "" ? " cal" : unit}
       </span>
     </div>
@@ -127,10 +127,14 @@ export default function Home() {
     });
 
     const reminders = JSON.parse(localStorage.getItem("reminders") || "[]");
-    const todayReminders = reminders
-      .filter((r: { date: string }) => r.date === todayStr)
-      .sort((a: UpcomingItem, b: UpcomingItem) => (a.time || "").localeCompare(b.time || ""));
-    setUpcomingEvents(todayReminders.slice(0, 4));
+    const todayReminders = reminders.filter((r: { date: string }) => r.date === todayStr);
+    const futureReminders = reminders
+      .filter((r: { date: string }) => r.date > todayStr)
+      .sort((a: UpcomingItem, b: UpcomingItem) => {
+        const dateCmp = (a.date || "").localeCompare(b.date || "");
+        return dateCmp !== 0 ? dateCmp : (a.time || "").localeCompare(b.time || "");
+      });
+    setUpcomingEvents(futureReminders.slice(0, 4));
 
     const addictions = JSON.parse(localStorage.getItem("addictions") || "[]");
     if (addictions.length > 0) {
@@ -194,14 +198,14 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen pb-24" style={{ backgroundColor: "#0B0F14" }}>
+    <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white pb-24">
       <div className="max-w-md mx-auto px-4 pt-6">
         {/* Tab Bar - Home | Goals */}
-        <div className="flex gap-2 mb-6 pt-4 border-b border-[#2A2A2A]">
+        <div className="flex gap-2 mb-6 pt-4 border-b border-teal-500/30">
           <Link
             href="/"
             className={`flex-1 py-2 font-semibold text-center text-sm ${
-              pathname === "/" ? "text-[#00D9D9] border-b-2 border-[#00D9D9]" : "text-gray-500 hover:text-[#00D9D9]"
+              pathname === "/" ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent" : "text-gray-400 hover:text-teal-300"
             }`}
           >
             Home
@@ -209,34 +213,30 @@ export default function Home() {
           <Link
             href="/goals"
             className={`flex-1 py-2 font-semibold text-center text-sm ${
-              pathname === "/goals" ? "text-[#00D9D9] border-b-2 border-[#00D9D9]" : "text-gray-500 hover:text-[#00D9D9]"
+              pathname === "/goals" ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent" : "text-gray-400 hover:text-teal-300"
             }`}
           >
             Goals
           </Link>
         </div>
 
-        {/* AI Reflection - text only with ✨, match photo */}
+        {/* AI Reflection - text only with ✨ */}
         <Link
           href="/consultation?from=reflection"
-          className="block rounded-[18px] p-5 mb-6 hover:opacity-90 transition-opacity"
-          style={{ backgroundColor: "#0F766E" }}
+          className="block rounded-2xl p-5 mb-6 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-teal-500/40 hover:border-teal-400/60 transition-all"
         >
-          <p className="text-lg font-semibold" style={{ color: "#E6FFFA" }}>
+          <p className="text-lg font-semibold text-white">
             ✨ AI Reflection
           </p>
-          <p className="mt-1 flex items-center justify-between" style={{ color: "#99F6E4" }}>
+          <p className="mt-1 flex items-center justify-between text-teal-300">
             <span>Review yesterday • Set today</span>
             <span>&gt;</span>
           </p>
         </Link>
 
         {/* Today at a glance - single card, row + progress bars */}
-        <div
-          className="rounded-[18px] p-4 mb-5"
-          style={{ backgroundColor: "#121826" }}
-        >
-          <p className="text-xs uppercase mb-2.5" style={{ color: "#8FA3B0" }}>
+        <div className="rounded-2xl p-4 mb-5 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30">
+          <p className="text-xs uppercase mb-2.5 text-gray-400">
             Today at a glance
           </p>
           <div className="flex justify-between gap-4">
@@ -244,9 +244,9 @@ export default function Home() {
               <p className="text-white text-sm">
                 🛡 {daysClean} days clean
               </p>
-              <div className="h-1 rounded-full mt-1.5 overflow-hidden" style={{ backgroundColor: "#1e293b" }}>
+              <div className="h-1 rounded-full mt-1.5 overflow-hidden bg-gray-800">
                 <div
-                  className="h-full rounded-full bg-green-500 transition-all"
+                  className="h-full rounded-full bg-teal-500 transition-all"
                   style={{ width: `${Math.min((daysClean / 30) * 100, 100)}%` }}
                 />
               </div>
@@ -255,13 +255,10 @@ export default function Home() {
               <p className="text-white text-sm">
                 🏋️ {todayWorkout ? `${todayWorkout.name} – ${formatTime(todayWorkout.time)}` : "Rest day"}
               </p>
-              <div className="h-1 rounded-full mt-1.5 overflow-hidden" style={{ backgroundColor: "#1e293b" }}>
+              <div className="h-1 rounded-full mt-1.5 overflow-hidden bg-gray-800">
                 <div
-                  className="h-full rounded-full transition-all"
-                  style={{
-                    width: todayWorkout ? "33%" : "0%",
-                    backgroundColor: "#64748b",
-                  }}
+                  className="h-full rounded-full bg-teal-500/50 transition-all"
+                  style={{ width: todayWorkout ? "33%" : "0%" }}
                 />
               </div>
             </div>
@@ -269,11 +266,8 @@ export default function Home() {
         </div>
 
         {/* Today's macros - circular progress + Log food link */}
-        <div
-          className="rounded-[18px] p-4 mb-5"
-          style={{ backgroundColor: "#121826" }}
-        >
-          <p className="text-xs uppercase mb-4" style={{ color: "#8FA3B0" }}>
+        <div className="rounded-2xl p-4 mb-5 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30">
+          <p className="text-xs uppercase mb-4 text-gray-400">
             Today&apos;s macros
           </p>
           <div className="flex justify-between gap-2 mb-4">
@@ -282,49 +276,45 @@ export default function Home() {
               current={nutrition.calories.consumed}
               goal={nutrition.calories.goal}
               unit=""
-              progressColor="#86efac"
+              progressColor="#2dd4bf"
             />
             <MacroCircle
               label="Protein"
               current={nutrition.protein.consumed}
               goal={nutrition.protein.goal}
               unit="g"
-              progressColor="#2DD4BF"
+              progressColor="#2dd4bf"
             />
             <MacroCircle
               label="Carbs"
               current={nutrition.carbs.consumed}
               goal={nutrition.carbs.goal}
               unit="g"
-              progressColor="#2DD4BF"
+              progressColor="#2dd4bf"
             />
             <MacroCircle
               label="Fat"
               current={nutrition.fat.consumed}
               goal={nutrition.fat.goal}
               unit="g"
-              progressColor="#facc15"
+              progressColor="#14b8a6"
             />
           </div>
           <Link
             href="/nutrition"
-            className="inline-block mt-2 font-semibold hover:underline"
-            style={{ color: "#2DD4BF" }}
+            className="inline-block mt-2 font-semibold text-teal-400 hover:text-teal-300 hover:underline"
           >
             Log food →
           </Link>
         </div>
 
         {/* Upcoming - single card, muted text + Edit routine link */}
-        <div
-          className="rounded-[18px] p-4 mb-5"
-          style={{ backgroundColor: "#121826" }}
-        >
-          <p className="text-xs uppercase mb-2.5" style={{ color: "#8FA3B0" }}>
+        <div className="rounded-2xl p-4 mb-5 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30">
+          <p className="text-xs uppercase mb-2.5 text-gray-400">
             Upcoming
           </p>
           {upcomingEvents.length === 0 ? (
-            <p className="text-sm" style={{ color: "#8FA3B0" }}>
+            <p className="text-sm text-gray-500">
               🏠 No upcoming events — stay disciplined.
             </p>
           ) : (
@@ -338,21 +328,17 @@ export default function Home() {
           )}
           <Link
             href="/calendar"
-            className="inline-block mt-3 font-semibold hover:underline"
-            style={{ color: "#2DD4BF" }}
+            className="inline-block mt-3 font-semibold text-teal-400 hover:text-teal-300 hover:underline"
           >
             Edit routine →
           </Link>
         </div>
 
-        {/* Motivation - centered, Stay locked in. in teal */}
-        <div
-          className="rounded-2xl p-4 text-center"
-          style={{ backgroundColor: "#0F172A" }}
-        >
-          <p className="text-sm" style={{ color: "#E5E7EB" }}>
+        {/* Motivation - centered */}
+        <div className="rounded-2xl p-4 text-center bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30">
+          <p className="text-sm text-gray-300">
             ✨ Remember why you started.{" "}
-            <Link href="/goals" className="font-semibold hover:underline" style={{ color: "#2DD4BF" }}>
+            <Link href="/goals" className="font-semibold text-teal-400 hover:text-teal-300 hover:underline">
               Stay locked in.
             </Link>
           </p>

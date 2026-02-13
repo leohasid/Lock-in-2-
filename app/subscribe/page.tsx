@@ -45,14 +45,16 @@ export default function SubscribePage() {
 
   const plans = {
     monthly: {
-      price: "$9.99",
-      period: "per month",
+      price: "£2.99",
+      period: "per month after free trial",
+      trial: "3 days free",
       savings: null,
     },
     yearly: {
-      price: "$79.99",
+      price: "£29.99",
       period: "per year",
-      savings: "Save 33%",
+      trial: "3 days free",
+      savings: "Save 17%",
     },
   };
 
@@ -76,7 +78,7 @@ export default function SubscribePage() {
           </div>
           <h1 className="text-4xl font-bold mb-2">Unlock Your Potential</h1>
           <p className="text-gray-400">
-            Your personalized plan is ready. Subscribe to get started.
+            Your personalized plan is ready. Subscribe to get started. 3 days free, then £2.99/month.
           </p>
         </div>
 
@@ -107,6 +109,7 @@ export default function SubscribePage() {
         {/* Pricing Card */}
         <div className="bg-gradient-to-br from-orange-500/20 to-orange-600/10 border-2 border-orange-500/50 rounded-2xl p-6 mb-6">
           <div className="text-center mb-4">
+            <p className="text-orange-400 font-semibold text-sm mb-1">{plans[selectedPlan].trial}</p>
             <div className="flex items-baseline justify-center gap-2">
               <span className="text-5xl font-bold">{plans[selectedPlan].price}</span>
               <span className="text-gray-400 text-lg">
@@ -146,7 +149,7 @@ export default function SubscribePage() {
         {/* Terms */}
         <p className="text-xs text-gray-500 text-center">
           By subscribing, you agree to our Terms of Service and Privacy Policy.
-          Cancel anytime.
+          Cancel anytime. Price may vary by region on App Store.
         </p>
       </div>
     </div>

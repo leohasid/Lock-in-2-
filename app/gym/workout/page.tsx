@@ -945,57 +945,44 @@ export default function WorkoutPage() {
           <div className="space-y-4 pb-20">
             {/* Main Progress Circles */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-                <h3 className="text-sm font-semibold mb-2">Workout Completion</h3>
+              <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 text-center">
+                <h3 className="text-sm font-semibold text-gray-400 mb-2">Workout Completion</h3>
                 <div className="flex justify-center mb-2">
-                  <CircularProgress percentage={progressTotals.progress} size={100} color="#f97316" />
+                  <CircularProgress percentage={progressTotals.progress} size={100} color="#14b8a6" />
                 </div>
-                <p className="text-gray-400 text-xs">
+                <p className="text-gray-500 text-xs">
                   {progressTotals.completedSets} / {progressTotals.totalSets} sets
                 </p>
               </div>
-
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-                <h3 className="text-sm font-semibold mb-2">Volume Progress</h3>
+              <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 text-center">
+                <h3 className="text-sm font-semibold text-gray-400 mb-2">Volume Progress</h3>
                 <div className="flex justify-center mb-2">
                   <CircularProgress percentage={volumeProgress} size={100} color="#22c55e" />
                 </div>
-                <p className="text-gray-400 text-xs">
-                  {progressTotals.totalVolume} kg
-                </p>
+                <p className="text-gray-500 text-xs">{progressTotals.totalVolume} kg</p>
               </div>
             </div>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-2 gap-2">
-              {/* Volume Delta */}
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
+              <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-3 text-center">
                 <TrendingUp className={`w-5 h-5 mx-auto mb-1 ${volumeDelta >= 0 ? "text-green-400" : "text-red-400"}`} />
                 <p className={`text-lg font-bold ${volumeDelta >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  {volumeDelta >= 0 ? "+" : ""}
-                  {volumeDelta}%
+                  {volumeDelta >= 0 ? "+" : ""}{volumeDelta}%
                 </p>
-                <p className="text-[10px] text-gray-400">Volume change</p>
+                <p className="text-[10px] text-gray-500">Volume change</p>
               </div>
-
-              {/* Heaviest Set */}
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
-                <Target className="w-5 h-5 text-blue-400 mx-auto mb-1" />
-                <p className="text-lg font-bold text-blue-400">{heaviestSet} kg</p>
-                <p className="text-[10px] text-gray-400">Heaviest set</p>
+              <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-3 text-center">
+                <Target className="w-5 h-5 text-teal-400 mx-auto mb-1" />
+                <p className="text-lg font-bold text-teal-400">{heaviestSet} kg</p>
+                <p className="text-[10px] text-gray-500">Heaviest set</p>
               </div>
-
-              {/* Average Set Volume */}
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
+              <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-3 text-center">
                 <Activity className="w-5 h-5 text-yellow-400 mx-auto mb-1" />
-                <p className="text-lg font-bold text-yellow-400">
-                  {averageSetVolume} kg
-                </p>
-                <p className="text-[10px] text-gray-400">Avg set volume</p>
+                <p className="text-lg font-bold text-yellow-400">{averageSetVolume} kg</p>
+                <p className="text-[10px] text-gray-500">Avg set volume</p>
               </div>
-
-              {/* Active Streak */}
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
+              <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-3 text-center">
                 <div className="flex justify-center mb-1">
                   <CircularProgress
                     percentage={Math.min((activeStreak / 7) * 100, 100)}
@@ -1004,14 +991,14 @@ export default function WorkoutPage() {
                   />
                 </div>
                 <p className="text-base font-bold text-green-400 mt-1">{activeStreak} days</p>
-                <p className="text-[10px] text-gray-400">Active streak</p>
+                <p className="text-[10px] text-gray-500">Active streak</p>
               </div>
             </div>
 
             {/* Weekly Volume Chart */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-              <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-orange-400" />
+            <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
+              <h2 className="text-sm font-semibold mb-3 flex items-center gap-2 text-gray-300">
+                <Activity className="w-4 h-4 text-teal-400" />
                 Weekly Volume Trend
               </h2>
               <div className="flex items-end justify-between h-24 gap-1.5">
@@ -1021,45 +1008,45 @@ export default function WorkoutPage() {
                     <div key={i} className="flex-1 flex flex-col items-center">
                       <div className="w-full bg-gray-800 rounded-t relative" style={{ height: "70px" }}>
                         <div
-                          className="w-full bg-orange-500 rounded-t absolute bottom-0 transition-all duration-500"
+                          className="w-full bg-teal-500 rounded-t absolute bottom-0 transition-all duration-500"
                           style={{ height: `${heightPercent}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-gray-400 mt-1">
+                      <span className="text-[10px] text-gray-500 mt-1">
                         {i === weeklyData.length - 1 ? "Today" : `D${i + 1}`}
                       </span>
-                      <span className="text-[9px] text-gray-500">{value}kg</span>
+                      <span className="text-[9px] text-gray-600">{value}kg</span>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            {/* Exercise Progress - Compact */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-              <h2 className="text-sm font-semibold mb-3">Exercise Progress</h2>
+            {/* Exercise Progress - Per-exercise breakdown */}
+            <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
+              <h2 className="text-sm font-semibold mb-3 text-gray-300">Exercise Progress</h2>
               <div className="space-y-2.5">
                 {exercises.slice(0, 3).map((ex) => {
-                  const completedSets = ex.sets.filter(s => s.completed).length;
-                  const progress = (completedSets / ex.goalSets) * 100;
+                  const completedSets = ex.sets.filter((s: { completed: boolean }) => s.completed).length;
+                  const progress = ex.goalSets ? (completedSets / ex.goalSets) * 100 : 0;
                   return (
-                    <div key={ex.id} className="bg-gray-800 rounded-lg p-3">
+                    <div key={ex.id} className="bg-gray-800/80 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold text-sm">{ex.name}</h3>
-                        <span className="text-xs text-gray-400">
+                        <h3 className="font-semibold text-sm text-white">{ex.name}</h3>
+                        <span className="text-xs text-gray-500">
                           {completedSets} / {ex.goalSets}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <CircularProgress percentage={progress} size={70} color="#f97316" />
+                        <CircularProgress percentage={progress} size={70} color="#14b8a6" />
                         <div className="flex-1">
                           <div className="w-full bg-gray-700 rounded-full h-1.5 mb-1">
                             <div
-                              className="bg-orange-500 h-1.5 rounded-full transition-all"
+                              className="bg-teal-500 h-1.5 rounded-full transition-all"
                               style={{ width: `${progress}%` }}
                             />
                           </div>
-                          <p className="text-[10px] text-gray-400">
+                          <p className="text-[10px] text-gray-500">
                             {ex.goalSets}×{ex.goalReps} @ {ex.goalWeight}kg
                           </p>
                         </div>
@@ -1070,22 +1057,22 @@ export default function WorkoutPage() {
               </div>
             </div>
 
-            {/* Additional Stats - Compact */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
-                <TrendingUp className="w-5 h-5 text-orange-400 mx-auto mb-1" />
+            {/* Additional Stats */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-3 text-center">
+                <TrendingUp className="w-5 h-5 text-teal-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-white">{workoutsThisWeek}</p>
-                <p className="text-[10px] text-gray-400">This Week</p>
+                <p className="text-[10px] text-gray-500">This Week</p>
               </div>
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
-                <Target className="w-5 h-5 text-orange-400 mx-auto mb-1" />
+              <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-3 text-center">
+                <Target className="w-5 h-5 text-teal-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-white">{totalWorkoutsLogged}</p>
-                <p className="text-[10px] text-gray-400">Total</p>
+                <p className="text-[10px] text-gray-500">Total</p>
               </div>
-              <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
-                <Calendar className="w-5 h-5 text-orange-400 mx-auto mb-1" />
+              <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-3 text-center">
+                <Calendar className="w-5 h-5 text-teal-400 mx-auto mb-1" />
                 <p className="text-lg font-bold text-white">{activeStreak}</p>
-                <p className="text-[10px] text-gray-400">Streak</p>
+                <p className="text-[10px] text-gray-500">Streak</p>
               </div>
             </div>
           </div>

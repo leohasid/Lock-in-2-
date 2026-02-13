@@ -1268,7 +1268,7 @@ Provide a helpful, conversational response.`;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-[#0a0f1a] to-black text-white px-4 pt-4 pb-28">
+    <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white px-4 pt-4 pb-28">
       {/* Tab Selection Bar - At the very top */}
       <div className="flex gap-2 mb-5 border-b border-teal-500/30">
         <button

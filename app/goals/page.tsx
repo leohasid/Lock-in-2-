@@ -278,14 +278,14 @@ export default function GoalsPage() {
   const completedTasksCount = tasks.filter((t) => t.completed).length;
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white">
       <div className="max-w-md mx-auto pb-24 px-5">
         {/* Tab Bar */}
-        <div className="flex gap-2 mb-6 pt-4 border-b border-[#2A2A2A]">
+        <div className="flex gap-2 mb-6 pt-4 border-b border-teal-500/30">
           <Link
             href="/"
             className={`flex-1 py-2 font-semibold text-center text-sm ${
-              pathname === "/" ? "text-[#00D9D9] border-b-2 border-[#00D9D9]" : "text-gray-500 hover:text-[#00D9D9]"
+              pathname === "/" ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent" : "text-gray-400 hover:text-teal-300"
             }`}
           >
             Home
@@ -293,7 +293,7 @@ export default function GoalsPage() {
           <Link
             href="/goals"
             className={`flex-1 py-2 font-semibold text-center text-sm ${
-              pathname === "/goals" ? "text-[#00D9D9] border-b-2 border-[#00D9D9]" : "text-gray-500 hover:text-[#00D9D9]"
+              pathname === "/goals" ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent" : "text-gray-400 hover:text-teal-300"
             }`}
           >
             Goals
@@ -302,7 +302,7 @@ export default function GoalsPage() {
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-[28px] font-bold text-[#00D9D9]">Goals</h1>
+          <h1 className="text-[28px] font-bold text-teal-400">Goals</h1>
           <div className="flex gap-2">
             <button
               onClick={() => {
@@ -310,13 +310,13 @@ export default function GoalsPage() {
                 setEditingGoal(null);
                 setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
               }}
-              className="px-5 py-2 rounded-lg bg-[#00D9D9] text-black font-semibold text-sm hover:bg-[#00c4c4] transition-colors"
+              className="px-5 py-2 rounded-lg bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black font-semibold text-sm transition-colors"
             >
               + Add
             </button>
             <button
               onClick={() => setIsEditing(!isEditing)}
-              className="px-4 py-2 rounded-lg bg-[#1A1A1A] border border-[#2A2A2A] text-white text-sm hover:bg-[#252525] transition-colors"
+              className="px-4 py-2 rounded-lg bg-gradient-to-b from-[#0c1422] to-black border border-teal-500/30 text-white text-sm hover:bg-[rgba(20,30,35,1)] transition-colors"
             >
               <Edit2 className="w-4 h-4" />
             </button>
@@ -324,27 +324,27 @@ export default function GoalsPage() {
         </div>
 
         {/* Long-term Goals Section */}
-        <p className="text-[11px] font-semibold text-[#666666] tracking-wider mb-3">LONG-TERM GOALS</p>
+        <p className="text-[11px] font-semibold text-gray-500 tracking-wider mb-3">LONG-TERM GOALS</p>
         <div className="space-y-4 mb-4">
           {displayedLongTermGoals.map((goal) => {
             const percent = goal.target > 0 ? Math.min(Math.round((goal.current / goal.target) * 100), 100) : 0;
             return (
               <div
                 key={goal.id}
-                className="rounded-[10px] bg-[#0F1419] border border-[#1F2937] p-4"
+                className="rounded-xl bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30 p-4"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <p className="text-base font-medium text-white truncate">{goal.title}</p>
-                    <p className="text-xs text-[#555555] mt-0.5">{formatProgressText(goal)}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{formatProgressText(goal)}</p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-lg font-bold text-[#00D9D9]">{percent}%</span>
+                    <span className="text-lg font-bold text-teal-400">{percent}%</span>
                     {isEditing ? (
                       <div className="flex gap-1">
                         <button
                           onClick={() => handleOpenProgressModal(goal)}
-                          className="p-1 text-[#555555] hover:text-white"
+                          className="p-1 text-gray-500 hover:text-white"
                         >
                           Edit
                         </button>
@@ -358,16 +358,16 @@ export default function GoalsPage() {
                     ) : (
                       <button
                         onClick={() => handleOpenProgressModal(goal)}
-                        className="p-1 text-[#555555] hover:text-white"
+                        className="p-1 text-gray-500 hover:text-white"
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
                     )}
                   </div>
                 </div>
-                <div className="mt-3 h-2 rounded-full bg-[#1A1A1A] overflow-hidden">
+                <div className="mt-3 h-2 rounded-full bg-gray-800 overflow-hidden">
                   <div
-                    className="h-2 rounded-full bg-[#00D9D9] transition-all duration-300"
+                    className="h-2 rounded-full bg-teal-500 transition-all duration-300"
                     style={{ width: `${percent}%` }}
                   />
                 </div>
@@ -380,7 +380,7 @@ export default function GoalsPage() {
         {longTermGoals.length > LONG_TERM_GOALS_PREVIEW && !showMoreGoals && (
           <button
             onClick={() => setShowMoreGoals(true)}
-            className="w-full py-3 rounded-lg border border-dashed border-[#2A2A2A] text-[#555555] text-sm hover:border-[#3A3A3A] hover:text-gray-400 transition-colors mb-8"
+            className="w-full py-3 rounded-lg border border-dashed border-teal-500/30 text-gray-500 text-sm hover:border-teal-400/50 hover:text-gray-400 transition-colors mb-8"
           >
             + {hiddenGoalsCount} more goal{hiddenGoalsCount !== 1 ? "s" : ""}
           </button>
@@ -388,25 +388,25 @@ export default function GoalsPage() {
 
         {/* Today's Tasks Section */}
         <div className="flex items-center justify-between mb-3 mt-8">
-          <p className="text-[11px] font-semibold text-[#666666] tracking-wider">TODAY&apos;S TASKS</p>
-          <span className="text-[11px] font-semibold text-[#00D9D9]">
+          <p className="text-[11px] font-semibold text-gray-500 tracking-wider">TODAY&apos;S TASKS</p>
+          <span className="text-[11px] font-semibold text-teal-400">
             {completedTasksCount}/{tasks.length}
           </span>
         </div>
 
         {/* Quick Add Input */}
-        <div className="flex items-center gap-2 mb-4 rounded-[10px] bg-[#0F1419] border border-[#2A2A2A] px-4 py-3">
+        <div className="flex items-center gap-2 mb-4 rounded-xl bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30 px-4 py-3">
           <input
             type="text"
             value={quickTaskInput}
             onChange={(e) => setQuickTaskInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAddQuickTask()}
             placeholder="Set your goals for the day..."
-            className="flex-1 bg-transparent text-sm text-white placeholder:text-[#444444] focus:outline-none"
+            className="flex-1 bg-transparent text-sm text-white placeholder:text-gray-500 focus:outline-none"
           />
           <button
             onClick={handleAddQuickTask}
-            className="w-8 h-6 rounded-md bg-[#00D9D9] flex items-center justify-center text-black font-bold text-base hover:bg-[#00c4c4] transition-colors"
+            className="w-8 h-6 rounded-md bg-teal-400 flex items-center justify-center text-black font-bold text-base hover:bg-teal-500 transition-colors"
           >
             +
           </button>
@@ -417,19 +417,19 @@ export default function GoalsPage() {
           {tasks.map((task) => (
             <div
               key={task.id}
-              className="flex items-center gap-4 rounded-[10px] bg-[#0F1419] border border-[#1F2937] px-4 py-3"
+              className="flex items-center gap-4 rounded-xl bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30 px-4 py-3"
             >
               <button
                 onClick={() => handleToggleTask(task.id)}
                 className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-colors ${
-                  task.completed ? "bg-[#00D9D9] border-[#00D9D9]" : "border-[#00D9D9] bg-transparent"
+                  task.completed ? "bg-teal-400 border-teal-400" : "border-teal-400 bg-transparent"
                 }`}
               >
                 {task.completed && <Check className="w-5 h-5 text-black" strokeWidth={3} />}
               </button>
               <span
                 className={`flex-1 text-[15px] ${
-                  task.completed ? "text-[#555555] line-through" : "text-white"
+                  task.completed ? "text-gray-500 line-through" : "text-white"
                 }`}
               >
                 {task.title}
@@ -439,7 +439,7 @@ export default function GoalsPage() {
         </div>
 
         {longTermGoals.length === 0 && tasks.length === 0 && (
-          <p className="text-center text-[#555555] py-12 text-sm">
+          <p className="text-center text-gray-500 py-12 text-sm">
             No goals yet. Click &quot;+ Add&quot; to create one.
           </p>
         )}
@@ -448,7 +448,7 @@ export default function GoalsPage() {
       {/* Add/Edit Goal Modal */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0F1419] rounded-xl p-5 max-w-md w-full border border-[#1F2937] max-h-[90vh] overflow-y-auto">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-xl p-5 max-w-md w-full border border-teal-500/30 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-white mb-4">
               {editingGoal ? "Edit Goal" : "Add New Goal"}
             </h3>
@@ -460,7 +460,7 @@ export default function GoalsPage() {
                     type="button"
                     onClick={() => setFormData((prev) => ({ ...prev, goalType: "daily" }))}
                     className={`flex-1 py-2 rounded-lg font-semibold text-sm ${
-                      formData.goalType === "daily" ? "bg-[#00D9D9] text-black" : "bg-[#1A1A1A] border border-[#2A2A2A] text-white"
+                      formData.goalType === "daily" ? "bg-teal-400 text-black" : "bg-[rgba(20,30,35,0.85)] border border-teal-500/30 text-white"
                     }`}
                   >
                     Daily
@@ -469,7 +469,7 @@ export default function GoalsPage() {
                     type="button"
                     onClick={() => setFormData((prev) => ({ ...prev, goalType: "long-term" }))}
                     className={`flex-1 py-2 rounded-lg font-semibold text-sm ${
-                      formData.goalType === "long-term" ? "bg-[#00D9D9] text-black" : "bg-[#1A1A1A] border border-[#2A2A2A] text-white"
+                      formData.goalType === "long-term" ? "bg-teal-400 text-black" : "bg-[rgba(20,30,35,0.85)] border border-teal-500/30 text-white"
                     }`}
                   >
                     Long-term
@@ -484,7 +484,7 @@ export default function GoalsPage() {
                     const t = GOAL_TYPES.find((x) => x.value === e.target.value);
                     setFormData((prev) => ({ ...prev, type: e.target.value, unit: t?.unit || prev.unit }));
                   }}
-                  className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-[#00D9D9]"
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-teal-400"
                 >
                   <option value="">Select...</option>
                   {GOAL_TYPES.map((t) => (
@@ -502,7 +502,7 @@ export default function GoalsPage() {
                         value={formData.title}
                         onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                         placeholder={formData.type === "fitness" ? "e.g., Lose 10kg" : "Enter goal"}
-                        className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#00D9D9]"
+                        className="w-full bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
                       />
                     </div>
                   )}
@@ -518,14 +518,14 @@ export default function GoalsPage() {
                           }
                         }}
                         placeholder={formData.type === "financial" ? "e.g., 10k" : "Target"}
-                        className="flex-1 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#00D9D9]"
+                        className="flex-1 bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
                       />
                       <input
                         type="text"
                         value={formData.unit}
                         onChange={(e) => setFormData((prev) => ({ ...prev, unit: e.target.value }))}
                         placeholder="unit"
-                        className="w-20 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#00D9D9]"
+                        className="w-20 bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
                       />
                     </div>
                   </div>
@@ -536,7 +536,7 @@ export default function GoalsPage() {
                         type="date"
                         value={formData.targetDate}
                         onChange={(e) => setFormData((prev) => ({ ...prev, targetDate: e.target.value }))}
-                        className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-[#00D9D9]"
+                        className="w-full bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-teal-400"
                         min={todayStr}
                       />
                     </div>
@@ -553,7 +553,7 @@ export default function GoalsPage() {
                           }
                         }}
                         placeholder="0"
-                        className="w-full bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-[#00D9D9]"
+                        className="w-full bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
                       />
                     </div>
                   )}
@@ -563,7 +563,7 @@ export default function GoalsPage() {
                 <button
                   onClick={editingGoal ? handleUpdateGoal : handleAddGoal}
                   disabled={!formData.type || !formData.target || (formData.goalType === "long-term" && !formData.targetDate)}
-                  className="flex-1 py-3 bg-[#00D9D9] text-black rounded-lg font-semibold hover:bg-[#00c4c4] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-3 bg-teal-400 text-black rounded-lg font-semibold hover:bg-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingGoal ? "Update" : "Add Goal"}
                 </button>
@@ -573,7 +573,7 @@ export default function GoalsPage() {
                     setEditingGoal(null);
                     setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
                   }}
-                  className="flex-1 py-3 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg font-semibold text-white hover:bg-[#252525]"
+                  className="flex-1 py-3 bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg font-semibold text-white hover:bg-[rgba(20,30,35,1)]"
                 >
                   Cancel
                 </button>
@@ -586,7 +586,7 @@ export default function GoalsPage() {
       {/* Progress Update Modal */}
       {showProgressModal && selectedGoalForProgress && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#0F1419] rounded-xl p-6 max-w-md w-full border border-[#1F2937]">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-xl p-6 max-w-md w-full border border-teal-500/30">
             <h3 className="text-xl font-bold text-white mb-2">Update Progress</h3>
             <p className="text-sm text-[#555555] mb-4">{selectedGoalForProgress.title}</p>
             <div className="space-y-4">
@@ -601,7 +601,7 @@ export default function GoalsPage() {
                         setProgressValue(e.target.value);
                       }
                     }}
-                    className="flex-1 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg p-3 text-sm text-white focus:outline-none focus:border-[#00D9D9]"
+                    className="flex-1 bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-teal-400"
                     placeholder="Enter value"
                     autoFocus
                   />
@@ -611,7 +611,7 @@ export default function GoalsPage() {
               <div className="flex gap-3">
                 <button
                   onClick={handleSaveProgress}
-                  className="flex-1 py-3 bg-[#00D9D9] text-black rounded-lg font-semibold hover:bg-[#00c4c4]"
+                  className="flex-1 py-3 bg-teal-400 text-black rounded-lg font-semibold hover:bg-teal-500"
                 >
                   Save
                 </button>
@@ -621,7 +621,7 @@ export default function GoalsPage() {
                     setSelectedGoalForProgress(null);
                     setProgressValue("");
                   }}
-                  className="flex-1 py-3 bg-[#1A1A1A] border border-[#2A2A2A] rounded-lg font-semibold text-white hover:bg-[#252525]"
+                  className="flex-1 py-3 bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg font-semibold text-white hover:bg-[rgba(20,30,35,1)]"
                 >
                   Cancel
                 </button>
