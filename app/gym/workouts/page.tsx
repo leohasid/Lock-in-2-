@@ -424,8 +424,8 @@ export default function WorkoutsPage() {
 
       {/* Schedule modal - pops when leaving with selected plans */}
       {showScheduleModal && (
-        <div className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-md max-h-[85vh] overflow-y-auto border border-white/10 shadow-xl">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto border border-white/10 shadow-xl">
             <h2 className="text-lg font-bold text-white mb-2">Select your training days</h2>
             <p className="text-sm text-gray-400 mb-4">
               Choose which days you train each plan. Or let AI Coach set this up for you.
