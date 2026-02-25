@@ -320,8 +320,6 @@ export default function GoalsPage() {
     REMINDER_PRESETS.find((o) => o.value === value)?.label ?? value;
 
   const handleSaveReminders = async (task: Task, times: string[]) => {
-    const hasPermission = await requestNotificationPermission();
-    if (!hasPermission) return;
     const storedReminders = localStorage.getItem("reminders");
     if (!storedReminders) return;
     const reminders = JSON.parse(storedReminders);
@@ -330,8 +328,12 @@ export default function GoalsPage() {
     );
     localStorage.setItem("reminders", JSON.stringify(updated));
     setTasks(updated.filter((r: Task) => r.type === "task" && r.date === todayStr));
-    times.forEach((time) => scheduleTaskReminder(task.id, task.title, task.date, time));
     setReminderTaskId(null);
+    // Schedule notifications only if permission granted (don't block save)
+    const hasPermission = await requestNotificationPermission();
+    if (hasPermission) {
+      times.forEach((time) => scheduleTaskReminder(task.id, task.title, task.date, time));
+    }
   };
 
   const formatProgressText = (goal: Goal) => {
@@ -561,7 +563,10 @@ export default function GoalsPage() {
               onClick={() => setReminderTaskId(null)}
               aria-hidden="true"
             />
-            <div className="relative w-full max-w-md bg-gradient-to-b from-[#0c1422] via-[#1a2332] to-black rounded-2xl border border-teal-500/30 max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
+            <div
+              className="relative w-full max-w-md bg-gradient-to-b from-[#0c1422] via-[#1a2332] to-black rounded-2xl border border-teal-500/30 max-h-[80vh] overflow-hidden flex flex-col shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between p-4 border-b border-white/10">
                 <h3 className="text-lg font-bold text-white">Time Alerts</h3>
                 <button
@@ -632,14 +637,16 @@ export default function GoalsPage() {
               </div>
               <div className="p-4 border-t border-white/10 flex gap-3">
                 <button
+                  type="button"
                   onClick={() => setReminderTaskId(null)}
-                  className="flex-1 py-3 rounded-xl border border-white/10 text-gray-400 hover:text-white transition-colors font-medium"
+                  className="flex-1 py-3 min-h-[48px] rounded-xl border border-white/10 text-gray-400 hover:text-white transition-colors font-medium"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleSaveReminders(task, draftReminderTimes)}
-                  className="flex-1 py-3 rounded-xl bg-teal-400 hover:bg-teal-500 text-black font-bold transition-colors"
+                  className="flex-1 py-3 min-h-[48px] rounded-xl bg-teal-400 hover:bg-teal-500 text-black font-bold transition-colors active:scale-[0.98]"
                 >
                   Save
                 </button>
