@@ -74,21 +74,29 @@ npm run dev
 ```
 locked-in-app/
 ├── app/
-│   ├── page.tsx              # Main dashboard
-│   ├── layout.tsx             # Root layout
-│   ├── globals.css            # Global styles
-│   ├── gym/
-│   │   └── page.tsx          # Gym & fitness page
-│   ├── nutrition/
-│   │   └── page.tsx          # Nutrition tracking page
-│   ├── addictions/
-│   │   └── page.tsx          # Addiction recovery page
-│   ├── calendar/
-│   │   └── page.tsx          # Calendar & reminders page
-│   ├── consultation/
-│   │   └── page.tsx          # AI consultation page
-│   └── progress/
-│       └── page.tsx          # Progress overview page
+│   ├── page.tsx                 # Main dashboard
+│   ├── layout.tsx               # Root layout
+│   ├── globals.css              # Global styles
+│   ├── onboarding-check.tsx     # Onboarding/subscription gate
+│   ├── utils/
+│   │   ├── notifications.ts     # Workout/reminder notifications
+│   │   ├── app-blocking.ts      # Phone app blocking bridge (iOS)
+│   │   └── index.ts             # Utils barrel export
+│   ├── api/                     # Next.js API routes (consultation, AI, etc.)
+│   ├── gym/                     # Workout, workouts, stats, AI coach
+│   ├── nutrition/               # Meal tracking, calorie goals
+│   ├── addictions/              # Phone/social, vape, recovery tracking
+│   ├── calendar/                # Reminders, schedule
+│   ├── goals/                   # Goals & tasks
+│   ├── habits/                  # Habit tracking
+│   ├── consultation/            # AI consultation
+│   ├── progress/                # Progress dashboard
+│   └── subscribe/               # Subscription flow
+├── components/                  # Reusable UI (BottomNav, cards, etc.)
+├── lib/                         # API client, exercise images, etc.
+├── backend/                     # Railway Express server (AI)
+├── Mogifi Ai/                   # Xcode iOS app (WebView wrapper)
+├── docs/                        # Additional documentation
 ├── package.json
 └── README.md
 ```

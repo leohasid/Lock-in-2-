@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import OnboardingCheck from "./onboarding-check";
+import NotificationSetup from "@/components/NotificationSetup";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,7 +37,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <OnboardingCheck>{children}</OnboardingCheck>
+        <OnboardingCheck>
+          <NotificationSetup />
+          {children}
+        </OnboardingCheck>
       </body>
     </html>
   );

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
+import { appBlockingBridge } from "@/app/utils/app-blocking";
 import { Shield, Clock, AlertTriangle, Lock, Unlock, Settings, X, Zap, ChevronRight, PiggyBank, Star, CheckCircle2, MessageCircle, Heart } from "lucide-react";
 
 interface AppBlock {
@@ -457,24 +458,13 @@ export default function AddictionsPage() {
 
   const blockAppNative = async (appName: string, block: boolean) => {
     try {
-      if (typeof window !== "undefined" && window.Capacitor?.isNativePlatform()) {
-        console.log(`[Native] Would ${block ? 'block' : 'unblock'} app: ${appName}`);
-      }
-      
-      if (typeof window !== "undefined" && window.lockedInUsageBridge) {
-        if (window.lockedInUsageBridge.blockApp) {
-          await window.lockedInUsageBridge.blockApp(appName, block);
-          return;
-        }
-      }
-      
-      if (block && Notification.permission === "granted") {
+      await appBlockingBridge.blockApp(appName, block);
+      if (block && typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
         new Notification(`🚫 ${appName} Blocked`, {
           body: "Daily limit reached! (Native blocking requires iOS app)",
-          icon: "/favicon.ico"
+          icon: "/favicon.ico",
         });
       }
-      console.log(`[Web] ${block ? 'Would block' : 'Would unblock'} app: ${appName}`);
     } catch (error) {
       console.error("Failed to block app:", error);
     }

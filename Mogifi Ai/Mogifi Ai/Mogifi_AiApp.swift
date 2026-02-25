@@ -9,7 +9,7 @@
 import SwiftUI
 
 @main
-struct Mogifi_AiApp: App {
+struct MogifiAiApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

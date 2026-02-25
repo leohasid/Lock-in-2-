@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { ArrowLeft, Sparkles } from "lucide-react";
+import { toLocalDateString } from "@/lib/date-utils";
 
 const SWIPE_THRESHOLD = 80;
 
@@ -248,19 +249,17 @@ export default function WorkoutsPage() {
         const parsed = JSON.parse(storedManual);
         if (parsed && typeof parsed === "object") {
           const migrated: Record<string, { days: number[] }> = {};
+          let hadOldFormat = false;
           for (const [k, v] of Object.entries(parsed)) {
             const old = v as any;
             if (old && "days" in old && Array.isArray(old.days)) {
               migrated[k] = { days: old.days };
-            } else if (old && "day1" in old && Array.isArray(old.day1)) {
-              const all = [...(old.day1 || []), ...(old.day2 || []), ...(old.day3 || [])];
-              migrated[k] = { days: [...new Set(all)].sort((a: number, b: number) => a - b) };
-            } else if (old?.pushDays || old?.pullDays || old?.legsDays) {
-              const all = [...(old.pushDays || []), ...(old.pullDays || []), ...(old.legsDays || [])];
-              migrated[k] = { days: [...new Set(all)].sort((a: number, b: number) => a - b) };
+            } else if (old && ("day1" in old || "pushDays" in old)) {
+              hadOldFormat = true;
             }
           }
           setManualSchedule(migrated);
+          if (hadOldFormat) localStorage.setItem("manualScheduleByPlan", JSON.stringify(migrated));
         }
       } catch { /* ignore */ }
     }
@@ -305,43 +304,44 @@ export default function WorkoutsPage() {
     }
   }, [workoutOptions, selectedWorkoutOptions]);
 
-  const handleSaveSchedule = () => {
+  const persistSchedule = (scheduleToUse: Record<string, { days: number[] }>) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const dayToWorkout = new Map<number, { name: string; optionId: string }>();
     for (const optId of selectedWorkoutOptions) {
       const opt = workoutOptions.find((o) => o.id === optId);
       if (!opt) continue;
-      const days = (manualSchedule[optId] ?? { days: [] }).days || [];
+      const days = (scheduleToUse[optId] ?? { days: [] }).days || [];
       days.forEach((d) => {
-        if (!dayToWorkout.has(d)) {
-          dayToWorkout.set(d, { name: opt.name, optionId: optId });
-        }
-      });
-    }
-    const newSchedule: WorkoutSchedule[] = [];
-    for (let i = 0; i < 28; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
-      const dateStr = d.toISOString().split("T")[0];
-      const dayOfWeek = d.getDay();
-      const assigned = dayToWorkout.get(dayOfWeek);
-      newSchedule.push({
-        date: dateStr,
-        workoutName: assigned?.name ?? "Rest Day",
-        completed: false,
-        optionId: assigned?.optionId,
+        dayToWorkout.set(d, { name: opt.name, optionId: optId });
       });
     }
     const existing = JSON.parse(localStorage.getItem("workoutSchedule") || "[]") as WorkoutSchedule[];
     const existingByDate = new Map(existing.map((w) => [w.date, w]));
-    newSchedule.forEach((entry) => {
-      const existingEntry = existingByDate.get(entry.date);
-      existingByDate.set(entry.date, { ...entry, completed: existingEntry?.completed ?? false });
-    });
+
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const dateStr = toLocalDateString(d);
+      const dayOfWeek = d.getDay();
+      const assigned = dayToWorkout.get(dayOfWeek);
+      const existingEntry = existingByDate.get(dateStr);
+      existingByDate.set(dateStr, {
+        date: dateStr,
+        workoutName: assigned?.name ?? "Rest Day",
+        completed: existingEntry?.completed ?? false,
+        optionId: assigned?.optionId,
+      });
+    }
+
     const merged = Array.from(existingByDate.values()).sort((a, b) => a.date.localeCompare(b.date));
     localStorage.setItem("workoutSchedule", JSON.stringify(merged));
-    localStorage.setItem("manualScheduleByPlan", JSON.stringify(manualSchedule));
+    localStorage.setItem("manualScheduleByPlan", JSON.stringify(scheduleToUse));
+    localStorage.setItem("scheduleLastUpdated", String(Date.now()));
+  };
+
+  const handleSaveSchedule = () => {
+    persistSchedule(manualSchedule);
   };
 
   const handleAddWorkout = () => {
@@ -422,60 +422,60 @@ export default function WorkoutsPage() {
 
       </div>
 
-      {/* Schedule modal - pops when leaving with selected plans */}
+      {/* Schedule modal - day-first: pick one workout (or Rest) per day */}
       {showScheduleModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto border border-white/10 shadow-xl">
-            <h2 className="text-lg font-bold text-white mb-2">Select your training days</h2>
+            <h2 className="text-lg font-bold text-white mb-2">Assign workout to each day</h2>
             <p className="text-sm text-gray-400 mb-4">
-              Choose which days you train each plan. Or let AI Coach set this up for you.
+              Pick which workout (or Rest) for each day. One choice per day.
             </p>
-            <div className="space-y-4 mb-4">
-              {selectedWorkoutOptions.map((optId) => {
-                const opt = workoutOptions.find((o) => o.id === optId);
-                if (!opt) return null;
-                const days = (manualSchedule[optId] ?? { days: [] }).days || [];
-                const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-                const dayIndices = [1, 2, 3, 4, 5, 6, 0];
+            <div className="space-y-2 mb-4">
+              {[
+                { label: "Monday", dayIndex: 1 },
+                { label: "Tuesday", dayIndex: 2 },
+                { label: "Wednesday", dayIndex: 3 },
+                { label: "Thursday", dayIndex: 4 },
+                { label: "Friday", dayIndex: 5 },
+                { label: "Saturday", dayIndex: 6 },
+                { label: "Sunday", dayIndex: 0 },
+              ].map(({ label, dayIndex }) => {
+                const assignedOptionId = Object.entries(manualSchedule).find(([, v]) =>
+                  (v?.days || []).includes(dayIndex)
+                )?.[0] ?? null;
                 return (
-                  <div key={optId} className="border border-white/10 rounded-xl p-3">
-                    <h4 className="text-sm font-medium text-teal-400 mb-2">{opt.name}</h4>
-                    <div className="flex flex-wrap gap-1.5">
-                      {dayLabels.map((day, i) => {
-                        const dayIndex = dayIndices[i];
-                        const isSelected = days.includes(dayIndex);
+                  <div
+                    key={dayIndex}
+                    className="flex items-center justify-between gap-3 py-2 px-3 rounded-xl bg-white/5 border border-white/10"
+                  >
+                    <span className="text-white font-medium w-24 shrink-0">{label}</span>
+                    <select
+                      value={assignedOptionId ?? "rest"}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const optId = val === "rest" ? null : val;
+                        const getAssignedForDay = (d: number) =>
+                          d === dayIndex ? optId : Object.entries(manualSchedule).find(([, v]) => (v?.days || []).includes(d))?.[0] ?? null;
+                        const next: Record<string, { days: number[] }> = {};
+                        for (const id of selectedWorkoutOptions) {
+                          next[id] = { days: [0, 1, 2, 3, 4, 5, 6].filter((d) => getAssignedForDay(d) === id).sort((a, b) => a - b) };
+                        }
+                        setManualSchedule(next);
+                        persistSchedule(next);
+                      }}
+                      className="flex-1 bg-[#0c1422] border border-white/20 text-white rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                    >
+                      <option value="rest">Rest</option>
+                      {selectedWorkoutOptions.map((optId) => {
+                        const opt = workoutOptions.find((o) => o.id === optId);
+                        if (!opt) return null;
                         return (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => {
-                              setManualSchedule((prev) => {
-                                const curr = prev[optId] ?? { days: [] };
-                                const arr = [...(curr.days || [])];
-                                if (isSelected) {
-                                  const idx = arr.indexOf(dayIndex);
-                                  if (idx >= 0) arr.splice(idx, 1);
-                                  return { ...prev, [optId]: { days: arr } };
-                                }
-                                const next = { ...prev };
-                                for (const id of selectedWorkoutOptions) {
-                                  const d = (prev[id] ?? { days: [] }).days || [];
-                                  next[id] = { days: id === optId ? [...d, dayIndex].sort((a, b) => a - b) : d.filter((x) => x !== dayIndex) };
-                                }
-                                return next;
-                              });
-                            }}
-                            className={`px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
-                              isSelected
-                                ? "bg-teal-500/30 border border-teal-400/50 text-teal-300"
-                                : "bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10"
-                            }`}
-                          >
-                            {day}
-                          </button>
+                          <option key={optId} value={optId}>
+                            {opt.name}
+                          </option>
                         );
                       })}
-                    </div>
+                    </select>
                   </div>
                 );
               })}
@@ -492,10 +492,9 @@ export default function WorkoutsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  // Persist day selection even on Skip so workout page can show exercises
                   handleSaveSchedule();
                   setShowScheduleModal(false);
-                  router.push("/gym/workout");
+                  window.location.href = "/gym/workout?refresh=" + Date.now();
                 }}
                 className="flex-1 py-3 bg-white/5 text-gray-400 rounded-xl font-semibold hover:bg-white/10 transition-colors"
               >
@@ -506,7 +505,7 @@ export default function WorkoutsPage() {
                 onClick={() => {
                   handleSaveSchedule();
                   setShowScheduleModal(false);
-                  router.push("/gym/workout");
+                  window.location.href = "/gym/workout?refresh=" + Date.now();
                 }}
                 className="flex-1 py-3 bg-teal-400 hover:bg-teal-500 text-black rounded-xl font-semibold transition-colors"
               >

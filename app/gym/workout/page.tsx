@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { getBuiltInImageUrl } from "@/lib/built-in-exercise-images";
 import { X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, ChevronLeft, Dumbbell, TrendingUp, Target, Zap, Calendar, Activity, Sparkles, Play } from "lucide-react";
 import GuidedWorkoutView from "@/components/GuidedWorkoutView";
+import { scheduleWorkoutNotification } from "@/app/utils/notifications";
+import { toLocalDateString } from "@/lib/date-utils";
 
 interface Exercise {
   id: string;
@@ -108,6 +110,7 @@ const CircularProgress = ({ percentage, size = 120, color = "#f97316", label }: 
 export default function WorkoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const refreshParam = searchParams.get("refresh");
   const [activeTab, setActiveTab] = useState<"workout" | "progress">("workout");
   const [weeklyVolume, setWeeklyVolume] = useState<number[]>(Array(7).fill(0));
   const [totalWorkoutsLogged, setTotalWorkoutsLogged] = useState(0);
@@ -174,8 +177,8 @@ export default function WorkoutPage() {
         const newDate = new Date(urlDateParam + "T00:00:00");
         if (!isNaN(newDate.getTime())) {
           setSelectedDate((prev) => {
-            const currentDateStr = prev.toISOString().split("T")[0];
-            const newDateStr = newDate.toISOString().split("T")[0];
+            const currentDateStr = toLocalDateString(prev);
+            const newDateStr = toLocalDateString(newDate);
             return currentDateStr !== newDateStr ? newDate : prev;
           });
         }
@@ -266,6 +269,58 @@ export default function WorkoutPage() {
 
   // When arriving from "Use" on workouts page, open Training days modal (after plan loads)
 
+  const reloadScheduleFromStorage = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const storedSchedule = localStorage.getItem("workoutSchedule");
+    const storedManual = localStorage.getItem("manualScheduleByPlan");
+    if (storedSchedule) {
+      try {
+        setWorkoutSchedule(JSON.parse(storedSchedule));
+      } catch (e) {
+        console.error("Error reloading workout schedule:", e);
+      }
+    }
+    if (storedManual) {
+      try {
+        const parsed = JSON.parse(storedManual);
+        if (parsed && typeof parsed === "object") {
+          const migrated: Record<string, { days: number[] }> = {};
+          for (const [k, v] of Object.entries(parsed)) {
+            const old = v as any;
+            if (old && "days" in old && Array.isArray(old.days)) {
+              migrated[k] = { days: old.days };
+            }
+          }
+          setManualScheduleByPlan(migrated);
+        }
+      } catch { /* ignore */ }
+    }
+  }, []);
+
+  // Reload schedule when returning from schedule modal (refresh param)
+  useEffect(() => {
+    if (typeof window === "undefined" || !refreshParam) return;
+    reloadScheduleFromStorage();
+    router.replace("/gym/workout", { scroll: false });
+  }, [refreshParam, router]);
+
+  // Reload schedule when tab becomes visible or storage changes (keeps display in sync)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") reloadScheduleFromStorage();
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "workoutSchedule" || e.key === "manualScheduleByPlan") reloadScheduleFromStorage();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [reloadScheduleFromStorage]);
+
   // Load workout plan and schedule
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -334,13 +389,8 @@ export default function WorkoutPage() {
             const old = v as any;
             if (old && "days" in old && Array.isArray(old.days)) {
               migrated[k] = { days: old.days };
-            } else if (old && "day1" in old && Array.isArray(old.day1)) {
-              const all = [...(old.day1 || []), ...(old.day2 || []), ...(old.day3 || [])];
-              migrated[k] = { days: [...new Set(all)].sort((a: number, b: number) => a - b) };
-            } else if (old?.pushDays || old?.pullDays || old?.legsDays) {
-              const all = [...(old.pushDays || []), ...(old.pullDays || []), ...(old.legsDays || [])];
-              migrated[k] = { days: [...new Set(all)].sort((a: number, b: number) => a - b) };
             }
+            // Do NOT migrate old day1/day2/day3 or pushDays/pullDays/legsDays - different semantics
           }
           setManualScheduleByPlan(migrated);
         }
@@ -399,7 +449,7 @@ export default function WorkoutPage() {
   const getWorkoutInfoForDate = (date: Date): { optionId: string } | null => {
     const normalizedDate = new Date(date);
     normalizedDate.setHours(0, 0, 0, 0);
-    const dateStr = normalizedDate.toISOString().split("T")[0];
+    const dateStr = toLocalDateString(normalizedDate);
     const dayOfWeek = normalizedDate.getDay();
 
     // 1. workoutSchedule - use optionId when stored, or match by workout name (for old schedules)
@@ -428,7 +478,7 @@ export default function WorkoutPage() {
 
   // Get current day's exercises - ONLY from the scheduled option. Never show another option's exercises.
   const currentDayExercises: Exercise[] = useMemo(() => {
-    const selectedDateStr = selectedDate.toISOString().split("T")[0];
+    const selectedDateStr = toLocalDateString(selectedDate);
 
     // 1. Get the scheduled option for this date
     const info = getWorkoutInfoForDate(selectedDate);
@@ -480,7 +530,7 @@ export default function WorkoutPage() {
   }, [selectedDate, workoutSchedule, selectedWorkoutOption, selectedWorkoutOptions, manualScheduleByPlan, workoutOptions, workoutPlan]);
 
   const getWorkoutNameForDate = (date: Date): string => {
-    const scheduledWorkout = workoutSchedule.find((w) => w.date === date.toISOString().split("T")[0]);
+    const scheduledWorkout = workoutSchedule.find((w) => w.date === toLocalDateString(date));
     if (scheduledWorkout && scheduledWorkout.workoutName !== "Rest Day") return scheduledWorkout.workoutName;
     const info = getWorkoutInfoForDate(date);
     if (info) {
@@ -522,7 +572,19 @@ export default function WorkoutPage() {
   }, [selectedDate, workoutSchedule, workoutOptions, selectedWorkoutOption, selectedWorkoutOptions, manualScheduleByPlan]);
 
   // Load workout data for selected date
-  const selectedDateStr = useMemo(() => selectedDate.toISOString().split("T")[0], [selectedDate]);
+  const selectedDateStr = useMemo(() => toLocalDateString(selectedDate), [selectedDate]);
+
+  // Schedule workout reminder notification for today if user has a workout
+  useEffect(() => {
+    if (typeof window === "undefined" || workoutSchedule.length === 0) return;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = toLocalDateString(today);
+    const todayWorkout = workoutSchedule.find((w) => w.date === todayStr && w.workoutName !== "Rest Day");
+    if (todayWorkout) {
+      scheduleWorkoutNotification(today, todayWorkout.workoutName);
+    }
+  }, [workoutSchedule]);
 
   // Sync current day's exercises into workoutPlan.pushDay for updateSet/save - so we have the right list to edit
   useEffect(() => {
@@ -589,7 +651,7 @@ export default function WorkoutPage() {
       };
       
       if (typeof window !== "undefined") {
-        const dateStr = selectedDate.toISOString().split("T")[0];
+        const dateStr = toLocalDateString(selectedDate);
         const dayExercises = updated[workoutType] || [];
         const workoutData = dayExercises.map(ex => ({
           id: ex.id,
@@ -623,7 +685,7 @@ export default function WorkoutPage() {
     for (let offset = 6; offset >= 0; offset--) {
       const date = new Date(today);
       date.setDate(today.getDate() - offset);
-      const dateStr = date.toISOString().split("T")[0];
+      const dateStr = toLocalDateString(date);
       const raw = localStorage.getItem(`workout_data_${dateStr}`);
       let volume = 0;
       if (raw) {
@@ -648,7 +710,7 @@ export default function WorkoutPage() {
     for (let offset = 0; offset < 30; offset++) {
       const date = new Date(today);
       date.setDate(today.getDate() - offset);
-      const dateStr = date.toISOString().split("T")[0];
+      const dateStr = toLocalDateString(date);
       const raw = localStorage.getItem(`workout_data_${dateStr}`);
       const hasVolume = (() => {
         if (!raw) return false;
@@ -718,7 +780,7 @@ export default function WorkoutPage() {
     const workoutType = getWorkoutTypeForDate(selectedDate);
     if (!workoutType) return;
     
-    const dateStr = selectedDate.toISOString().split("T")[0];
+    const dateStr = toLocalDateString(selectedDate);
     const dayExercises = workoutPlan[workoutType] || [];
     
     const workoutData = dayExercises.map(ex => ({
@@ -1056,10 +1118,10 @@ export default function WorkoutPage() {
         <div className="flex items-center gap-2 mb-4">
           <div className="flex gap-1 flex-1 min-w-0 justify-between overflow-x-auto pb-1">
             {weekDays.map((day) => {
-              const dateStr = day.toISOString().split("T")[0];
+              const dateStr = toLocalDateString(day);
               const displayName = getWorkoutDisplayNameForDate(day);
-              const isSelected = selectedDate.toISOString().split("T")[0] === dateStr;
-              const isToday = new Date().toISOString().split("T")[0] === dateStr;
+              const isSelected = toLocalDateString(selectedDate) === dateStr;
+              const isToday = toLocalDateString(new Date()) === dateStr;
               const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
               const dayLabel = dayLabels[day.getDay() === 0 ? 6 : day.getDay() - 1];
               const workoutShort = displayName === "Rest Day" ? "Rest" : displayName;
@@ -1195,7 +1257,7 @@ export default function WorkoutPage() {
                   <img 
                     src={activeExercise.imageUrl} 
                     alt={activeExercise.name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
                 ) : (
                   <Dumbbell className="w-20 h-20 text-gray-700" />
@@ -1388,7 +1450,7 @@ export default function WorkoutPage() {
                   ...prev,
                   [workoutType]: guidedExercises,
                 }));
-                const dateStr = selectedDate.toISOString().split("T")[0];
+                const dateStr = toLocalDateString(selectedDate);
                 const workoutData = guidedExercises.map((ex) => ({
                   id: ex.id,
                   name: ex.name,
@@ -1407,7 +1469,7 @@ export default function WorkoutPage() {
                   ...prev,
                   [workoutType]: guidedExercises,
                 }));
-                const dateStr = selectedDate.toISOString().split("T")[0];
+                const dateStr = toLocalDateString(selectedDate);
                 const workoutData = guidedExercises.map((ex) => ({
                   id: ex.id,
                   name: ex.name,

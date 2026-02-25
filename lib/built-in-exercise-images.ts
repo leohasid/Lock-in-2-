@@ -8,6 +8,7 @@ export const BUILT_IN_EXERCISE_IMAGES: Record<string, string> = {
   "chest press machine": "/images/exercises/chest-press-machine.png",
   "chest push": "/images/exercises/chest-press-machine.png",
   "chest push machine": "/images/exercises/chest-press-machine.png",
+  "bench press": "/images/exercises/bench-press.png",
 };
 
 export function getBuiltInImageUrl(exerciseName: string): string | undefined {
