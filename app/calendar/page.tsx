@@ -356,6 +356,52 @@ Check if they specified days. If not, ask specifically about days.`
     return reminders.filter((r) => r.date === today);
   };
 
+  /** Parse time string to minutes since midnight for sorting */
+  const parseTimeToMinutes = (time: string): number => {
+    if (!time) return 0;
+    const t = time.trim().toLowerCase();
+    const pmMatch = t.match(/^(\d{1,2})(?::(\d{2}))?\s*pm$/);
+    const amMatch = t.match(/^(\d{1,2})(?::(\d{2}))?\s*am$/);
+    const colonMatch = t.match(/^(\d{1,2}):(\d{2})$/);
+    if (pmMatch) {
+      let h = parseInt(pmMatch[1], 10);
+      if (h === 12) h = 0;
+      const m = pmMatch[2] ? parseInt(pmMatch[2], 10) : 0;
+      return (h + 12) * 60 + m;
+    }
+    if (amMatch) {
+      let h = parseInt(amMatch[1], 10);
+      if (h === 12) h = 0;
+      const m = amMatch[2] ? parseInt(amMatch[2], 10) : 0;
+      return h * 60 + m;
+    }
+    if (colonMatch) {
+      const h = parseInt(colonMatch[1], 10);
+      const m = parseInt(colonMatch[2], 10);
+      return h * 60 + m;
+    }
+    return 0;
+  };
+
+  const getUpcomingReminders = () => {
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    return reminders
+      .filter((r) => !r.completed && r.date >= todayStr)
+      .sort((a, b) => {
+        const dateCmp = (a.date || "").localeCompare(b.date || "");
+        if (dateCmp !== 0) return dateCmp;
+        return parseTimeToMinutes(a.time) - parseTimeToMinutes(b.time);
+      })
+      .filter((r) => {
+        if (r.date > todayStr) return true;
+        return parseTimeToMinutes(r.time) >= nowMinutes;
+      });
+  };
+
+  const getNextReminder = () => getUpcomingReminders()[0] ?? null;
+
   const getSelectedDateReminders = () => {
     const selectedDateStr = selectedDate.toISOString().split("T")[0];
     return reminders.filter((r) => r.date === selectedDateStr);
@@ -953,67 +999,50 @@ Check if they specified days. If not, ask specifically about days.`
         {/* Calendar View */}
         {activeView === "calendar" && (
           <>
-        {/* Today's Reminders */}
+        {/* Upcoming Reminders */}
         <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group mb-4">
           <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <div className="relative z-10">
-            <h2 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent mb-3">
-              Today's Reminders ({getTodayReminders().length})
-            </h2>
-          {getTodayReminders().length === 0 ? (
-            <p className="text-gray-400">No reminders scheduled for today</p>
-          ) : (
-            <div className="space-y-3">
-              {getTodayReminders()
-                .sort((a, b) => a.time.localeCompare(b.time))
-                .map((reminder) => (
-                  <div
-                    key={reminder.id}
-                    className={`bg-gradient-to-br from-[rgba(10,15,20,0.8)] to-[rgba(5,10,15,0.8)] rounded-xl p-4 border border-teal-500/20 hover:border-teal-400/40 transition-all hover:shadow-lg hover:shadow-teal-500/10 flex items-center justify-between ${
-                      reminder.completed ? "opacity-50" : ""
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="text-2xl">{getReminderIcon(reminder.type)}</div>
-                      <div>
-                        <h3
-                          className={`font-bold ${
-                            reminder.completed ? "line-through text-gray-500" : "text-white"
-                          }`}
-                        >
-                          {reminder.title}
-                        </h3>
-                        <p className="text-gray-400 text-sm">{reminder.time}</p>
-                        {reminder.repeatFrequency && (
-                          <p className="text-teal-400/70 text-xs mt-1 font-medium">
-                            Repeats: {reminder.repeatFrequency}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => toggleComplete(reminder.id)}
-                        className={`px-4 py-2 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg ${
-                          reminder.completed
-                            ? "bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-gray-300"
-                            : "bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-black shadow-green-500/30"
-                        }`}
-                      >
-                        {reminder.completed ? "Undo" : "Complete"}
-                      </button>
-                      <button
-                        onClick={() => deleteReminder(reminder.id)}
-                        className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-all transform hover:scale-110 shadow-lg"
-                        title="Delete reminder"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
+                Upcoming Reminders
+              </h2>
+              <Link
+                href="/calendar/all-reminders"
+                className="text-sm font-medium text-teal-400 hover:text-teal-300 transition-colors whitespace-nowrap"
+              >
+                View All Reminders
+              </Link>
+            </div>
+            {(() => {
+              const next = getNextReminder();
+              if (!next) {
+                return <p className="text-gray-400">No upcoming reminders</p>;
+              }
+              const isToday = next.date === new Date().toISOString().split("T")[0];
+              const tomorrow = new Date();
+              tomorrow.setDate(tomorrow.getDate() + 1);
+              const tomorrowStr = tomorrow.toISOString().split("T")[0];
+              const dateLabel = isToday ? "Today" : next.date === tomorrowStr ? "Tomorrow" : new Date(next.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+              return (
+                <div className="bg-gradient-to-br from-[rgba(10,15,20,0.8)] to-[rgba(5,10,15,0.8)] rounded-xl p-4 border border-teal-500/20 hover:border-teal-400/40 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="text-2xl">{getReminderIcon(next.type)}</div>
+                    <div>
+                      <h3 className="font-bold text-white">{next.title}</h3>
+                      <p className="text-gray-400 text-sm">
+                        {dateLabel} at {next.time}
+                      </p>
+                      {next.repeatFrequency && (
+                        <p className="text-teal-400/70 text-xs mt-1 font-medium">
+                          Repeats: {next.repeatFrequency}
+                        </p>
+                      )}
                     </div>
                   </div>
-                ))}
-            </div>
-          )}
+                </div>
+              );
+            })()}
           </div>
         </div>
 

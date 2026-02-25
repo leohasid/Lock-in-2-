@@ -2,25 +2,26 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { Trash2, ArrowLeft, Calendar } from "lucide-react";
+import { Trash2, ArrowLeft, Check } from "lucide-react";
 
 interface Reminder {
   id: string;
   title: string;
   type: "supplement" | "task" | "habit";
   time: string;
-  date: string; // ISO date string (YYYY-MM-DD)
+  date: string;
   completed: boolean;
-  repeatFrequency?: string; // e.g., "daily", "weekly", "every 3 days", etc.
+  repeatFrequency?: string;
 }
 
 export default function AllRemindersPage() {
   const router = useRouter();
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const todayStr = new Date().toISOString().split("T")[0];
 
-  // Load reminders from localStorage on mount
   useEffect(() => {
     if (typeof window === "undefined") return;
     const storedReminders = localStorage.getItem("reminders");
@@ -35,23 +36,47 @@ export default function AllRemindersPage() {
     setIsLoaded(true);
   }, []);
 
-  // Save reminders to localStorage whenever they change (but only after initial load)
   useEffect(() => {
     if (typeof window === "undefined" || !isLoaded) return;
     localStorage.setItem("reminders", JSON.stringify(reminders));
   }, [reminders, isLoaded]);
 
-  const deleteReminder = (id: string) => {
-    if (confirm("Are you sure you want to delete this reminder?")) {
-      setReminders(reminders.filter((r) => r.id !== id));
+  const parseTimeForSort = (time: string): number => {
+    if (!time) return 0;
+    const t = time.trim().toLowerCase();
+    const pm = t.match(/^(\d{1,2})(?::(\d{2}))?\s*pm$/);
+    const am = t.match(/^(\d{1,2})(?::(\d{2}))?\s*am$/);
+    const colon = t.match(/^(\d{1,2}):(\d{2})$/);
+    if (pm) {
+      let h = parseInt(pm[1], 10);
+      if (h === 12) h = 0;
+      const m = pm[2] ? parseInt(pm[2], 10) : 0;
+      return (h + 12) * 60 + m;
     }
+    if (am) {
+      let h = parseInt(am[1], 10);
+      if (h === 12) h = 0;
+      const m = am[2] ? parseInt(am[2], 10) : 0;
+      return h * 60 + m;
+    }
+    if (colon) {
+      return parseInt(colon[1], 10) * 60 + parseInt(colon[2], 10);
+    }
+    return 0;
   };
 
-  const deleteAllReminders = (title: string, type: Reminder["type"]) => {
-    const count = reminders.filter((r) => r.title === title && r.type === type).length;
-    if (confirm(`Are you sure you want to delete ALL "${title}" reminders? This will remove ${count} instance${count !== 1 ? "s" : ""}.`)) {
-      setReminders(reminders.filter((r) => !(r.title === title && r.type === type)));
-    }
+  const todayReminders = reminders
+    .filter((r) => r.date === todayStr)
+    .sort((a, b) => parseTimeForSort(a.time) - parseTimeForSort(b.time));
+
+  const deleteReminder = (id: string) => {
+    setReminders(reminders.filter((r) => r.id !== id));
+  };
+
+  const toggleComplete = (id: string) => {
+    setReminders(
+      reminders.map((r) => (r.id === id ? { ...r, completed: !r.completed } : r))
+    );
   };
 
   const getReminderIcon = (type: Reminder["type"]) => {
@@ -59,143 +84,70 @@ export default function AllRemindersPage() {
       case "supplement":
         return "💊";
       case "task":
-        return "✅";
+        return "•";
       case "habit":
         return "🔄";
     }
   };
 
-  // Group reminders by title and type to show only unique reminders
-  const uniqueReminders = reminders.reduce((acc, reminder) => {
-    const key = `${reminder.title}-${reminder.type}`;
-    if (!acc[key]) {
-      acc[key] = {
-        reminder: reminder,
-        count: 0,
-        dates: [] as string[],
-        hasDaily: false,
-      };
-    }
-    acc[key].count++;
-    if (!acc[key].dates.includes(reminder.date)) {
-      acc[key].dates.push(reminder.date);
-    }
-    if (reminder.repeatFrequency && 
-        (reminder.repeatFrequency.toLowerCase().includes("daily") || 
-         reminder.repeatFrequency.toLowerCase().includes("every day") ||
-         reminder.repeatFrequency.toLowerCase() === "day")) {
-      acc[key].hasDaily = true;
-    }
-    return acc;
-  }, {} as Record<string, { reminder: Reminder; count: number; dates: string[]; hasDaily: boolean }>);
-
-  // Convert to array and sort by title
-  const uniqueRemindersList = Object.values(uniqueReminders).sort((a, b) => 
-    a.reminder.title.localeCompare(b.reminder.title)
-  );
-
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <button
-              onClick={() => router.back()}
-              className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <h1 className="text-4xl font-bold text-white">All Reminders</h1>
-          </div>
-          <p className="text-gray-400">Manage and delete your reminders</p>
+    <div className="min-h-screen bg-black text-white pb-20">
+      <div className="max-w-md mx-auto px-4 py-4">
+        <div className="flex items-center justify-between mb-4">
+          <Link
+            href="/calendar"
+            className="p-2 -ml-2 text-gray-400 hover:text-white rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <h1 className="text-lg font-bold text-white">Today&apos;s Reminders</h1>
+          <div className="w-9" />
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-            <div className="text-3xl font-bold text-white mb-2">{reminders.length}</div>
-            <div className="text-gray-400">Total Instances</div>
+        {todayReminders.length === 0 ? (
+          <p className="text-gray-400 text-sm text-center py-8">No reminders for today</p>
+        ) : (
+          <div className="space-y-2">
+            {todayReminders.map((reminder) => (
+              <div
+                key={reminder.id}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 border border-white/10 ${
+                  reminder.completed ? "opacity-50" : "bg-[#0c1422]/80"
+                }`}
+              >
+                <button
+                  onClick={() => toggleComplete(reminder.id)}
+                  className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center border-2 transition-colors ${
+                    reminder.completed
+                      ? "bg-teal-400 border-teal-400"
+                      : "border-teal-400/50 bg-transparent"
+                  }`}
+                >
+                  {reminder.completed && <Check className="w-4 h-4 text-black" strokeWidth={3} />}
+                </button>
+                <span className="text-base">{getReminderIcon(reminder.type)}</span>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`text-sm font-medium truncate ${
+                      reminder.completed ? "text-gray-500 line-through" : "text-white"
+                    }`}
+                  >
+                    {reminder.title}
+                  </p>
+                  <p className="text-xs text-gray-500">{reminder.time}</p>
+                </div>
+                <button
+                  onClick={() => deleteReminder(reminder.id)}
+                  className="p-1.5 text-gray-500 hover:text-red-400 rounded transition-colors flex-shrink-0"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
           </div>
-          <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-            <div className="text-3xl font-bold text-white mb-2">
-              {reminders.filter((r) => r.completed).length}
-            </div>
-            <div className="text-gray-400">Completed</div>
-          </div>
-          <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
-            <div className="text-3xl font-bold text-white mb-2">
-              {uniqueRemindersList.length}
-            </div>
-            <div className="text-gray-400">Unique Reminders</div>
-          </div>
-        </div>
-
-        {/* Unique Reminders List */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-4">Your Reminders</h2>
-          {uniqueRemindersList.length === 0 ? (
-            <div className="bg-gray-900 rounded-xl p-12 border border-gray-800 text-center">
-              <p className="text-gray-400 text-lg">No reminders found</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {uniqueRemindersList.map((item) => {
-                const { reminder, count, dates, hasDaily } = item;
-                const sortedDates = dates.sort();
-                const firstDate = new Date(sortedDates[0]);
-                const lastDate = new Date(sortedDates[sortedDates.length - 1]);
-
-                return (
-                  <div key={`${reminder.title}-${reminder.type}`} className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-4">
-                        <div className="text-3xl">{getReminderIcon(reminder.type)}</div>
-                        <div>
-                          <h3 className="text-xl font-semibold text-white">{reminder.title}</h3>
-                          <div className="flex items-center gap-3 mt-1">
-                            <p className="text-gray-400 text-sm">
-                              {count} instance{count !== 1 ? "s" : ""}
-                            </p>
-                            {reminder.repeatFrequency && (
-                              <span className="text-orange-400 text-sm">
-                                • Repeats: {reminder.repeatFrequency}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Calendar className="w-4 h-4 text-gray-500" />
-                            <p className="text-gray-500 text-xs">
-                              {firstDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                              {sortedDates.length > 1 && (
-                                <span> - {lastDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
-                              )}
-                            </p>
-                            <span className="text-gray-500">•</span>
-                            <p className="text-gray-500 text-xs">{reminder.time}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => deleteAllReminders(reminder.title, reminder.type)}
-                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Delete All
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-      <div className="pb-20">
-        {/* Spacer for bottom navigation */}
+        )}
       </div>
       <BottomNav />
     </div>
   );
 }
-

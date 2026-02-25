@@ -7,6 +7,7 @@ import BottomNav from "@/components/BottomNav";
 import { getBuiltInImageUrl } from "@/lib/built-in-exercise-images";
 import { X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, ChevronLeft, Dumbbell, TrendingUp, Target, Zap, Calendar, Activity, Sparkles, Play } from "lucide-react";
 import GuidedWorkoutView from "@/components/GuidedWorkoutView";
+import ExerciseNameInput from "@/components/ExerciseNameInput";
 import { scheduleWorkoutNotification } from "@/app/utils/notifications";
 import { toLocalDateString } from "@/lib/date-utils";
 
@@ -1622,16 +1623,15 @@ export default function WorkoutPage() {
                           </button>
                         </div>
                         <div className="grid grid-cols-3 gap-2">
-                          <input
-                            type="text"
+                          <ExerciseNameInput
                             value={exercise.name}
-                            onChange={(e) => {
+                            onChange={(name) => {
                               const updated = [...customWorkoutPlan.pushDay];
-                              updated[index].name = e.target.value;
+                              updated[index].name = name;
                               setCustomWorkoutPlan({ ...customWorkoutPlan, pushDay: updated });
                             }}
-                            placeholder="Exercise name"
-                            className="col-span-3 bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
+                            placeholder="e.g. Bench Press"
+                            className="w-full bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
                           />
                           <div>
                             <label className="block text-gray-400 mb-1 text-xs">Sets</label>
@@ -1731,16 +1731,15 @@ export default function WorkoutPage() {
                           </button>
                         </div>
                         <div className="grid grid-cols-3 gap-2">
-                          <input
-                            type="text"
+                          <ExerciseNameInput
                             value={exercise.name}
-                            onChange={(e) => {
+                            onChange={(name) => {
                               const updated = [...customWorkoutPlan.pullDay];
-                              updated[index].name = e.target.value;
+                              updated[index].name = name;
                               setCustomWorkoutPlan({ ...customWorkoutPlan, pullDay: updated });
                             }}
-                            placeholder="Exercise name"
-                            className="col-span-3 bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
+                            placeholder="e.g. Lat Pulldown"
+                            className="w-full bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
                           />
                           <div>
                             <label className="block text-gray-400 mb-1 text-xs">Sets</label>
@@ -1840,16 +1839,15 @@ export default function WorkoutPage() {
                           </button>
                         </div>
                         <div className="grid grid-cols-3 gap-2">
-                          <input
-                            type="text"
+                          <ExerciseNameInput
                             value={exercise.name}
-                            onChange={(e) => {
+                            onChange={(name) => {
                               const updated = [...customWorkoutPlan.legsDay];
-                              updated[index].name = e.target.value;
+                              updated[index].name = name;
                               setCustomWorkoutPlan({ ...customWorkoutPlan, legsDay: updated });
                             }}
-                            placeholder="Exercise name"
-                            className="col-span-3 bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
+                            placeholder="e.g. Squat"
+                            className="w-full bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
                           />
                           <div>
                             <label className="block text-gray-400 mb-1 text-xs">Sets</label>

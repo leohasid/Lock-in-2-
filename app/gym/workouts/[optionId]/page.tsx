@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { ArrowLeft, Plus, Trash2, Edit2, Check, X } from "lucide-react";
+import ExerciseNameInput from "@/components/ExerciseNameInput";
 
 interface WorkoutOption {
   id: string;
@@ -232,16 +233,15 @@ export default function WorkoutOptionPage() {
                   </button>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <input
-                    type="text"
+                  <ExerciseNameInput
                     value={exercise.name}
-                    onChange={(e) => {
+                    onChange={(name) => {
                       const updated = [...exercises];
-                      updated[index].name = e.target.value;
+                      updated[index].name = name;
                       setExercises(updated);
                     }}
-                    placeholder="Exercise name"
-                    className="col-span-3 bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
+                    placeholder="e.g. Bench Press"
+                    className="w-full bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
                   />
                   <div>
                     <label className="block text-gray-400 mb-1 text-xs">Sets</label>

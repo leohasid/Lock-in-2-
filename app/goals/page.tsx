@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
-import { Edit2, Check, X, Plus, Trash2, MoreVertical } from "lucide-react";
+import { Edit2, Check, X, Plus, Trash2, MoreVertical, Bell } from "lucide-react";
+import { requestNotificationPermission, scheduleTaskReminder, rescheduleTodayTaskReminders } from "@/app/utils/notifications";
 
 interface Goal {
   id: string;
@@ -25,6 +26,8 @@ interface Task {
   time: string;
   date: string;
   completed: boolean;
+  reminderTime?: string;
+  reminderTimes?: string[];
 }
 
 const GOAL_TYPES = [
@@ -49,6 +52,10 @@ export default function GoalsPage() {
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
   const [quickTaskInput, setQuickTaskInput] = useState("");
   const [showMoreGoals, setShowMoreGoals] = useState(false);
+  const [reminderTaskId, setReminderTaskId] = useState<string | null>(null);
+  const [draftReminderTimes, setDraftReminderTimes] = useState<string[]>([]);
+  const [customTimeInput, setCustomTimeInput] = useState("");
+
   const [formData, setFormData] = useState({
     goalType: "long-term" as "daily" | "long-term",
     type: "",
@@ -102,6 +109,23 @@ export default function GoalsPage() {
         setTasks(todayTasks);
       } catch (e) {
         setTasks([]);
+      }
+    }
+  }, [todayStr]);
+
+  // Reschedule today's task reminders on load (only if permission already granted)
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    if (Notification.permission === "granted") {
+      const storedReminders = localStorage.getItem("reminders");
+      if (storedReminders) {
+        try {
+          const reminders = JSON.parse(storedReminders);
+          const todayTasks = reminders.filter(
+            (r: Task) => r.type === "task" && r.date === todayStr
+          );
+          rescheduleTodayTaskReminders(todayTasks);
+        } catch (_) {}
       }
     }
   }, [todayStr]);
@@ -270,6 +294,37 @@ export default function GoalsPage() {
     setTasks(updated.filter((r: Task) => r.type === "task" && r.date === todayStr));
   };
 
+  const REMINDER_PRESETS = [
+    { value: "09:00", label: "9am" },
+    { value: "12:00", label: "12pm" },
+    { value: "15:00", label: "3pm" },
+    { value: "18:00", label: "6pm" },
+  ];
+
+  const getTaskReminderTimes = (task: Task): string[] => {
+    const fromArray = task.reminderTimes ?? [];
+    const fromSingle = task.reminderTime ? [task.reminderTime] : [];
+    return [...new Set([...fromArray, ...fromSingle])].sort();
+  };
+
+  const getReminderLabel = (value: string) =>
+    REMINDER_PRESETS.find((o) => o.value === value)?.label ?? value;
+
+  const handleSaveReminders = async (task: Task, times: string[]) => {
+    const hasPermission = await requestNotificationPermission();
+    if (!hasPermission) return;
+    const storedReminders = localStorage.getItem("reminders");
+    if (!storedReminders) return;
+    const reminders = JSON.parse(storedReminders);
+    const updated = reminders.map((r: Task) =>
+      r.id === task.id ? { ...r, reminderTimes: times, reminderTime: undefined } : r
+    );
+    localStorage.setItem("reminders", JSON.stringify(updated));
+    setTasks(updated.filter((r: Task) => r.type === "task" && r.date === todayStr));
+    times.forEach((time) => scheduleTaskReminder(task.id, task.title, task.date, time));
+    setReminderTaskId(null);
+  };
+
   const formatProgressText = (goal: Goal) => {
     const unitLabel = goal.unit ? ` ${goal.unit}` : "";
     return `${goal.current} of ${goal.target}${unitLabel}`;
@@ -417,7 +472,7 @@ export default function GoalsPage() {
           {tasks.map((task) => (
             <div
               key={task.id}
-              className="flex items-center gap-4 rounded-xl bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30 px-4 py-3"
+              className="flex items-center gap-3 rounded-xl bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30 px-4 py-3 relative"
             >
               <button
                 onClick={() => handleToggleTask(task.id)}
@@ -428,12 +483,31 @@ export default function GoalsPage() {
                 {task.completed && <Check className="w-5 h-5 text-black" strokeWidth={3} />}
               </button>
               <span
-                className={`flex-1 text-[15px] ${
+                className={`flex-1 text-[15px] min-w-0 ${
                   task.completed ? "text-gray-500 line-through" : "text-white"
                 }`}
               >
                 {task.title}
               </span>
+              <button
+                  onClick={() => {
+                    setReminderTaskId(task.id);
+                    setDraftReminderTimes(getTaskReminderTimes(task));
+                    setCustomTimeInput("");
+                  }}
+                className={`flex-shrink-0 p-2 rounded-lg transition-colors ${
+                  getTaskReminderTimes(task).length > 0
+                    ? "text-teal-400 bg-teal-400/20"
+                    : "text-gray-500 hover:text-teal-400 hover:bg-white/5"
+                }`}
+                title={
+                  getTaskReminderTimes(task).length > 0
+                    ? `${getTaskReminderTimes(task).length} alert(s) set`
+                    : "Set time alerts"
+                }
+              >
+                <Bell className="w-5 h-5" />
+              </button>
             </div>
           ))}
         </div>
@@ -444,6 +518,120 @@ export default function GoalsPage() {
           </p>
         )}
       </div>
+
+      {/* Time Alerts Modal */}
+      {reminderTaskId && (() => {
+        const task = tasks.find((t) => t.id === reminderTaskId);
+        if (!task) return null;
+        const toggleTime = (time: string) => {
+          if (draftReminderTimes.includes(time)) {
+            setDraftReminderTimes(draftReminderTimes.filter((t) => t !== time));
+          } else {
+            setDraftReminderTimes([...draftReminderTimes, time].sort());
+          }
+        };
+        const addTime = (time: string) => {
+          if (time && !draftReminderTimes.includes(time)) {
+            setDraftReminderTimes([...draftReminderTimes, time].sort());
+          }
+        };
+        const removeTime = (time: string) => {
+          setDraftReminderTimes(draftReminderTimes.filter((t) => t !== time));
+        };
+        return (
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-end sm:justify-center">
+            <div
+              className="absolute inset-0 bg-black/70"
+              onClick={() => setReminderTaskId(null)}
+              aria-hidden="true"
+            />
+            <div className="relative w-full max-w-md bg-gradient-to-b from-[#0c1422] via-[#1a2332] to-black rounded-t-2xl sm:rounded-2xl border border-teal-500/30 max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
+              <div className="flex items-center justify-between p-4 border-b border-white/10">
+                <h3 className="text-lg font-bold text-white">Time Alerts</h3>
+                <button
+                  onClick={() => setReminderTaskId(null)}
+                  className="p-2 text-gray-400 hover:text-white rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto flex-1">
+                <p className="text-gray-400 text-sm mb-4">"{task.title}"</p>
+                <p className="text-xs text-gray-500 mb-3">Choose when to be reminded</p>
+                <div className="grid grid-cols-2 gap-2 mb-6">
+                  {REMINDER_PRESETS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => toggleTime(opt.value)}
+                      className={`py-3 px-4 rounded-xl text-sm font-medium transition-colors ${
+                        draftReminderTimes.includes(opt.value)
+                          ? "bg-teal-500/30 text-teal-400 border border-teal-400/50"
+                          : "bg-white/5 text-white border border-white/10 hover:border-teal-400/30"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 mb-4">
+                  <input
+                    type="time"
+                    value={customTimeInput}
+                    onChange={(e) => setCustomTimeInput(e.target.value)}
+                    className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-teal-400"
+                  />
+                  <button
+                    onClick={() => {
+                      if (customTimeInput) {
+                        addTime(customTimeInput);
+                        setCustomTimeInput("");
+                      }
+                    }}
+                    className="px-4 py-2.5 rounded-lg bg-teal-400/20 text-teal-400 font-medium text-sm hover:bg-teal-400/30 transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+                {draftReminderTimes.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-500 mb-2">Your alerts</p>
+                    <div className="space-y-2">
+                      {draftReminderTimes.map((time) => (
+                        <div
+                          key={time}
+                          className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/5 border border-white/10"
+                        >
+                          <span className="text-white text-sm">{getReminderLabel(time)}</span>
+                          <button
+                            onClick={() => removeTime(time)}
+                            className="text-red-400 hover:text-red-300 text-sm"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="p-4 border-t border-white/10 flex gap-3">
+                <button
+                  onClick={() => setReminderTaskId(null)}
+                  className="flex-1 py-3 rounded-xl border border-white/10 text-gray-400 hover:text-white transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleSaveReminders(task, draftReminderTimes)}
+                  className="flex-1 py-3 rounded-xl bg-teal-400 hover:bg-teal-500 text-black font-bold transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Add/Edit Goal Modal */}
       {showAddForm && (
