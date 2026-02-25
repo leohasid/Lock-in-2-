@@ -24,11 +24,11 @@ export default function BottomNav() {
 
   const navContent = (
     <nav
-      className="fixed left-0 right-0 bottom-0 bg-black border-t border-gray-800 z-[9999] pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      className="fixed left-0 right-0 bg-black border-t border-gray-800 z-[9999] pb-[max(0.25rem,env(safe-area-inset-bottom))]"
       style={{
         transform: "translate3d(0,0,0)",
         WebkitTransform: "translate3d(0,0,0)",
-        backfaceVisibility: "hidden" as const,
+        backfaceVisibility: "hidden",
         WebkitBackfaceVisibility: "hidden",
         position: "fixed",
         bottom: 0,
@@ -36,7 +36,7 @@ export default function BottomNav() {
         right: 0,
       }}
     >
-      <div className="flex justify-between items-center px-4 py-3 max-w-md mx-auto">
+      <div className="flex justify-between items-center px-4 py-2 max-w-md mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || (item.href === "/gym/workout" && pathname?.startsWith("/gym"));
