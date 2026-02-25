@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { Send, Bot, User, ArrowLeft, Dumbbell } from "lucide-react";
+import { persistWorkoutSchedule } from "@/lib/schedule-utils";
 
 interface Message {
   id: string;
@@ -12,41 +12,7 @@ interface Message {
   content: string;
 }
 
-function getWorkoutContext(): Record<string, unknown> {
-  if (typeof window === "undefined") return {};
-  const workoutOptions = JSON.parse(localStorage.getItem("workoutOptions") || "[]");
-  const selectedOptions = JSON.parse(localStorage.getItem("selectedWorkoutOptions") || "[]");
-  const schedule = JSON.parse(localStorage.getItem("workoutSchedule") || "[]");
-  const manualByPlan = JSON.parse(localStorage.getItem("manualScheduleByPlan") || "{}");
-
-  const planSummary = workoutOptions
-    .filter((o: any) => selectedOptions.includes(o.id))
-    .map((o: any) => ({
-      name: o.name,
-      days: [o.dayNames?.day1, o.dayNames?.day2, o.dayNames?.day3].filter(Boolean),
-      exerciseCount: [o.days?.day1, o.days?.day2, o.days?.day3].reduce((s: number, arr: any) => s + (arr?.length || 0), 0),
-    }));
-
-  const weekNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const scheduleByDay: Record<number, string> = {};
-  schedule.slice(0, 7).forEach((e: { date: string; workoutName: string }) => {
-    const d = new Date(e.date + "T12:00:00");
-    scheduleByDay[d.getDay()] = e.workoutName;
-  });
-  const trainingDaysText = weekNames.map((name, i) => `${name}: ${scheduleByDay[i] || "Rest"}`).join(", ");
-
-  return {
-    mode: "fitness",
-    selectedPlanNames: planSummary.map((p: any) => p.name).join(", ") || "None",
-    plansInUse: planSummary,
-    trainingDaysSummary: trainingDaysText,
-    scheduleLength: schedule.length,
-    manualScheduleByPlan: Object.keys(manualByPlan).length ? manualByPlan : undefined,
-  };
-}
-
 export default function GymAICoachPage() {
-  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,21 +22,22 @@ export default function GymAICoachPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendToAPI = async (userMessage: string): Promise<string> => {
-    const context = getWorkoutContext();
-    const conversationHistory = messages
-      .map((m) => `${m.role === "assistant" ? "Assistant" : "User"}: ${m.content}`)
-      .join("\n");
-    const newHistory = conversationHistory
-      ? `${conversationHistory}\nUser: ${userMessage}`
-      : `User: ${userMessage}`;
+  const sendToAPI = async (
+    userMessage: string
+  ): Promise<{ reply: string; scheduleUpdate?: Record<string, { days: number[] }> | null }> => {
+    const workoutOptions = JSON.parse(localStorage.getItem("workoutOptions") || "[]");
+    const selectedOptions = JSON.parse(localStorage.getItem("selectedWorkoutOptions") || "[]");
+    const manualScheduleByPlan = JSON.parse(localStorage.getItem("manualScheduleByPlan") || "{}");
+    const planNames = workoutOptions
+      .filter((o: { id: string }) => selectedOptions.includes(o.id))
+      .map((o: { name: string }) => o.name);
 
-    const res = await fetch("/api/consultation", {
+    const res = await fetch("/api/gym-coach", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         messages: [...messages, { role: "user", content: userMessage }],
-        context,
+        context: { selectedOptions, manualScheduleByPlan, planNames },
       }),
     });
 
@@ -79,7 +46,10 @@ export default function GymAICoachPage() {
       throw new Error(err.error || `HTTP ${res.status}`);
     }
     const data = await res.json();
-    return data.reply || "I’m here to help with your workouts. What would you like to change or ask about?";
+    return {
+      reply: data.reply || "I'm here to help with your workouts. What would you like to change or ask about?",
+      scheduleUpdate: data.scheduleUpdate ?? null,
+    };
   };
 
   const handleSend = async () => {
@@ -95,10 +65,15 @@ export default function GymAICoachPage() {
     setMessages((prev) => [...prev, loadingMsg]);
 
     try {
-      const reply = await sendToAPI(text);
+      const { reply, scheduleUpdate } = await sendToAPI(text);
       setMessages((prev) =>
         prev.map((m) => (m.id === loadingMsg.id ? { ...m, content: reply } : m))
       );
+      if (scheduleUpdate) {
+        const workoutOptions = JSON.parse(localStorage.getItem("workoutOptions") || "[]");
+        const selectedOptions = JSON.parse(localStorage.getItem("selectedWorkoutOptions") || "[]");
+        persistWorkoutSchedule(scheduleUpdate, selectedOptions, workoutOptions);
+      }
     } catch (e: any) {
       setMessages((prev) =>
         prev.map((m) =>

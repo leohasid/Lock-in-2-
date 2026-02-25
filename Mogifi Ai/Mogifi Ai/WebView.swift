@@ -24,6 +24,10 @@ struct WebView: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
+        #if DEBUG
+        // Dev: use non-persistent store so each run starts fresh (no old localStorage/cache)
+        config.websiteDataStore = .nonPersistent()
+        #endif
         
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator

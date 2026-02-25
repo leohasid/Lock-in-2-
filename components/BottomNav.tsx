@@ -16,7 +16,15 @@ export default function BottomNav() {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 z-50 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+    <nav
+      className="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 z-50 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      style={{
+        transform: "translateZ(0)",
+        WebkitTransform: "translateZ(0)",
+        backfaceVisibility: "hidden" as const,
+        WebkitBackfaceVisibility: "hidden",
+      }}
+    >
       <div className="flex justify-between items-center px-4 py-3 max-w-md mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -35,7 +43,7 @@ export default function BottomNav() {
           );
         })}
       </div>
-    </div>
+    </nav>
   );
 }
 

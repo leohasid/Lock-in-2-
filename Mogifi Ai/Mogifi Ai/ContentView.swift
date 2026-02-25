@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct ContentView: View {
-    // UPDATE THIS to your actual Vercel URL (check Vercel dashboard)
     private static let appURL = URL(string: "https://lock-in-2-please.vercel.app")!
     
     @State private var isLoading = true
