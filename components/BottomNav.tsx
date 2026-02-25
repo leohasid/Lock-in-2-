@@ -1,11 +1,18 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { createPortal } from "react-dom";
 import { Home, UtensilsCrossed, Shield, Calendar, Dumbbell } from "lucide-react";
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const navItems = [
     { href: "/", icon: Home, label: "Home" },
@@ -15,14 +22,19 @@ export default function BottomNav() {
     { href: "/calendar", icon: Calendar, label: "Calendar" },
   ];
 
-  return (
+  const navContent = (
     <nav
-      className="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 z-50 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      className="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 z-[9999] pb-[max(0.5rem,env(safe-area-inset-bottom))]"
       style={{
-        transform: "translateZ(0)",
-        WebkitTransform: "translateZ(0)",
+        transform: "translate3d(0,0,0)",
+        WebkitTransform: "translate3d(0,0,0)",
         backfaceVisibility: "hidden" as const,
         WebkitBackfaceVisibility: "hidden",
+        willChange: "transform",
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
       }}
     >
       <div className="flex justify-between items-center px-4 py-3 max-w-md mx-auto">
@@ -45,5 +57,10 @@ export default function BottomNav() {
       </div>
     </nav>
   );
+
+  if (!mounted || typeof document === "undefined") {
+    return null;
+  }
+  return createPortal(navContent, document.body);
 }
 

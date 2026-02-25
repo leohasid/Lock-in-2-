@@ -35,11 +35,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-hidden h-full flex flex-col`}
       >
         <OnboardingCheck>
-          <NotificationSetup />
-          {children}
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scroll-touch">
+            <NotificationSetup />
+            {children}
+          </div>
         </OnboardingCheck>
       </body>
     </html>
