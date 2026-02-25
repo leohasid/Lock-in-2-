@@ -555,13 +555,13 @@ export default function GoalsPage() {
           setDraftReminderTimes(draftReminderTimes.filter((t) => t !== time));
         };
         return (
-          <div className="fixed inset-0 z-50 flex flex-col items-center justify-end sm:justify-center">
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4">
             <div
               className="absolute inset-0 bg-black/70"
               onClick={() => setReminderTaskId(null)}
               aria-hidden="true"
             />
-            <div className="relative w-full max-w-md bg-gradient-to-b from-[#0c1422] via-[#1a2332] to-black rounded-t-2xl sm:rounded-2xl border border-teal-500/30 max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="relative w-full max-w-md bg-gradient-to-b from-[#0c1422] via-[#1a2332] to-black rounded-2xl border border-teal-500/30 max-h-[80vh] overflow-hidden flex flex-col shadow-2xl">
               <div className="flex items-center justify-between p-4 border-b border-white/10">
                 <h3 className="text-lg font-bold text-white">Time Alerts</h3>
                 <button
