@@ -24,7 +24,7 @@ export default function BottomNav() {
 
   const navContent = (
     <nav
-      className="fixed bottom-0 left-0 right-0 bg-black border-t border-gray-800 z-[9999] pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      className="fixed left-0 right-0 bg-black border-t border-gray-800 z-[9999] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)+6px))]"
       style={{
         transform: "translate3d(0,0,0)",
         WebkitTransform: "translate3d(0,0,0)",
@@ -32,7 +32,7 @@ export default function BottomNav() {
         WebkitBackfaceVisibility: "hidden",
         willChange: "transform",
         position: "fixed",
-        bottom: 0,
+        bottom: 6,
         left: 0,
         right: 0,
       }}
