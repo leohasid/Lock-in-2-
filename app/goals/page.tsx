@@ -294,6 +294,15 @@ export default function GoalsPage() {
     setTasks(updated.filter((r: Task) => r.type === "task" && r.date === todayStr));
   };
 
+  const handleDeleteTask = (taskId: string) => {
+    const storedReminders = localStorage.getItem("reminders");
+    if (!storedReminders) return;
+    const reminders = JSON.parse(storedReminders);
+    const updated = reminders.filter((r: Task) => r.id !== taskId);
+    localStorage.setItem("reminders", JSON.stringify(updated));
+    setTasks(updated.filter((r: Task) => r.type === "task" && r.date === todayStr));
+  };
+
   const REMINDER_PRESETS = [
     { value: "09:00", label: "9am" },
     { value: "12:00", label: "12pm" },
@@ -490,11 +499,11 @@ export default function GoalsPage() {
                 {task.title}
               </span>
               <button
-                  onClick={() => {
-                    setReminderTaskId(task.id);
-                    setDraftReminderTimes(getTaskReminderTimes(task));
-                    setCustomTimeInput("");
-                  }}
+                onClick={() => {
+                  setReminderTaskId(task.id);
+                  setDraftReminderTimes(getTaskReminderTimes(task));
+                  setCustomTimeInput("");
+                }}
                 className={`flex-shrink-0 p-2 rounded-lg transition-colors ${
                   getTaskReminderTimes(task).length > 0
                     ? "text-teal-400 bg-teal-400/20"
@@ -507,6 +516,13 @@ export default function GoalsPage() {
                 }
               >
                 <Bell className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => handleDeleteTask(task.id)}
+                className="flex-shrink-0 p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                title="Delete task"
+              >
+                <Trash2 className="w-5 h-5" />
               </button>
             </div>
           ))}
