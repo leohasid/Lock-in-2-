@@ -32,18 +32,27 @@ After deployment:
 
 Update your Next.js frontend to call the Railway backend instead of local API routes.
 
-**Create `.env.local` in your project root:**
+**For local dev – create `.env.local` in your project root:**
 ```
 NEXT_PUBLIC_RAILWAY_API_URL=https://your-app-name.up.railway.app
 ```
 
-Then update your frontend API calls to use this URL.
+**For Vercel deployment – add the same variable in Vercel:**
+1. Project → Settings → Environment Variables
+2. Add `NEXT_PUBLIC_RAILWAY_API_URL` = `https://your-app-name.up.railway.app`
+3. Redeploy after adding (required for `NEXT_PUBLIC_` vars)
+
+Food photo analysis and AI consultation will use Railway when this URL is set.
 
 ## Step 5: Test Your Backend
 
 Visit your Railway URL:
 - `https://your-app-name.up.railway.app/health` - Should return `{"status":"ok"}`
-- `https://your-app-name.up.railway.app/` - Should show service info
+- `https://your-app-name.up.railway.app/` - Should show service info and endpoints
+
+**Endpoints:**
+- `POST /api/ai` - AI text (consultation, etc.)
+- `POST /api/food-estimate` - Food image analysis (requires `OPENAI_API_KEY` for vision)
 
 ## Troubleshooting
 

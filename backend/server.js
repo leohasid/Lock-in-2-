@@ -36,6 +36,104 @@ app.options('/api/ai', cors(), (req, res) => {
   res.status(200).end();
 });
 
+// Explicitly handle OPTIONS for /api/food-estimate (CORS preflight)
+app.options('/api/food-estimate', cors(), (req, res) => {
+  res.status(200).end();
+});
+
+// Food estimate (vision) endpoint - uses OpenAI to analyze food images
+app.post('/api/food-estimate', async (req, res) => {
+  console.log('[Railway Backend] POST /api/food-estimate received');
+  try {
+    const { imageData, label } = req.body;
+
+    if (!imageData) {
+      return res.status(400).json({ error: 'No image data provided' });
+    }
+
+    if (typeof imageData !== 'string' || !imageData.startsWith('data:image/')) {
+      return res.status(400).json({ error: 'Invalid image format. Expected data URL.' });
+    }
+
+    const openai = getOpenAIClient();
+    if (!openai) {
+      return res.status(500).json({
+        error: 'OpenAI API key not configured. Set OPENAI_API_KEY in Railway environment variables.',
+      });
+    }
+
+    const prompt = `You are a nutrition coach. Analyze the photo and estimate calories, protein, carbs, and fats for the primary food. Use the provided label if helpful: "${label || 'unknown'}". Respond with strict JSON matching this schema: {"name":string,"calories":number,"protein":number,"carbs":number,"fats":number}.`;
+
+    const base64 = imageData.replace(/^data:image\/\w+;base64,/, '');
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: { url: `data:image/jpeg;base64,${base64}` },
+            },
+          ],
+        },
+      ],
+      max_tokens: 200,
+      temperature: 0.3,
+    });
+
+    const outputText = completion.choices[0]?.message?.content?.trim() || '';
+    if (!outputText) {
+      return res.status(500).json({ error: 'AI returned an empty response' });
+    }
+
+    // Extract JSON from response
+    const jsonStart = outputText.indexOf('{');
+    const jsonEnd = outputText.lastIndexOf('}');
+    const jsonString = jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart
+      ? outputText.slice(jsonStart, jsonEnd + 1)
+      : outputText;
+
+    let estimate;
+    try {
+      estimate = JSON.parse(jsonString);
+    } catch (e) {
+      console.error('[Railway Backend] JSON parse error:', e, 'Response:', outputText);
+      return res.status(500).json({ error: 'Failed to parse nutrition data from AI response' });
+    }
+
+    if (!estimate.name || typeof estimate.calories !== 'number') {
+      return res.status(500).json({ error: 'Invalid nutrition data format from AI' });
+    }
+
+    estimate = {
+      name: String(estimate.name || label || 'Unknown meal'),
+      calories: Number(estimate.calories || 0),
+      protein: Number(estimate.protein || 0),
+      carbs: Number(estimate.carbs || 0),
+      fats: Number(estimate.fats || 0),
+    };
+
+    console.log('[Railway Backend] Food estimate success:', estimate.name);
+    res.json({ estimate });
+  } catch (error) {
+    console.error('[Railway Backend] Food estimate error:', error);
+    if (error instanceof OpenAI.APIError) {
+      if (error.status === 401) {
+        return res.status(500).json({ error: 'Invalid OpenAI API key' });
+      }
+      if (error.status === 429) {
+        return res.status(429).json({ error: 'Rate limit exceeded. Please try again later.' });
+      }
+    }
+    res.status(500).json({
+      error: error.message || 'Failed to analyze food image',
+    });
+  }
+});
+
 // AI endpoint
 app.post('/api/ai', async (req, res) => {
   console.log('[Railway Backend] POST /api/ai received');
@@ -93,7 +191,7 @@ app.get('/', (req, res) => {
   res.json({ 
     status: 'ok', 
     service: 'Mogifi AI Backend',
-    endpoints: ['/health', '/api/ai']
+    endpoints: ['/health', '/api/ai', '/api/food-estimate']
   });
 });
 
@@ -106,5 +204,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`\nAvailable endpoints:`);
   console.log(`  GET  /          - Root endpoint`);
   console.log(`  GET  /health    - Health check`);
-  console.log(`  POST /api/ai    - AI endpoint\n`);
+  console.log(`  POST /api/ai             - AI text endpoint`);
+  console.log(`  POST /api/food-estimate  - Food image analysis\n`);
 });

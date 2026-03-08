@@ -1058,8 +1058,16 @@ export default function NutritionPage() {
       }
       
       console.log("Sending image to API, size:", compressedImage.length, "bytes");
-      
-      const response = await fetch("/api/food-estimate", {
+
+      // Use Railway backend if available (where API keys are configured), else Vercel /api/food-estimate
+      let railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || "";
+      if (railwayUrl && !railwayUrl.startsWith("http://") && !railwayUrl.startsWith("https://")) {
+        railwayUrl = `https://${railwayUrl}`;
+      }
+      railwayUrl = railwayUrl.replace(/\/+$/, "");
+      const apiUrl = railwayUrl ? `${railwayUrl}/api/food-estimate` : "/api/food-estimate";
+
+      const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1085,11 +1093,19 @@ export default function NutritionPage() {
       if (!data.estimate) {
         throw new Error("No estimate data received");
       }
-      
+
       setAiEstimate(data.estimate);
+      setShowAddMeal(true); // Open Add Meal modal so user sees the result and can add it
     } catch (error: any) {
       console.error("AI food analysis failed", error);
-      alert(error?.message || "Unable to analyze this photo right now. Please try again.");
+      const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || "";
+      let msg = error?.message || "Unable to analyze this photo right now. Please try again.";
+      if (msg.includes("API key") || msg.includes("OPENAI") || msg.includes("configured")) {
+        msg += railwayUrl
+          ? "\n\nEnsure OPENAI_API_KEY is set in your Railway project environment variables."
+          : "\n\nAdd OPENAI_API_KEY to Vercel env vars, or set NEXT_PUBLIC_RAILWAY_API_URL to use Railway backend.";
+      }
+      alert(msg);
       setCapturedImage(null);
       setAiEstimate(null);
     } finally {
@@ -1099,19 +1115,27 @@ export default function NutritionPage() {
 
   const useAiEstimate = () => {
     if (aiEstimate) {
-      setNewMeal({
-        name: aiEstimate.name,
-        calories: aiEstimate.calories.toString(),
-        protein: aiEstimate.protein.toString(),
-        carbs: aiEstimate.carbs.toString(),
-        fats: aiEstimate.fats.toString(),
-        sugar: "",
-        sodium: "",
-        fiber: "",
-      });
+      // Add meal directly from AI estimate
+      setMeals([
+        ...meals,
+        {
+          id: Date.now().toString(),
+          name: aiEstimate.name,
+          calories: aiEstimate.calories,
+          protein: aiEstimate.protein,
+          carbs: aiEstimate.carbs,
+          fats: aiEstimate.fats,
+          sugar: 0,
+          sodium: 0,
+          fiber: 0,
+          time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
+          imageUrl: capturedImage || undefined,
+        },
+      ]);
+      setNewMeal({ name: "", calories: "", protein: "", carbs: "", fats: "", sugar: "", sodium: "", fiber: "" });
+      setShowAddMeal(false);
       setCapturedImage(null);
       setAiEstimate(null);
-      setShowAddMeal(true);
     }
   };
 
@@ -1549,13 +1573,37 @@ Provide a helpful, conversational response.`;
 
             {aiEstimate && (
               <div className="mb-4 p-3 bg-[#0ddfc8]/10 rounded-lg border border-[#14f1d9]/20">
-                <p className="text-sm text-[#14f1d9] mb-2">AI Estimate Available</p>
-                <button
-                  onClick={useAiEstimate}
-                  className="text-sm text-[#14f1d9] hover:underline"
-                >
-                  Use AI Estimate →
-                </button>
+                <p className="text-sm font-semibold text-[#14f1d9] mb-2">AI Analysis Result</p>
+                <p className="text-sm font-medium text-white mb-1">{aiEstimate.name}</p>
+                <p className="text-xs text-gray-400 mb-2">
+                  {aiEstimate.calories} kcal · P: {aiEstimate.protein}g · C: {aiEstimate.carbs}g · F: {aiEstimate.fats}g
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={useAiEstimate}
+                    className="flex-1 py-2 bg-[#14f1d9] text-black rounded-lg text-sm font-semibold hover:bg-[#0ddfc8] transition-colors"
+                  >
+                    Add to Meals
+                  </button>
+                  <button
+                    onClick={() => {
+                      setNewMeal({
+                        name: aiEstimate.name,
+                        calories: aiEstimate.calories.toString(),
+                        protein: aiEstimate.protein.toString(),
+                        carbs: aiEstimate.carbs.toString(),
+                        fats: aiEstimate.fats.toString(),
+                        sugar: "",
+                        sodium: "",
+                        fiber: "",
+                      });
+                      setAiEstimate(null);
+                    }}
+                    className="px-3 py-2 border border-white/20 rounded-lg text-xs text-gray-400 hover:text-white transition-colors"
+                  >
+                    Edit
+                  </button>
+                </div>
           </div>
         )}
 
