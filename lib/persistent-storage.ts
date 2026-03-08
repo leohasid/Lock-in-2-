@@ -6,6 +6,8 @@
  */
 import { Preferences } from "@capacitor/preferences";
 
+type MogifiStorage = { get: (k: string) => Promise<string>; set: (k: string, v: string) => void };
+
 const ONBOARDING_KEYS = [
   "onboardingCompleted",
   "onboardingData",
@@ -15,17 +17,17 @@ const ONBOARDING_KEYS = [
 ] as const;
 
 // Mogifi iOS app has native storage bridge (UserDefaults) - most reliable
-function isMogifiNativeStorageAvailable(): boolean {
-  if (typeof window === "undefined") return false;
-  const w = window as Window & { MogifiNativeStorage?: { get: (k: string) => Promise<string>; set: (k: string, v: string) => void } };
-  return !!(w.MogifiNativeStorage?.get && w.MogifiNativeStorage?.set);
+function getMogifiStorage(): MogifiStorage | null {
+  if (typeof window === "undefined") return null;
+  const s = (window as unknown as { MogifiNativeStorage?: MogifiStorage }).MogifiNativeStorage;
+  return s && typeof s.get === "function" && typeof s.set === "function" ? s : null;
 }
 
 export async function get(key: string): Promise<string | null> {
   if (typeof window === "undefined") return null;
-  if (isMogifiNativeStorageAvailable()) {
-    const w = window as Window & { MogifiNativeStorage: { get: (k: string) => Promise<string> } };
-    const v = await w.MogifiNativeStorage.get(key);
+  const storage = getMogifiStorage();
+  if (storage) {
+    const v = await storage.get(key);
     return v || null;
   }
   try {
@@ -38,9 +40,9 @@ export async function get(key: string): Promise<string | null> {
 
 export async function set(key: string, value: string): Promise<void> {
   if (typeof window === "undefined") return;
-  if (isMogifiNativeStorageAvailable()) {
-    const w = window as Window & { MogifiNativeStorage: { set: (k: string, v: string) => void } };
-    w.MogifiNativeStorage.set(key, value);
+  const storage = getMogifiStorage();
+  if (storage) {
+    storage.set(key, value);
     return;
   }
   try {
@@ -52,9 +54,9 @@ export async function set(key: string, value: string): Promise<void> {
 
 export async function remove(key: string): Promise<void> {
   if (typeof window === "undefined") return;
-  if (isMogifiNativeStorageAvailable()) {
-    const w = window as Window & { MogifiNativeStorage: { set: (k: string, v: string) => void } };
-    w.MogifiNativeStorage.set(key, "");
+  const storage = getMogifiStorage();
+  if (storage) {
+    storage.set(key, "");
     return;
   }
   try {
@@ -69,13 +71,13 @@ export async function remove(key: string): Promise<void> {
  */
 export async function migrateFromLocalStorage(): Promise<void> {
   if (typeof window === "undefined") return;
-  if (isMogifiNativeStorageAvailable()) {
-    const w = window as Window & { MogifiNativeStorage: { get: (k: string) => Promise<string>; set: (k: string, v: string) => void } };
+  const storage = getMogifiStorage();
+  if (storage) {
     for (const key of ONBOARDING_KEYS) {
-      const existing = await w.MogifiNativeStorage.get(key);
+      const existing = await storage.get(key);
       if (!existing) {
         const localValue = localStorage.getItem(key);
-        if (localValue) w.MogifiNativeStorage.set(key, localValue);
+        if (localValue) storage.set(key, localValue);
       }
     }
     return;
