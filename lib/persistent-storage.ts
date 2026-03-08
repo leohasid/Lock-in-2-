@@ -19,7 +19,8 @@ const ONBOARDING_KEYS = [
 // Mogifi iOS app has native storage bridge (UserDefaults) - most reliable
 function getMogifiStorage(): MogifiStorage | null {
   if (typeof window === "undefined") return null;
-  const s = (window as unknown as { MogifiNativeStorage?: MogifiStorage }).MogifiNativeStorage;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const s = (window as any).MogifiNativeStorage as MogifiStorage | undefined;
   return s && typeof s.get === "function" && typeof s.set === "function" ? s : null;
 }
 
