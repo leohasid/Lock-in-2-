@@ -18,6 +18,7 @@ In your Railway project dashboard:
 1. Go to **Variables** tab
 2. Add these environment variables:
    - `OPENAI_API_KEY` = `your-openai-api-key-here`
+   - `ANTHROPIC_API_KEY` = `your-claude-api-key-here` (optional - for Claude AI tasks)
    - `PORT` = (Railway sets this automatically, but you can override if needed)
 
 ## Step 3: Get Your Railway Backend URL

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import { generateAIText } from "@/lib/ai-provider";
 
 const WEEKDAY_NAMES: Record<number, string> = {
   0: "Sunday",
@@ -12,12 +12,8 @@ const WEEKDAY_NAMES: Record<number, string> = {
 };
 
 export async function POST(request: Request) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "Missing OPENAI_API_KEY. Add it to .env.local: OPENAI_API_KEY=sk-..." },
-      { status: 500 }
-    );
+  if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: "Missing API key. Set OPENAI_API_KEY or ANTHROPIC_API_KEY." }, { status: 500 });
   }
 
   try {
@@ -64,21 +60,19 @@ Rules for scheduleUpdate:
 - If no schedule change is needed, use "scheduleUpdate": null
 - Return ONLY the JSON object, no markdown, no \`\`\`json\`\`\` wrapper`;
 
-    const client = new OpenAI({ apiKey });
-    const completion = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...messages.map((m: { role: string; content: string }) => ({
-          role: m.role as "user" | "assistant" | "system",
-          content: m.content,
-        })),
-      ],
-      response_format: { type: "json_object" } as const,
-      max_tokens: 500,
-    });
+    const conversationText = messages
+      .map((m: { role: string; content: string }) => {
+        const role = m.role === "assistant" ? "Assistant" : "User";
+        return `${role}: ${m.content || ""}`;
+      })
+      .join("\n\n");
 
-    const content = completion.choices[0]?.message?.content?.trim();
+    const prompt = `${systemPrompt}\n\n${conversationText}\n\nAssistant:`;
+
+    const content = await generateAIText("gym-coach", {
+      prompt,
+      maxTokens: 500,
+    });
     if (!content) {
       return NextResponse.json({ error: "Empty AI response" }, { status: 500 });
     }

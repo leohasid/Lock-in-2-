@@ -1,20 +1,13 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import { generateAIVision } from "@/lib/ai-provider";
 
 export async function POST(request: Request) {
-  // Ensure this is server-side only
   if (typeof window !== "undefined") {
     return NextResponse.json({ error: "This API route is server-side only" }, { status: 403 });
   }
 
-  // Check for API key
-  const apiKey = process.env.OPENAI_API_KEY;
-  console.log("[Food Estimate API] OPENAI_API_KEY check:", apiKey ? "EXISTS" : "MISSING");
-  
-  if (!apiKey) {
-    const errorMsg = "Missing OPENAI_API_KEY. Please ensure it's set in Vercel environment variables.";
-    console.error("[Food Estimate API]", errorMsg);
-    return NextResponse.json({ error: errorMsg }, { status: 500 });
+  if (!process.env.OPENAI_API_KEY && !process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: "Missing API key. Set OPENAI_API_KEY or ANTHROPIC_API_KEY." }, { status: 500 });
   }
 
   try {
@@ -61,42 +54,14 @@ export async function POST(request: Request) {
 
     const prompt = `You are a nutrition coach. Analyze the photo and estimate calories, protein, carbs, and fats for the primary food. Use the provided label if helpful: "${label || "unknown"}". Respond with strict JSON matching this schema: {"name":string,"calories":number,"protein":number,"carbs":number,"fats":number}.`;
 
-    // Initialize OpenAI client
-    const client = new OpenAI({ apiKey: apiKey });
-
-    console.log("[Food Estimate API] Calling OpenAI API with vision model...");
-    console.log("[Food Estimate API] Image size:", base64Data.length, "bytes");
-    
-    // Note: Vision API requires chat.completions.create, not responses.create
-    // This is the only route that needs the standard API due to image input
-    const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${base64Data}`,
-              },
-            },
-          ],
-        },
-      ],
-      max_tokens: 200,
-      temperature: 0.3, // Lower temperature for more consistent nutrition estimates
+    const outputText = await generateAIVision({
+      prompt,
+      imageData: imageData,
+      maxTokens: 200,
     });
 
-    console.log("[Food Estimate API] OpenAI API call successful");
-
-    // Extract response text (using standard chat completions format)
-    const outputText = response.choices[0]?.message?.content?.trim() || "";
-
     if (!outputText) {
-      console.error("[Food Estimate API] OpenAI returned empty response. Response structure:", JSON.stringify(response, null, 2));
-      throw new Error("OpenAI returned an empty response");
+      throw new Error("AI returned an empty response");
     }
 
     // Try to extract JSON from the response
@@ -135,62 +100,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ estimate });
     
   } catch (error: any) {
-    // Comprehensive error logging
-    console.error("[Food Estimate API] Error occurred:");
-    console.error("Error type:", error?.constructor?.name);
-    console.error("Error message:", error?.message);
-    console.error("Error status:", error?.status);
-    console.error("Error code:", error?.code);
-    console.error("Error response:", error?.response);
-    if (error?.response) {
-      console.error("Error response status:", error.response.status);
-      console.error("Error response data:", JSON.stringify(error.response.data, null, 2));
-    }
-    console.error("Error stack:", error?.stack);
-    
-    // Handle specific OpenAI API errors
-    if (error instanceof OpenAI.APIError) {
-      console.error("[Food Estimate API] OpenAI API Error detected:", {
-        status: error.status,
-        code: error.code,
-        type: error.type,
-        message: error.message,
-      });
-
-      if (error.status === 401 || error.code === "invalid_api_key") {
-        return NextResponse.json({ 
-          error: "OpenAI API key is invalid. Please check your Vercel environment variables." 
-        }, { status: 500 });
-      }
-
-      if (error.status === 429 || error.code === "rate_limit_exceeded") {
-        return NextResponse.json({ 
-          error: "Rate limit exceeded. Please try again in a moment." 
-        }, { status: 429 });
-      }
-
-      if (error.code === "insufficient_quota") {
-        return NextResponse.json({ 
-          error: "OpenAI account has insufficient quota. Please check your OpenAI account billing." 
-        }, { status: 500 });
-      }
-    }
-    
-    // Provide more specific error messages
+    console.error("[Food Estimate API] Error:", error?.message);
     let errorMessage = "Unable to analyze food image";
-    
-    if (error instanceof Error) {
-      if (error.message.includes("rate limit") || error.message.includes("429")) {
-        errorMessage = "Rate limit exceeded. Please try again in a moment.";
-      } else if (error.message.includes("quota") || error.message.includes("insufficient")) {
-        errorMessage = "OpenAI API quota exceeded. Please check your account.";
-      } else if (error.message.includes("timeout")) {
-        errorMessage = "Request timed out. Please try again with a smaller image.";
-      } else if (error.message.includes("invalid")) {
-        errorMessage = error.message;
-      } else {
-        errorMessage = `Analysis failed: ${error.message}`;
-      }
+    if (error?.message?.includes("rate limit") || error?.status === 429) {
+      errorMessage = "Rate limit exceeded. Please try again in a moment.";
+    } else if (error?.message?.includes("quota") || error?.message?.includes("insufficient")) {
+      errorMessage = "AI API quota exceeded. Please check your account.";
+    } else if (error?.message?.includes("timeout")) {
+      errorMessage = "Request timed out. Please try again with a smaller image.";
+    } else if (error?.message?.includes("invalid") || error?.message?.includes("API key")) {
+      errorMessage = "AI API key is missing or invalid.";
+    } else if (error?.message) {
+      errorMessage = `Analysis failed: ${error.message}`;
     }
     
     console.error("[Food Estimate API] Returning error:", errorMessage);

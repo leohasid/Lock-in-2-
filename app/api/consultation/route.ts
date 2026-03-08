@@ -1,20 +1,16 @@
 import { NextResponse } from "next/server";
-import OpenAI from "openai";
+import { generateAIText } from "@/lib/ai-provider";
 
 export async function POST(request: Request) {
-  // Ensure this is server-side only
   if (typeof window !== "undefined") {
     return NextResponse.json({ error: "This API route is server-side only" }, { status: 403 });
   }
 
-  // Check for API key
-  const apiKey = process.env.OPENAI_API_KEY;
-  console.log("[Consultation API] OPENAI_API_KEY check:", apiKey ? "EXISTS" : "MISSING");
-  
-  if (!apiKey) {
-    const errorMsg = "Missing OPENAI_API_KEY. Please ensure it's set in Vercel environment variables for Production environment.";
-    console.error("[Consultation API]", errorMsg);
-    return NextResponse.json({ error: errorMsg }, { status: 500 });
+  const hasKey = !!(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY);
+  if (!hasKey) {
+    return NextResponse.json({
+      error: "Missing API key. Set OPENAI_API_KEY or ANTHROPIC_API_KEY in environment variables.",
+    }, { status: 500 });
   }
 
   try {
@@ -118,28 +114,14 @@ ${context?.plansInUse?.length ? `- Each plan has day types (e.g. Push/Pull/Legs 
       return NextResponse.json({ error: "Prompt cannot be empty" }, { status: 400 });
     }
 
-    // Initialize OpenAI client
-    const client = new OpenAI({ 
-      apiKey: apiKey,
+    console.log("[Consultation API] Calling AI provider (Claude preferred)...");
+    const reply = await generateAIText("consultation", {
+      prompt,
+      maxTokens: 300,
     });
-
-    console.log("[Consultation API] Calling OpenAI API with responses.create...");
-    console.log("[Consultation API] Prompt length:", prompt.length, "characters");
-    
-    // Call OpenAI API using responses.create
-    const response = await client.responses.create({
-      model: "gpt-4.1-mini",
-      input: prompt,
-      max_output_tokens: 300,
-    });
-
-    console.log("[Consultation API] OpenAI API call successful");
-
-    // Extract response text
-    const reply = response.output_text?.trim();
     
     if (!reply) {
-      console.error("[Consultation API] OpenAI returned empty response. Response structure:", JSON.stringify(response, null, 2));
+      console.error("[Consultation API] AI returned empty response");
       return NextResponse.json({ 
         error: "AI service returned an empty response. Please try again." 
       }, { status: 500 });
@@ -149,79 +131,14 @@ ${context?.plansInUse?.length ? `- Each plan has day types (e.g. Push/Pull/Legs 
     return NextResponse.json({ reply });
     
   } catch (error: any) {
-    // Comprehensive error logging
-    console.error("[Consultation API] Error occurred:");
-    console.error("Error type:", error?.constructor?.name);
-    console.error("Error message:", error?.message);
-    console.error("Error status:", error?.status);
-    console.error("Error code:", error?.code);
-    console.error("Error response:", error?.response);
-    if (error?.response) {
-      console.error("Error response status:", error.response.status);
-      console.error("Error response data:", JSON.stringify(error.response.data, null, 2));
+    console.error("[Consultation API] Error:", error?.message);
+    const msg = error?.message || "Unable to generate a response. Please try again.";
+    if (msg.includes("API key") || msg.includes("invalid")) {
+      return NextResponse.json({ error: "AI API key is missing or invalid. Check environment variables." }, { status: 500 });
     }
-    console.error("Error stack:", error?.stack);
-    
-    // Handle specific OpenAI API errors
-    if (error instanceof OpenAI.APIError) {
-      console.error("[Consultation API] OpenAI API Error detected:", {
-        status: error.status,
-        code: error.code,
-        type: error.type,
-        message: error.message,
-      });
-
-      if (error.status === 401 || error.code === "invalid_api_key") {
-        return NextResponse.json({ 
-          error: "OpenAI API key is invalid. Please check your Vercel environment variables." 
-        }, { status: 500 });
-      }
-
-      if (error.status === 429 || error.code === "rate_limit_exceeded") {
-        return NextResponse.json({ 
-          error: "Rate limit exceeded. Please try again in a moment." 
-        }, { status: 429 });
-      }
-
-      if (error.code === "insufficient_quota") {
-        return NextResponse.json({ 
-          error: "OpenAI account has insufficient quota. Please check your OpenAI account billing." 
-        }, { status: 500 });
-      }
+    if (msg.includes("rate limit") || error?.status === 429) {
+      return NextResponse.json({ error: "Rate limit exceeded. Please try again in a moment." }, { status: 429 });
     }
-    
-    // Handle method not found errors (if responses.create doesn't exist)
-    if (error?.message?.includes("responses") || error?.message?.includes("method") || error?.code === "method_not_found") {
-      console.error("[Consultation API] Possible API method issue - responses.create may not be available");
-      console.error("[Consultation API] Full error details:", JSON.stringify(error, null, 2));
-    }
-    
-    // Handle generic API key errors
-    if (error?.message?.includes("API key") || error?.message?.includes("Invalid API key") || error?.code === "invalid_api_key") {
-      return NextResponse.json({ 
-        error: "OpenAI API key is missing or invalid. Please check your Vercel environment variables." 
-      }, { status: 500 });
-    }
-    
-    // Handle rate limit errors
-    if (error?.message?.includes("rate limit") || error?.status === 429) {
-      return NextResponse.json({ 
-        error: "Rate limit exceeded. Please try again in a moment." 
-      }, { status: 429 });
-    }
-    
-    // Handle quota errors
-    if (error?.message?.includes("insufficient_quota") || error?.code === "insufficient_quota") {
-      return NextResponse.json({ 
-        error: "OpenAI account has insufficient quota. Please check your OpenAI account billing." 
-      }, { status: 500 });
-    }
-    
-    // Return generic error with message
-    const errorMessage = error?.message || "Unable to generate a response. Please try again.";
-    console.error("[Consultation API] Returning generic error:", errorMessage);
-    return NextResponse.json({ 
-      error: errorMessage 
-    }, { status: 500 });
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

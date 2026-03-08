@@ -37,6 +37,7 @@ export default function ExerciseImagesAdminPage() {
     { id: "chest-press", name: "Chest Press", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
     { id: "bench-press", name: "Bench Press", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
     { id: "incline-bench-press", name: "Incline Bench Press", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
+    { id: "incline-dumbbell-press", name: "Incline Dumbbell Press", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
     { id: "dumbbell-press", name: "Dumbbell Press", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
     { id: "shoulder-press", name: "Shoulder Press", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
     { id: "overhead-press", name: "Overhead Press", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
@@ -50,6 +51,7 @@ export default function ExerciseImagesAdminPage() {
     { id: "push-ups", name: "Push Ups", goalSets: 3, goalReps: 15, goalWeight: 0, sets: [] },
     { id: "dips", name: "Dips", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
     { id: "chest-fly", name: "Chest Fly", goalSets: 3, goalReps: 12, goalWeight: 0, sets: [] },
+    { id: "incline-fly", name: "Incline Dumbbell Fly", goalSets: 3, goalReps: 12, goalWeight: 0, sets: [] },
     { id: "pec-deck", name: "Pec Deck", goalSets: 3, goalReps: 12, goalWeight: 0, sets: [] },
     
     // Pull Day Exercises

@@ -9,6 +9,7 @@ export const EXERCISE_SUGGESTIONS: string[] = [
   "Chest Press",
   "Chest Press Machine",
   "Incline Bench Press",
+  "Incline Dumbbell Press",
   "Dumbbell Press",
   "Shoulder Press",
   "Overhead Press",
@@ -22,6 +23,7 @@ export const EXERCISE_SUGGESTIONS: string[] = [
   "Push Ups",
   "Dips",
   "Chest Fly",
+  "Incline Dumbbell Fly",
   "Pec Deck",
   // Pull
   "Pull Ups",

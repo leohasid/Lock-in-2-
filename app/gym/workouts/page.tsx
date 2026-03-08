@@ -183,15 +183,38 @@ export default function WorkoutsPage() {
         console.error("Error loading workout options:", e);
       }
     } else {
-      // Initialize with default options
+      // Helper to create exercise with sets
+      const ex = (id: string, name: string, sets = 3, reps = 10) => ({
+        id,
+        name,
+        goalSets: sets,
+        goalReps: reps,
+        goalWeight: 0,
+        sets: Array.from({ length: sets }, () => ({ reps, weight: 0, completed: false })),
+      });
+      // Initialize with default options - Option 1 pre-filled with illustrated exercises
       const defaultOptions: WorkoutOption[] = [
         {
           id: "option1",
-          name: "Option 1",
+          name: "Push / Pull / Legs",
           days: {
-            day1: [],
-            day2: [],
-            day3: [],
+            day1: [
+              ex("ex-1", "Incline Bench Press"),
+              ex("ex-2", "Incline Dumbbell Press"),
+              ex("ex-3", "Overhead Press"),
+              ex("ex-4", "Dips"),
+              ex("ex-5", "Incline Dumbbell Fly"),
+            ],
+            day2: [
+              ex("ex-6", "Dumbbell Row"),
+              ex("ex-7", "Cable Curl"),
+            ],
+            day3: [
+              ex("ex-8", "Leg Press"),
+              ex("ex-9", "Leg Extension"),
+              ex("ex-10", "Leg Curl"),
+              ex("ex-11", "Hip Thrust"),
+            ],
           },
           dayNames: {
             day1: "Push Day",
