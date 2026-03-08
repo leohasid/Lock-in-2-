@@ -21,7 +21,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
-app.use(express.json());
+// Increase limit for food-estimate (base64 images can be 1–2MB)
+app.use(express.json({ limit: '10mb' }));
 
 // Handle preflight OPTIONS requests
 app.options('*', cors());

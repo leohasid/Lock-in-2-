@@ -1076,25 +1076,39 @@ export default function NutritionPage() {
         }),
       });
 
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text();
+      const text = await response.text();
+
+      // Try to parse as JSON even if content-type is wrong (some servers send JSON with wrong headers)
+      let data: { estimate?: unknown; error?: string };
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
         if (text.includes("OPENAI_API_KEY") || text.includes("API key")) {
           throw new Error("OpenAI API key is not configured.");
         }
-        throw new Error("Server returned an invalid response.");
+        const snippet = text.slice(0, 150).replace(/\s+/g, " ");
+        throw new Error(
+          `Server returned an invalid response (${response.status}). ${snippet ? `Response: ${snippet}...` : "Empty or non-JSON response."}`
+        );
       }
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Unable to analyze food");
+      if (response.status === 0) {
+        throw new Error("Request blocked (check CORS or network). Ensure Railway allows requests from your app.");
       }
-      
-      if (!data.estimate) {
+      if (!response.ok) {
+        const err = (data as { error?: string }).error;
+        if (response.status === 413) {
+          throw new Error("Image too large. Try a smaller photo.");
+        }
+        throw new Error(err || `Server error (${response.status}). Please try again.`);
+      }
+
+      const estimate = data.estimate as { name: string; calories: number; protein: number; carbs: number; fats: number } | undefined;
+      if (!estimate || !estimate.name || typeof estimate.calories !== "number") {
         throw new Error("No estimate data received");
       }
 
-      setAiEstimate(data.estimate);
+      setAiEstimate(estimate);
       setShowAddMeal(true); // Open Add Meal modal so user sees the result and can add it
     } catch (error: any) {
       console.error("AI food analysis failed", error);
