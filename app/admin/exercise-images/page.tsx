@@ -44,6 +44,8 @@ export default function ExerciseImagesAdminPage() {
     { id: "front-raises", name: "Front Raises", goalSets: 3, goalReps: 12, goalWeight: 0, sets: [] },
     { id: "tricep-dips", name: "Tricep Dips", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
     { id: "tricep-extension", name: "Tricep Extension", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
+    { id: "overhead-tricep-extensions", name: "Overhead Tricep Extensions", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
+    { id: "one-handed-tricep-push-down", name: "One Handed Tricep Push Down", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
     { id: "close-grip-bench", name: "Close Grip Bench Press", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
     { id: "push-ups", name: "Push Ups", goalSets: 3, goalReps: 15, goalWeight: 0, sets: [] },
     { id: "dips", name: "Dips", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
@@ -53,6 +55,7 @@ export default function ExerciseImagesAdminPage() {
     // Pull Day Exercises
     { id: "pull-ups", name: "Pull Ups", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
     { id: "lat-pulldown", name: "Lat Pulldown", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
+    { id: "lat-pull-overs", name: "Lat Pull Overs", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
     { id: "barbell-row", name: "Barbell Row", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
     { id: "dumbbell-row", name: "Dumbbell Row", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
     { id: "cable-row", name: "Cable Row", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },

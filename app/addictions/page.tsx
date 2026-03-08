@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { appBlockingBridge } from "@/app/utils/app-blocking";
+import { showImmediateNotification, requestNotificationPermission } from "@/app/utils/notifications";
 import { Shield, Clock, AlertTriangle, Lock, Unlock, Settings, X, Zap, ChevronRight, PiggyBank, Star, CheckCircle2, MessageCircle, Heart } from "lucide-react";
 
 interface AppBlock {
@@ -185,10 +186,8 @@ export default function AddictionsPage() {
               blockAppNative(app.appName, true);
               
               const notificationKey = `blocked-${app.appName}`;
-              if (Notification.permission === "granted" && !notificationShownRef.current.has(notificationKey)) {
-                new Notification(`🚫 ${app.appName} Blocked`, {
-                  body: "Daily limit reached!",
-                });
+              if (!notificationShownRef.current.has(notificationKey)) {
+                showImmediateNotification(`🚫 ${app.appName} Blocked`, "Daily limit reached!");
                 notificationShownRef.current.add(notificationKey);
               }
               
@@ -211,12 +210,8 @@ export default function AddictionsPage() {
 
           const warningKey = `warning-${phoneAddiction.id}`;
           if (usagePercent >= 80 && usagePercent < 100 && !phoneAddiction.blocked && !notificationShownRef.current.has(warningKey)) {
-            if (Notification.permission === "granted") {
-              new Notification("⚠️ Phone Usage Warning", {
-                body: `You've used ${Math.round(usagePercent)}% of your daily limit!`,
-              });
-              notificationShownRef.current.add(warningKey);
-            }
+            showImmediateNotification("⚠️ Phone Usage Warning", `You've used ${Math.round(usagePercent)}% of your daily limit!`);
+            notificationShownRef.current.add(warningKey);
           }
 
           const shouldBlockAll = usagePercent >= 100;
@@ -231,10 +226,8 @@ export default function AddictionsPage() {
             });
             
             const allBlockedKey = `all-blocked-${phoneAddiction.id}`;
-            if (Notification.permission === "granted" && !notificationShownRef.current.has(allBlockedKey)) {
-              new Notification("🚫 Phone Blocked", {
-                body: "Daily limit exceeded! Apps are now blocked.",
-              });
+            if (!notificationShownRef.current.has(allBlockedKey)) {
+              showImmediateNotification("🚫 Phone Blocked", "Daily limit exceeded! Apps are now blocked.");
               notificationShownRef.current.add(allBlockedKey);
             }
           }
@@ -254,9 +247,7 @@ export default function AddictionsPage() {
 
   // Request notification permission on mount
   useEffect(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
+    requestNotificationPermission();
   }, []);
 
   useEffect(() => {
@@ -459,11 +450,8 @@ export default function AddictionsPage() {
   const blockAppNative = async (appName: string, block: boolean) => {
     try {
       await appBlockingBridge.blockApp(appName, block);
-      if (block && typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
-        new Notification(`🚫 ${appName} Blocked`, {
-          body: "Daily limit reached! (Native blocking requires iOS app)",
-          icon: "/favicon.ico",
-        });
+      if (block && typeof window !== "undefined") {
+        showImmediateNotification(`🚫 ${appName} Blocked`, "Daily limit reached! (Native blocking requires iOS app)");
       }
     } catch (error) {
       console.error("Failed to block app:", error);

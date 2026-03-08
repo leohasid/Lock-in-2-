@@ -446,8 +446,20 @@ export default function WorkoutPage() {
     }
   }, []);
 
+  // Get which day of the option (day1/day2/day3) applies for this date based on weekday rotation
+  const getScheduledDayKey = (optionId: string, date: Date): "day1" | "day2" | "day3" => {
+    const dayOfWeek = date.getDay();
+    const days = (manualScheduleByPlan[optionId] ?? { days: [] }).days || [];
+    const sortedDays = [...days].sort((a, b) => a - b);
+    const index = sortedDays.indexOf(dayOfWeek);
+    if (index < 0) return "day1";
+    if (index === 0) return "day1";
+    if (index === 1) return "day2";
+    return "day3";
+  };
+
   // Get workout info for date - which option (workout) is scheduled for this day
-  const getWorkoutInfoForDate = (date: Date): { optionId: string } | null => {
+  const getWorkoutInfoForDate = (date: Date): { optionId: string; dayKey: "day1" | "day2" | "day3" } | null => {
     const normalizedDate = new Date(date);
     normalizedDate.setHours(0, 0, 0, 0);
     const dateStr = toLocalDateString(normalizedDate);
@@ -456,16 +468,23 @@ export default function WorkoutPage() {
     // 1. workoutSchedule - use optionId when stored, or match by workout name (for old schedules)
     const scheduledWorkout = workoutSchedule.find((w) => w.date === dateStr);
     if (scheduledWorkout && scheduledWorkout.workoutName !== "Rest Day") {
-      if (scheduledWorkout.optionId) return { optionId: scheduledWorkout.optionId };
-      const byName = workoutOptions.find((o) => o.name === scheduledWorkout.workoutName);
-      if (byName) return { optionId: byName.id };
+      const optId = scheduledWorkout.optionId
+        ? scheduledWorkout.optionId
+        : workoutOptions.find((o) => o.name === scheduledWorkout.workoutName)?.id;
+      if (optId) {
+        const dayKey = getScheduledDayKey(optId, normalizedDate);
+        return { optionId: optId, dayKey };
+      }
     }
 
     // 2. manualScheduleByPlan - which option runs on this weekday
     if (selectedWorkoutOptions.length > 0) {
       for (const optId of selectedWorkoutOptions) {
         const days = (manualScheduleByPlan[optId] ?? { days: [] }).days || [];
-        if (days.includes(dayOfWeek)) return { optionId: optId };
+        if (days.includes(dayOfWeek)) {
+          const dayKey = getScheduledDayKey(optId, normalizedDate);
+          return { optionId: optId, dayKey };
+        }
       }
     }
 
@@ -477,16 +496,16 @@ export default function WorkoutPage() {
     return info ? "pushDay" : null;
   };
 
-  // Get current day's exercises - ONLY from the scheduled option. Never show another option's exercises.
+  // Get current day's exercises - ONLY from the scheduled option and the correct day (day1/day2/day3) for this date.
   const currentDayExercises: Exercise[] = useMemo(() => {
     const selectedDateStr = toLocalDateString(selectedDate);
 
-    // 1. Get the scheduled option for this date
+    // 1. Get the scheduled option and which day (day1/day2/day3) for this date
     const info = getWorkoutInfoForDate(selectedDate);
     if (!info) return [];
 
     const option = workoutOptions.find((o: WorkoutOption) => o.id === info.optionId);
-    const dayExercises = option ? (option.days.day1 || []) : [];
+    const dayExercises = option ? (option.days[info.dayKey] || []) : [];
 
     // 2. If the scheduled option has no exercises, show nothing - never show workout_data from a different option
     if (dayExercises.length === 0) return [];
@@ -541,12 +560,15 @@ export default function WorkoutPage() {
     return "Rest Day";
   };
 
-  // Get display name for date - shows option name (e.g. "Option 2") instead of workout type (e.g. "Chest & Biceps")
+  // Get display name for date - shows option name + day (e.g. "Option 2 - Chest & Biceps")
   const getWorkoutDisplayNameForDate = (date: Date): string => {
     const info = getWorkoutInfoForDate(date);
     if (info) {
       const opt = workoutOptions.find((o) => o.id === info.optionId);
-      if (opt) return opt.name;
+      if (opt) {
+        const dayName = opt.dayNames?.[info.dayKey];
+        return dayName ? `${opt.name} - ${dayName}` : opt.name;
+      }
     }
     return getWorkoutNameForDate(date);
   };
@@ -593,7 +615,7 @@ export default function WorkoutPage() {
     const raw = localStorage.getItem(`workout_data_${selectedDateStr}`);
     const info = getWorkoutInfoForDate(selectedDate);
     const option = info ? workoutOptions.find((o) => o.id === info.optionId) : null;
-    const baseExercises = option?.days?.day1 || [];
+    const baseExercises = option && info ? (option.days[info.dayKey] || []) : [];
 
     if (raw) {
       try {

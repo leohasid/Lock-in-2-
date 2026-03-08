@@ -1,6 +1,37 @@
 // Notification utility for workout reminders and calendar
+// When running in iOS Mogifi Ai app (WKWebView), uses native bridge for local notifications
+// that fire even when app is backgrounded. Otherwise uses Web Notifications API.
+
+// Check if we're in the iOS app with native notification bridge
+function isNativeNotificationBridgeAvailable(): boolean {
+  if (typeof window === "undefined") return false;
+  const w = window as Window & { webkit?: { messageHandlers?: { mogifiNotifications?: unknown } } };
+  return !!(w.webkit?.messageHandlers?.mogifiNotifications);
+}
+
+// Schedule via native iOS bridge (fires when app is backgrounded)
+function scheduleViaNativeBridge(
+  id: string,
+  title: string,
+  body: string,
+  triggerAtMs: number | null
+): void {
+  const w = window as Window & { webkit?: { messageHandlers?: { mogifiNotifications?: { postMessage: (msg: unknown) => void } } } };
+  const handler = w.webkit?.messageHandlers?.mogifiNotifications;
+  if (!handler) return;
+  handler.postMessage({
+    action: "schedule",
+    id,
+    title,
+    body,
+    triggerAt: triggerAtMs,
+  });
+}
 
 export async function requestNotificationPermission(): Promise<boolean> {
+  // Native iOS app: permission is requested by the app on load; assume granted when bridge exists
+  if (isNativeNotificationBridgeAvailable()) return true;
+
   if (!("Notification" in window)) {
     console.log("This browser does not support notifications");
     return false;
@@ -29,7 +60,8 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 }
 
 export function scheduleWorkoutNotification(date: Date, workoutName: string): void {
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const useNative = isNativeNotificationBridgeAvailable();
+  if (!useNative && (!("Notification" in window) || Notification.permission !== "granted")) return;
 
   const notificationTime = new Date(date);
   notificationTime.setHours(11, 45, 0, 0);
@@ -38,23 +70,34 @@ export function scheduleWorkoutNotification(date: Date, workoutName: string): vo
 
   const timeUntilNotification = notificationTime.getTime() - now.getTime();
   if (timeUntilNotification > 0 && timeUntilNotification < 24 * 60 * 60 * 1000) {
-    setTimeout(() => {
-      const todayStr = new Date().toISOString().split("T")[0];
-      const workoutStatus = localStorage.getItem(`workout_${todayStr}`);
-      const hasCompleted = localStorage.getItem(`workout_data_${todayStr}`);
+    const todayStr = new Date().toISOString().split("T")[0];
+    const id = `workout-${todayStr}`;
 
-      if (workoutStatus !== "completed" && !hasCompleted) {
-        const opts: NotificationOptions & { vibrate?: number[] } = {
-          body: `Don't forget your ${workoutName} workout today!`,
-          icon: "/icon-192x192.png",
-          badge: "/icon-192x192.png",
-          tag: `workout-${todayStr}`,
-          requireInteraction: false,
-        };
-        if ("vibrate" in navigator) opts.vibrate = [200, 100, 200];
-        new Notification("💪 Missed Workout Reminder", opts);
-      }
-    }, timeUntilNotification);
+    if (useNative) {
+      // Native iOS: schedule for future time - fires even when app is backgrounded
+      scheduleViaNativeBridge(
+        id,
+        "💪 Missed Workout Reminder",
+        `Don't forget your ${workoutName} workout today!`,
+        notificationTime.getTime()
+      );
+    } else {
+      setTimeout(() => {
+        const workoutStatus = localStorage.getItem(`workout_${todayStr}`);
+        const hasCompleted = localStorage.getItem(`workout_data_${todayStr}`);
+        if (workoutStatus !== "completed" && !hasCompleted) {
+          const opts: NotificationOptions & { vibrate?: number[] } = {
+            body: `Don't forget your ${workoutName} workout today!`,
+            icon: "/icon-192x192.png",
+            badge: "/icon-192x192.png",
+            tag: id,
+            requireInteraction: false,
+          };
+          if ("vibrate" in navigator) opts.vibrate = [200, 100, 200];
+          new Notification("💪 Missed Workout Reminder", opts);
+        }
+      }, timeUntilNotification);
+    }
   }
 }
 
@@ -97,7 +140,8 @@ export function scheduleTaskReminder(
   dateStr: string,
   reminderTime: string
 ): void {
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const useNative = isNativeNotificationBridgeAvailable();
+  if (!useNative && (!("Notification" in window) || Notification.permission !== "granted")) return;
 
   const parsed = parseTimeToMinutes(reminderTime);
   if (!parsed) return;
@@ -111,17 +155,23 @@ export function scheduleTaskReminder(
   const delayMs = notifyAt.getTime() - now.getTime();
   if (delayMs > 24 * 60 * 60 * 1000) return; // Don't schedule more than 24h ahead
 
-  setTimeout(() => {
-    const opts: NotificationOptions & { vibrate?: number[] } = {
-      body: taskTitle,
-      icon: "/icon-192x192.png",
-      badge: "/icon-192x192.png",
-      tag: `task-${taskId}-${dateStr}`,
-      requireInteraction: false,
-    };
-    if ("vibrate" in navigator) opts.vibrate = [200, 100, 200];
-    new Notification("🔔 Task Reminder", opts);
-  }, delayMs);
+  const id = `task-${taskId}-${dateStr}-${reminderTime.replace(/:/g, "")}`;
+
+  if (useNative) {
+    scheduleViaNativeBridge(id, "🔔 Task Reminder", taskTitle, notifyAt.getTime());
+  } else {
+    setTimeout(() => {
+      const opts: NotificationOptions & { vibrate?: number[] } = {
+        body: taskTitle,
+        icon: "/icon-192x192.png",
+        badge: "/icon-192x192.png",
+        tag: id,
+        requireInteraction: false,
+      };
+      if ("vibrate" in navigator) opts.vibrate = [200, 100, 200];
+      new Notification("🔔 Task Reminder", opts);
+    }, delayMs);
+  }
 }
 
 /** Reschedule all today's task reminders */
@@ -132,7 +182,8 @@ export function rescheduleTodayTaskReminders(tasks: {
   reminderTime?: string;
   reminderTimes?: string[];
 }[]): void {
-  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const useNative = isNativeNotificationBridgeAvailable();
+  if (!useNative && (!("Notification" in window) || Notification.permission !== "granted")) return;
   const todayStr = new Date().toISOString().split("T")[0];
   tasks
     .filter((t) => t.date === todayStr)
@@ -143,6 +194,17 @@ export function rescheduleTodayTaskReminders(tasks: {
 }
 
 export async function showWorkoutReminder(workoutName: string): Promise<void> {
+  const useNative = isNativeNotificationBridgeAvailable();
+  if (useNative) {
+    scheduleViaNativeBridge(
+      `workout-reminder-${Date.now()}`,
+      "💪 Workout Reminder",
+      `Time for your ${workoutName} workout! Don't forget to complete it.`,
+      null
+    );
+    return;
+  }
+
   if (!("Notification" in window)) return;
   if (Notification.permission !== "granted") {
     const hasPermission = await requestNotificationPermission();
@@ -167,4 +229,15 @@ export async function showWorkoutReminder(workoutName: string): Promise<void> {
   }
 
   new Notification("💪 Workout Reminder", notificationOptions);
+}
+
+/** Show an immediate notification. Uses native bridge on iOS so it works in WebView. */
+export function showImmediateNotification(title: string, body: string): void {
+  if (isNativeNotificationBridgeAvailable()) {
+    scheduleViaNativeBridge(`immediate-${Date.now()}`, title, body, null);
+    return;
+  }
+  if ("Notification" in window && Notification.permission === "granted") {
+    new Notification(title, { body, tag: `immediate-${Date.now()}` });
+  }
 }

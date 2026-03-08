@@ -4,6 +4,7 @@
 //
 //  WKWebView wrapper for loading your Vercel web app.
 //  Supports camera and photo library for food scanning.
+//  Supports native local notifications via JS bridge.
 //
 
 import SwiftUI
@@ -24,12 +25,43 @@ struct WebView: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
-        #if DEBUG
-        // Dev: use non-persistent store so each run starts fresh (no old localStorage/cache)
-        config.websiteDataStore = .nonPersistent()
-        #endif
+        // CRITICAL: Use default persistent store so localStorage (onboarding, subscription) persists
+        // across app launches. Without this, data is cleared every time the app restarts.
+        config.websiteDataStore = .default()
+        
+        // Register bridges: notifications + native storage (UserDefaults) for onboarding persistence
+        let coordinator = context.coordinator
+        config.userContentController.add(coordinator, name: "mogifiNotifications")
+        config.userContentController.add(coordinator, name: "mogifiStorage")
+        
+        // Inject storage bridge so web can use native UserDefaults (persists across app restarts)
+        let storageScript = WKUserScript(
+            source: """
+            window.MogifiNativeStorage = {
+              _callbacks: {},
+              get: function(key) {
+                var id = 's' + Date.now() + Math.random().toString(36).slice(2);
+                var self = this;
+                return new Promise(function(resolve) {
+                  self._callbacks[id] = resolve;
+                  window.webkit.messageHandlers.mogifiStorage.postMessage({action:'get',key:key,id:id});
+                });
+              },
+              set: function(key, value) {
+                window.webkit.messageHandlers.mogifiStorage.postMessage({action:'set',key:key,value:value});
+              },
+              _resolve: function(id, value) {
+                if (this._callbacks[id]) { this._callbacks[id](value); delete this._callbacks[id]; }
+              }
+            };
+            """,
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        config.userContentController.addUserScript(storageScript)
         
         let webView = WKWebView(frame: .zero, configuration: config)
+        coordinator.webView = webView
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         webView.scrollView.bounces = true
@@ -43,7 +75,7 @@ struct WebView: UIViewRepresentable {
     
     func updateUIView(_ webView: WKWebView, context: Context) {}
     
-    class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+    class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         @Binding var isLoading: Bool
         @Binding var loadError: String?
         weak var webView: WKWebView?
@@ -54,10 +86,44 @@ struct WebView: UIViewRepresentable {
             _loadError = loadError
         }
         
+        // MARK: - WKScriptMessageHandler (notifications + native storage)
+        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard let body = message.body as? [String: Any] else { return }
+            
+            if message.name == "mogifiNotifications" {
+                guard let action = body["action"] as? String, action == "schedule",
+                      let id = body["id"] as? String,
+                      let title = body["title"] as? String,
+                      let msgBody = body["body"] as? String else { return }
+                let triggerAt = body["triggerAt"] as? Double
+                let ts = (triggerAt != nil && triggerAt! > 0) ? TimeInterval(triggerAt! / 1000.0) : nil
+                NotificationManager.shared.scheduleNotification(id: id, title: title, body: msgBody, triggerAt: ts)
+                return
+            }
+            
+            if message.name == "mogifiStorage" {
+                guard let action = body["action"] as? String else { return }
+                let prefix = "mogifi_"
+                if action == "get" {
+                    let key = body["key"] as? String ?? ""
+                    let id = body["id"] as? String ?? ""
+                    let value = UserDefaults.standard.string(forKey: prefix + key) ?? ""
+                    let b64 = Data(value.utf8).base64EncodedString()
+                    let js = "if(window.MogifiNativeStorage&&window.MogifiNativeStorage._resolve){var v='';try{v=atob('\(b64)')}catch(e){};window.MogifiNativeStorage._resolve('\(id)',v)}"
+                    webView?.evaluateJavaScript(js)
+                } else if action == "set" {
+                    let key = body["key"] as? String ?? ""
+                    let value = body["value"] as? String ?? ""
+                    UserDefaults.standard.set(value, forKey: prefix + key)
+                }
+            }
+        }
+        
         // MARK: - WKNavigationDelegate
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             isLoading = false
             loadError = nil
+            NotificationManager.shared.requestPermission { _ in }
         }
         
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {

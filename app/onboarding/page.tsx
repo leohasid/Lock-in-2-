@@ -78,10 +78,13 @@ export default function OnboardingPage() {
 
   // Redirect if user is already subscribed (they shouldn't see onboarding)
   useEffect(() => {
-    const subscriptionStatus = localStorage.getItem("subscriptionStatus");
-    if (subscriptionStatus === "active") {
-      router.push("/");
-    }
+    (async () => {
+      const { get } = await import("@/lib/persistent-storage");
+      const subscriptionStatus = await get("subscriptionStatus");
+      if (subscriptionStatus === "active") {
+        router.push("/");
+      }
+    })();
   }, [router]);
 
   const getStepInfo = (currentStep: number) => {
@@ -203,9 +206,10 @@ export default function OnboardingPage() {
     try {
       // TODO: Integrate with StoreKit/RevenueCat for iOS App Store
       await new Promise((r) => setTimeout(r, 1200));
-      localStorage.setItem("subscriptionStatus", "active");
-      localStorage.setItem("subscriptionPlan", "monthly");
-      localStorage.setItem("subscriptionDate", new Date().toISOString());
+      const { set } = await import("@/lib/persistent-storage");
+      await set("subscriptionStatus", "active");
+      await set("subscriptionPlan", "monthly");
+      await set("subscriptionDate", new Date().toISOString());
       setShowSubscribeModal(false);
       setSubscribing(false);
       setPlanReady(true);
@@ -221,9 +225,10 @@ export default function OnboardingPage() {
     if (needsCustomPlan) setShowSubscribeModal(true);
 
     try {
-      // Store onboarding data
-      localStorage.setItem("onboardingData", JSON.stringify(data));
-      localStorage.setItem("onboardingCompleted", "true");
+      // Store onboarding data (persistent storage for iOS/native)
+      const { set } = await import("@/lib/persistent-storage");
+      await set("onboardingData", JSON.stringify(data));
+      await set("onboardingCompleted", "true");
 
       // Create initial addictions if user wants to track them
       if (data.wantsToTrackAddictions && data.selectedAddictions.length > 0) {

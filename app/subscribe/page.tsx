@@ -10,11 +10,13 @@ export default function SubscribePage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Check if user already subscribed
-    const subscriptionStatus = localStorage.getItem("subscriptionStatus");
-    if (subscriptionStatus === "active") {
-      router.push("/");
-    }
+    (async () => {
+      const { get } = await import("@/lib/persistent-storage");
+      const subscriptionStatus = await get("subscriptionStatus");
+      if (subscriptionStatus === "active") {
+        router.push("/");
+      }
+    })();
   }, [router]);
 
   const handleSubscribe = async (plan: "monthly" | "yearly") => {
@@ -29,10 +31,11 @@ export default function SubscribePage() {
       // Simulate API call to subscription service
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // Store subscription status
-      localStorage.setItem("subscriptionStatus", "active");
-      localStorage.setItem("subscriptionPlan", plan);
-      localStorage.setItem("subscriptionDate", new Date().toISOString());
+      // Store subscription status (persistent storage for iOS/native)
+      const { set } = await import("@/lib/persistent-storage");
+      await set("subscriptionStatus", "active");
+      await set("subscriptionPlan", plan);
+      await set("subscriptionDate", new Date().toISOString());
 
       // Redirect to main app
       router.push("/");

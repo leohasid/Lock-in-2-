@@ -16,6 +16,8 @@ export const EXERCISE_SUGGESTIONS: string[] = [
   "Front Raises",
   "Tricep Dips",
   "Tricep Extension",
+  "Overhead Tricep Extensions",
+  "One Handed Tricep Push Down",
   "Close Grip Bench Press",
   "Push Ups",
   "Dips",
@@ -24,6 +26,7 @@ export const EXERCISE_SUGGESTIONS: string[] = [
   // Pull
   "Pull Ups",
   "Lat Pulldown",
+  "Lat Pull Overs",
   "Barbell Row",
   "Dumbbell Row",
   "Cable Row",
