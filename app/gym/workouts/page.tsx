@@ -214,6 +214,8 @@ export default function WorkoutsPage() {
               ex("ex-9", "Leg Extension"),
               ex("ex-10", "Leg Curl"),
               ex("ex-11", "Hip Thrust"),
+              ex("ex-12", "Lunges"),
+              ex("ex-13", "Hack Squat"),
             ],
           },
           dayNames: {

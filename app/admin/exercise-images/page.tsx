@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Upload, X, Check, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
+import { getExerciseImagePosition } from "@/lib/built-in-exercise-images";
 
 interface Exercise {
   id: string;
@@ -357,13 +358,13 @@ export default function ExerciseImagesAdminPage() {
                 className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-white/10"
               >
                 {/* Exercise Image Preview */}
-                <div className="w-full h-40 bg-gray-800 rounded-lg mb-3 overflow-hidden relative">
+                <div className="w-full h-32 bg-gray-800 rounded-lg mb-3 overflow-hidden relative">
                   {exercise.imageUrl ? (
                     <>
                       <img
                         src={exercise.imageUrl}
                         alt={exercise.name}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover ${getExerciseImagePosition(exercise.name)}`}
                       />
                       <button
                         onClick={() => removeImage(exercise)}

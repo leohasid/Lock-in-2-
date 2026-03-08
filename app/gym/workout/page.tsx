@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { getBuiltInImageUrl } from "@/lib/built-in-exercise-images";
+import { getBuiltInImageUrl, getExerciseImagePosition } from "@/lib/built-in-exercise-images";
 import { X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, ChevronLeft, Dumbbell, TrendingUp, Target, Zap, Calendar, Activity, Sparkles, Play } from "lucide-react";
 import GuidedWorkoutView from "@/components/GuidedWorkoutView";
 import ExerciseNameInput from "@/components/ExerciseNameInput";
@@ -560,15 +560,12 @@ export default function WorkoutPage() {
     return "Rest Day";
   };
 
-  // Get display name for date - shows option name + day (e.g. "Option 2 - Chest & Biceps")
+  // Get display name for date - shows option name only (e.g. "Option 1", "Option 2")
   const getWorkoutDisplayNameForDate = (date: Date): string => {
     const info = getWorkoutInfoForDate(date);
     if (info) {
       const opt = workoutOptions.find((o) => o.id === info.optionId);
-      if (opt) {
-        const dayName = opt.dayNames?.[info.dayKey];
-        return dayName ? `${opt.name} - ${dayName}` : opt.name;
-      }
+      if (opt) return opt.name;
     }
     return getWorkoutNameForDate(date);
   };
@@ -1208,12 +1205,12 @@ export default function WorkoutPage() {
                     className="bg-black/40 border border-white/10 rounded-lg p-2 cursor-pointer hover:bg-black/60 transition-colors"
                   >
                     {/* Exercise thumbnail */}
-                    <div className="w-full h-20 bg-gray-800 rounded-lg mb-2 flex items-center justify-center overflow-hidden relative">
+                    <div className="w-full h-16 bg-gray-800 rounded-lg mb-2 flex items-center justify-center overflow-hidden relative">
                       {ex.imageUrl ? (
                         <img 
                           src={ex.imageUrl} 
                           alt={ex.name}
-                          className="w-full h-full object-cover"
+                          className={`w-full h-full object-cover ${getExerciseImagePosition(ex.name)}`}
                         />
                       ) : (
                         <Dumbbell className="w-6 h-6 text-gray-600" />
@@ -1274,8 +1271,8 @@ export default function WorkoutPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto">
-              {/* Exercise image */}
-              <div className="w-full h-48 bg-gray-900 flex items-center justify-center relative overflow-hidden">
+              {/* Exercise image - show full image when expanded */}
+              <div className="w-full h-64 bg-gray-900 flex items-center justify-center relative overflow-hidden">
                 {activeExercise.imageUrl ? (
                   <img 
                     src={activeExercise.imageUrl} 

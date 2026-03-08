@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Play, SkipForward, RefreshCw, Clock, Check, Pause, X, ChevronRight } from "lucide-react";
-import { getBuiltInImageUrl } from "@/lib/built-in-exercise-images";
+import { getBuiltInImageUrl, getExerciseImagePosition } from "@/lib/built-in-exercise-images";
 
 export interface GuidedExercise {
   id: string;
@@ -375,12 +375,12 @@ export default function GuidedWorkoutView({
 
       <div className="flex-1 flex flex-col items-center justify-center p-6 pb-28">
         {/* Exercise image */}
-        <div className="w-32 h-32 rounded-xl bg-gray-900 flex items-center justify-center overflow-hidden mb-6">
+        <div className="w-24 h-24 rounded-xl bg-gray-900 flex items-center justify-center overflow-hidden mb-6">
           {(currentEx.imageUrl || getBuiltInImageUrl(currentEx.name)) ? (
             <img
               src={currentEx.imageUrl || getBuiltInImageUrl(currentEx.name) || ""}
               alt={currentEx.name}
-              className="w-full h-full object-cover"
+              className={`w-full h-full object-cover ${getExerciseImagePosition(currentEx.name)}`}
             />
           ) : (
             <span className="text-4xl">💪</span>
