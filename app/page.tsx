@@ -140,12 +140,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white pb-24">
-      <div className="max-w-md mx-auto px-4 pt-6">
+      <div className="max-w-md mx-auto px-3 pt-4">
         {/* Tab Bar - Home | Goals */}
-        <div className="flex gap-2 mb-6 pt-4 border-b border-teal-500/30">
+        <div className="flex gap-2 mb-4 pt-2 border-b border-teal-500/30">
           <Link
             href="/"
-            className={`flex-1 py-2 font-semibold text-center text-sm ${
+            className={`flex-1 py-1.5 font-semibold text-center text-xs ${
               pathname === "/"
                 ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
                 : "text-gray-400 hover:text-teal-300"
@@ -155,7 +155,7 @@ export default function Home() {
           </Link>
           <Link
             href="/goals"
-            className={`flex-1 py-2 font-semibold text-center text-sm ${
+            className={`flex-1 py-1.5 font-semibold text-center text-xs ${
               pathname === "/goals"
                 ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
                 : "text-gray-400 hover:text-teal-300"
@@ -168,68 +168,68 @@ export default function Home() {
         {/* AI Reflection */}
         <Link
           href="/consultation?from=reflection"
-          className="block rounded-2xl p-5 mb-5 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-teal-500/40 hover:border-teal-400/60 transition-all"
+          className="block rounded-xl p-3 mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/40 hover:border-teal-400/60 transition-all"
         >
-          <p className="text-lg font-semibold text-white">✨ AI Reflection</p>
-          <p className="mt-1 flex items-center justify-between text-gray-400">
+          <p className="text-sm font-semibold text-white">✨ AI Reflection</p>
+          <p className="mt-0.5 flex items-center justify-between text-gray-400 text-xs">
             <span>Review yesterday • Set today</span>
-            <ChevronRight className="w-5 h-5 text-teal-400" />
+            <ChevronRight className="w-4 h-4 text-teal-400" />
           </p>
         </Link>
 
         {/* LOCKED IN TODAY */}
-        <div className="rounded-2xl p-5 mb-5 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-teal-500/30">
-          <p className="text-base font-bold text-white flex items-center gap-2 mb-4">
-            <span className="text-lg">🔥</span> LOCKED IN TODAY
+        <div className="rounded-xl p-3 mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30">
+          <p className="text-xs font-bold text-white flex items-center gap-1.5 mb-3">
+            <span className="text-sm">🔥</span> LOCKED IN TODAY
           </p>
-          <div className="space-y-2.5 mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-teal-500/20 border border-teal-400/50 flex items-center justify-center">
-                {cleanStreakPoints > 0 ? <Check className="w-3 h-3 text-teal-400" strokeWidth={3} /> : null}
+          <div className="space-y-1.5 mb-3">
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 h-4 rounded-full bg-teal-500/20 border border-teal-400/50 flex items-center justify-center flex-shrink-0">
+                {cleanStreakPoints > 0 ? <Check className="w-2.5 h-2.5 text-teal-400" strokeWidth={3} /> : null}
               </div>
-              <p className="text-sm text-white">
-                Clean streak: <span className="font-bold text-teal-400">{hasAddictions ? `${daysClean} days` : "—"}</span>
+              <p className="text-xs text-white">
+                Clean streak: <span className="font-semibold text-teal-400">{hasAddictions ? `${daysClean} days` : "—"}</span>
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-teal-500/20 border border-teal-400/50 flex items-center justify-center">
-                {workoutCompleted ? <Check className="w-3 h-3 text-teal-400" strokeWidth={3} /> : null}
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 h-4 rounded-full bg-teal-500/20 border border-teal-400/50 flex items-center justify-center flex-shrink-0">
+                {workoutCompleted ? <Check className="w-2.5 h-2.5 text-teal-400" strokeWidth={3} /> : null}
               </div>
-              <p className="text-sm text-white">
+              <p className="text-xs text-white">
                 Workout:{" "}
-                <span className="font-bold text-teal-400">
+                <span className="font-semibold text-teal-400">
                   {workoutCompleted ? "Completed" : todayWorkout ? "Pending" : "Rest day"}
                 </span>
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-teal-500/20 border border-teal-400/50 flex items-center justify-center">
-                {nutritionOnTrack ? <Check className="w-3 h-3 text-teal-400" strokeWidth={3} /> : null}
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 h-4 rounded-full bg-teal-500/20 border border-teal-400/50 flex items-center justify-center flex-shrink-0">
+                {nutritionOnTrack ? <Check className="w-2.5 h-2.5 text-teal-400" strokeWidth={3} /> : null}
               </div>
-              <p className="text-sm text-white">
+              <p className="text-xs text-white">
                 Nutrition:{" "}
-                <span className="font-bold text-teal-400">
+                <span className="font-semibold text-teal-400">
                   {nutritionOnTrack ? "On track" : "Log food"}
                 </span>
               </p>
             </div>
           </div>
-          <div className="flex items-end justify-between gap-4">
+          <div className="flex items-end justify-between gap-3">
             <div>
-              <p className="text-xs text-gray-400">Discipline score</p>
-              <p className="text-3xl font-bold text-teal-400">{lockInScore}</p>
+              <p className="text-[10px] text-gray-400">Discipline score</p>
+              <p className="text-xl font-bold text-teal-400">{lockInScore}</p>
             </div>
             <div className="flex-1">
-              <p className="text-xs text-gray-400 mb-1 flex items-center gap-1">
-                <span>🧠</span> Lock-In Score
+              <p className="text-[10px] text-gray-400 mb-0.5 flex items-center gap-1">
+                <span className="text-xs">🧠</span> Lock-In Score
               </p>
-              <div className="h-2 rounded-full overflow-hidden bg-gray-800">
+              <div className="h-1.5 rounded-full overflow-hidden bg-gray-800">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-teal-400 transition-all duration-500"
                   style={{ width: `${lockInScore}%` }}
                 />
               </div>
-              <div className="flex justify-between text-[10px] text-gray-500 mt-0.5">
+              <div className="flex justify-between text-[9px] text-gray-500 mt-0.5">
                 <span>0</span>
                 <span>50</span>
                 <span>100</span>
@@ -239,16 +239,16 @@ export default function Home() {
         </div>
 
         {/* UPCOMING */}
-        <div className="rounded-2xl p-5 mb-5 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-teal-500/30">
-          <p className="text-base font-bold text-white flex items-center gap-2 mb-2">
-            <span>🏠</span> UPCOMING
+        <div className="rounded-xl p-3 mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30">
+          <p className="text-xs font-bold text-white flex items-center gap-1.5 mb-2">
+            <span className="text-sm">🏠</span> UPCOMING
           </p>
           {upcomingEvents.length === 0 ? (
-            <p className="text-sm text-gray-400">No upcoming events — stay disciplined.</p>
+            <p className="text-xs text-gray-400">No upcoming events — stay disciplined.</p>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               {upcomingEvents.map((event) => (
-                <p key={event.id} className="text-sm text-white">
+                <p key={event.id} className="text-xs text-white">
                   {event.time} — {event.title}
                 </p>
               ))}
@@ -256,10 +256,10 @@ export default function Home() {
           )}
           <Link
             href="/calendar?view=schedule"
-            className="mt-3 inline-flex items-center gap-1 font-semibold text-teal-400 hover:text-teal-300 transition-colors"
+            className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-teal-400 hover:text-teal-300 transition-colors"
           >
             Review routine
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </div>

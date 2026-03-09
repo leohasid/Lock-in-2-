@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { ArrowLeft, TrendingUp, Target, Zap, Calendar, Activity } from "lucide-react";
+import { ArrowLeft, TrendingUp, Target, Zap, Activity } from "lucide-react";
 
 interface Exercise {
   id: string;
@@ -51,54 +51,6 @@ const fallbackPlan: Exercise[] = [
   },
 ];
 
-const CircularProgress = ({ percentage, size = 120, color = "#f97316", label }: { percentage: number; size?: number; color?: string; label?: string }) => {
-  const radius = (size - 20) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const safePercentage = isNaN(percentage) || !isFinite(percentage) ? 0 : Math.max(0, Math.min(100, percentage));
-  const offset = circumference - (safePercentage / 100) * circumference;
-
-  // Dynamic text sizing based on circle size
-  const percentageTextSize = size >= 120 ? "text-xl" : size >= 90 ? "text-lg" : "text-sm";
-  const labelTextSize = size >= 120 ? "text-xs" : "text-[10px]";
-
-  return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="transform -rotate-90 absolute">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="#1f2937"
-          strokeWidth="12"
-          fill="none"
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={color}
-          strokeWidth="12"
-          fill="none"
-          strokeDasharray={circumference}
-          strokeDashoffset={isNaN(offset) || !isFinite(offset) ? circumference : offset}
-          strokeLinecap="round"
-          className="transition-all duration-500"
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <div className={`${percentageTextSize} font-bold text-white leading-tight`}>
-          {Math.round(safePercentage)}%
-        </div>
-        {label && (
-          <div className={`${labelTextSize} text-gray-400 leading-tight mt-0.5`}>
-            {label}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
 export default function GymStatsPage() {
   const [workoutPlan, setWorkoutPlan] = useState<WorkoutPlanByDay>({
     pushDay: [],
@@ -106,6 +58,7 @@ export default function GymStatsPage() {
     legsDay: [],
   });
   const [weeklyVolume, setWeeklyVolume] = useState<number[]>(Array(7).fill(0));
+  const [weeklyVolumesLast4Weeks, setWeeklyVolumesLast4Weeks] = useState<number[]>([]);
   const [totalWorkoutsLogged, setTotalWorkoutsLogged] = useState(0);
   const [activeStreak, setActiveStreak] = useState(0);
 
@@ -159,6 +112,25 @@ export default function GymStatsPage() {
     }
 
     setWeeklyVolume(volumes);
+
+    const fourWeeks: number[] = [];
+    for (let w = 3; w >= 0; w--) {
+      let weekVol = 0;
+      for (let d = 0; d < 7; d++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - (w * 7 + (6 - d)));
+        const dateStr = date.toISOString().split("T")[0];
+        const raw = localStorage.getItem(`workout_data_${dateStr}`);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            weekVol += calculateVolumeFromData(parsed);
+          } catch {}
+        }
+      }
+      fourWeeks.push(weekVol);
+    }
+    setWeeklyVolumesLast4Weeks(fourWeeks);
 
     const workoutEntries = Object.keys(localStorage).filter((key) =>
       key.startsWith("workout_data_")
@@ -257,8 +229,14 @@ export default function GymStatsPage() {
 
   const weeklyData = weeklyVolume;
   const maxVolume = Math.max(...weeklyData, 1);
+  const max4Week = weeklyVolumesLast4Weeks.length > 0 ? Math.max(...weeklyVolumesLast4Weeks, 1) : 1;
 
   const workoutsThisWeek = weeklyData.filter((value) => value > 0).length;
+  const thisWeekVolume = weeklyData.reduce((a, b) => a + b, 0);
+
+  const milestones = [10, 25, 50, 100, 250, 500];
+  const nextMilestone = milestones.find((m) => m > totalWorkoutsLogged);
+  const workoutsToNext = nextMilestone ? nextMilestone - totalWorkoutsLogged : 0;
   const averageSetVolume = totals.totalSets
     ? Math.round(totals.totalVolume / totals.totalSets)
     : 0;
@@ -271,16 +249,10 @@ export default function GymStatsPage() {
     return Math.max(max, heaviestInExercise);
   }, 0);
 
-  const lastWeekAverage =
-    weeklyData.length > 1
-      ? Math.round(
-          weeklyData.slice(0, weeklyData.length - 1).reduce((a, b) => a + b, 0) /
-            (weeklyData.length - 1)
-        )
-      : 0;
-  const todayVolume = weeklyData[weeklyData.length - 1] || 0;
-  const volumeDelta = lastWeekAverage
-    ? Math.round(((todayVolume - lastWeekAverage) / Math.max(lastWeekAverage, 1)) * 100)
+  const lastWeekVolume = weeklyVolumesLast4Weeks.length >= 2 ? weeklyVolumesLast4Weeks[weeklyVolumesLast4Weeks.length - 2] : 0;
+  const thisWeekVol = weeklyVolumesLast4Weeks[weeklyVolumesLast4Weeks.length - 1] ?? thisWeekVolume;
+  const volumeDelta = lastWeekVolume
+    ? Math.round(((thisWeekVol - lastWeekVolume) / Math.max(lastWeekVolume, 1)) * 100)
     : 0;
 
   return (
@@ -295,149 +267,93 @@ export default function GymStatsPage() {
           <h1 className="text-2xl font-bold text-white">📊 Workout Statistics</h1>
         </div>
 
-        {/* Main Progress Circles */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <h3 className="text-sm font-semibold mb-2">Workout Completion</h3>
-            <div className="flex justify-center mb-2">
-              <CircularProgress percentage={totals.progress} size={100} color="#f97316" />
-            </div>
-            <p className="text-gray-400 text-xs">
-              {totals.completedSets} / {totals.totalSets} sets
-            </p>
-          </div>
-
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center">
-            <h3 className="text-sm font-semibold mb-2">Volume Progress</h3>
-            <div className="flex justify-center mb-2">
-              <CircularProgress percentage={volumeProgress} size={100} color="#22c55e" />
-            </div>
-            <p className="text-gray-400 text-xs">
-              {totals.totalVolume} kg
-            </p>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {/* Volume Delta */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
-            <TrendingUp className={`w-5 h-5 mx-auto mb-1 ${volumeDelta >= 0 ? "text-green-400" : "text-red-400"}`} />
-            <p className={`text-lg font-bold ${volumeDelta >= 0 ? "text-green-400" : "text-red-400"}`}>
-              {volumeDelta >= 0 ? "+" : ""}
-              {volumeDelta}%
-            </p>
-            <p className="text-[10px] text-gray-400">Volume change</p>
-          </div>
-
-          {/* Heaviest Set */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
-            <Target className="w-5 h-5 text-blue-400 mx-auto mb-1" />
-            <p className="text-lg font-bold text-blue-400">{heaviestSet} kg</p>
-            <p className="text-[10px] text-gray-400">Heaviest set</p>
-          </div>
-
-          {/* Average Set Volume */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
-            <Activity className="w-5 h-5 text-yellow-400 mx-auto mb-1" />
-            <p className="text-lg font-bold text-yellow-400">
-              {averageSetVolume} kg
-            </p>
-            <p className="text-[10px] text-gray-400">Avg set volume</p>
-          </div>
-
-          {/* Active Streak */}
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
-            <div className="flex justify-center mb-1">
-              <CircularProgress
-                percentage={Math.min((activeStreak / 7) * 100, 100)}
-                size={70}
-                color="#22c55e"
-              />
-            </div>
-            <p className="text-base font-bold text-green-400 mt-1">{activeStreak} days</p>
-            <p className="text-[10px] text-gray-400">Active streak</p>
-          </div>
-        </div>
-
-        {/* Weekly Volume Chart */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
-          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-orange-400" />
-            Weekly Volume Trend
+        {/* Journey Snapshot */}
+        <div className="bg-gradient-to-br from-teal-500/20 to-cyan-500/10 border border-teal-400/30 rounded-xl p-4 mb-4">
+          <h2 className="text-sm font-semibold text-teal-400 mb-2 flex items-center gap-2">
+            <Zap className="w-4 h-4" />
+            Your Journey
           </h2>
-          <div className="flex items-end justify-between h-24 gap-1.5">
+          <p className="text-white text-sm leading-relaxed">
+            {totalWorkoutsLogged === 0
+              ? "Start your first workout to begin tracking your journey."
+              : `${totalWorkoutsLogged} workout${totalWorkoutsLogged === 1 ? "" : "s"} completed.`}
+            {nextMilestone && totalWorkoutsLogged > 0 && (
+              <span className="block mt-1 text-gray-400 text-xs">
+                {workoutsToNext} more until {nextMilestone} workouts!
+              </span>
+            )}
+          </p>
+        </div>
+
+        {/* Momentum */}
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 text-center mb-4">
+          <TrendingUp className={`w-6 h-6 mx-auto mb-1 ${volumeDelta >= 0 ? "text-green-400" : "text-red-400"}`} />
+          <p className={`text-2xl font-bold ${volumeDelta >= 0 ? "text-green-400" : "text-red-400"}`}>
+            {volumeDelta >= 0 ? "+" : ""}{volumeDelta}%
+          </p>
+          <p className="text-xs text-gray-500">vs last week</p>
+        </div>
+
+        {/* 4-Week Trend */}
+        {weeklyVolumesLast4Weeks.length > 0 && (
+          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
+            <h2 className="text-sm font-semibold mb-3">4-Week Progress</h2>
+            <div className="flex items-end justify-between h-20 gap-2">
+              {weeklyVolumesLast4Weeks.map((val, i) => {
+                const h = Math.max((val / max4Week) * 100, 2);
+                const weekLabel = i === weeklyVolumesLast4Weeks.length - 1 ? "This" : `${4 - i}w ago`;
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center">
+                    <div className="w-full bg-gray-800 rounded-t relative" style={{ height: "70px" }}>
+                      <div
+                        className="w-full bg-teal-500 rounded-t absolute bottom-0 transition-all"
+                        style={{ height: `${h}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-gray-400 mt-1">{weekLabel}</span>
+                    <span className="text-[9px] text-gray-500">{val}kg</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* This Week */}
+        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
+          <h2 className="text-sm font-semibold mb-3">This Week</h2>
+          <div className="flex items-end justify-between h-20 gap-1.5">
             {weeklyData.map((value, i) => {
               const heightPercent = (value / maxVolume) * 100;
               return (
                 <div key={i} className="flex-1 flex flex-col items-center">
                   <div className="w-full bg-gray-800 rounded-t relative" style={{ height: "70px" }}>
                     <div
-                      className="w-full bg-orange-500 rounded-t absolute bottom-0 transition-all duration-500"
-                      style={{ height: `${heightPercent}%` }}
+                      className="w-full bg-teal-500 rounded-t absolute bottom-0 transition-all"
+                      style={{ height: `${Math.max(heightPercent, 2)}%` }}
                     />
                   </div>
                   <span className="text-[10px] text-gray-400 mt-1">
                     {i === weeklyData.length - 1 ? "Today" : `D${i + 1}`}
                   </span>
-                  <span className="text-[9px] text-gray-500">{value}kg</span>
                 </div>
               );
             })}
           </div>
+          <p className="text-xs text-gray-500 mt-2 text-center">{thisWeekVolume} kg total</p>
         </div>
 
-        {/* Exercise Progress - Compact */}
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
-          <h2 className="text-sm font-semibold mb-3">Exercise Progress</h2>
-          <div className="space-y-2.5">
-            {exercises.slice(0, 3).map((ex) => {
-              const completedSets = ex.sets.filter(s => s.completed).length;
-              const progress = (completedSets / ex.goalSets) * 100;
-              return (
-                <div key={ex.id} className="bg-gray-800 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-sm">{ex.name}</h3>
-                    <span className="text-xs text-gray-400">
-                      {completedSets} / {ex.goalSets}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CircularProgress percentage={progress} size={70} color="#f97316" />
-                    <div className="flex-1">
-                      <div className="w-full bg-gray-700 rounded-full h-1.5 mb-1">
-                        <div
-                          className="bg-orange-500 h-1.5 rounded-full transition-all"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                      <p className="text-[10px] text-gray-400">
-                        {ex.goalSets}×{ex.goalReps} @ {ex.goalWeight}kg
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Additional Stats - Compact */}
-        <div className="grid grid-cols-3 gap-2 mb-20">
+        {/* Personal Best & Quick Stats */}
+        <div className="grid grid-cols-2 gap-2 mb-20">
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
-            <TrendingUp className="w-5 h-5 text-orange-400 mx-auto mb-1" />
-            <p className="text-lg font-bold text-white">{workoutsThisWeek}</p>
-            <p className="text-[10px] text-gray-400">This Week</p>
+            <Target className="w-5 h-5 text-teal-400 mx-auto mb-1" />
+            <p className="text-lg font-bold text-teal-400">{heaviestSet} kg</p>
+            <p className="text-[10px] text-gray-400">Heaviest set</p>
           </div>
           <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
-            <Target className="w-5 h-5 text-orange-400 mx-auto mb-1" />
-            <p className="text-lg font-bold text-white">{totalWorkoutsLogged}</p>
-            <p className="text-[10px] text-gray-400">Total</p>
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 text-center">
-            <Calendar className="w-5 h-5 text-orange-400 mx-auto mb-1" />
-            <p className="text-lg font-bold text-white">{activeStreak}</p>
-            <p className="text-[10px] text-gray-400">Streak</p>
+            <Activity className="w-5 h-5 text-yellow-400 mx-auto mb-1" />
+            <p className="text-lg font-bold text-yellow-400">{workoutsThisWeek}</p>
+            <p className="text-[10px] text-gray-400">This week</p>
           </div>
         </div>
       </div>
