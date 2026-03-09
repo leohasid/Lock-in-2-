@@ -2,6 +2,45 @@
 // When running in iOS Mogifi Ai app (WKWebView), uses native bridge for local notifications
 // that fire even when app is backgrounded. Otherwise uses Web Notifications API.
 
+export interface NotificationSettings {
+  workoutReminderTime: string; // "11:45" (HH:mm)
+  workoutReminderTitle: string;
+  workoutReminderMessage: string; // Use {workoutName} as placeholder
+  taskReminderTitle: string;
+  dailySummaryTime: string; // "09:00" (HH:mm) - when to remind about today's tasks
+  dailySummaryTitle: string;
+  dailySummaryMessage: string; // Use {count} and {nextTask} as placeholders
+}
+
+const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  workoutReminderTime: "11:45",
+  workoutReminderTitle: "💪 Missed Workout Reminder",
+  workoutReminderMessage: "Don't forget your {workoutName} workout today!",
+  taskReminderTitle: "🔔 Task Reminder",
+  dailySummaryTime: "09:00",
+  dailySummaryTitle: "📋 Today's Schedule",
+  dailySummaryMessage: "You have {count} task(s) outstanding today. {nextTask}",
+};
+
+export function getNotificationSettings(): NotificationSettings {
+  if (typeof window === "undefined") return DEFAULT_NOTIFICATION_SETTINGS;
+  try {
+    const stored = localStorage.getItem("notificationSettings");
+    if (stored) {
+      const parsed = JSON.parse(stored) as Partial<NotificationSettings>;
+      return { ...DEFAULT_NOTIFICATION_SETTINGS, ...parsed };
+    }
+  } catch (_) {}
+  return DEFAULT_NOTIFICATION_SETTINGS;
+}
+
+export function setNotificationSettings(settings: Partial<NotificationSettings>): void {
+  if (typeof window === "undefined") return;
+  const current = getNotificationSettings();
+  const merged = { ...current, ...settings };
+  localStorage.setItem("notificationSettings", JSON.stringify(merged));
+}
+
 // Check if we're in the iOS app with native notification bridge
 function isNativeNotificationBridgeAvailable(): boolean {
   if (typeof window === "undefined") return false;
@@ -63,8 +102,11 @@ export function scheduleWorkoutNotification(date: Date, workoutName: string): vo
   const useNative = isNativeNotificationBridgeAvailable();
   if (!useNative && (!("Notification" in window) || Notification.permission !== "granted")) return;
 
+  const settings = getNotificationSettings();
+  const [h, m] = (settings.workoutReminderTime || "11:45").split(":").map((x) => parseInt(x, 10) || 0);
+
   const notificationTime = new Date(date);
-  notificationTime.setHours(11, 45, 0, 0);
+  notificationTime.setHours(h, m, 0, 0);
   const now = new Date();
   if (notificationTime <= now) notificationTime.setDate(notificationTime.getDate() + 1);
 
@@ -73,28 +115,29 @@ export function scheduleWorkoutNotification(date: Date, workoutName: string): vo
     const todayStr = new Date().toISOString().split("T")[0];
     const id = `workout-${todayStr}`;
 
+    const title = settings.workoutReminderTitle || "💪 Missed Workout Reminder";
+    const body = (settings.workoutReminderMessage || "Don't forget your {workoutName} workout today!").replace(
+      "{workoutName}",
+      workoutName
+    );
+
     if (useNative) {
       // Native iOS: schedule for future time - fires even when app is backgrounded
-      scheduleViaNativeBridge(
-        id,
-        "💪 Missed Workout Reminder",
-        `Don't forget your ${workoutName} workout today!`,
-        notificationTime.getTime()
-      );
+      scheduleViaNativeBridge(id, title, body, notificationTime.getTime());
     } else {
       setTimeout(() => {
         const workoutStatus = localStorage.getItem(`workout_${todayStr}`);
         const hasCompleted = localStorage.getItem(`workout_data_${todayStr}`);
         if (workoutStatus !== "completed" && !hasCompleted) {
           const opts: NotificationOptions & { vibrate?: number[] } = {
-            body: `Don't forget your ${workoutName} workout today!`,
+            body,
             icon: "/icon-192x192.png",
             badge: "/icon-192x192.png",
             tag: id,
             requireInteraction: false,
           };
           if ("vibrate" in navigator) opts.vibrate = [200, 100, 200];
-          new Notification("💪 Missed Workout Reminder", opts);
+          new Notification(title, opts);
         }
       }, timeUntilNotification);
     }
@@ -156,9 +199,10 @@ export function scheduleTaskReminder(
   if (delayMs > 24 * 60 * 60 * 1000) return; // Don't schedule more than 24h ahead
 
   const id = `task-${taskId}-${dateStr}-${reminderTime.replace(/:/g, "")}`;
+  const taskTitleSetting = getNotificationSettings().taskReminderTitle || "🔔 Task Reminder";
 
   if (useNative) {
-    scheduleViaNativeBridge(id, "🔔 Task Reminder", taskTitle, notifyAt.getTime());
+    scheduleViaNativeBridge(id, taskTitleSetting, taskTitle, notifyAt.getTime());
   } else {
     setTimeout(() => {
       const opts: NotificationOptions & { vibrate?: number[] } = {
@@ -169,9 +213,81 @@ export function scheduleTaskReminder(
         requireInteraction: false,
       };
       if ("vibrate" in navigator) opts.vibrate = [200, 100, 200];
-      new Notification("🔔 Task Reminder", opts);
+      new Notification(taskTitleSetting, opts);
     }, delayMs);
   }
+}
+
+/** Schedule a daily summary notification about today's outstanding tasks */
+export function scheduleDailyTasksSummaryNotification(): void {
+  const useNative = isNativeNotificationBridgeAvailable();
+  if (!useNative && (!("Notification" in window) || Notification.permission !== "granted")) return;
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  let reminders: { title: string; time: string; completed?: boolean }[] = [];
+  try {
+    const stored = localStorage.getItem("reminders");
+    if (stored) reminders = JSON.parse(stored);
+  } catch (_) {}
+
+  const todayItems = reminders.filter(
+    (r: { date?: string; completed?: boolean }) => r.date === todayStr && !r.completed
+  );
+  if (todayItems.length === 0) return;
+
+  const settings = getNotificationSettings();
+  const [h, m] = (settings.dailySummaryTime || "09:00").split(":").map((x) => parseInt(x, 10) || 0);
+
+  const notifyAt = new Date();
+  notifyAt.setHours(h, m, 0, 0);
+  const now = new Date();
+  if (notifyAt <= now) return; // Already past today's summary time
+
+  const delayMs = notifyAt.getTime() - now.getTime();
+  if (delayMs > 24 * 60 * 60 * 1000) return;
+
+  const count = todayItems.length;
+  const sorted = [...todayItems].sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+  const next = sorted[0];
+  const nextTask = next
+    ? `${next.title}${next.time ? ` at ${formatTimeForDisplay(next.time)}` : ""}`
+    : "";
+
+  const title = settings.dailySummaryTitle || "📋 Today's Schedule";
+  let body = (settings.dailySummaryMessage || "You have {count} task(s) outstanding today. {nextTask}")
+    .replace("{count}", String(count))
+    .replace("{nextTask}", nextTask ? `Next: ${nextTask}` : "");
+
+  if (!body.trim()) body = `You have ${count} task(s) outstanding today.`;
+
+  const id = `daily-summary-${todayStr}`;
+
+  if (useNative) {
+    scheduleViaNativeBridge(id, title, body, notifyAt.getTime());
+  } else {
+    setTimeout(() => {
+      const opts: NotificationOptions & { vibrate?: number[] } = {
+        body,
+        icon: "/icon-192x192.png",
+        badge: "/icon-192x192.png",
+        tag: id,
+        requireInteraction: false,
+      };
+      if ("vibrate" in navigator) opts.vibrate = [200, 100, 200];
+      new Notification(title, opts);
+    }, delayMs);
+  }
+}
+
+function formatTimeForDisplay(time: string): string {
+  if (!time) return "";
+  const match = time.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return time;
+  const hour = parseInt(match[1], 10);
+  const min = match[2];
+  const ampm = hour >= 12 ? "pm" : "am";
+  const h12 = hour % 12 || 12;
+  return min === "00" ? `${h12}${ampm}` : `${h12}:${min}${ampm}`;
 }
 
 /** Reschedule all today's task reminders */

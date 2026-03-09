@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
+import { Check, ChevronRight } from "lucide-react";
 
 interface UpcomingItem {
   id: string;
@@ -22,69 +23,10 @@ function getDaysClean(startDate: string): number {
   return Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
 }
 
-function MacroCircle({
-  label,
-  current,
-  goal,
-  unit,
-  progressColor,
-}: {
-  label: string;
-  current: number;
-  goal: number;
-  unit: string;
-  progressColor: string;
-}) {
-  const pct = goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
-  const size = 64;
-  const stroke = 5;
-  const r = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * r;
-  const offset = circumference - (pct / 100) * circumference;
-  return (
-    <div className="flex flex-col items-center">
-      <div className="relative" style={{ width: size, height: size }}>
-        <svg width={size} height={size} className="-rotate-90">
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            fill="none"
-            stroke="#1e293b"
-            strokeWidth={stroke}
-          />
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            fill="none"
-            stroke={progressColor}
-            strokeWidth={stroke}
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            strokeLinecap="round"
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-white font-bold text-sm leading-tight">
-            {current}{unit}
-          </span>
-          <span className="text-white text-[10px]">/{goal}{unit}</span>
-        </div>
-      </div>
-      <span className="text-white text-[10px] mt-1.5">{label}</span>
-      <span className="text-[10px] mt-0.5 text-gray-500">
-        {goal}{unit === "" ? " cal" : unit}
-      </span>
-    </div>
-  );
-}
-
 export default function Home() {
   const pathname = usePathname();
   const todayStr = new Date().toISOString().split("T")[0];
 
-  const [firstName, setFirstName] = useState("Leo");
   const [nutrition, setNutrition] = useState({
     calories: { consumed: 0, goal: 2000 },
     protein: { consumed: 0, goal: 150 },
@@ -94,12 +36,12 @@ export default function Home() {
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingItem[]>([]);
   const [daysClean, setDaysClean] = useState<number>(0);
   const [todayWorkout, setTodayWorkout] = useState<{ name: string; time: string } | null>(null);
+  const [workoutCompleted, setWorkoutCompleted] = useState(false);
+  const [reflectionDone, setReflectionDone] = useState(false);
+  const [hasAddictions, setHasAddictions] = useState(false);
 
   const loadData = () => {
     if (typeof window === "undefined") return;
-
-    const name = localStorage.getItem("userName");
-    if (name) setFirstName(name);
 
     const goals = JSON.parse(localStorage.getItem("macroGoals") || "{}");
     let consumed = { calories: 0, protein: 0, carbs: 0, fats: 0 };
@@ -127,7 +69,6 @@ export default function Home() {
     });
 
     const reminders = JSON.parse(localStorage.getItem("reminders") || "[]");
-    const todayReminders = reminders.filter((r: { date: string }) => r.date === todayStr);
     const futureReminders = reminders
       .filter((r: { date: string }) => r.date > todayStr)
       .sort((a: UpcomingItem, b: UpcomingItem) => {
@@ -137,6 +78,7 @@ export default function Home() {
     setUpcomingEvents(futureReminders.slice(0, 4));
 
     const addictions = JSON.parse(localStorage.getItem("addictions") || "[]");
+    setHasAddictions(addictions.length > 0);
     if (addictions.length > 0) {
       const days = addictions.map((a: { startDate?: string }) =>
         a.startDate ? getDaysClean(a.startDate) : 0
@@ -149,32 +91,26 @@ export default function Home() {
     const schedule = JSON.parse(localStorage.getItem("workoutSchedule") || "[]");
     const todayEntry = schedule.find((w: { date: string }) => w.date === todayStr);
     if (todayEntry && todayEntry.workoutName && todayEntry.workoutName !== "Rest Day") {
-      const firstReminder = todayReminders.find(
-        (r: { title?: string }) =>
-          r.title &&
-          (r.title.toLowerCase().includes("workout") ||
-            r.title.toLowerCase().includes("gym") ||
-            r.title.toLowerCase().includes("upper") ||
-            r.title.toLowerCase().includes("push") ||
-            r.title.toLowerCase().includes("pull") ||
-            r.title.toLowerCase().includes("legs"))
-      );
-      const time = firstReminder?.time || "6pm";
-      const formattedTime = time.includes(":")
-        ? (() => {
-            const [h, m] = time.split(":");
-            const hour = parseInt(h, 10);
-            const ampm = hour >= 12 ? "pm" : "am";
-            const h12 = hour % 12 || 12;
-            return m === "00" ? `${h12}${ampm}` : `${h12}:${m}${ampm}`;
-          })()
-        : time;
       setTodayWorkout({
         name: todayEntry.workoutName.replace(" Day", ""),
-        time: formattedTime,
+        time: "6pm",
       });
     } else {
       setTodayWorkout(null);
+    }
+
+    setWorkoutCompleted(localStorage.getItem(`workout_${todayStr}`) === "completed");
+
+    const storedReflection = localStorage.getItem(`reflection_${todayStr}`);
+    if (storedReflection) {
+      try {
+        const data = JSON.parse(storedReflection);
+        setReflectionDone(!!data.aiFeedback);
+      } catch {
+        setReflectionDone(false);
+      }
+    } else {
+      setReflectionDone(false);
     }
   };
 
@@ -184,18 +120,23 @@ export default function Home() {
     return () => window.removeEventListener("storage", loadData);
   }, []);
 
-  const formatTime = (time: string) => {
-    if (!time) return "6pm";
-    if (time.length <= 2) return `${time}pm`;
-    if (time.includes(":")) {
-      const [h, m] = time.split(":");
-      const hour = parseInt(h, 10);
-      const ampm = hour >= 12 ? "pm" : "am";
-      const h12 = hour % 12 || 12;
-      return m === "00" ? `${h12}${ampm}` : `${h12}:${m}${ampm}`;
-    }
-    return time;
-  };
+  // Nutrition "on track" = logged meals and within 50-150% of calorie goal
+  const nutritionOnTrack =
+    nutrition.calories.consumed > 0 &&
+    nutrition.calories.goal > 0 &&
+    nutrition.calories.consumed >= nutrition.calories.goal * 0.5 &&
+    nutrition.calories.consumed <= nutrition.calories.goal * 1.5;
+
+  // Lock-in score: 25 each for workout, nutrition, clean streak, reflection (max 100)
+  // Clean streak: 25 if (a) daysClean > 0 or (b) no addictions tracked (don't penalize)
+  const cleanStreakPoints = hasAddictions ? (daysClean > 0 ? 25 : 0) : 25;
+  const lockInScore = Math.min(
+    100,
+    (workoutCompleted ? 25 : 0) +
+      (nutritionOnTrack ? 25 : 0) +
+      cleanStreakPoints +
+      (reflectionDone ? 25 : 0)
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white pb-24">
@@ -205,7 +146,9 @@ export default function Home() {
           <Link
             href="/"
             className={`flex-1 py-2 font-semibold text-center text-sm ${
-              pathname === "/" ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent" : "text-gray-400 hover:text-teal-300"
+              pathname === "/"
+                ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
+                : "text-gray-400 hover:text-teal-300"
             }`}
           >
             Home
@@ -213,127 +156,112 @@ export default function Home() {
           <Link
             href="/goals"
             className={`flex-1 py-2 font-semibold text-center text-sm ${
-              pathname === "/goals" ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent" : "text-gray-400 hover:text-teal-300"
+              pathname === "/goals"
+                ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
+                : "text-gray-400 hover:text-teal-300"
             }`}
           >
             Goals
           </Link>
         </div>
 
-        {/* AI Reflection - text only with ✨ */}
+        {/* AI Reflection */}
         <Link
           href="/consultation?from=reflection"
-          className="block rounded-2xl p-5 mb-6 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-teal-500/40 hover:border-teal-400/60 transition-all"
+          className="block rounded-2xl p-5 mb-5 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-teal-500/40 hover:border-teal-400/60 transition-all"
         >
-          <p className="text-lg font-semibold text-white">
-            ✨ AI Reflection
-          </p>
-          <p className="mt-1 flex items-center justify-between text-teal-300">
+          <p className="text-lg font-semibold text-white">✨ AI Reflection</p>
+          <p className="mt-1 flex items-center justify-between text-gray-400">
             <span>Review yesterday • Set today</span>
-            <span>&gt;</span>
+            <ChevronRight className="w-5 h-5 text-teal-400" />
           </p>
         </Link>
 
-        {/* Today at a glance - single card, row + progress bars */}
-        <div className="rounded-2xl p-4 mb-5 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30">
-          <p className="text-xs uppercase mb-2.5 text-gray-400">
-            Today at a glance
+        {/* LOCKED IN TODAY */}
+        <div className="rounded-2xl p-5 mb-5 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-teal-500/30">
+          <p className="text-base font-bold text-white flex items-center gap-2 mb-4">
+            <span className="text-lg">🔥</span> LOCKED IN TODAY
           </p>
-          <div className="flex justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm">
-                🛡 {daysClean} days clean
+          <div className="space-y-2.5 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-teal-500/20 border border-teal-400/50 flex items-center justify-center">
+                {cleanStreakPoints > 0 ? <Check className="w-3 h-3 text-teal-400" strokeWidth={3} /> : null}
+              </div>
+              <p className="text-sm text-white">
+                Clean streak: <span className="font-bold text-teal-400">{hasAddictions ? `${daysClean} days` : "—"}</span>
               </p>
-              <div className="h-1 rounded-full mt-1.5 overflow-hidden bg-gray-800">
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-teal-500/20 border border-teal-400/50 flex items-center justify-center">
+                {workoutCompleted ? <Check className="w-3 h-3 text-teal-400" strokeWidth={3} /> : null}
+              </div>
+              <p className="text-sm text-white">
+                Workout:{" "}
+                <span className="font-bold text-teal-400">
+                  {workoutCompleted ? "Completed" : todayWorkout ? "Pending" : "Rest day"}
+                </span>
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-teal-500/20 border border-teal-400/50 flex items-center justify-center">
+                {nutritionOnTrack ? <Check className="w-3 h-3 text-teal-400" strokeWidth={3} /> : null}
+              </div>
+              <p className="text-sm text-white">
+                Nutrition:{" "}
+                <span className="font-bold text-teal-400">
+                  {nutritionOnTrack ? "On track" : "Log food"}
+                </span>
+              </p>
+            </div>
+          </div>
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-xs text-gray-400">Discipline score</p>
+              <p className="text-3xl font-bold text-teal-400">{lockInScore}</p>
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-gray-400 mb-1 flex items-center gap-1">
+                <span>🧠</span> Lock-In Score
+              </p>
+              <div className="h-2 rounded-full overflow-hidden bg-gray-800">
                 <div
-                  className="h-full rounded-full bg-teal-500 transition-all"
-                  style={{ width: `${Math.min((daysClean / 30) * 100, 100)}%` }}
+                  className="h-full rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-teal-400 transition-all duration-500"
+                  style={{ width: `${lockInScore}%` }}
                 />
               </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm">
-                🏋️ {todayWorkout ? `${todayWorkout.name} – ${formatTime(todayWorkout.time)}` : "Rest day"}
-              </p>
-              <div className="h-1 rounded-full mt-1.5 overflow-hidden bg-gray-800">
-                <div
-                  className="h-full rounded-full bg-teal-500/50 transition-all"
-                  style={{ width: todayWorkout ? "33%" : "0%" }}
-                />
+              <div className="flex justify-between text-[10px] text-gray-500 mt-0.5">
+                <span>0</span>
+                <span>50</span>
+                <span>100</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Today's macros - circular progress + Log food link */}
-        <div className="rounded-2xl p-4 mb-5 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30">
-          <p className="text-xs uppercase mb-4 text-gray-400">
-            Today&apos;s macros
-          </p>
-          <div className="flex justify-between gap-2 mb-4">
-            <MacroCircle
-              label="Calories"
-              current={nutrition.calories.consumed}
-              goal={nutrition.calories.goal}
-              unit=""
-              progressColor="#2dd4bf"
-            />
-            <MacroCircle
-              label="Protein"
-              current={nutrition.protein.consumed}
-              goal={nutrition.protein.goal}
-              unit="g"
-              progressColor="#2dd4bf"
-            />
-            <MacroCircle
-              label="Carbs"
-              current={nutrition.carbs.consumed}
-              goal={nutrition.carbs.goal}
-              unit="g"
-              progressColor="#2dd4bf"
-            />
-            <MacroCircle
-              label="Fat"
-              current={nutrition.fat.consumed}
-              goal={nutrition.fat.goal}
-              unit="g"
-              progressColor="#14b8a6"
-            />
-          </div>
-          <Link
-            href="/nutrition"
-            className="inline-block mt-2 font-semibold text-teal-400 hover:text-teal-300 hover:underline"
-          >
-            Log food →
-          </Link>
-        </div>
-
-        {/* Upcoming - single card, muted text + Edit routine link */}
-        <div className="rounded-2xl p-4 mb-5 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30">
-          <p className="text-xs uppercase mb-2.5 text-gray-400">
-            Upcoming
+        {/* UPCOMING */}
+        <div className="rounded-2xl p-5 mb-5 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-teal-500/30">
+          <p className="text-base font-bold text-white flex items-center gap-2 mb-2">
+            <span>🏠</span> UPCOMING
           </p>
           {upcomingEvents.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              🏠 No upcoming events — stay disciplined.
-            </p>
+            <p className="text-sm text-gray-400">No upcoming events — stay disciplined.</p>
           ) : (
             <div className="space-y-1.5">
               {upcomingEvents.map((event) => (
-                <p key={event.id} className="text-white text-sm">
+                <p key={event.id} className="text-sm text-white">
                   {event.time} — {event.title}
                 </p>
               ))}
             </div>
           )}
           <Link
-            href="/calendar"
-            className="inline-block mt-3 font-semibold text-teal-400 hover:text-teal-300 hover:underline"
+            href="/calendar?view=schedule"
+            className="mt-3 inline-flex items-center gap-1 font-semibold text-teal-400 hover:text-teal-300 transition-colors"
           >
-            Edit routine →
+            Review routine
+            <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
-
       </div>
 
       <BottomNav />

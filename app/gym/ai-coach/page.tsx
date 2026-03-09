@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { Send, Bot, User, ArrowLeft, Dumbbell } from "lucide-react";
+import { Send, User, ArrowLeft } from "lucide-react";
 import { persistWorkoutSchedule } from "@/lib/schedule-utils";
 
 interface Message {
@@ -61,7 +61,7 @@ export default function GymAICoachPage() {
     setInput("");
     setLoading(true);
 
-    const loadingMsg: Message = { id: (Date.now() + 1).toString(), role: "assistant", content: "..." };
+    const loadingMsg: Message = { id: (Date.now() + 1).toString(), role: "assistant", content: "Thinking..." };
     setMessages((prev) => [...prev, loadingMsg]);
 
     try {
@@ -90,7 +90,7 @@ export default function GymAICoachPage() {
   return (
     <div className="min-h-screen bg-black text-white min-h-[100dvh]">
       <div className="max-w-md mx-auto px-4 py-3 pb-24">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-4">
           <Link
             href="/gym/workout"
             className="flex items-center gap-1.5 text-[#888888] hover:text-teal-400 transition-colors -ml-1"
@@ -98,15 +98,23 @@ export default function GymAICoachPage() {
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm font-medium">Back</span>
           </Link>
-          <div className="flex items-center gap-2">
-            <Dumbbell className="w-5 h-5 text-teal-400" />
-            <h1 className="text-lg font-bold text-white">AI Fitness Coach</h1>
+          <div className="flex items-center gap-3">
+            <div className="relative flex-shrink-0">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-400/30 via-cyan-500/20 to-teal-600/40 border-2 border-teal-400/50 flex items-center justify-center shadow-lg shadow-teal-500/20">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-teal-300 to-cyan-400 opacity-90" />
+              </div>
+              <div className="absolute -inset-1 rounded-full bg-teal-500/20 blur-xl" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-white">Mogifi AI Coach</h1>
+              <p className="text-[10px] text-teal-400/80">Your personal fitness model</p>
+            </div>
           </div>
           <div className="w-12" />
         </div>
 
         <p className="text-sm text-gray-400 mb-4">
-          Ask about your workout plan, training days, or exercises. I can help you modify plans and when you train.
+          Ask me about your workout plan, training days, or exercises. I can modify plans and when you train.
         </p>
 
         <div
@@ -115,10 +123,15 @@ export default function GymAICoachPage() {
         >
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.length === 0 && (
-              <div className="text-center py-6 text-gray-500 text-sm">
-                <p>e.g. &quot;Change my Push day to Monday and Wednesday&quot;</p>
-                <p className="mt-2">&quot;Suggest a substitute for bench press&quot;</p>
-                <p className="mt-2">&quot;I want to train 4 days a week&quot;</p>
+              <div className="text-center py-8">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-teal-400/20 to-cyan-500/10 border border-teal-400/30 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400/60 to-cyan-500/50" />
+                </div>
+                <p className="text-teal-400/90 text-sm font-medium mb-2">Hi, I&apos;m your AI fitness coach</p>
+                <p className="text-gray-500 text-sm mb-4">Try asking:</p>
+                <p className="text-gray-500 text-sm">&quot;Change my Push day to Monday and Wednesday&quot;</p>
+                <p className="text-gray-500 text-sm mt-1">&quot;Suggest a substitute for bench press&quot;</p>
+                <p className="text-gray-500 text-sm mt-1">&quot;I want to train 4 days a week&quot;</p>
               </div>
             )}
             {messages.map((msg) => (
@@ -127,8 +140,8 @@ export default function GymAICoachPage() {
                 className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 {msg.role === "assistant" && (
-                  <div className="bg-teal-500/10 border border-teal-400/30 text-teal-400 rounded-full p-2 w-9 h-9 flex items-center justify-center flex-shrink-0">
-                    <Bot className="w-4 h-4" />
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-400/40 to-cyan-500/30 border border-teal-400/50 flex items-center justify-center flex-shrink-0">
+                    <div className="w-4 h-4 rounded-full bg-teal-300/90" />
                   </div>
                 )}
                 <div
@@ -138,7 +151,15 @@ export default function GymAICoachPage() {
                       : "bg-[#1A1A1A] border border-[#1F2937] text-white"
                   }`}
                 >
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</div>
+                  {msg.content === "Thinking..." ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
+                      <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" style={{ animationDelay: "0.15s" }} />
+                      <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" style={{ animationDelay: "0.3s" }} />
+                    </div>
+                  ) : (
+                    <div className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</div>
+                  )}
                 </div>
                 {msg.role === "user" && (
                   <div className="bg-[#1A1A1A] border border-[#1F2937] text-teal-400 rounded-full p-2 w-9 h-9 flex items-center justify-center flex-shrink-0">

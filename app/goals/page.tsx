@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { Edit2, Check, X, Plus, Trash2, MoreVertical, Bell } from "lucide-react";
-import { requestNotificationPermission, scheduleTaskReminder, rescheduleTodayTaskReminders } from "@/app/utils/notifications";
+import { requestNotificationPermission, scheduleTaskReminder, rescheduleTodayTaskReminders, scheduleDailyTasksSummaryNotification } from "@/app/utils/notifications";
 
 interface Goal {
   id: string;
@@ -113,7 +113,7 @@ export default function GoalsPage() {
     }
   }, [todayStr]);
 
-  // Reschedule today's task reminders on load (only if permission already granted)
+  // Reschedule today's task reminders and daily summary on load (only if permission already granted)
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     if (Notification.permission === "granted") {
@@ -125,10 +125,11 @@ export default function GoalsPage() {
             (r: Task) => r.type === "task" && r.date === todayStr
           );
           rescheduleTodayTaskReminders(todayTasks);
+          scheduleDailyTasksSummaryNotification();
         } catch (_) {}
       }
     }
-  }, [todayStr]);
+  }, [todayStr, tasks]);
 
   const parseValue = (value: string): number => {
     if (!value || value.trim() === "") return 0;

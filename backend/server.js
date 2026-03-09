@@ -63,7 +63,20 @@ app.post('/api/food-estimate', async (req, res) => {
       });
     }
 
-    const prompt = `You are a nutrition coach. Analyze the photo and estimate calories, protein, carbs, and fats for the primary food. Use the provided label if helpful: "${label || 'unknown'}". Respond with strict JSON matching this schema: {"name":string,"calories":number,"protein":number,"carbs":number,"fats":number}.`;
+    const prompt = `You are an expert nutrition analyst. Analyze this food photo using a precise, step-by-step method:
+
+1. IDENTIFY: First, scan the image and identify exactly what food(s) are shown. Name each item clearly. Use the label if provided: "${label || 'unknown'}".
+
+2. ESTIMATE GRAMS: For each food item, estimate the portion size in grams based on visual cues (plate size, hand/utensil for scale, typical serving sizes). Consider the apparent volume and density of each component.
+
+3. CALCULATE MACROS: Using standard nutritional data per 100g for each identified food, calculate the total calories, protein, carbs, and fats. Be as precise as possible—use typical values for that specific food (e.g., grilled chicken breast ~165 kcal/100g, 31g protein; white rice ~130 kcal/100g, 2.7g protein).
+
+4. OUTPUT: Respond with ONLY valid JSON (no markdown, no explanation): {"name":string,"calories":number,"protein":number,"carbs":number,"fats":number}
+- name: A clear description of the meal/food
+- calories: Total kcal (number)
+- protein: Total grams (number)
+- carbs: Total grams (number)
+- fats: Total grams (number)`;
 
     const base64 = imageData.replace(/^data:image\/\w+;base64,/, '');
 
@@ -81,7 +94,7 @@ app.post('/api/food-estimate', async (req, res) => {
           ],
         },
       ],
-      max_tokens: 200,
+      max_tokens: 400,
       temperature: 0.3,
     });
 

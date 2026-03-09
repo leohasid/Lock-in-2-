@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { Trash2, Sparkles, Plus } from "lucide-react";
+import { scheduleDailyTasksSummaryNotification } from "@/app/utils/notifications";
 
 interface Reminder {
   id: string;
@@ -25,7 +26,7 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [newReminder, setNewReminder] = useState({
     title: "",
-    type: "supplement" as Reminder["type"],
+    type: "task" as Reminder["type"],
     time: "",
     date: new Date().toISOString().split("T")[0], // Default to today
     repeatFrequency: "",
@@ -66,6 +67,7 @@ export default function CalendarPage() {
   useEffect(() => {
     if (typeof window === "undefined" || !isLoaded) return;
     localStorage.setItem("reminders", JSON.stringify(reminders));
+    scheduleDailyTasksSummaryNotification();
   }, [reminders, isLoaded]);
 
   const handleScheduleChatSend = async () => {
@@ -335,7 +337,7 @@ Check if they specified days. If not, ask specifically about days.`
   };
 
   const deleteReminder = (id: string) => {
-    if (confirm("Are you sure you want to delete this reminder?")) {
+    if (confirm("Are you sure you want to delete this task?")) {
       setReminders(reminders.filter((r) => r.id !== id));
     }
   };
@@ -563,7 +565,7 @@ Check if they specified days. If not, ask specifically about days.`
               onClick={() => setShowAddForm(true)}
               className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-xl text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 flex items-center gap-1.5 shadow-lg"
             >
-              + Add Reminder
+              + Add Task
             </button>
             <button
               onClick={() => setShowAIGenerator(true)}
@@ -599,7 +601,7 @@ Check if they specified days. If not, ask specifically about days.`
           </button>
         </div>
 
-        {/* Date Click Modal - Shows Reminders for Selected Date */}
+        {/* Date Click Modal - Shows Tasks for Selected Date */}
         {showDateModal && clickedDate && (
           <div
             className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
@@ -636,20 +638,21 @@ Check if they specified days. If not, ask specifically about days.`
               
               {getSelectedDateReminders().length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-400 text-lg mb-4">No reminders for this date</p>
+                  <p className="text-gray-400 text-lg mb-4">No tasks for this date</p>
                   <button
                     onClick={() => {
                       setShowAddForm(true);
                       setNewReminder({
                         ...newReminder,
                         date: clickedDate.toISOString().split("T")[0],
+                        type: "task",
                       });
                       setShowDateModal(false);
                       setClickedDate(null);
                     }}
                     className="bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
                   >
-                    Add Reminder
+                    Add Task
                   </button>
                 </div>
               ) : (
@@ -695,7 +698,7 @@ Check if they specified days. If not, ask specifically about days.`
                           <button
                             onClick={() => deleteReminder(reminder.id)}
                             className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-all transform hover:scale-110 shadow-lg"
-                            title="Delete reminder"
+                            title="Delete task"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -712,24 +715,25 @@ Check if they specified days. If not, ask specifically about days.`
                     setNewReminder({
                       ...newReminder,
                       date: clickedDate.toISOString().split("T")[0],
+                      type: "task",
                     });
                     setShowDateModal(false);
                     setClickedDate(null);
                   }}
                   className="w-full bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
                 >
-                  + Add Another Reminder
+                  + Add Another Task
                 </button>
               )}
             </div>
           </div>
         )}
 
-        {/* Add Reminder Modal */}
+        {/* Add Task Modal */}
         {showAddForm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <h2 className="text-2xl font-bold text-white mb-6">Add Reminder</h2>
+              <h2 className="text-2xl font-bold text-white mb-6">Add Task</h2>
               <div className="space-y-4">
                 <div>
                   <label className="block text-gray-300 mb-2">Title</label>
@@ -737,7 +741,7 @@ Check if they specified days. If not, ask specifically about days.`
                     type="text"
                     value={newReminder.title}
                     onChange={(e) => setNewReminder({ ...newReminder, title: e.target.value })}
-                    placeholder="e.g., Take Vitamin D, Drink Water..."
+                    placeholder="e.g., Take Vitamin D, Call mom, Workout..."
                     className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
                   />
                 </div>
@@ -784,7 +788,7 @@ Check if they specified days. If not, ask specifically about days.`
                     className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
                   />
                   <p className="text-xs text-gray-400 mt-1">
-                    Examples: "daily", "weekly", "every 3 days", "2 weeks", or leave empty for one-time reminder
+                    Examples: "daily", "weekly", "every 3 days", "2 weeks", or leave empty for one-time
                   </p>
                 </div>
                 <div className="flex gap-4 pt-4">
@@ -792,7 +796,7 @@ Check if they specified days. If not, ask specifically about days.`
                     onClick={handleAddReminder}
                     className="flex-1 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
                   >
-                    Add Reminder
+                    Add Task
                   </button>
                   <button
                     onClick={() => {
@@ -801,7 +805,7 @@ Check if they specified days. If not, ask specifically about days.`
                       setClickedDate(null);
                       setNewReminder({ 
                         title: "", 
-                        type: "supplement", 
+                        type: "task", 
                         time: "", 
                         date: new Date().toISOString().split("T")[0],
                         repeatFrequency: "",
@@ -871,7 +875,7 @@ Check if they specified days. If not, ask specifically about days.`
                           </div>
                           {dayReminders.length > 0 && (
                             <div className="text-xs text-teal-400 mt-2 font-semibold">
-                              {dayReminders.length} reminder{dayReminders.length !== 1 ? "s" : ""}
+                              {dayReminders.length} task{dayReminders.length !== 1 ? "s" : ""}
                             </div>
                           )}
                         </div>
@@ -1131,12 +1135,12 @@ Check if they specified days. If not, ask specifically about days.`
               </h2>
             {getSelectedDateReminders().length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-400 text-lg mb-4">No reminders for this date!</p>
+                <p className="text-gray-400 text-lg mb-4">No tasks for this date!</p>
                 <button
                   onClick={() => setShowAddForm(true)}
                   className="bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
                 >
-                  Add Reminder
+                  Add Task
                 </button>
               </div>
             ) : (
@@ -1182,7 +1186,7 @@ Check if they specified days. If not, ask specifically about days.`
                         <button
                           onClick={() => deleteReminder(reminder.id)}
                           className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-all transform hover:scale-110 shadow-lg"
-                          title="Delete reminder"
+                          title="Delete task"
                         >
                           <Trash2 className="w-5 h-5" />
                         </button>
