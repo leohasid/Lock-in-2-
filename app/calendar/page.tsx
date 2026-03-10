@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { Trash2, Sparkles, Plus } from "lucide-react";
-import { scheduleDailyTasksSummaryNotification } from "@/app/utils/notifications";
+import {
+  scheduleDailyTasksSummaryNotification,
+  rescheduleTodayTaskReminders,
+} from "@/app/utils/notifications";
 
 interface Reminder {
   id: string;
@@ -68,6 +71,7 @@ export default function CalendarPage() {
     if (typeof window === "undefined" || !isLoaded) return;
     localStorage.setItem("reminders", JSON.stringify(reminders));
     scheduleDailyTasksSummaryNotification();
+    rescheduleTodayTaskReminders(reminders);
   }, [reminders, isLoaded]);
 
   const handleScheduleChatSend = async () => {

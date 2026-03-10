@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Upload, Camera, X, Settings, MessageSquare, Sparkles, ChevronRight, Plus } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import { toLocalDateString } from "@/lib/date-utils";
 
 interface Meal {
   id: string;
@@ -701,7 +702,7 @@ export default function NutritionPage() {
     if (storedMeals) {
       try {
         const parsedMeals = JSON.parse(storedMeals);
-        const today = new Date().toISOString().split("T")[0];
+        const today = toLocalDateString(new Date());
         const todayMeals = parsedMeals.filter((m: Meal & { date?: string }) => {
           if (m.date) return m.date === today;
           return true;
@@ -753,7 +754,7 @@ export default function NutritionPage() {
   // Save meals to localStorage whenever meals change
   useEffect(() => {
     if (typeof window === "undefined" || !isLoaded) return;
-    const today = new Date().toISOString().split("T")[0];
+    const today = toLocalDateString(new Date());
     const mealsWithDate = meals.map(meal => ({ ...meal, date: today }));
     
     const storedMeals = localStorage.getItem("meals");
@@ -768,6 +769,16 @@ export default function NutritionPage() {
     allMeals = [...allMeals, ...mealsWithDate];
     
     localStorage.setItem("meals", JSON.stringify(allMeals));
+    const totalsForToday = mealsWithDate.reduce(
+      (acc, m) => ({
+        calories: acc.calories + (m.calories || 0),
+        protein: acc.protein + (m.protein || 0),
+        carbs: acc.carbs + (m.carbs || 0),
+        fats: acc.fats + (m.fats || 0),
+      }),
+      { calories: 0, protein: 0, carbs: 0, fats: 0 }
+    );
+    localStorage.setItem(`nutritionTotals_${today}`, JSON.stringify(totalsForToday));
     window.dispatchEvent(new CustomEvent("mealsUpdated"));
   }, [meals, isLoaded]);
 
@@ -816,10 +827,12 @@ export default function NutritionPage() {
 
   const [mealAnalysis, setMealAnalysis] = useState<string | null>(null);
   const [isAnalyzingMeals, setIsAnalyzingMeals] = useState(false);
+  const mealAnalysisAttemptedRef = useRef(false);
 
-  // Fetch meal analysis when at least one target is hit
+  // Fetch meal analysis when at least one target is hit (only once per session)
   useEffect(() => {
     if (typeof window === "undefined" || !isLoaded || !hasTargetHit || meals.length === 0) return;
+    if (mealAnalysisAttemptedRef.current) return;
     
     const todayStr = new Date().toISOString().split("T")[0];
     const analysisKey = `mealAnalysis_${todayStr}`;
@@ -828,42 +841,43 @@ export default function NutritionPage() {
     const storedAnalysis = localStorage.getItem(analysisKey);
     if (storedAnalysis) {
       setMealAnalysis(storedAnalysis);
+      mealAnalysisAttemptedRef.current = true;
       return;
     }
 
-    // Fetch analysis if not already analyzing
-    if (!isAnalyzingMeals && mealAnalysis === null) {
-      const fetchAnalysis = async () => {
-        setIsAnalyzingMeals(true);
-        try {
-          const response = await fetch("/api/meal-analysis", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              meals,
-              totals,
-              goals: dailyGoals,
-            }),
-          });
+    if (isAnalyzingMeals) return;
+    
+    mealAnalysisAttemptedRef.current = true;
+    const fetchAnalysis = async () => {
+      setIsAnalyzingMeals(true);
+      try {
+        const response = await fetch("/api/meal-analysis", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            meals,
+            totals,
+            goals: dailyGoals,
+          }),
+        });
 
-          if (response.ok) {
-            const data = await response.json();
-            if (data.analysis) {
-              setMealAnalysis(data.analysis);
-              // Store analysis for today
-              localStorage.setItem(analysisKey, data.analysis);
-            }
+        if (response.ok) {
+          const data = await response.json();
+          if (data.analysis) {
+            setMealAnalysis(data.analysis);
+            localStorage.setItem(analysisKey, data.analysis);
           }
-        } catch (error) {
-          console.error("Error fetching meal analysis:", error);
-        } finally {
-          setIsAnalyzingMeals(false);
         }
-      };
+      } catch (error) {
+        console.error("Error fetching meal analysis:", error);
+        mealAnalysisAttemptedRef.current = false;
+      } finally {
+        setIsAnalyzingMeals(false);
+      }
+    };
 
-      fetchAnalysis();
-    }
-  }, [hasTargetHit, meals, totals, dailyGoals, isLoaded, isAnalyzingMeals, mealAnalysis]);
+    fetchAnalysis();
+  }, [hasTargetHit, meals.length, isLoaded]);
 
   const handleDeleteMeal = (mealId: string) => {
     setMeals(meals.filter(m => m.id !== mealId));

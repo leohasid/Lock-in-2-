@@ -5,6 +5,7 @@ import {
   requestNotificationPermission,
   registerServiceWorker,
   scheduleDailyTasksSummaryNotification,
+  rescheduleTodayTaskReminders,
 } from "@/app/utils/notifications";
 
 export default function NotificationSetup() {
@@ -13,6 +14,13 @@ export default function NotificationSetup() {
     requestNotificationPermission().then(() => {
       registerServiceWorker();
       scheduleDailyTasksSummaryNotification();
+      try {
+        const stored = localStorage.getItem("reminders");
+        if (stored) {
+          const reminders = JSON.parse(stored);
+          rescheduleTodayTaskReminders(reminders);
+        }
+      } catch (_) {}
     });
   }, []);
   return null;

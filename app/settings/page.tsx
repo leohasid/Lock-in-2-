@@ -77,6 +77,24 @@ export default function SettingsPage() {
           </p>
 
           <div className="space-y-4">
+            {/* Planned gym time - for 1hr before/after reminders */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                Planned gym time
+              </label>
+              <input
+                type="time"
+                value={settings.gymScheduleTime ?? "18:00"}
+                onChange={(e) =>
+                  setSettings({ ...settings, gymScheduleTime: e.target.value })
+                }
+                className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-teal-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                When you plan to work out (1hr before &amp; 1hr after reminders use this)
+              </p>
+            </div>
+
             {/* Workout reminder time */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5">

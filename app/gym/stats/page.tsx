@@ -294,31 +294,6 @@ export default function GymStatsPage() {
           <p className="text-xs text-gray-500">vs last week</p>
         </div>
 
-        {/* 4-Week Trend */}
-        {weeklyVolumesLast4Weeks.length > 0 && (
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
-            <h2 className="text-sm font-semibold mb-3">4-Week Progress</h2>
-            <div className="flex items-end justify-between h-20 gap-2">
-              {weeklyVolumesLast4Weeks.map((val, i) => {
-                const h = Math.max((val / max4Week) * 100, 2);
-                const weekLabel = i === weeklyVolumesLast4Weeks.length - 1 ? "This" : `${4 - i}w ago`;
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center">
-                    <div className="w-full bg-gray-800 rounded-t relative" style={{ height: "70px" }}>
-                      <div
-                        className="w-full bg-teal-500 rounded-t absolute bottom-0 transition-all"
-                        style={{ height: `${h}%` }}
-                      />
-                    </div>
-                    <span className="text-[10px] text-gray-400 mt-1">{weekLabel}</span>
-                    <span className="text-[9px] text-gray-500">{val}kg</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* This Week */}
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
           <h2 className="text-sm font-semibold mb-3">This Week</h2>

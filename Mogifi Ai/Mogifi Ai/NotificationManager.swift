@@ -38,6 +38,8 @@ final class NotificationManager: NSObject {
     }
     
     private func doSchedule(id: String, title: String, body: String, triggerAt: TimeInterval?) {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [id])
+        
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
