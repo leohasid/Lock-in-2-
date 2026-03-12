@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { getBuiltInImageUrl, getExerciseImagePosition } from "@/lib/built-in-exercise-images";
-import { X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, ChevronLeft, Dumbbell, TrendingUp, Target, Zap, Calendar, Activity, Sparkles, Play } from "lucide-react";
+import { X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, ChevronLeft, Dumbbell, TrendingUp, Target, Zap, Calendar, Activity, Sparkles, Play, Flame, Trophy, Check } from "lucide-react";
 import GuidedWorkoutView from "@/components/GuidedWorkoutView";
 import ExerciseNameInput from "@/components/ExerciseNameInput";
 import {
@@ -121,7 +121,11 @@ export default function WorkoutPage() {
   const [weeklyVolumesLast4Weeks, setWeeklyVolumesLast4Weeks] = useState<number[]>([]);
   const [totalWorkoutsLogged, setTotalWorkoutsLogged] = useState(0);
   const [activeStreak, setActiveStreak] = useState(0);
-  
+  const [lastWorkout, setLastWorkout] = useState<{ name: string; daysAgo: number } | null>(null);
+  const [personalRecords, setPersonalRecords] = useState({ bench: 0, squat: 0, deadlift: 0 });
+  const [caloriesBurnedThisMonth, setCaloriesBurnedThisMonth] = useState(0);
+  const [weeklyConsistency, setWeeklyConsistency] = useState<boolean[]>(Array(7).fill(false));
+
   // Get date from URL on client side
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     if (typeof window !== "undefined") {
@@ -748,12 +752,38 @@ export default function WorkoutPage() {
     }
     setWeeklyVolumesLast4Weeks(fourWeeks);
 
-    const workoutEntries = Object.keys(localStorage).filter((key) =>
-      key.startsWith("workout_data_")
-    );
-    setTotalWorkoutsLogged(workoutEntries.length);
+    const consistency: boolean[] = [];
+    const dayOfWeek = today.getDay();
+    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() - mondayOffset + i);
+      const dateStr = toLocalDateString(date);
+      const raw = localStorage.getItem(`workout_data_${dateStr}`);
+      let has = false;
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          has = calculateVolumeFromData(parsed) > 0;
+        } catch {}
+      }
+      consistency.push(has);
+    }
+    setWeeklyConsistency(consistency);
+
+    let workoutsWithVolume = 0;
+    Object.keys(localStorage).forEach((key) => {
+      if (!key.startsWith("workout_data_")) return;
+      try {
+        const raw = localStorage.getItem(key);
+        if (raw && calculateVolumeFromData(JSON.parse(raw)) > 0) workoutsWithVolume++;
+      } catch {}
+    });
+    setTotalWorkoutsLogged(workoutsWithVolume);
 
     let streak = 0;
+    let lastWorkoutDate: string | null = null;
+    let lastWorkoutName = "";
     for (let offset = 0; offset < 30; offset++) {
       const date = new Date(today);
       date.setDate(today.getDate() - offset);
@@ -770,11 +800,57 @@ export default function WorkoutPage() {
       })();
       if (hasVolume) {
         streak++;
+        if (!lastWorkoutDate) {
+          lastWorkoutDate = dateStr;
+          const schedule = JSON.parse(localStorage.getItem("workoutSchedule") || "[]");
+          const entry = schedule.find((w: { date: string }) => w.date === dateStr);
+          lastWorkoutName = entry?.workoutName?.replace(" Day", "") || "Workout";
+        }
       } else {
         break;
       }
     }
     setActiveStreak(streak);
+    if (lastWorkoutDate) {
+      const lastDate = new Date(lastWorkoutDate + "T00:00:00");
+      const daysAgo = Math.floor((today.getTime() - lastDate.getTime()) / (24 * 60 * 60 * 1000));
+      setLastWorkout({ name: lastWorkoutName, daysAgo });
+    } else {
+      setLastWorkout(null);
+    }
+
+    const prs = { bench: 0, squat: 0, deadlift: 0 };
+    const matchExercise = (name: string, patterns: string[]) =>
+      patterns.some((p) => (name || "").toLowerCase().includes(p));
+    Object.keys(localStorage).forEach((key) => {
+      if (!key.startsWith("workout_data_")) return;
+      try {
+        const data = JSON.parse(localStorage.getItem(key) || "[]");
+        (data || []).forEach((ex: { name?: string; sets?: Array<{ weight?: number }> }) => {
+          const maxWeight = Math.max(0, ...(ex.sets || []).map((s) => Number(s.weight) || 0));
+          if (matchExercise(ex.name || "", ["bench", "press"])) prs.bench = Math.max(prs.bench, maxWeight);
+          if (matchExercise(ex.name || "", ["squat"])) prs.squat = Math.max(prs.squat, maxWeight);
+          if (matchExercise(ex.name || "", ["deadlift", "dead lift"])) prs.deadlift = Math.max(prs.deadlift, maxWeight);
+        });
+      } catch {}
+    });
+    setPersonalRecords(prs);
+
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    let monthVolume = 0;
+    for (let d = 0; d < 31; d++) {
+      const date = new Date(startOfMonth);
+      date.setDate(startOfMonth.getDate() + d);
+      if (date.getMonth() !== today.getMonth()) break;
+      const dateStr = toLocalDateString(date);
+      const raw = localStorage.getItem(`workout_data_${dateStr}`);
+      if (raw) {
+        try {
+          monthVolume += calculateVolumeFromData(JSON.parse(raw));
+        } catch {}
+      }
+    }
+    setCaloriesBurnedThisMonth(Math.round(monthVolume * 0.04));
   };
 
   useEffect(() => {
@@ -945,8 +1021,9 @@ export default function WorkoutPage() {
     return Math.max(max, heaviestInExercise);
   }, 0);
 
+  const hasAnyWorkoutData = totalWorkoutsLogged > 0;
   const volumeDelta =
-    lastWeekVolume > 0
+    hasAnyWorkoutData && lastWeekVolume > 0
       ? Math.round(((thisWeekVolume - lastWeekVolume) / lastWeekVolume) * 100)
       : 0;
 
@@ -1006,70 +1083,194 @@ export default function WorkoutPage() {
         {/* Content based on active tab */}
         {activeTab === "progress" ? (
           <div className="space-y-4 pb-20">
-            {/* Journey Snapshot */}
-            <div className="bg-gradient-to-br from-teal-500/20 to-cyan-500/10 border border-teal-400/30 rounded-xl p-4">
-              <h2 className="text-sm font-semibold text-teal-400 mb-2 flex items-center gap-2">
-                <Zap className="w-4 h-4" />
-                Your Journey
-              </h2>
-              <p className="text-white text-sm leading-relaxed">
-                {totalWorkoutsLogged === 0
-                  ? "Start your first workout to begin tracking your journey."
-                  : `${totalWorkoutsLogged} workout${totalWorkoutsLogged === 1 ? "" : "s"} completed.`}
-                {nextMilestone && totalWorkoutsLogged > 0 && (
-                  <span className="block mt-1 text-gray-400 text-xs">
-                    {workoutsToNext} more until {nextMilestone} workouts!
-                  </span>
-                )}
-              </p>
-            </div>
+            <h1 className="text-2xl font-bold text-white">Your Progress</h1>
 
-            {/* Momentum */}
-            <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4 text-center">
-              <TrendingUp className={`w-6 h-6 mx-auto mb-1 ${volumeDelta >= 0 ? "text-green-400" : "text-red-400"}`} />
-              <p className={`text-2xl font-bold ${volumeDelta >= 0 ? "text-green-400" : "text-red-400"}`}>
-                {volumeDelta >= 0 ? "+" : ""}{volumeDelta}%
-              </p>
-              <p className="text-xs text-gray-500">vs last week</p>
+            {/* Summary Badges */}
+            <div className="flex flex-wrap gap-2 mb-2">
+              <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/80 border border-gray-700 rounded-xl">
+                <Flame className="w-4 h-4 text-orange-400" />
+                <span className="text-sm font-semibold text-orange-400">{activeStreak} Day Streak</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/80 border border-gray-700 rounded-xl">
+                <Dumbbell className="w-4 h-4 text-green-400" />
+                <span className="text-sm font-semibold text-green-400">{totalWorkoutsLogged} Workouts</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/80 border border-gray-700 rounded-xl">
+                <TrendingUp className={`w-4 h-4 ${volumeDelta >= 0 ? "text-green-400" : "text-red-400"}`} />
+                <span className={`text-sm font-semibold ${volumeDelta >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  {volumeDelta >= 0 ? "+" : ""}{volumeDelta}% Strength
+                </span>
+              </div>
             </div>
+            {lastWorkout && (
+              <p className="text-sm text-gray-400 mb-4">
+                Last workout: {lastWorkout.name} • {lastWorkout.daysAgo === 0 ? "Today" : lastWorkout.daysAgo === 1 ? "1 day ago" : `${lastWorkout.daysAgo} days ago`}
+              </p>
+            )}
 
-            {/* This Week */}
-            <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
-              <h2 className="text-sm font-semibold mb-3">This Week</h2>
-              <div className="flex items-end justify-between h-20 gap-1.5">
-                {weeklyData.map((value, i) => {
-                  const heightPercent = (value / maxVolume) * 100;
+            {/* Strength Progress (Last 30 Days) */}
+            <div className="bg-gray-800/80 border border-gray-700 rounded-xl p-4">
+              <h2 className="text-sm font-semibold text-white mb-3">Strength Progress <span className="text-gray-400 font-normal">(Last 30 Days)</span></h2>
+              {weeklyVolumesLast4Weeks.length >= 4 && hasAnyWorkoutData ? (
+                (() => {
+                  const baseline = weeklyVolumesLast4Weeks[0] || 1;
+                  const totalVol = weeklyVolumesLast4Weeks.reduce((a, b) => a + b, 0);
+                  const hasValidBaseline = baseline > 0 && totalVol > 0;
+                  const rawPct = hasValidBaseline
+                    ? weeklyVolumesLast4Weeks.map((vol) =>
+                        Math.round(((vol - baseline) / baseline) * 100)
+                      )
+                    : [0, 0, 0, 0];
+                  const dataMin = Math.min(...rawPct, 0);
+                  const dataMax = Math.max(...rawPct, 0);
+                  const yMin = Math.min(0, Math.floor(dataMin / 5) * 5);
+                  const yMax = Math.max(0, Math.ceil(dataMax / 5) * 5);
+                  const yMinFinal = dataMax > 0 ? Math.min(yMin, -5) : yMin;
+                  const yMaxFinal = yMax;
+                  const yRange = Math.max(yMaxFinal - yMinFinal, 8);
+                  const chartH = 100;
+                  const padLeft = 28;
+                  const padRight = 8;
+                  const plotW = 220;
+                  const totalW = padLeft + plotW + padRight;
+                  const step = Math.max(1, Math.ceil(yRange / 4));
+                  const yLabels: number[] = [];
+                  for (let v = yMinFinal; v <= yMaxFinal; v += step) {
+                    if (!yLabels.includes(v)) yLabels.push(v);
+                  }
+                  if (!yLabels.includes(0) && yMinFinal < 0 && yMaxFinal > 0) yLabels.push(0);
+                  yLabels.sort((a, b) => a - b);
+                  if (yLabels.length < 2) yLabels.push(yMinFinal, yMaxFinal);
+                  const toY = (pct: number) => {
+                    const v = Math.max(yMinFinal, Math.min(yMaxFinal, pct));
+                    return chartH - ((v - yMinFinal) / yRange) * (chartH - 4);
+                  };
+                  const centerX = (i: number) => totalW * ((i * 2 + 1) / 8);
+                  const coords = rawPct.map((pct, i) => {
+                    const x = centerX(i);
+                    const y = toY(pct);
+                    return { x, y, pct };
+                  });
+                  const pathD = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x} ${c.y}`).join(" ");
+                  const lineColor = "#22c55e";
                   return (
-                    <div key={i} className="flex-1 flex flex-col items-center">
-                      <div className="w-full bg-gray-800 rounded-t relative" style={{ height: "70px" }}>
-                        <div
-                          className="w-full bg-teal-500 rounded-t absolute bottom-0 transition-all"
-                          style={{ height: `${Math.max(heightPercent, 2)}%` }}
-                        />
+                    <>
+                      <div className="flex gap-2">
+                        <div className="relative shrink-0" style={{ width: 24, height: chartH }}>
+                          {yLabels.map((pct) => (
+                            <span key={pct} className="absolute text-[10px] text-gray-400 -translate-y-1/2" style={{ left: 0, top: toY(pct) }}>
+                              {pct > 0 ? `+${pct}%` : `${pct}%`}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex-1 min-w-0 overflow-visible" style={{ minWidth: 240 }}>
+                          <svg viewBox={`0 0 ${totalW} ${chartH}`} className="w-full" style={{ height: chartH }} preserveAspectRatio="none">
+                            {yLabels.map((pct) => (
+                              <line key={pct} x1={padLeft} y1={toY(pct)} x2={totalW} y2={toY(pct)} stroke="rgba(148,163,184,0.3)" strokeDasharray="4 2" strokeWidth={0.5} />
+                            ))}
+                            {[0, 1, 2, 3].map((i) => {
+                              const x = centerX(i);
+                              return (
+                                <line key={i} x1={x} y1={0} x2={x} y2={chartH} stroke="rgba(148,163,184,0.3)" strokeDasharray="4 2" strokeWidth={0.5} />
+                              );
+                            })}
+                            <path d={pathD} fill="none" stroke={lineColor} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                            {coords.map((c, i) => (
+                              <g key={i}>
+                                <circle cx={c.x} cy={c.y} r={4} fill={lineColor} />
+                                {i === 3 && (
+                                  <text x={c.x + 6} y={c.y - 4} fill="white" fontSize={10} fontWeight="600">{c.pct}%</text>
+                                )}
+                              </g>
+                            ))}
+                          </svg>
+                          <div className="grid grid-cols-4 gap-0 mt-1">
+                            {["Week 1", "Week 2", "Week 3", "Week 4"].map((l, i) => (
+                              <span key={i} className="text-[10px] text-gray-400 text-center">{l}</span>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-[10px] text-gray-500 mt-1">
-                        {i === weeklyData.length - 1 ? "Today" : `D${i + 1}`}
-                      </span>
-                    </div>
+                      <p className="text-green-500 text-sm font-medium mt-3 text-center">
+                        {hasValidBaseline ? `+${rawPct[3] >= 0 ? rawPct[3] : 0}%` : "0%"} this month
+                      </p>
+                    </>
                   );
-                })}
-              </div>
-              <p className="text-xs text-gray-500 mt-2 text-center">{thisWeekVolume} kg total</p>
+                })()
+              ) : (
+                <p className="text-gray-400 text-sm">
+                  {!hasAnyWorkoutData
+                    ? "Start a workout and complete your sets to see your strength progress."
+                    : "Complete more workouts to see your strength progress."}
+                </p>
+              )}
             </div>
 
-            {/* Personal Best & Quick Stats */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-3 text-center">
-                <Target className="w-5 h-5 text-teal-400 mx-auto mb-1" />
-                <p className="text-lg font-bold text-teal-400">{heaviestSet} kg</p>
-                <p className="text-[10px] text-gray-500">Heaviest set</p>
+            {/* Workout Consistency */}
+            <div className="bg-gray-800/80 border border-gray-700 rounded-xl p-4">
+              <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-amber-400" />
+                Workout Consistency
+              </h2>
+              <div className="flex justify-between mb-2">
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+                  <span key={day} className="text-[10px] text-gray-400 flex-1 text-center">{day}</span>
+                ))}
               </div>
-              <div className="bg-gray-900/60 border border-gray-800 rounded-xl p-3 text-center">
-                <Activity className="w-5 h-5 text-yellow-400 mx-auto mb-1" />
-                <p className="text-lg font-bold text-yellow-400">{workoutsThisWeek}</p>
-                <p className="text-[10px] text-gray-500">This week</p>
+              <div className="flex justify-between">
+                {weeklyConsistency.map((hasWorkout, i) => (
+                  <div key={i} className="flex-1 flex justify-center">
+                    {hasWorkout ? (
+                      <Check className="w-5 h-5 text-green-400" strokeWidth={3} />
+                    ) : (
+                      <X className="w-5 h-5 text-red-400/80" strokeWidth={2.5} />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-sm text-gray-400 mt-2 text-center">{weeklyConsistency.filter(Boolean).length} / 7 days</p>
+            </div>
+
+            {/* Personal Records */}
+            <div className="bg-gray-800/80 border border-gray-700 rounded-xl p-4">
+              <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-amber-400" />
+                Personal Records
+              </h2>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between py-2 border-b border-gray-700/50">
+                  <span className="text-white text-sm flex items-center gap-2">
+                    <Dumbbell className="w-4 h-4 text-gray-500" /> Bench Press
+                  </span>
+                  <span className="text-gray-400 font-semibold">{personalRecords.bench || "—"} kg</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-700/50">
+                  <span className="text-white text-sm flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-gray-500" /> Squat
+                  </span>
+                  <span className="text-gray-400 font-semibold">{personalRecords.squat || "—"} kg</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-white text-sm flex items-center gap-2">
+                    <Target className="w-4 h-4 text-gray-500" /> Deadlift
+                  </span>
+                  <span className="text-gray-400 font-semibold">{personalRecords.deadlift || "—"} kg</span>
+                </div>
               </div>
             </div>
+
+            {/* Total Calories Burned This Month */}
+            <div className="bg-gray-800/80 border border-gray-700 rounded-xl p-4">
+              <h2 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                <Flame className="w-4 h-4 text-orange-400" />
+                Total Calories Burned This Month
+              </h2>
+              <p className="text-2xl font-bold text-white flex items-center gap-2">
+                <Flame className="w-6 h-6 text-orange-400" />
+                {caloriesBurnedThisMonth.toLocaleString()} kcal
+              </p>
+            </div>
+
           </div>
         ) : (
           <>
