@@ -113,8 +113,9 @@ struct WebView: UIViewRepresentable {
                       let apiUrl = body["apiUrl"] as? String, !apiUrl.isEmpty else { return }
                 let label = body["label"] as? String ?? ""
                 let callbackId = body["callbackId"] as? String ?? ""
+                let preferLibrary = body["preferLibrary"] as? Bool ?? false
                 DispatchQueue.main.async { [weak self] in
-                    self?.startNativeFoodScan(apiUrl: apiUrl, label: label, callbackId: callbackId)
+                    self?.startNativeFoodScan(apiUrl: apiUrl, label: label, callbackId: callbackId, preferLibrary: preferLibrary)
                 }
                 return
             }
@@ -260,7 +261,7 @@ struct WebView: UIViewRepresentable {
             vc.present(picker, animated: true)
         }
         
-        private func startNativeFoodScan(apiUrl: String, label: String, callbackId: String) {
+        private func startNativeFoodScan(apiUrl: String, label: String, callbackId: String, preferLibrary: Bool = false) {
             guard let vc = findViewController(from: webView ?? UIView()) else { return }
             isNativeScanInProgress = true
             let delegate = FoodScanDelegate(apiUrl: apiUrl, label: label, callbackId: callbackId, webView: webView) { [weak self] in
@@ -274,7 +275,10 @@ struct WebView: UIViewRepresentable {
             picker.mediaTypes = [UTType.image.identifier]
             picker.allowsEditing = false
             picker.delegate = delegate
-            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+            // Upload Photo: go straight to library. Take Photo: show alert with both options.
+            if preferLibrary {
+                vc.present(picker, animated: true)
+            } else if UIImagePickerController.isSourceTypeAvailable(.camera) {
                 let alert = UIAlertController(title: "Scan Food", message: nil, preferredStyle: .alert)
                 alert.addAction(UIAlertAction(title: "Take Photo", style: .default) { [weak self] _ in
                     let p = UIImagePickerController()
@@ -397,7 +401,7 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
         let pro = (estimate["protein"] as? Int) ?? Int(estimate["protein"] as? Double ?? 0)
         let carb = (estimate["carbs"] as? Int) ?? Int(estimate["carbs"] as? Double ?? 0)
         let fat = (estimate["fats"] as? Int) ?? Int(estimate["fats"] as? Double ?? 0)
-        let msg = "\(name)\n\(cal) cal · P:\(pro)g C:\(carb)g F:\(fat)g"
+        let msg = "\(name)\n\nCalories: \(cal) kcal\nProtein: \(pro)g\nCarbs: \(carb)g\nFats: \(fat)g"
         let alert = UIAlertController(title: "Food scanned", message: msg, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Add to meals", style: .default) { [weak self] _ in
             self?.injectMealToWeb(estimate: estimate)

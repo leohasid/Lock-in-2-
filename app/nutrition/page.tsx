@@ -984,7 +984,7 @@ export default function NutritionPage() {
     }
   };
 
-  const triggerNativeFoodScan = () => {
+  const triggerNativeFoodScan = (preferLibrary = false) => {
     let railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || "";
     if (railwayUrl && !railwayUrl.startsWith("http")) railwayUrl = `https://${railwayUrl}`;
     railwayUrl = railwayUrl.replace(/\/+$/, "");
@@ -1010,6 +1010,7 @@ export default function NutritionPage() {
       apiUrl,
       label: foodToScan || "Unknown meal",
       callbackId,
+      preferLibrary,
     });
   };
 
@@ -1691,16 +1692,31 @@ Provide a helpful, conversational response.`;
                   </div>
 
             {aiEstimate && (
-              <div className="mb-4 p-3 bg-[#0ddfc8]/10 rounded-lg border border-[#14f1d9]/20">
+              <div className="mb-4 p-4 bg-[#0ddfc8]/10 rounded-lg border border-[#14f1d9]/20">
                 <p className="text-sm font-semibold text-[#14f1d9] mb-2">AI Analysis Result</p>
-                <p className="text-sm font-medium text-white mb-1">{aiEstimate.name}</p>
-                <p className="text-xs text-gray-400 mb-2">
-                  {aiEstimate.calories} kcal · P: {aiEstimate.protein}g · C: {aiEstimate.carbs}g · F: {aiEstimate.fats}g
-                </p>
+                <p className="text-sm font-medium text-white mb-3">{aiEstimate.name}</p>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <div className="bg-black/20 rounded-lg p-2">
+                    <p className="text-[10px] text-gray-400 uppercase">Calories</p>
+                    <p className="text-sm font-semibold text-white">{aiEstimate.calories} kcal</p>
+                  </div>
+                  <div className="bg-black/20 rounded-lg p-2">
+                    <p className="text-[10px] text-gray-400 uppercase">Protein</p>
+                    <p className="text-sm font-semibold text-white">{aiEstimate.protein}g</p>
+                  </div>
+                  <div className="bg-black/20 rounded-lg p-2">
+                    <p className="text-[10px] text-gray-400 uppercase">Carbs</p>
+                    <p className="text-sm font-semibold text-white">{aiEstimate.carbs}g</p>
+                  </div>
+                  <div className="bg-black/20 rounded-lg p-2">
+                    <p className="text-[10px] text-gray-400 uppercase">Fats</p>
+                    <p className="text-sm font-semibold text-white">{aiEstimate.fats}g</p>
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={useAiEstimate}
-                    className="flex-1 py-2 bg-[#14f1d9] text-black rounded-lg text-sm font-semibold hover:bg-[#0ddfc8] transition-colors"
+                    className="flex-1 py-2.5 bg-[#14f1d9] text-black rounded-lg text-sm font-semibold hover:bg-[#0ddfc8] transition-colors"
                   >
                     Add to Meals
                   </button>
@@ -1718,13 +1734,13 @@ Provide a helpful, conversational response.`;
                       });
                       setAiEstimate(null);
                     }}
-                    className="px-3 py-2 border border-white/20 rounded-lg text-xs text-gray-400 hover:text-white transition-colors"
+                    className="px-3 py-2.5 border border-white/20 rounded-lg text-xs text-gray-400 hover:text-white transition-colors"
                   >
                     Edit
                   </button>
                 </div>
-          </div>
-        )}
+              </div>
+            )}
 
             <div className="space-y-3">
                 <div>
@@ -1884,13 +1900,27 @@ Provide a helpful, conversational response.`;
                   <Camera className="w-4 h-4" />
                   Take Photo
                 </button>
-                <button
-                  onClick={() => useNativeFoodScan ? triggerNativeFoodScan() : fileInputRef.current?.click()}
-                  className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
-                >
-                  <Upload className="w-4 h-4" />
-                  Upload Photo
-                </button>
+                {useNativeFoodScan ? (
+                  <button
+                    onClick={() => triggerNativeFoodScan(true)}
+                    className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Upload Photo
+                  </button>
+                ) : (
+                  <label className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm cursor-pointer block">
+                    <Upload className="w-4 h-4" />
+                    Upload Photo
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="sr-only"
+                    />
+                  </label>
+                )}
               </div>
               </>
             )}
@@ -1901,14 +1931,6 @@ Provide a helpful, conversational response.`;
               accept="image/*"
               capture="environment"
               onChange={handleCameraCapture}
-              className="hidden"
-            />
-            {/* File upload input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileUpload}
               className="hidden"
             />
                     </div>
