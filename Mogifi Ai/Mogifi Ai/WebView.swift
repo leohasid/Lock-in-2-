@@ -260,17 +260,31 @@ private class ImagePickerDelegate: NSObject, UIImagePickerControllerDelegate, UI
             return
         }
         
+        // Resize and compress on native side to avoid WebView memory crash
+        let resized = Self.resizeForFoodScan(image, maxDimension: 800)
+        
         let tempDir = FileManager.default.temporaryDirectory
         let fileName = "photo_\(UUID().uuidString).jpg"
         let fileURL = tempDir.appendingPathComponent(fileName)
         
-        if let data = image.jpegData(compressionQuality: 0.8) {
+        if let data = resized.jpegData(compressionQuality: 0.6) {
             try? data.write(to: fileURL)
             completion([fileURL])
         } else {
             completion(nil)
         }
         onFinish()
+    }
+    
+    private static func resizeForFoodScan(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
+        let size = image.size
+        guard size.width > maxDimension || size.height > maxDimension else { return image }
+        let ratio = min(maxDimension / size.width, maxDimension / size.height)
+        let newSize = CGSize(width: size.width * ratio, height: size.height * ratio)
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        return renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+        }
     }
     
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {

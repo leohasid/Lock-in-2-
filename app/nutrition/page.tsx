@@ -947,16 +947,12 @@ export default function NutritionPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         const imageData = reader.result as string;
-        setCapturedImage(imageData);
         setShowScanOptions(false);
         analyzeFood(imageData);
       };
       reader.readAsDataURL(file);
     }
-    // Reset input so same file can be selected again
-    if (e.target) {
-      e.target.value = '';
-    }
+    if (e.target) e.target.value = '';
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -965,12 +961,12 @@ export default function NutritionPage() {
       const reader = new FileReader();
       reader.onloadend = () => {
         const imageData = reader.result as string;
-        setCapturedImage(imageData);
         setShowScanOptions(false);
         analyzeFood(imageData);
       };
       reader.readAsDataURL(file);
     }
+    if (e.target) e.target.value = '';
   };
 
   const compressImage = (dataUrl: string, maxWidth: number = 1024, quality: number = 0.8): Promise<string> => {
@@ -1059,8 +1055,8 @@ export default function NutritionPage() {
       
       let compressedImage: string;
       try {
-        // Use smaller size for mobile to avoid memory issues and faster upload
-        compressedImage = await compressImage(imageData, 800, 0.65);
+        // Use small size for mobile to avoid WebView memory crash
+        compressedImage = await compressImage(imageData, 600, 0.5);
         
         // Validate compressed image
         if (!compressedImage || !compressedImage.startsWith("data:image/jpeg")) {
@@ -1137,6 +1133,7 @@ export default function NutritionPage() {
         throw new Error("No estimate data received");
       }
 
+      setCapturedImage(compressedImage);
       setAiEstimate(estimate);
       setShowAddMeal(true); // Open Add Meal modal so user sees the result and can add it
     } catch (error: any) {

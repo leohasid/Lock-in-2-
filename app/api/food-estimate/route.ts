@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { generateAIVision } from "@/lib/ai-provider";
 
+// Vercel: allow up to 60s (Hobby plan supports this). Prevents timeout during AI vision.
+export const maxDuration = 60;
+export const runtime = "nodejs";
+
 export async function POST(request: Request) {
   if (typeof window !== "undefined") {
     return NextResponse.json({ error: "This API route is server-side only" }, { status: 403 });
@@ -11,6 +15,15 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Vercel has 4.5MB body limit - reject oversized requests early with clear error
+    const contentLength = request.headers.get("content-length");
+    if (contentLength && parseInt(contentLength, 10) > 4 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: "Image too large. Please use a smaller photo or compress before uploading." },
+        { status: 413 }
+      );
+    }
+
     // Parse request body
     let body;
     try {
