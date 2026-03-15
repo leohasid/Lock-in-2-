@@ -12,12 +12,14 @@ struct ContentView: View {
     
     @State private var isLoading = true
     @State private var loadError: String?
+    @State private var webViewKey = 0
     
     var body: some View {
         ZStack {
             Color.black
                 .ignoresSafeArea()
             WebView(url: Self.appURL, isLoading: $isLoading, loadError: $loadError)
+                .id(webViewKey)
                 .ignoresSafeArea(.all, edges: .bottom)
             
             if isLoading {
@@ -43,9 +45,16 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
-                    Text("Check your Vercel URL in ContentView.swift")
+                    Text("Check your connection and try again.")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
+                    Button("Retry") {
+                        loadError = nil
+                        isLoading = true
+                        webViewKey += 1
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.top, 8)
                 }
                 .padding()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

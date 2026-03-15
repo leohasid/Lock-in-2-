@@ -1059,7 +1059,8 @@ export default function NutritionPage() {
       
       let compressedImage: string;
       try {
-        compressedImage = await compressImage(imageData, 1024, 0.8);
+        // Use smaller size for mobile to avoid memory issues and faster upload
+        compressedImage = await compressImage(imageData, 800, 0.65);
         
         // Validate compressed image
         if (!compressedImage || !compressedImage.startsWith("data:image/jpeg")) {
@@ -1090,6 +1091,9 @@ export default function NutritionPage() {
       railwayUrl = railwayUrl.replace(/\/+$/, "");
       const apiUrl = railwayUrl ? `${railwayUrl}/api/food-estimate` : "/api/food-estimate";
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout
+
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1097,7 +1101,9 @@ export default function NutritionPage() {
           imageData: compressedImage,
           label: foodToScan || "Unknown meal",
         }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
 
       const text = await response.text();
 
@@ -1137,7 +1143,11 @@ export default function NutritionPage() {
       console.error("AI food analysis failed", error);
       const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || "";
       let msg = error?.message || "Unable to analyze this photo right now. Please try again.";
-      if (msg.includes("API key") || msg.includes("OPENAI") || msg.includes("configured")) {
+      if (error?.name === "AbortError") {
+        msg = "Request timed out. Check your connection and try again. If using Vercel free tier, the 10s limit may be too short—consider using Railway for the API.";
+      } else if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("Load failed")) {
+        msg = "Network error. Check your internet connection and try again.";
+      } else if (msg.includes("API key") || msg.includes("OPENAI") || msg.includes("configured")) {
         msg += railwayUrl
           ? "\n\nEnsure OPENAI_API_KEY is set in your Railway project environment variables."
           : "\n\nAdd OPENAI_API_KEY to Vercel env vars, or set NEXT_PUBLIC_RAILWAY_API_URL to use Railway backend.";
