@@ -652,6 +652,7 @@ export default function NutritionPage() {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [showAddMeal, setShowAddMeal] = useState(false);
   const [showScanOptions, setShowScanOptions] = useState(false);
+  const [scanStep, setScanStep] = useState<1 | 2>(1);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [foodToScan, setFoodToScan] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -1801,10 +1802,11 @@ Provide a helpful, conversational response.`;
               <div className="flex gap-2 pt-2">
                   <button
                     onClick={() => {
-                    setFoodToScan("");
-                    setShowScanOptions(true);
+                      setFoodToScan("");
+                      setScanStep(1);
+                      setShowScanOptions(true);
                       setShowAddMeal(false);
-                  }}
+                    }}
                   className="flex-1 py-2.5 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   <Camera className="w-4 h-4" />
@@ -1828,40 +1830,60 @@ Provide a helpful, conversational response.`;
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-5 max-w-md w-full border border-white/10">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Scan Food</h2>
+              <h2 className="text-lg font-semibold">{scanStep === 1 ? "What are you eating?" : "Scan Food"}</h2>
               <button
-                  onClick={() => {
+                onClick={() => {
                   setShowScanOptions(false);
-                    setFoodToScan("");
+                  setFoodToScan("");
+                  setScanStep(1);
                 }}
                 className="text-white/40 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
-          </div>
-            <input
-              type="text"
-              value={foodToScan}
-              onChange={(e) => setFoodToScan(e.target.value)}
-              placeholder="What are you eating? (optional – improves accuracy)"
-              className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm mb-3 focus:outline-none focus:border-[#14f1d9]"
-            />
-            <div className="space-y-2">
+            </div>
+            {scanStep === 1 ? (
+              <>
+                <input
+                  type="text"
+                  value={foodToScan}
+                  onChange={(e) => setFoodToScan(e.target.value)}
+                  placeholder="e.g. chicken salad, pizza, oatmeal..."
+                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm mb-4 focus:outline-none focus:border-[#14f1d9]"
+                />
                 <button
-                onClick={openCamera}
-                className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
+                  onClick={() => setScanStep(2)}
+                  className="w-full py-3 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors text-sm"
+                >
+                  Continue
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setScanStep(1)}
+                  className="w-full py-2 text-sm text-gray-400 hover:text-white mb-3"
+                >
+                  ← Back
+                </button>
+                <div className="space-y-2">
+                <button
+                  onClick={openCamera}
+                  className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   <Camera className="w-4 h-4" />
-                Take Photo
+                  Take Photo
                 </button>
                 <button
-                onClick={() => useNativeFoodScan ? triggerNativeFoodScan() : fileInputRef.current?.click()}
-                className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
+                  onClick={() => useNativeFoodScan ? triggerNativeFoodScan() : fileInputRef.current?.click()}
+                  className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
                 >
-                <Upload className="w-4 h-4" />
-                Upload Photo
+                  <Upload className="w-4 h-4" />
+                  Upload Photo
                 </button>
               </div>
+              </>
+            )}
             {/* Native iOS camera input - opens native camera UI */}
             <input
               ref={cameraInputRef}
