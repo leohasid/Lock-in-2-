@@ -66,81 +66,15 @@ export async function POST(request: Request) {
     }
 
     const userHint = label && label.trim() ? label.trim() : null;
-    const prompt = `You are a nutrition analysis AI.
-
-Your task is to estimate calories and macronutrients from a food image.
-The user may also provide a text description of the meal.
-${userHint ? `\nUser description: "${userHint}"\n\nUse this as the primary hint for identifying foods. ` : ""}
-Use the image to confirm, refine, and estimate portion sizes.
-
-IMPORTANT:
-If the image contains a packaged food product (for example a bag of chips, chocolate bar, drink bottle, or supermarket item with branding), you should attempt to identify the exact product first.
-
-For packaged foods:
-
-1. Detect visible branding, logos, or product names on the packaging.
-2. Identify the brand and product name (example: "Doritos Nacho Cheese", "Coca-Cola Original", etc).
-3. Use this information to search for the product's official nutrition information online or in common food databases.
-4. If nutrition data is found, use the official nutrition values instead of estimating macros.
-5. Assume the full package or typical serving size unless the portion eaten is clearly smaller in the image.
-6. If the exact product cannot be identified, estimate nutrition using a typical equivalent product.
-
-For non-packaged foods (restaurant meals, home cooked meals, etc), follow the normal analysis process below.
-
-Follow this process:
-
-1. Determine food items.
-   - If the user provided a description, start from those foods.
-   - Use the image to verify or add missing components.
-
-2. Break the meal into individual components.
-   Example: burger bun, chicken fillet, cheese, sauce, fries.
-
-3. Determine cooking or preparation methods if visible
-   (fried, grilled, baked, raw, roasted, breaded, etc.).
-
-4. Estimate portion size in grams for each component using:
-   - relative size in the image
-   - thickness and volume
-   - typical portion sizes for that food
-   - proportions relative to other foods
-
-5. If the image does not clearly show a component mentioned by the user, assume a realistic portion.
-
-6. Calculate nutritional values for each item:
-   - calories
-   - protein (g)
-   - carbohydrates (g)
-   - fat (g)
-
-7. Sum totals for the entire meal.
-
-Return ONLY valid JSON using this format:
-
-{
-  "foods": [
-    {
-      "name": "",
-      "brand": "",
-      "cooking_method": "",
-      "estimated_weight_g": 0,
-      "calories": 0,
-      "protein_g": 0,
-      "carbs_g": 0,
-      "fat_g": 0
-    }
-  ],
-  "total_calories": 0,
-  "total_protein_g": 0,
-  "total_carbs_g": 0,
-  "total_fat_g": 0,
-  "confidence": 0
-}`;
+    const prompt = `Estimate nutrition from this food image. ${userHint ? `User said: "${userHint}". ` : ""}
+Identify foods, estimate portions, sum macros. For packaged items with visible branding, use typical product nutrition.
+Return ONLY this JSON (no markdown):
+{"foods":[{"name":"","calories":0,"protein_g":0,"carbs_g":0,"fat_g":0}],"total_calories":0,"total_protein_g":0,"total_carbs_g":0,"total_fat_g":0}`;
 
     const outputText = await generateAIVision({
       prompt,
       imageData: imageData,
-      maxTokens: 600,
+      maxTokens: 350,
     });
 
     if (!outputText) {

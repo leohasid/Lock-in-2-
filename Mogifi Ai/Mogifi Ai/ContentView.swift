@@ -45,15 +45,23 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
-                    Text("Check your connection and try again.")
+                    Text("If you were scanning food, try Dismiss first—your result may have loaded.")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
-                    Button("Retry") {
-                        loadError = nil
-                        isLoading = true
-                        webViewKey += 1
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    HStack(spacing: 12) {
+                        Button("Dismiss") {
+                            loadError = nil
+                        }
+                        .buttonStyle(.bordered)
+                        Button("Retry") {
+                            loadError = nil
+                            isLoading = true
+                            webViewKey += 1
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
-                    .buttonStyle(.borderedProminent)
                     .padding(.top, 8)
                 }
                 .padding()

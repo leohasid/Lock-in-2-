@@ -761,6 +761,36 @@ export default function NutritionPage() {
     setIsLoaded(true);
   }, []);
 
+  // Listen for native scan complete (clear Analyzing state)
+  useEffect(() => {
+    const completeHandler = () => setIsAnalyzing(false);
+    window.addEventListener("mogifiScanComplete" as any, completeHandler);
+    return () => window.removeEventListener("mogifiScanComplete" as any, completeHandler);
+  }, []);
+
+  // Listen for meal added from native iOS food scan (bypasses WebView to avoid load failed)
+  useEffect(() => {
+    const handler = (e: CustomEvent<{ name: string; calories: number; protein: number; carbs: number; fats: number }>) => {
+      const m = e.detail;
+      if (!m?.name || typeof m.calories !== "number") return;
+      const meal: Meal = {
+        id: Date.now().toString(),
+        name: m.name,
+        calories: m.calories,
+        protein: m.protein || 0,
+        carbs: m.carbs || 0,
+        fats: m.fats || 0,
+        sugar: 0,
+        sodium: 0,
+        fiber: 0,
+        time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      };
+      setMeals((prev) => [...prev, meal]);
+    };
+    window.addEventListener("mogifiMealAdded" as any, handler as any);
+    return () => window.removeEventListener("mogifiMealAdded" as any, handler as any);
+  }, []);
+
   // Save meals to localStorage whenever meals change
   useEffect(() => {
     if (typeof window === "undefined" || !isLoaded) return;

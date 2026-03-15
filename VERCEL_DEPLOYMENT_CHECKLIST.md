@@ -2,6 +2,17 @@
 
 Use this checklist to fix "Load failed" and food scan issues.
 
+## 0. CRITICAL: Use Railway for Food Scan (Recommended)
+
+**Vercel serverless can timeout** during food analysis (AI vision takes 15–30+ seconds). The fix:
+
+1. Deploy the `backend/` folder to **Railway** (see `backend/RAILWAY_DEPLOYMENT.md`)
+2. In **Vercel** → Project → Settings → Environment Variables, add:
+   - `NEXT_PUBLIC_RAILWAY_API_URL` = `https://your-app.up.railway.app`
+3. **Redeploy** Vercel (required for `NEXT_PUBLIC_` vars)
+
+Food scan will then use Railway (no timeout limit) instead of Vercel.
+
 ## 1. Vercel Environment Variables
 
 In **Vercel** → Project → **Settings** → **Environment Variables**, ensure:

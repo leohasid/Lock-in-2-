@@ -362,7 +362,7 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
                 }
                 if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let estimate = json["estimate"] as? [String: Any] {
-                    self.sendResult(estimate: estimate)
+                    self.showResultAndAddOption(estimate: estimate)
                 } else if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                           let errMsg = json["error"] as? String {
                     self.sendResult(error: errMsg)
@@ -374,6 +374,62 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
         }.resume()
     }
     
+    func showResultAndAddOption(estimate: [String: Any]) {
+        let name = estimate["name"] as? String ?? "Meal"
+        let cal = (estimate["calories"] as? Int) ?? Int(estimate["calories"] as? Double ?? 0)
+        let pro = (estimate["protein"] as? Int) ?? Int(estimate["protein"] as? Double ?? 0)
+        let carb = (estimate["carbs"] as? Int) ?? Int(estimate["carbs"] as? Double ?? 0)
+        let fat = (estimate["fats"] as? Int) ?? Int(estimate["fats"] as? Double ?? 0)
+        let msg = "\(name)\n\(cal) cal · P:\(pro)g C:\(carb)g F:\(fat)g"
+        let alert = UIAlertController(title: "Food scanned", message: msg, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Add to meals", style: .default) { [weak self] _ in
+            self?.injectMealToWeb(estimate: estimate)
+            self?.notifyScanComplete()
+        })
+        alert.addAction(UIAlertAction(title: "Dismiss", style: .cancel) { [weak self] _ in
+            self?.notifyScanComplete()
+        })
+        DispatchQueue.main.async {
+            var vc = self.webView?.window?.rootViewController ?? self.findVC()
+            while let presented = vc?.presentedViewController { vc = presented }
+            vc?.present(alert, animated: true)
+        }
+    }
+    
+    private func notifyScanComplete() {
+        webView?.evaluateJavaScript("window.dispatchEvent(new CustomEvent('mogifiScanComplete'));")
+    }
+    
+    private func findVC() -> UIViewController? {
+        var v: UIView? = webView
+        while let r = v {
+            if let vc = r.next as? UIViewController { return vc }
+            v = r.superview
+        }
+        return nil
+    }
+    
+    private func injectMealToWeb(estimate: [String: Any]) {
+        let name = estimate["name"] as? String ?? "Meal"
+        let cal = estimate["calories"] as? Int ?? Int(estimate["calories"] as? Double ?? 0)
+        let pro = estimate["protein"] as? Int ?? Int(estimate["protein"] as? Double ?? 0)
+        let carb = estimate["carbs"] as? Int ?? Int(estimate["carbs"] as? Double ?? 0)
+        let fat = estimate["fats"] as? Int ?? Int(estimate["fats"] as? Double ?? 0)
+        let detail: [String: Any] = ["name": name, "calories": cal, "protein": pro, "carbs": carb, "fats": fat]
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: detail) else { return }
+        let b64 = jsonData.base64EncodedString()
+        let js = "var d=JSON.parse(atob('\(b64)'));window.dispatchEvent(new CustomEvent('mogifiMealAdded',{detail:d}));"
+        webView?.evaluateJavaScript(js) { _, err in
+            if err != nil {
+                DispatchQueue.main.async {
+                    let a = UIAlertController(title: "Add manually", message: "\(name): \(cal) cal", preferredStyle: .alert)
+                    a.addAction(UIAlertAction(title: "OK", style: .default))
+                    self.findVC()?.present(a, animated: true)
+                }
+            }
+        }
+    }
+    
     func sendResult(estimate: [String: Any]? = nil, error: String? = nil) {
         let result: [String: Any]
         if let e = error {
@@ -383,11 +439,7 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
         } else {
             result = ["error": "Unknown error"]
         }
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: result),
-              let jsonString = String(data: jsonData, encoding: .utf8) else { return }
-        let escaped = jsonString.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'").replacingOccurrences(of: "\n", with: "\\n")
-        let js = "if(window.__mogifiFoodScanCallbacks&&window.__mogifiFoodScanCallbacks['\(callbackId)']){try{window.__mogifiFoodScanCallbacks['\(callbackId)'](JSON.parse('\(escaped)'.replace(/\\\\/g,'\\\\')));}catch(e){window.__mogifiFoodScanCallbacks['\(callbackId)']({error:String(e)});}delete window.__mogifiFoodScanCallbacks['\(callbackId)'];}"
-        // Simpler: use base64 to avoid escaping issues
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: result) else { return }
         let b64 = jsonData.base64EncodedString()
         let jsSafe = "if(window.__mogifiFoodScanCallbacks&&window.__mogifiFoodScanCallbacks['\(callbackId)']){try{var d=JSON.parse(atob('\(b64)'));window.__mogifiFoodScanCallbacks['\(callbackId)'](d);}catch(e){window.__mogifiFoodScanCallbacks['\(callbackId)']({error:String(e)});}delete window.__mogifiFoodScanCallbacks['\(callbackId)'];}"
         webView?.evaluateJavaScript(jsSafe)
