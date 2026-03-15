@@ -762,6 +762,13 @@ export default function NutritionPage() {
     setIsLoaded(true);
   }, []);
 
+  // Listen for native scan upload started (show Analyzing only when image is picked)
+  useEffect(() => {
+    const uploadStartedHandler = () => setIsAnalyzing(true);
+    window.addEventListener("mogifiScanUploadStarted" as any, uploadStartedHandler);
+    return () => window.removeEventListener("mogifiScanUploadStarted" as any, uploadStartedHandler);
+  }, []);
+
   // Listen for native scan complete (clear Analyzing state)
   useEffect(() => {
     const completeHandler = () => setIsAnalyzing(false);
@@ -996,7 +1003,7 @@ export default function NutritionPage() {
         setShowAddMeal(true);
       }
     };
-    setIsAnalyzing(true);
+    // Don't set isAnalyzing here - wait for mogifiScanUploadStarted when image is picked
     setShowScanOptions(false);
     (window as any).webkit.messageHandlers.mogifiFoodScan.postMessage({
       action: "scan",
@@ -1189,6 +1196,9 @@ export default function NutritionPage() {
         const err = (data as { error?: string }).error;
         if (response.status === 413) {
           throw new Error("Image too large. Try a smaller photo.");
+        }
+        if (response.status === 502 || response.status === 504) {
+          throw new Error("The server took too long to respond. Please try again—you can use a smaller photo or try in a moment.");
         }
         throw new Error(err || `Server error (${response.status}). Please try again.`);
       }

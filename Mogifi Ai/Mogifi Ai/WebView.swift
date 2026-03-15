@@ -344,6 +344,8 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
     }
     
     private func uploadToAPI(dataUrl: String) {
+        // Notify web that upload started (so "Analyzing" shows only after image is picked)
+        webView?.evaluateJavaScript("window.dispatchEvent(new CustomEvent('mogifiScanUploadStarted'));")
         guard let url = URL(string: apiUrl) else {
             showErrorAndFinish(message: "Invalid API URL")
             return
@@ -366,7 +368,12 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
                     return
                 }
                 if let http = response as? HTTPURLResponse, http.statusCode != 200 {
-                    let msg = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
+                    var msg = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
+                    if http.statusCode == 502 {
+                        msg = "The server took too long to respond. Please try again—you can use a smaller photo or try in a moment."
+                    } else if http.statusCode == 504 {
+                        msg = "Request timed out. Please try again with a smaller photo."
+                    }
                     self.showErrorAndFinish(message: msg)
                     return
                 }
