@@ -1105,6 +1105,20 @@ export default function AddictionsPage() {
                   <Zap className="w-4 h-4 text-yellow-400" />
                   <span className="text-sm text-gray-400">Streak: {daysClean} Days</span>
                       </div>
+
+                <button
+                  onClick={() => {
+                    const now = new Date();
+                    setAddictions(addictions.map((a) => {
+                      if (!("apps" in a) || a.id !== phoneAddiction.id) return a;
+                      return { ...a, startDate: now.toISOString().split("T")[0], bestStreak: 0 };
+                    }));
+                    setShowPhoneDetail(false);
+                  }}
+                  className="w-full mt-4 py-2.5 bg-amber-600/90 hover:bg-amber-600 text-white rounded-lg text-sm transition-colors"
+                >
+                  Reset Streak
+                </button>
                 </div>
               </div>
             </div>
@@ -1163,6 +1177,19 @@ export default function AddictionsPage() {
                       </div>
                     )}
 
+                <button
+                  onClick={() => {
+                    const now = new Date();
+                    setAddictions(addictions.map((a) => {
+                      if (a.id !== addiction.id) return a;
+                      return { ...a, startDate: now.toISOString().split("T")[0], startTime: now.toISOString(), bestStreak: 0 };
+                    }));
+                    setShowOtherDetail(null);
+                  }}
+                  className="w-full bg-amber-600/90 hover:bg-amber-600 text-white px-4 py-2.5 rounded-lg text-sm transition-colors"
+                >
+                  Reset Streak
+                </button>
                 <button
                   onClick={() =>
                     setAddictions(addictions.filter((a) => a.id !== addiction.id))

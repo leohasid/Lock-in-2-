@@ -357,11 +357,17 @@ const recommendedRecipes: Recipe[] = [
 
 // Recipes View Component - Delivery App Style
 function RecipesView({ onAddMeal }: { onAddMeal: (meal: Recipe) => void }) {
+  const scrollRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [favourites, setFavourites] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
     const stored = localStorage.getItem("favouriteRecipes");
     return stored ? JSON.parse(stored) : [];
   });
+
+  const scrollCategory = (category: string, direction: "left" | "right") => {
+    const el = scrollRefs.current[category];
+    if (el) el.scrollBy({ left: direction === "right" ? 240 : -240, behavior: "smooth" });
+  };
 
   const toggleFavourite = (recipeId: string) => {
     const updated = favourites.includes(recipeId)
@@ -390,13 +396,18 @@ function RecipesView({ onAddMeal }: { onAddMeal: (meal: Recipe) => void }) {
             {/* Category Header */}
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-white">{category}</h2>
-              <button className="w-7 h-7 rounded-full bg-teal-400/20 flex items-center justify-center text-teal-400 hover:bg-teal-400/30 transition-colors">
-                <ChevronRight className="w-4 h-4" />
-              </button>
+              <div className="flex gap-1">
+                <button onClick={() => scrollCategory(category, "left")} className="w-7 h-7 rounded-full bg-teal-400/20 flex items-center justify-center text-teal-400 hover:bg-teal-400/30 transition-colors">
+                  <ChevronRight className="w-4 h-4 rotate-180" />
+                </button>
+                <button onClick={() => scrollCategory(category, "right")} className="w-7 h-7 rounded-full bg-teal-400/20 flex items-center justify-center text-teal-400 hover:bg-teal-400/30 transition-colors">
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Horizontal Scrollable Recipe Cards */}
-            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div ref={(el) => { scrollRefs.current[category] = el; }} className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {categoryRecipes.map((recipe) => (
                 <div
                   key={recipe.id}
@@ -640,7 +651,6 @@ function FavouritesView({ meals, onAddMeal }: { meals: Meal[]; onAddMeal: (meal:
 export default function NutritionPage() {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [showAddMeal, setShowAddMeal] = useState(false);
-  const [showScanIntro, setShowScanIntro] = useState(false);
   const [showScanOptions, setShowScanOptions] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [foodToScan, setFoodToScan] = useState("");
@@ -939,7 +949,6 @@ export default function NutritionPage() {
         const imageData = reader.result as string;
         setCapturedImage(imageData);
         setShowScanOptions(false);
-        setShowScanIntro(false);
         analyzeFood(imageData);
       };
       reader.readAsDataURL(file);
@@ -1484,7 +1493,7 @@ Provide a helpful, conversational response.`;
           {[
             { label: "Sugar", value: totals.sugar, target: dailyGoals.sugar, percent: sugarPercentage, color: "from-pink-400 to-rose-500", unit: "g" },
             { label: "Sodium", value: totals.sodium, target: dailyGoals.sodium, percent: sodiumPercentage, color: "from-indigo-400 to-purple-500", unit: "mg" },
-            { label: "Fiber", value: totals.fiber, target: dailyGoals.fiber, percent: fiberPercentage, color: "from-green-400 to-emerald-500", unit: "g" },
+            { label: "Fibre", value: totals.fiber, target: dailyGoals.fiber, percent: fiberPercentage, color: "from-green-400 to-emerald-500", unit: "g" },
           ].map((m) => (
             <div key={m.label} className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -1553,7 +1562,7 @@ Provide a helpful, conversational response.`;
                               <>
                                 {meal.sugar > 0 && <span>Sugar: {meal.sugar}g</span>}
                                 {meal.sodium > 0 && <span>Sodium: {meal.sodium}mg</span>}
-                                {meal.fiber > 0 && <span>Fiber: {meal.fiber}g</span>}
+                                {meal.fiber > 0 && <span>Fibre: {meal.fiber}g</span>}
                               </>
                             )}
                           </div>
@@ -1708,7 +1717,7 @@ Provide a helpful, conversational response.`;
                     />
                   </div>
                   <div>
-                  <label className="block text-sm font-medium mb-1.5">Fiber (g)</label>
+                  <label className="block text-sm font-medium mb-1.5">Fibre (g)</label>
                     <input
                       type="number"
                       value={newMeal.fiber}
@@ -1722,7 +1731,7 @@ Provide a helpful, conversational response.`;
                   <button
                     onClick={() => {
                     setFoodToScan("");
-                    setShowScanIntro(true);
+                    setShowScanOptions(true);
                       setShowAddMeal(false);
                   }}
                   className="flex-1 py-2.5 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
@@ -1743,44 +1752,6 @@ Provide a helpful, conversational response.`;
         )}
 
       {/* SCAN INTRO MODAL */}
-      {showScanIntro && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-5 max-w-md w-full border border-white/10">
-            <h2 className="text-lg font-semibold mb-2">Confirm Food</h2>
-            <p className="text-sm text-[#9aa7ad] mb-4">
-              Let me know what food you're about to scan so I can label it correctly.
-            </p>
-            <input
-              type="text"
-              value={foodToScan}
-              onChange={(e) => setFoodToScan(e.target.value)}
-              placeholder="e.g., Grilled chicken salad"
-              className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm mb-4 focus:outline-none focus:border-[#14f1d9]"
-              />
-            <div className="flex gap-2">
-          <button
-            onClick={() => {
-                  setShowScanIntro(false);
-                  setFoodToScan("");
-            }}
-                className="flex-1 py-2.5 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors text-sm"
-              >
-                Cancel
-          </button>
-          <button
-            onClick={() => {
-                  setShowScanOptions(true);
-                  setShowScanIntro(false);
-            }}
-                className="flex-1 py-2.5 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors text-sm"
-              >
-                Continue
-          </button>
-            </div>
-            </div>
-        </div>
-      )}
-
       {/* SCAN OPTIONS MODAL */}
       {showScanOptions && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
@@ -1797,6 +1768,13 @@ Provide a helpful, conversational response.`;
                 <X className="w-5 h-5" />
               </button>
           </div>
+            <input
+              type="text"
+              value={foodToScan}
+              onChange={(e) => setFoodToScan(e.target.value)}
+              placeholder="What are you eating? (optional – improves accuracy)"
+              className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm mb-3 focus:outline-none focus:border-[#14f1d9]"
+            />
             <div className="space-y-2">
                 <button
                 onClick={openCamera}
@@ -1978,7 +1956,7 @@ Provide a helpful, conversational response.`;
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1.5">Fiber (g)</label>
+                <label className="block text-sm font-medium mb-1.5">Fibre (g)</label>
                 <input
                   type="number"
                   value={macroSettings.fiber}
