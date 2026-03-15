@@ -312,6 +312,7 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
     let callbackId: String
     weak var webView: WKWebView?
     let onFinish: () -> Void
+    private var analyzingAlert: UIAlertController?
     
     init(apiUrl: String, label: String, callbackId: String, webView: WKWebView?, onFinish: @escaping () -> Void) {
         self.apiUrl = apiUrl
@@ -319,6 +320,23 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
         self.callbackId = callbackId
         self.webView = webView
         self.onFinish = onFinish
+    }
+    
+    private func showAnalyzingOverlay() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            let alert = UIAlertController(title: "Analyzing food...", message: "Please wait", preferredStyle: .alert)
+            self.analyzingAlert = alert
+            var vc = self.webView?.window?.rootViewController ?? self.findVC()
+            while let presented = vc?.presentedViewController { vc = presented }
+            vc?.present(alert, animated: true)
+        }
+    }
+    
+    private func hideAnalyzingOverlay() {
+        DispatchQueue.main.async {
+            self.analyzingAlert?.dismiss(animated: true)
+            self.analyzingAlert = nil
+        }
     }
     
     func finish() {
@@ -331,8 +349,11 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
             showErrorAndFinish(message: "No image")
             return
         }
+        // Show native "Analyzing..." immediately so user sees feedback (WebView may reload when returning from picker)
+        showAnalyzingOverlay()
         let resized = Self.resize(image, maxDimension: 600)
         guard let jpegData = resized.jpegData(compressionQuality: 0.5) else {
+            hideAnalyzingOverlay()
             showErrorAndFinish(message: "Failed to compress")
             return
         }
@@ -351,6 +372,7 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
         // Notify web that upload started (so "Analyzing" shows only after image is picked)
         webView?.evaluateJavaScript("window.dispatchEvent(new CustomEvent('mogifiScanUploadStarted'));")
         guard let url = URL(string: apiUrl) else {
+            hideAnalyzingOverlay()
             showErrorAndFinish(message: "Invalid API URL")
             return
         }
@@ -363,6 +385,7 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
         URLSession.shared.dataTask(with: req) { [weak self] data, response, err in
             DispatchQueue.main.async {
                 guard let self = self else { return }
+                self.hideAnalyzingOverlay()
                 if let err = err {
                     self.showErrorAndFinish(message: err.localizedDescription)
                     return
