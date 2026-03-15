@@ -936,9 +936,43 @@ export default function NutritionPage() {
     }
   };
 
+  const useNativeFoodScan = typeof window !== "undefined" && !!(window as any).webkit?.messageHandlers?.mogifiFoodScan;
+
   const openCamera = () => {
-    // Open native iOS camera using file input with capture attribute
-    cameraInputRef.current?.click();
+    if (useNativeFoodScan) {
+      triggerNativeFoodScan();
+    } else {
+      cameraInputRef.current?.click();
+    }
+  };
+
+  const triggerNativeFoodScan = () => {
+    let railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || "";
+    if (railwayUrl && !railwayUrl.startsWith("http")) railwayUrl = `https://${railwayUrl}`;
+    railwayUrl = railwayUrl.replace(/\/+$/, "");
+    const apiUrl = railwayUrl ? `${railwayUrl}/api/food-estimate` : `${typeof window !== "undefined" ? window.location.origin : ""}/api/food-estimate`;
+    const callbackId = `scan_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    (window as any).__mogifiFoodScanCallbacks = (window as any).__mogifiFoodScanCallbacks || {};
+    (window as any).__mogifiFoodScanCallbacks[callbackId] = (result: { estimate?: { name: string; calories: number; protein: number; carbs: number; fats: number }; error?: string }) => {
+      setIsAnalyzing(false);
+      if (result.error) {
+        alert(result.error);
+        return;
+      }
+      if (result.estimate) {
+        setCapturedImage(null);
+        setAiEstimate(result.estimate);
+        setShowAddMeal(true);
+      }
+    };
+    setIsAnalyzing(true);
+    setShowScanOptions(false);
+    (window as any).webkit.messageHandlers.mogifiFoodScan.postMessage({
+      action: "scan",
+      apiUrl,
+      label: foodToScan || "Unknown meal",
+      callbackId,
+    });
   };
 
   const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1791,7 +1825,7 @@ Provide a helpful, conversational response.`;
                 Take Photo
                 </button>
                 <button
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => useNativeFoodScan ? triggerNativeFoodScan() : fileInputRef.current?.click()}
                 className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                 <Upload className="w-4 h-4" />
