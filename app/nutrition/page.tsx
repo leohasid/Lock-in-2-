@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { X, Settings, MessageSquare, Sparkles, ChevronRight, Plus } from "lucide-react";
+import { Upload, Camera, X, Settings, MessageSquare, Sparkles, ChevronRight, Plus } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { toLocalDateString } from "@/lib/date-utils";
 
@@ -651,11 +651,24 @@ function FavouritesView({ meals, onAddMeal }: { meals: Meal[]; onAddMeal: (meal:
 export default function NutritionPage() {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [showAddMeal, setShowAddMeal] = useState(false);
+  const [showScanOptions, setShowScanOptions] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [foodToScan, setFoodToScan] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showAIConsultation, setShowAIConsultation] = useState(false);
   const [aiConsultationMessage, setAiConsultationMessage] = useState("");
   const [aiConsultationResponse, setAiConsultationResponse] = useState("");
   const [isConsultingAI, setIsConsultingAI] = useState(false);
   const [activeTab, setActiveTab] = useState<"macros" | "recipes" | "favourites">("macros");
+  const [aiEstimate, setAiEstimate] = useState<{
+    name: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fats: number;
+  } | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [newMeal, setNewMeal] = useState({
     name: "",
     calories: "",
@@ -746,6 +759,36 @@ export default function NutritionPage() {
     }
     
     setIsLoaded(true);
+  }, []);
+
+  // Listen for native scan complete (clear Analyzing state)
+  useEffect(() => {
+    const completeHandler = () => setIsAnalyzing(false);
+    window.addEventListener("mogifiScanComplete" as any, completeHandler);
+    return () => window.removeEventListener("mogifiScanComplete" as any, completeHandler);
+  }, []);
+
+  // Listen for meal added from native iOS food scan (bypasses WebView to avoid load failed)
+  useEffect(() => {
+    const handler = (e: CustomEvent<{ name: string; calories: number; protein: number; carbs: number; fats: number }>) => {
+      const m = e.detail;
+      if (!m?.name || typeof m.calories !== "number") return;
+      const meal: Meal = {
+        id: Date.now().toString(),
+        name: m.name,
+        calories: m.calories,
+        protein: m.protein || 0,
+        carbs: m.carbs || 0,
+        fats: m.fats || 0,
+        sugar: 0,
+        sodium: 0,
+        fiber: 0,
+        time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
+      };
+      setMeals((prev) => [...prev, meal]);
+    };
+    window.addEventListener("mogifiMealAdded" as any, handler as any);
+    return () => window.removeEventListener("mogifiMealAdded" as any, handler as any);
   }, []);
 
   // Save meals to localStorage whenever meals change
@@ -923,6 +966,287 @@ export default function NutritionPage() {
     }
   };
 
+  const useNativeFoodScan = typeof window !== "undefined" && !!(window as any).webkit?.messageHandlers?.mogifiFoodScan;
+
+  const openCamera = () => {
+    if (useNativeFoodScan) {
+      triggerNativeFoodScan();
+    } else {
+      cameraInputRef.current?.click();
+    }
+  };
+
+  const triggerNativeFoodScan = () => {
+    let railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || "";
+    if (railwayUrl && !railwayUrl.startsWith("http")) railwayUrl = `https://${railwayUrl}`;
+    railwayUrl = railwayUrl.replace(/\/+$/, "");
+    const apiUrl = railwayUrl ? `${railwayUrl}/api/food-estimate` : `${typeof window !== "undefined" ? window.location.origin : ""}/api/food-estimate`;
+    const callbackId = `scan_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    (window as any).__mogifiFoodScanCallbacks = (window as any).__mogifiFoodScanCallbacks || {};
+    (window as any).__mogifiFoodScanCallbacks[callbackId] = (result: { estimate?: { name: string; calories: number; protein: number; carbs: number; fats: number }; error?: string }) => {
+      setIsAnalyzing(false);
+      if (result.error) {
+        alert(result.error);
+        return;
+      }
+      if (result.estimate) {
+        setCapturedImage(null);
+        setAiEstimate(result.estimate);
+        setShowAddMeal(true);
+      }
+    };
+    setIsAnalyzing(true);
+    setShowScanOptions(false);
+    (window as any).webkit.messageHandlers.mogifiFoodScan.postMessage({
+      action: "scan",
+      apiUrl,
+      label: foodToScan || "Unknown meal",
+      callbackId,
+    });
+  };
+
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const imageData = reader.result as string;
+        setShowScanOptions(false);
+        analyzeFood(imageData);
+      };
+      reader.readAsDataURL(file);
+    }
+    if (e.target) e.target.value = '';
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const imageData = reader.result as string;
+        setShowScanOptions(false);
+        analyzeFood(imageData);
+      };
+      reader.readAsDataURL(file);
+    }
+    if (e.target) e.target.value = '';
+  };
+
+  const compressImage = (dataUrl: string, maxWidth: number = 1024, quality: number = 0.8): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      // Validate input
+      if (!dataUrl || !dataUrl.startsWith("data:image/")) {
+        console.error("Invalid data URL format:", dataUrl?.substring(0, 50));
+        reject(new Error("Invalid image data format"));
+        return;
+      }
+      
+      const img = new Image();
+      img.onload = () => {
+        try {
+          // Validate image dimensions
+          if (img.width === 0 || img.height === 0) {
+            console.error("Invalid image dimensions:", img.width, img.height);
+            reject(new Error("Invalid image dimensions"));
+            return;
+          }
+          
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+
+          // Ensure minimum dimensions
+          if (width < 1 || height < 1) {
+            console.error("Compressed dimensions too small:", width, height);
+            reject(new Error("Image too small to compress"));
+            return;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          
+          if (!ctx) {
+            console.error("Failed to get canvas context for compression");
+            reject(new Error("Failed to compress image"));
+            return;
+          }
+          
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL("image/jpeg", quality);
+          
+          // Validate compressed output
+          if (!compressed || !compressed.startsWith("data:image/jpeg")) {
+            console.error("Compression produced invalid data URL");
+            reject(new Error("Compression failed"));
+            return;
+          }
+          
+          console.log("Image compressed successfully, size:", compressed.length, "bytes");
+          resolve(compressed);
+        } catch (error) {
+          console.error("Error during image compression:", error);
+          reject(error);
+        }
+      };
+      
+      img.onerror = (error) => {
+        console.error("Error loading image for compression:", error);
+        reject(new Error("Failed to load image"));
+      };
+      
+      img.src = dataUrl;
+    });
+  };
+
+  const analyzeFood = async (imageData: string) => {
+    setIsAnalyzing(true);
+    setAiEstimate(null);
+    try {
+      // Validate input image data
+      if (!imageData || !imageData.startsWith("data:image/")) {
+        console.error("Invalid image data format in analyzeFood:", imageData?.substring(0, 50));
+        alert("Invalid image format. Please try capturing the photo again.");
+        setIsAnalyzing(false);
+        return;
+      }
+      
+      let compressedImage: string;
+      try {
+        // Use small size for mobile to avoid WebView memory crash
+        compressedImage = await compressImage(imageData, 600, 0.5);
+        
+        // Validate compressed image
+        if (!compressedImage || !compressedImage.startsWith("data:image/jpeg")) {
+          console.error("Compression failed, using original image");
+          compressedImage = imageData;
+        }
+      } catch (compressError) {
+        console.error("Image compression failed, using original:", compressError);
+        // Fallback to original image if compression fails
+        compressedImage = imageData;
+      }
+      
+      // Final validation before sending
+      if (!compressedImage || !compressedImage.startsWith("data:image/")) {
+        console.error("Final validation failed - invalid image format");
+        alert("Invalid image format. Please try capturing the photo again.");
+        setIsAnalyzing(false);
+        return;
+      }
+      
+      console.log("Sending image to API, size:", compressedImage.length, "bytes");
+
+      // Use Railway backend if available (where API keys are configured), else Vercel /api/food-estimate
+      let railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || "";
+      if (railwayUrl && !railwayUrl.startsWith("http://") && !railwayUrl.startsWith("https://")) {
+        railwayUrl = `https://${railwayUrl}`;
+      }
+      railwayUrl = railwayUrl.replace(/\/+$/, "");
+      const apiUrl = railwayUrl ? `${railwayUrl}/api/food-estimate` : "/api/food-estimate";
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s timeout
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageData: compressedImage,
+          label: foodToScan || "Unknown meal",
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      const text = await response.text();
+
+      // Try to parse as JSON even if content-type is wrong (some servers send JSON with wrong headers)
+      let data: { estimate?: unknown; error?: string };
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        if (text.includes("OPENAI_API_KEY") || text.includes("API key")) {
+          throw new Error("OpenAI API key is not configured.");
+        }
+        const snippet = text.slice(0, 150).replace(/\s+/g, " ");
+        throw new Error(
+          `Server returned an invalid response (${response.status}). ${snippet ? `Response: ${snippet}...` : "Empty or non-JSON response."}`
+        );
+      }
+
+      if (response.status === 0) {
+        throw new Error("Request blocked (check CORS or network). Ensure Railway allows requests from your app.");
+      }
+      if (!response.ok) {
+        const err = (data as { error?: string }).error;
+        if (response.status === 413) {
+          throw new Error("Image too large. Try a smaller photo.");
+        }
+        throw new Error(err || `Server error (${response.status}). Please try again.`);
+      }
+
+      const estimate = data.estimate as { name: string; calories: number; protein: number; carbs: number; fats: number } | undefined;
+      if (!estimate || !estimate.name || typeof estimate.calories !== "number") {
+        throw new Error("No estimate data received");
+      }
+
+      setCapturedImage(compressedImage);
+      setAiEstimate(estimate);
+      setShowAddMeal(true); // Open Add Meal modal so user sees the result and can add it
+    } catch (error: any) {
+      console.error("AI food analysis failed", error);
+      const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || "";
+      let msg = error?.message || "Unable to analyze this photo right now. Please try again.";
+      if (error?.name === "AbortError") {
+        msg = "Request timed out. Check your connection and try again. If using Vercel free tier, the 10s limit may be too short—consider using Railway for the API.";
+      } else if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("Load failed")) {
+        msg = "Network error. Check your internet connection and try again.";
+      } else if (msg.includes("API key") || msg.includes("OPENAI") || msg.includes("configured")) {
+        msg += railwayUrl
+          ? "\n\nEnsure OPENAI_API_KEY is set in your Railway project environment variables."
+          : "\n\nAdd OPENAI_API_KEY to Vercel env vars, or set NEXT_PUBLIC_RAILWAY_API_URL to use Railway backend.";
+      }
+      alert(msg);
+      setCapturedImage(null);
+      setAiEstimate(null);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const useAiEstimate = () => {
+    if (aiEstimate) {
+      // Add meal directly from AI estimate
+      setMeals([
+        ...meals,
+        {
+          id: Date.now().toString(),
+          name: aiEstimate.name,
+          calories: aiEstimate.calories,
+          protein: aiEstimate.protein,
+          carbs: aiEstimate.carbs,
+          fats: aiEstimate.fats,
+          sugar: 0,
+          sodium: 0,
+          fiber: 0,
+          time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
+          imageUrl: capturedImage || undefined,
+        },
+      ]);
+      setNewMeal({ name: "", calories: "", protein: "", carbs: "", fats: "", sugar: "", sodium: "", fiber: "" });
+      setShowAddMeal(false);
+      setCapturedImage(null);
+      setAiEstimate(null);
+    }
+  };
+
   const handleAddMeal = () => {
     if (newMeal.name && newMeal.calories) {
       setMeals([
@@ -938,10 +1262,13 @@ export default function NutritionPage() {
           sodium: parseInt(newMeal.sodium) || 0,
           fiber: parseInt(newMeal.fiber) || 0,
           time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
+          imageUrl: capturedImage || undefined,
         },
       ]);
       setNewMeal({ name: "", calories: "", protein: "", carbs: "", fats: "", sugar: "", sodium: "", fiber: "" });
       setShowAddMeal(false);
+      setCapturedImage(null);
+      setAiEstimate(null);
     }
   };
 
@@ -1123,8 +1450,8 @@ Provide a helpful, conversational response.`;
               onClick={() => setShowAddMeal(true)}
               className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-xl text-xs font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 flex items-center gap-1.5"
             >
-              <Plus className="w-3.5 h-3.5" />
-              Add Meal
+              <Camera className="w-3.5 h-3.5" />
+              Add/Scan
             </button>
           </div>
         </div>
@@ -1341,14 +1668,52 @@ Provide a helpful, conversational response.`;
               <h2 className="text-lg font-semibold">Add Meal</h2>
                     <button
                       onClick={() => {
-                        setShowAddMeal(false);
-                        setNewMeal({ name: "", calories: "", protein: "", carbs: "", fats: "", sugar: "", sodium: "", fiber: "" });
+                  setShowAddMeal(false);
+                  setNewMeal({ name: "", calories: "", protein: "", carbs: "", fats: "", sugar: "", sodium: "", fiber: "" });
+                        setCapturedImage(null);
+                        setAiEstimate(null);
                       }}
                 className="text-white/40 hover:text-white"
                     >
                 <X className="w-5 h-5" />
                     </button>
                   </div>
+
+            {aiEstimate && (
+              <div className="mb-4 p-3 bg-[#0ddfc8]/10 rounded-lg border border-[#14f1d9]/20">
+                <p className="text-sm font-semibold text-[#14f1d9] mb-2">AI Analysis Result</p>
+                <p className="text-sm font-medium text-white mb-1">{aiEstimate.name}</p>
+                <p className="text-xs text-gray-400 mb-2">
+                  {aiEstimate.calories} kcal · P: {aiEstimate.protein}g · C: {aiEstimate.carbs}g · F: {aiEstimate.fats}g
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={useAiEstimate}
+                    className="flex-1 py-2 bg-[#14f1d9] text-black rounded-lg text-sm font-semibold hover:bg-[#0ddfc8] transition-colors"
+                  >
+                    Add to Meals
+                  </button>
+                  <button
+                    onClick={() => {
+                      setNewMeal({
+                        name: aiEstimate.name,
+                        calories: aiEstimate.calories.toString(),
+                        protein: aiEstimate.protein.toString(),
+                        carbs: aiEstimate.carbs.toString(),
+                        fats: aiEstimate.fats.toString(),
+                        sugar: "",
+                        sodium: "",
+                        fiber: "",
+                      });
+                      setAiEstimate(null);
+                    }}
+                    className="px-3 py-2 border border-white/20 rounded-lg text-xs text-gray-400 hover:text-white transition-colors"
+                  >
+                    Edit
+                  </button>
+                </div>
+          </div>
+        )}
 
             <div className="space-y-3">
                 <div>
@@ -1434,15 +1799,98 @@ Provide a helpful, conversational response.`;
                   </div>
                 </div>
               <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                    setFoodToScan("");
+                    setShowScanOptions(true);
+                      setShowAddMeal(false);
+                  }}
+                  className="flex-1 py-2.5 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
+                >
+                  <Camera className="w-4 h-4" />
+                  Scan
+                </button>
                 <button
                   onClick={handleAddMeal}
                   className="flex-1 py-2.5 bg-[#14f1d9] text-black rounded-lg font-medium hover:bg-[#0ddfc8] transition-colors text-sm"
-                >
+                  >
                   Add Meal
-                </button>
-              </div>
+                  </button>
+                </div>
               </div>
             </div>
+          </div>
+        )}
+
+      {/* SCAN INTRO MODAL */}
+      {/* SCAN OPTIONS MODAL */}
+      {showScanOptions && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-5 max-w-md w-full border border-white/10">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Scan Food</h2>
+              <button
+                  onClick={() => {
+                  setShowScanOptions(false);
+                    setFoodToScan("");
+                }}
+                className="text-white/40 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+          </div>
+            <input
+              type="text"
+              value={foodToScan}
+              onChange={(e) => setFoodToScan(e.target.value)}
+              placeholder="What are you eating? (optional – improves accuracy)"
+              className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm mb-3 focus:outline-none focus:border-[#14f1d9]"
+            />
+            <div className="space-y-2">
+                <button
+                onClick={openCamera}
+                className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
+                >
+                  <Camera className="w-4 h-4" />
+                Take Photo
+                </button>
+                <button
+                onClick={() => useNativeFoodScan ? triggerNativeFoodScan() : fileInputRef.current?.click()}
+                className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
+                >
+                <Upload className="w-4 h-4" />
+                Upload Photo
+                </button>
+              </div>
+            {/* Native iOS camera input - opens native camera UI */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleCameraCapture}
+              className="hidden"
+            />
+            {/* File upload input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+                    </div>
+                </div>
+              )}
+              
+
+      {/* AI ESTIMATE MODAL */}
+      {isAnalyzing && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 border border-white/10">
+            <p className="text-lg font-semibold mb-2">Analyzing food...</p>
+            <p className="text-sm text-[#9aa7ad]">Please wait</p>
+        </div>
           </div>
         )}
 

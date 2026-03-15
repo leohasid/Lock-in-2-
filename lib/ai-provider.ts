@@ -4,7 +4,7 @@
  *
  * Task routing:
  * - Claude: consultation, reflections, meal-analysis, gym-coach (conversational, analytical)
- * - OpenAI: generate-schedule, generate-plan (structured JSON), ai/general
+ * - OpenAI: food-estimate (vision), generate-schedule, generate-plan (structured JSON), ai/general
  */
 
 import Anthropic from "@anthropic-ai/sdk";
@@ -15,6 +15,7 @@ export type AITaskType =
   | "reflections"
   | "meal-analysis"
   | "gym-coach"
+  | "food-estimate"
   | "generate-schedule"
   | "generate-plan"
   | "general";
@@ -39,6 +40,7 @@ function getPreferredProvider(task: AITaskType): "claude" | "openai" {
     case "meal-analysis":
     case "gym-coach":
       return "claude";
+    case "food-estimate":
     case "generate-schedule":
     case "generate-plan":
     case "general":
@@ -63,6 +65,8 @@ function getClaudeModel(task: AITaskType): string {
 
 function getOpenAIModel(task: AITaskType): string {
   switch (task) {
+    case "food-estimate":
+      return "gpt-4o-mini";
     case "generate-schedule":
     case "generate-plan":
       return "gpt-4o-mini";
