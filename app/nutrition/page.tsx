@@ -1017,10 +1017,11 @@ export default function NutritionPage() {
   const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setShowScanOptions(false);
+      setIsAnalyzing(true);
       const reader = new FileReader();
       reader.onloadend = () => {
         const imageData = reader.result as string;
-        setShowScanOptions(false);
         analyzeFood(imageData);
       };
       reader.readAsDataURL(file);
@@ -1031,10 +1032,11 @@ export default function NutritionPage() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setShowScanOptions(false);
+      setIsAnalyzing(true);
       const reader = new FileReader();
       reader.onloadend = () => {
         const imageData = reader.result as string;
-        setShowScanOptions(false);
         analyzeFood(imageData);
       };
       reader.readAsDataURL(file);
@@ -1941,12 +1943,15 @@ Provide a helpful, conversational response.`;
       {/* AI ESTIMATE MODAL */}
       {isAnalyzing && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 border border-white/10">
-            <p className="text-lg font-semibold mb-2">Analyzing image...</p>
-            <p className="text-sm text-[#9aa7ad]">Please wait</p>
-        </div>
+          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-8 border border-white/10 max-w-sm">
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-12 rounded-full border-2 border-[#14f1d9]/50 border-t-[#14f1d9] animate-spin" />
+            </div>
+            <p className="text-lg font-semibold mb-1 text-center">Analyzing your photo</p>
+            <p className="text-sm text-[#9aa7ad] text-center">AI is analyzing your food for macros...</p>
           </div>
-        )}
+        </div>
+      )}
 
       {/* AI CONSULTATION MODAL */}
       {showAIConsultation && (
