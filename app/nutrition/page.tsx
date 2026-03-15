@@ -1942,7 +1942,7 @@ Provide a helpful, conversational response.`;
       {isAnalyzing && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 border border-white/10">
-            <p className="text-lg font-semibold mb-2">Analyzing food...</p>
+            <p className="text-lg font-semibold mb-2">Analyzing image...</p>
             <p className="text-sm text-[#9aa7ad]">Please wait</p>
         </div>
           </div>

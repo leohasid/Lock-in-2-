@@ -194,7 +194,10 @@ async function callOpenAIVision(options: AIVisionOptions): Promise<string> {
           { type: "text", text: options.prompt },
           {
             type: "image_url",
-            image_url: { url: `data:image/jpeg;base64,${base64}` },
+            image_url: {
+              url: `data:image/jpeg;base64,${base64}`,
+              detail: "low", // 512x512, ~85 tokens - much faster for Vercel serverless
+            },
           },
         ],
       },

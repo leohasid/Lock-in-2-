@@ -323,8 +323,8 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
     }
     
     private func showAnalyzingOverlay() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            let alert = UIAlertController(title: "Analyzing food...", message: "Please wait", preferredStyle: .alert)
+        DispatchQueue.main.async {
+            let alert = UIAlertController(title: "Analyzing image...", message: "Please wait", preferredStyle: .alert)
             self.analyzingAlert = alert
             var vc = self.webView?.window?.rootViewController ?? self.findVC()
             while let presented = vc?.presentedViewController { vc = presented }
@@ -344,22 +344,24 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
     }
     
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-        picker.dismiss(animated: true)
         guard let image = info[.originalImage] as? UIImage else {
+            picker.dismiss(animated: true)
             showErrorAndFinish(message: "No image")
             return
         }
-        // Show native "Analyzing..." immediately so user sees feedback (WebView may reload when returning from picker)
-        showAnalyzingOverlay()
-        let resized = Self.resize(image, maxDimension: 600)
-        guard let jpegData = resized.jpegData(compressionQuality: 0.5) else {
-            hideAnalyzingOverlay()
-            showErrorAndFinish(message: "Failed to compress")
-            return
+        picker.dismiss(animated: true) { [weak self] in
+            guard let self = self else { return }
+            self.showAnalyzingOverlay()
+            let resized = Self.resize(image, maxDimension: 600)
+            guard let jpegData = resized.jpegData(compressionQuality: 0.5) else {
+                self.hideAnalyzingOverlay()
+                self.showErrorAndFinish(message: "Failed to compress")
+                return
+            }
+            let base64 = jpegData.base64EncodedString()
+            let dataUrl = "data:image/jpeg;base64,\(base64)"
+            self.uploadToAPI(dataUrl: dataUrl)
         }
-        let base64 = jpegData.base64EncodedString()
-        let dataUrl = "data:image/jpeg;base64,\(base64)"
-        uploadToAPI(dataUrl: dataUrl)
     }
     
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
@@ -396,10 +398,8 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
                 }
                 if let http = response as? HTTPURLResponse, http.statusCode != 200 {
                     var msg = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
-                    if http.statusCode == 502 {
-                        msg = "The server took too long to respond. Please try again—you can use a smaller photo or try in a moment."
-                    } else if http.statusCode == 504 {
-                        msg = "Request timed out. Please try again with a smaller photo."
+                    if http.statusCode == 502 || http.statusCode == 504 || msg.contains("Application failed to respond") {
+                        msg = "The server took too long to respond. Please try again—use a smaller photo or try in a moment. Tip: Set up Railway for the food API to avoid timeouts."
                     }
                     self.showErrorAndFinish(message: msg)
                     return
