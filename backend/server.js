@@ -130,9 +130,9 @@ For meals: identify items, estimate portions, sum macros. Return ONLY valid JSON
       estimate = {
         name: String(parsed.name || label || 'Unknown meal'),
         calories: Number(parsed.calories || 0),
-        protein: Number(parsed.protein ?? parsed.protein_g || 0),
-        carbs: Number(parsed.carbs ?? parsed.carbs_g || 0),
-        fats: Number(parsed.fats ?? parsed.fat_g || 0),
+        protein: Number((parsed.protein ?? parsed.protein_g) || 0),
+        carbs: Number((parsed.carbs ?? parsed.carbs_g) || 0),
+        fats: Number((parsed.fats ?? parsed.fat_g) || 0),
       };
     }
 
