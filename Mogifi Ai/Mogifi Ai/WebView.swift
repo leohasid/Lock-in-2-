@@ -23,6 +23,7 @@ struct WebView: UIViewRepresentable {
     
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
+        config.processPool = WKProcessPool()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
         // CRITICAL: Use default persistent store so localStorage (onboarding, subscription) persists
@@ -72,6 +73,7 @@ struct WebView: UIViewRepresentable {
         
         var request = URLRequest(url: url)
         request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        request.timeoutInterval = 60
         webView.load(request)
         return webView
     }
@@ -84,6 +86,7 @@ struct WebView: UIViewRepresentable {
         weak var webView: WKWebView?
         private var imagePickerDelegate: ImagePickerDelegate?
         private var foodScanDelegate: FoodScanDelegate?
+        private var isNativeScanInProgress = false
         
         init(isLoading: Binding<Bool>, loadError: Binding<String?>) {
             _isLoading = isLoading
@@ -143,12 +146,17 @@ struct WebView: UIViewRepresentable {
         
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             isLoading = false
-            loadError = error.localizedDescription
+            // Don't show load error during native food scan (WebView may get spurious failures when camera/picker opens)
+            if !isNativeScanInProgress {
+                loadError = error.localizedDescription
+            }
         }
         
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             isLoading = false
-            loadError = error.localizedDescription
+            if !isNativeScanInProgress {
+                loadError = error.localizedDescription
+            }
         }
         
         // MARK: - WKUIDelegate - Required for file input / camera to work
@@ -254,8 +262,11 @@ struct WebView: UIViewRepresentable {
         
         private func startNativeFoodScan(apiUrl: String, label: String, callbackId: String) {
             guard let vc = findViewController(from: webView ?? UIView()) else { return }
+            isNativeScanInProgress = true
             let delegate = FoodScanDelegate(apiUrl: apiUrl, label: label, callbackId: callbackId, webView: webView) { [weak self] in
                 self?.foodScanDelegate = nil
+                self?.isNativeScanInProgress = false
+                self?.loadError = nil  // Clear any spurious load error from during scan
             }
             foodScanDelegate = delegate
             let picker = UIImagePickerController()
@@ -277,8 +288,9 @@ struct WebView: UIViewRepresentable {
                     vc.present(picker, animated: true)
                 })
                 alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
-                    self?.foodScanDelegate?.sendResult(error: "Cancelled")
-                    self?.foodScanDelegate = nil
+                    let d = self?.foodScanDelegate
+                    d?.sendResult(error: "Cancelled")
+                    d?.finish()
                 })
                 if let popover = alert.popoverPresentationController { popover.sourceView = vc.view; popover.sourceRect = CGRect(x: vc.view.bounds.midX, y: vc.view.bounds.midY, width: 0, height: 0) }
                 vc.present(alert, animated: true)
@@ -305,17 +317,19 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
         self.onFinish = onFinish
     }
     
+    func finish() {
+        onFinish()
+    }
+    
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
         picker.dismiss(animated: true)
         guard let image = info[.originalImage] as? UIImage else {
-            sendResult(error: "No image")
-            onFinish()
+            showErrorAndFinish(message: "No image")
             return
         }
         let resized = Self.resize(image, maxDimension: 600)
         guard let jpegData = resized.jpegData(compressionQuality: 0.5) else {
-            sendResult(error: "Failed to compress")
-            onFinish()
+            showErrorAndFinish(message: "Failed to compress")
             return
         }
         let base64 = jpegData.base64EncodedString()
@@ -326,13 +340,12 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
         picker.dismiss(animated: true)
         sendResult(error: "Cancelled")
-        onFinish()
+        finish()
     }
     
     private func uploadToAPI(dataUrl: String) {
         guard let url = URL(string: apiUrl) else {
-            sendResult(error: "Invalid API URL")
-            onFinish()
+            showErrorAndFinish(message: "Invalid API URL")
             return
         }
         var req = URLRequest(url: url)
@@ -345,31 +358,28 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
             DispatchQueue.main.async {
                 guard let self = self else { return }
                 if let err = err {
-                    self.sendResult(error: err.localizedDescription)
-                    self.onFinish()
+                    self.showErrorAndFinish(message: err.localizedDescription)
                     return
                 }
                 guard let data = data else {
-                    self.sendResult(error: "No response")
-                    self.onFinish()
+                    self.showErrorAndFinish(message: "No response")
                     return
                 }
                 if let http = response as? HTTPURLResponse, http.statusCode != 200 {
                     let msg = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
-                    self.sendResult(error: msg)
-                    self.onFinish()
+                    self.showErrorAndFinish(message: msg)
                     return
                 }
                 if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let estimate = json["estimate"] as? [String: Any] {
                     self.showResultAndAddOption(estimate: estimate)
+                    // onFinish called when user taps Add/Dismiss on alert
                 } else if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                           let errMsg = json["error"] as? String {
-                    self.sendResult(error: errMsg)
+                    self.showErrorAndFinish(message: errMsg)
                 } else {
-                    self.sendResult(error: "Invalid response")
+                    self.showErrorAndFinish(message: "Invalid response")
                 }
-                self.onFinish()
             }
         }.resume()
     }
@@ -385,9 +395,11 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
         alert.addAction(UIAlertAction(title: "Add to meals", style: .default) { [weak self] _ in
             self?.injectMealToWeb(estimate: estimate)
             self?.notifyScanComplete()
+            self?.onFinish()
         })
         alert.addAction(UIAlertAction(title: "Dismiss", style: .cancel) { [weak self] _ in
             self?.notifyScanComplete()
+            self?.onFinish()
         })
         DispatchQueue.main.async {
             var vc = self.webView?.window?.rootViewController ?? self.findVC()
@@ -443,6 +455,19 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
         let b64 = jsonData.base64EncodedString()
         let jsSafe = "if(window.__mogifiFoodScanCallbacks&&window.__mogifiFoodScanCallbacks['\(callbackId)']){try{var d=JSON.parse(atob('\(b64)'));window.__mogifiFoodScanCallbacks['\(callbackId)'](d);}catch(e){window.__mogifiFoodScanCallbacks['\(callbackId)']({error:String(e)});}delete window.__mogifiFoodScanCallbacks['\(callbackId)'];}"
         webView?.evaluateJavaScript(jsSafe)
+    }
+    
+    private func showErrorAndFinish(message: String) {
+        sendResult(error: message)
+        let alert = UIAlertController(title: "Scan failed", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { [weak self] _ in
+            self?.onFinish()
+        })
+        DispatchQueue.main.async {
+            var vc = self.webView?.window?.rootViewController ?? self.findVC()
+            while let presented = vc?.presentedViewController { vc = presented }
+            vc?.present(alert, animated: true)
+        }
     }
     
     private static func resize(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
