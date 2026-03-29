@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles, Plus, PencilLine, Calendar } from "lucide-react";
 import { toLocalDateString } from "@/lib/date-utils";
 
 const SWIPE_THRESHOLD = 80;
@@ -370,16 +370,22 @@ export default function WorkoutsPage() {
   };
 
   const handleAddWorkout = () => {
-    // Find the highest option number
-    const optionNumbers = workoutOptions.map(opt => {
+    const optionNumbers = workoutOptions.map((opt) => {
       const match = opt.name.match(/Option (\d+)/);
-      return match ? parseInt(match[1]) : 0;
+      return match ? parseInt(match[1], 10) : 0;
     });
-    const nextNumber = optionNumbers.length > 0 ? Math.max(...optionNumbers) + 1 : workoutOptions.length + 1;
-    
+    const maxFromName =
+      optionNumbers.length > 0 ? Math.max(...optionNumbers, 0) : 0;
+    const maxFromId = workoutOptions.reduce((acc, o) => {
+      const m = o.id.match(/^option(\d+)$/);
+      return m ? Math.max(acc, parseInt(m[1], 10)) : acc;
+    }, 0);
+    const nextNumber = Math.max(maxFromName, maxFromId, workoutOptions.length) + 1;
+
+    const newId = `option${nextNumber}`;
     const newOption: WorkoutOption = {
-      id: `option${nextNumber}`,
-      name: `Option ${nextNumber}`,
+      id: newId,
+      name: `My workout ${nextNumber}`,
       days: {
         day1: [],
         day2: [],
@@ -391,12 +397,13 @@ export default function WorkoutsPage() {
         day3: "Day 3",
       },
     };
-    
+
     const updatedOptions = [...workoutOptions, newOption];
     setWorkoutOptions(updatedOptions);
     if (typeof window !== "undefined") {
       localStorage.setItem("workoutOptions", JSON.stringify(updatedOptions));
     }
+    router.push(`/gym/workouts/${newId}`);
   };
 
   return (
@@ -405,27 +412,41 @@ export default function WorkoutsPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <button
-            onClick={() => {
-              if (selectedWorkoutOptions.length > 0) {
-                setShowScheduleModal(true);
-              } else {
-                router.push("/gym/workout");
-              }
-            }}
+            type="button"
+            onClick={() => router.push("/gym/workout")}
             className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            aria-label="Back to workout"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
-            Select Workout Option
+          <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center px-1">
+            Workout plans
           </h1>
           <button
+            type="button"
             onClick={handleAddWorkout}
-            className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-lg text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 bg-teal-400 hover:bg-teal-300 text-black rounded-lg text-xs font-bold transition-colors shrink-0"
           >
-            Add Workout
+            <Plus className="w-4 h-4" />
+            New
           </button>
         </div>
+
+        <p className="text-xs text-gray-400 mb-3 leading-relaxed">
+          <span className="text-teal-400 font-medium">Tap a row</span> to add or edit exercises.&nbsp;
+          <span className="text-white/80 font-medium">Use</span> adds the plan to your week (up to 10). Swipe left to delete.
+        </p>
+
+        {selectedWorkoutOptions.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setShowScheduleModal(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 mb-4 rounded-xl bg-white/5 border border-white/15 text-sm font-medium text-teal-300 hover:bg-white/10 transition-colors"
+          >
+            <Calendar className="w-4 h-4 shrink-0" />
+            Which days do you train?
+          </button>
+        ) : null}
 
         {/* Workout Options - swipe left to delete */}
         <div className="grid grid-cols-1 gap-3">
@@ -438,8 +459,22 @@ export default function WorkoutsPage() {
               onUse={() => handleUseOption(option.id)}
               onRemove={() => handleRemoveOption(option.id)}
             >
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-white">{option.name}</h3>
+              <div className="flex-1 min-w-0 flex items-center gap-2">
+                <PencilLine className="w-3.5 h-3.5 text-gray-500 shrink-0" aria-hidden />
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-white truncate">{option.name}</h3>
+                  {(() => {
+                    const n =
+                      (option.days?.day1?.length ?? 0) +
+                      (option.days?.day2?.length ?? 0) +
+                      (option.days?.day3?.length ?? 0);
+                    return (
+                      <p className="text-[10px] text-gray-500 mt-0.5">
+                        {n === 0 ? "No exercises — tap to build" : `${n} exercise${n === 1 ? "" : "s"} across 3 days`}
+                      </p>
+                    );
+                  })()}
+                </div>
               </div>
             </SwipeableRow>
           ))}

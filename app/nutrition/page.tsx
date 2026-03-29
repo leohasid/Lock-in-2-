@@ -661,13 +661,6 @@ export default function NutritionPage() {
   const [aiConsultationResponse, setAiConsultationResponse] = useState("");
   const [isConsultingAI, setIsConsultingAI] = useState(false);
   const [activeTab, setActiveTab] = useState<"macros" | "recipes" | "favourites">("macros");
-  const [aiEstimate, setAiEstimate] = useState<{
-    name: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fats: number;
-  } | null>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newMeal, setNewMeal] = useState({
@@ -998,12 +991,22 @@ export default function NutritionPage() {
         return;
       }
       if (result.estimate) {
+        const e = result.estimate;
         setCapturedImage(null);
-        setAiEstimate(result.estimate);
+        setNewMeal({
+          name: e.name || "",
+          calories: String(e.calories ?? ""),
+          protein: String(e.protein ?? ""),
+          carbs: String(e.carbs ?? ""),
+          fats: String(e.fats ?? ""),
+          sugar: "",
+          sodium: "",
+          fiber: "",
+        });
         setShowAddMeal(true);
       }
     };
-    // Don't set isAnalyzing here - wait for mogifiScanUploadStarted when image is picked
+    setIsAnalyzing(true);
     setShowScanOptions(false);
     (window as any).webkit.messageHandlers.mogifiFoodScan.postMessage({
       action: "scan",
@@ -1118,7 +1121,6 @@ export default function NutritionPage() {
 
   const analyzeFood = async (imageData: string) => {
     setIsAnalyzing(true);
-    setAiEstimate(null);
     try {
       // Validate input image data
       if (!imageData || !imageData.startsWith("data:image/")) {
@@ -1212,8 +1214,17 @@ export default function NutritionPage() {
       }
 
       setCapturedImage(compressedImage);
-      setAiEstimate(estimate);
-      setShowAddMeal(true); // Open Add Meal modal so user sees the result and can add it
+      setNewMeal({
+        name: estimate.name || "",
+        calories: String(estimate.calories ?? ""),
+        protein: String(estimate.protein ?? ""),
+        carbs: String(estimate.carbs ?? ""),
+        fats: String(estimate.fats ?? ""),
+        sugar: "",
+        sodium: "",
+        fiber: "",
+      });
+      setShowAddMeal(true);
     } catch (error: any) {
       console.error("AI food analysis failed", error);
       const railwayUrl = process.env.NEXT_PUBLIC_RAILWAY_API_URL || "";
@@ -1229,35 +1240,8 @@ export default function NutritionPage() {
       }
       alert(msg);
       setCapturedImage(null);
-      setAiEstimate(null);
     } finally {
       setIsAnalyzing(false);
-    }
-  };
-
-  const useAiEstimate = () => {
-    if (aiEstimate) {
-      // Add meal directly from AI estimate
-      setMeals([
-        ...meals,
-        {
-          id: Date.now().toString(),
-          name: aiEstimate.name,
-          calories: aiEstimate.calories,
-          protein: aiEstimate.protein,
-          carbs: aiEstimate.carbs,
-          fats: aiEstimate.fats,
-          sugar: 0,
-          sodium: 0,
-          fiber: 0,
-          time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
-          imageUrl: capturedImage || undefined,
-        },
-      ]);
-      setNewMeal({ name: "", calories: "", protein: "", carbs: "", fats: "", sugar: "", sodium: "", fiber: "" });
-      setShowAddMeal(false);
-      setCapturedImage(null);
-      setAiEstimate(null);
     }
   };
 
@@ -1282,7 +1266,6 @@ export default function NutritionPage() {
       setNewMeal({ name: "", calories: "", protein: "", carbs: "", fats: "", sugar: "", sodium: "", fiber: "" });
       setShowAddMeal(false);
       setCapturedImage(null);
-      setAiEstimate(null);
     }
   };
 
@@ -1685,7 +1668,6 @@ Provide a helpful, conversational response.`;
                   setShowAddMeal(false);
                   setNewMeal({ name: "", calories: "", protein: "", carbs: "", fats: "", sugar: "", sodium: "", fiber: "" });
                         setCapturedImage(null);
-                        setAiEstimate(null);
                       }}
                 className="text-white/40 hover:text-white"
                     >
@@ -1693,56 +1675,9 @@ Provide a helpful, conversational response.`;
                     </button>
                   </div>
 
-            {aiEstimate && (
-              <div className="mb-4 p-4 bg-[#0ddfc8]/10 rounded-lg border border-[#14f1d9]/20">
-                <p className="text-sm font-semibold text-[#14f1d9] mb-2">AI Analysis Result</p>
-                <p className="text-sm font-medium text-white mb-3">{aiEstimate.name}</p>
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  <div className="bg-black/20 rounded-lg p-2">
-                    <p className="text-[10px] text-gray-400 uppercase">Calories</p>
-                    <p className="text-sm font-semibold text-white">{aiEstimate.calories} kcal</p>
-                  </div>
-                  <div className="bg-black/20 rounded-lg p-2">
-                    <p className="text-[10px] text-gray-400 uppercase">Protein</p>
-                    <p className="text-sm font-semibold text-white">{aiEstimate.protein}g</p>
-                  </div>
-                  <div className="bg-black/20 rounded-lg p-2">
-                    <p className="text-[10px] text-gray-400 uppercase">Carbs</p>
-                    <p className="text-sm font-semibold text-white">{aiEstimate.carbs}g</p>
-                  </div>
-                  <div className="bg-black/20 rounded-lg p-2">
-                    <p className="text-[10px] text-gray-400 uppercase">Fats</p>
-                    <p className="text-sm font-semibold text-white">{aiEstimate.fats}g</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={useAiEstimate}
-                    className="flex-1 py-2.5 bg-[#14f1d9] text-black rounded-lg text-sm font-semibold hover:bg-[#0ddfc8] transition-colors"
-                  >
-                    Add to Meals
-                  </button>
-                  <button
-                    onClick={() => {
-                      setNewMeal({
-                        name: aiEstimate.name,
-                        calories: aiEstimate.calories.toString(),
-                        protein: aiEstimate.protein.toString(),
-                        carbs: aiEstimate.carbs.toString(),
-                        fats: aiEstimate.fats.toString(),
-                        sugar: "",
-                        sodium: "",
-                        fiber: "",
-                      });
-                      setAiEstimate(null);
-                    }}
-                    className="px-3 py-2.5 border border-white/20 rounded-lg text-xs text-gray-400 hover:text-white transition-colors"
-                  >
-                    Edit
-                  </button>
-                </div>
-              </div>
-            )}
+            <p className="text-xs text-gray-500 mb-3 -mt-1">
+              Use Scan to auto-fill from a photo, or type below. Adjust any values, then Add Meal.
+            </p>
 
             <div className="space-y-3">
                 <div>
@@ -1947,7 +1882,7 @@ Provide a helpful, conversational response.`;
             <div className="flex justify-center mb-4">
               <div className="w-12 h-12 rounded-full border-2 border-[#14f1d9]/50 border-t-[#14f1d9] animate-spin" />
             </div>
-            <p className="text-lg font-semibold mb-1 text-center">Analyzing your photo</p>
+            <p className="text-lg font-semibold mb-1 text-center">Analyzing food</p>
             <p className="text-sm text-[#9aa7ad] text-center">AI is analyzing your food for macros...</p>
           </div>
         </div>

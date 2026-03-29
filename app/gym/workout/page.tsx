@@ -1274,21 +1274,18 @@ export default function WorkoutPage() {
           </div>
         ) : (
           <>
-        {/* Header - Workout plan | AI Coach */}
-        <div className="flex items-center justify-between gap-3 mb-2">
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href="/gym/workouts"
-              className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] font-medium hover:bg-white/10 transition-colors"
-            >
-              <Dumbbell className="w-4 h-4 text-teal-400" />
-              <span className="text-gray-400">Workout plan</span>
-              <ChevronRight className="w-4 h-4 text-gray-500" />
-            </Link>
-          </div>
+        {/* Content-width only (no flex-1); same compact height as before */}
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <Link
+            href="/gym/workouts"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] font-medium text-gray-300 hover:bg-white/10 transition-colors shrink-0"
+          >
+            <Dumbbell className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+            <span>Workout plans</span>
+          </Link>
           <Link
             href="/gym/ai-coach"
-            className="px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-[11px] font-medium transition-colors shrink-0 inline-block"
+            className="inline-flex items-center px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white rounded-lg text-[11px] font-medium transition-colors shrink-0"
           >
             AI Coach
           </Link>
@@ -1332,16 +1329,44 @@ export default function WorkoutPage() {
 
         {/* Exercises List */}
         {currentDayWorkoutName === "Rest Day" ? (
-          <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-6 border border-white/10 text-center">
-            <div className="text-4xl mb-2">😴</div>
-            <p className="text-base font-bold text-gray-300 mb-1">Rest Day</p>
-            <p className="text-gray-400 text-xs">Take a break and recover!</p>
+          <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-6 border border-white/10 text-center space-y-4">
+            <div className="text-4xl">😴</div>
+            <div>
+              <p className="text-base font-bold text-gray-300 mb-1">Rest Day</p>
+              <p className="text-gray-400 text-xs">Take a break and recover. Want to train instead?</p>
+            </div>
+            <Link
+              href="/gym/workouts"
+              className="block w-full py-3 rounded-xl bg-white/10 border border-white/15 text-sm font-semibold text-white hover:bg-white/15 transition-colors"
+            >
+              Open workout plans
+            </Link>
           </div>
         ) : (currentDayExercises ?? []).length === 0 ? (
-          <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-6 border border-white/10 text-center">
-            <div className="text-4xl mb-2">💪</div>
-            <p className="text-sm font-bold text-gray-300 mb-1">No exercises for {currentDayWorkoutName}</p>
-            <p className="text-gray-400 text-[10px]">Add your own workout or use AI to get started!</p>
+          <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-6 border border-white/10 space-y-4">
+            <div className="text-center">
+              <div className="text-4xl mb-2">💪</div>
+              <p className="text-sm font-bold text-gray-200 mb-1">No exercises yet for {currentDayWorkoutName}</p>
+              <p className="text-gray-400 text-xs leading-relaxed">
+                Open a workout plan, add exercises, then pick it with <span className="text-teal-400">Use</span> on the plans screen.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Link
+                href="/gym/workouts"
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-teal-400 hover:bg-teal-300 text-black text-sm font-bold transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                Add exercises to a plan
+              </Link>
+              <Link
+                href="/gym/ai-coach"
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-white/5 border border-white/15 text-sm font-semibold text-teal-300 hover:bg-white/10 transition-colors"
+              >
+                <Sparkles className="w-4 h-4" />
+                Ask AI Coach for a plan
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="space-y-2 pb-24">
