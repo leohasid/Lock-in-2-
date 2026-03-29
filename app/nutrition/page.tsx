@@ -967,7 +967,12 @@ export default function NutritionPage() {
     }
   };
 
-  const useNativeFoodScan = typeof window !== "undefined" && !!(window as any).webkit?.messageHandlers?.mogifiFoodScan;
+  // Food scan: default = web only (`analyzeFood` → Railway or `/api/food-estimate` on Vercel).
+  // Set NEXT_PUBLIC_USE_NATIVE_FOOD_SCAN=true in Vercel only if you want the iOS Swift camera bridge.
+  const useNativeFoodScan =
+    typeof window !== "undefined" &&
+    process.env.NEXT_PUBLIC_USE_NATIVE_FOOD_SCAN === "true" &&
+    !!(window as any).webkit?.messageHandlers?.mogifiFoodScan;
 
   const openCamera = () => {
     if (useNativeFoodScan) {

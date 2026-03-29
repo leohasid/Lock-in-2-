@@ -312,31 +312,12 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
     let callbackId: String
     weak var webView: WKWebView?
     let onFinish: () -> Void
-    private var analyzingAlert: UIAlertController?
-    
     init(apiUrl: String, label: String, callbackId: String, webView: WKWebView?, onFinish: @escaping () -> Void) {
         self.apiUrl = apiUrl
         self.label = label
         self.callbackId = callbackId
         self.webView = webView
         self.onFinish = onFinish
-    }
-    
-    private func showAnalyzingOverlay() {
-        DispatchQueue.main.async {
-            let alert = UIAlertController(title: "Analyzing image...", message: "Please wait", preferredStyle: .alert)
-            self.analyzingAlert = alert
-            var vc = self.webView?.window?.rootViewController ?? self.findVC()
-            while let presented = vc?.presentedViewController { vc = presented }
-            vc?.present(alert, animated: true)
-        }
-    }
-    
-    private func hideAnalyzingOverlay() {
-        DispatchQueue.main.async {
-            self.analyzingAlert?.dismiss(animated: true)
-            self.analyzingAlert = nil
-        }
     }
     
     func finish() {
@@ -351,10 +332,9 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
         }
         picker.dismiss(animated: true) { [weak self] in
             guard let self = self else { return }
-            self.showAnalyzingOverlay()
+            // Web shows “Analyzing food”; avoid a second native alert (was easy to stack and feel “stuck”).
             let resized = Self.resize(image, maxDimension: 600)
             guard let jpegData = resized.jpegData(compressionQuality: 0.5) else {
-                self.hideAnalyzingOverlay()
                 self.showErrorAndFinish(message: "Failed to compress")
                 return
             }
@@ -374,7 +354,6 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
         // Notify web that upload started (so "Analyzing" shows only after image is picked)
         webView?.evaluateJavaScript("window.dispatchEvent(new CustomEvent('mogifiScanUploadStarted'));")
         guard let url = URL(string: apiUrl) else {
-            hideAnalyzingOverlay()
             showErrorAndFinish(message: "Invalid API URL")
             return
         }
@@ -387,7 +366,6 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
         URLSession.shared.dataTask(with: req) { [weak self] data, response, err in
             DispatchQueue.main.async {
                 guard let self = self else { return }
-                self.hideAnalyzingOverlay()
                 if let err = err {
                     self.showErrorAndFinish(message: err.localizedDescription)
                     return
@@ -406,8 +384,10 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
                 }
                 if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let estimate = json["estimate"] as? [String: Any] {
-                    self.showResultAndAddOption(estimate: estimate)
-                    // onFinish called when user taps Add/Dismiss on alert
+                    // Hand off to the web layer: fill Add Meal form + clear “Analyzing” (no native “Food scanned” sheet).
+                    self.sendResult(estimate: estimate)
+                    self.notifyScanComplete()
+                    self.finish()
                 } else if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                           let errMsg = json["error"] as? String {
                     self.showErrorAndFinish(message: errMsg)
@@ -416,30 +396,6 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
                 }
             }
         }.resume()
-    }
-    
-    func showResultAndAddOption(estimate: [String: Any]) {
-        let name = estimate["name"] as? String ?? "Meal"
-        let cal = (estimate["calories"] as? Int) ?? Int(estimate["calories"] as? Double ?? 0)
-        let pro = (estimate["protein"] as? Int) ?? Int(estimate["protein"] as? Double ?? 0)
-        let carb = (estimate["carbs"] as? Int) ?? Int(estimate["carbs"] as? Double ?? 0)
-        let fat = (estimate["fats"] as? Int) ?? Int(estimate["fats"] as? Double ?? 0)
-        let msg = "\(name)\n\nCalories: \(cal) kcal\nProtein: \(pro)g\nCarbs: \(carb)g\nFats: \(fat)g"
-        let alert = UIAlertController(title: "Food scanned", message: msg, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Add to meals", style: .default) { [weak self] _ in
-            self?.injectMealToWeb(estimate: estimate)
-            self?.notifyScanComplete()
-            self?.onFinish()
-        })
-        alert.addAction(UIAlertAction(title: "Dismiss", style: .cancel) { [weak self] _ in
-            self?.notifyScanComplete()
-            self?.onFinish()
-        })
-        DispatchQueue.main.async {
-            var vc = self.webView?.window?.rootViewController ?? self.findVC()
-            while let presented = vc?.presentedViewController { vc = presented }
-            vc?.present(alert, animated: true)
-        }
     }
     
     private func notifyScanComplete() {
@@ -453,27 +409,6 @@ private class FoodScanDelegate: NSObject, UIImagePickerControllerDelegate, UINav
             v = r.superview
         }
         return nil
-    }
-    
-    private func injectMealToWeb(estimate: [String: Any]) {
-        let name = estimate["name"] as? String ?? "Meal"
-        let cal = estimate["calories"] as? Int ?? Int(estimate["calories"] as? Double ?? 0)
-        let pro = estimate["protein"] as? Int ?? Int(estimate["protein"] as? Double ?? 0)
-        let carb = estimate["carbs"] as? Int ?? Int(estimate["carbs"] as? Double ?? 0)
-        let fat = estimate["fats"] as? Int ?? Int(estimate["fats"] as? Double ?? 0)
-        let detail: [String: Any] = ["name": name, "calories": cal, "protein": pro, "carbs": carb, "fats": fat]
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: detail) else { return }
-        let b64 = jsonData.base64EncodedString()
-        let js = "var d=JSON.parse(atob('\(b64)'));window.dispatchEvent(new CustomEvent('mogifiMealAdded',{detail:d}));"
-        webView?.evaluateJavaScript(js) { _, err in
-            if err != nil {
-                DispatchQueue.main.async {
-                    let a = UIAlertController(title: "Add manually", message: "\(name): \(cal) cal", preferredStyle: .alert)
-                    a.addAction(UIAlertAction(title: "OK", style: .default))
-                    self.findVC()?.present(a, animated: true)
-                }
-            }
-        }
     }
     
     func sendResult(estimate: [String: Any]? = nil, error: String? = nil) {
