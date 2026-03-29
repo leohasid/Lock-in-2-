@@ -470,7 +470,7 @@ export default function WorkoutsPage() {
                       (option.days?.day3?.length ?? 0);
                     return (
                       <p className="text-[10px] text-gray-500 mt-0.5">
-                        {n === 0 ? "No exercises — tap to build" : `${n} exercise${n === 1 ? "" : "s"} across 3 days`}
+                        {n === 0 ? "No exercises — tap to build" : `${n} exercise${n === 1 ? "" : "s"} in this plan`}
                       </p>
                     );
                   })()}

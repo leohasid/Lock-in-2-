@@ -455,45 +455,34 @@ export default function WorkoutPage() {
     }
   }, []);
 
-  // Get which day of the option (day1/day2/day3) applies for this date based on weekday rotation
-  const getScheduledDayKey = (optionId: string, date: Date): "day1" | "day2" | "day3" => {
-    const dayOfWeek = date.getDay();
-    const days = (manualScheduleByPlan[optionId] ?? { days: [] }).days || [];
-    const sortedDays = [...days].sort((a, b) => a - b);
-    const index = sortedDays.indexOf(dayOfWeek);
-    if (index < 0) return "day1";
-    if (index === 0) return "day1";
-    if (index === 1) return "day2";
-    return "day3";
+  // Calendar is Mon–Sun: user assigns a saved *plan* (or Rest) per weekday. That plan’s exercise list is what we load.
+  // (Data file still uses legacy `days.day1/2/3` arrays; the editor stores everything the user added in `day1`.)
+  const optionExercisesList = (option: WorkoutOption | undefined): any[] => {
+    if (!option) return [];
+    const primary = option.days.day1 || [];
+    if (primary.length > 0) return primary;
+    return [...(option.days.day2 || []), ...(option.days.day3 || [])];
   };
 
-  // Get workout info for date - which option (workout) is scheduled for this day
-  const getWorkoutInfoForDate = (date: Date): { optionId: string; dayKey: "day1" | "day2" | "day3" } | null => {
+  /** Which saved plan (option id) is on this calendar day, or null if Rest / nothing. */
+  const getWorkoutInfoForDate = (date: Date): { optionId: string } | null => {
     const normalizedDate = new Date(date);
     normalizedDate.setHours(0, 0, 0, 0);
     const dateStr = toLocalDateString(normalizedDate);
     const dayOfWeek = normalizedDate.getDay();
 
-    // 1. workoutSchedule - use optionId when stored, or match by workout name (for old schedules)
     const scheduledWorkout = workoutSchedule.find((w) => w.date === dateStr);
     if (scheduledWorkout && scheduledWorkout.workoutName !== "Rest Day") {
       const optId = scheduledWorkout.optionId
         ? scheduledWorkout.optionId
         : workoutOptions.find((o) => o.name === scheduledWorkout.workoutName)?.id;
-      if (optId) {
-        const dayKey = getScheduledDayKey(optId, normalizedDate);
-        return { optionId: optId, dayKey };
-      }
+      if (optId) return { optionId: optId };
     }
 
-    // 2. manualScheduleByPlan - which option runs on this weekday
     if (selectedWorkoutOptions.length > 0) {
       for (const optId of selectedWorkoutOptions) {
         const days = (manualScheduleByPlan[optId] ?? { days: [] }).days || [];
-        if (days.includes(dayOfWeek)) {
-          const dayKey = getScheduledDayKey(optId, normalizedDate);
-          return { optionId: optId, dayKey };
-        }
+        if (days.includes(dayOfWeek)) return { optionId: optId };
       }
     }
 
@@ -505,16 +494,15 @@ export default function WorkoutPage() {
     return info ? "pushDay" : null;
   };
 
-  // Get current day's exercises - ONLY from the scheduled option and the correct day (day1/day2/day3) for this date.
+  // Exercises for the plan assigned to this calendar day (same as in Workout plans editor).
   const currentDayExercises: Exercise[] = useMemo(() => {
     const selectedDateStr = toLocalDateString(selectedDate);
 
-    // 1. Get the scheduled option and which day (day1/day2/day3) for this date
     const info = getWorkoutInfoForDate(selectedDate);
     if (!info) return [];
 
     const option = workoutOptions.find((o: WorkoutOption) => o.id === info.optionId);
-    const dayExercises = option ? (option.days[info.dayKey] || []) : [];
+    const dayExercises = optionExercisesList(option);
 
     // 2. If the scheduled option has no exercises, show nothing - never show workout_data from a different option
     if (dayExercises.length === 0) return [];
@@ -623,7 +611,7 @@ export default function WorkoutPage() {
     const raw = localStorage.getItem(`workout_data_${selectedDateStr}`);
     const info = getWorkoutInfoForDate(selectedDate);
     const option = info ? workoutOptions.find((o) => o.id === info.optionId) : null;
-    const baseExercises = option && info ? (option.days[info.dayKey] || []) : [];
+    const baseExercises = option && info ? optionExercisesList(option) : [];
 
     if (raw) {
       try {
@@ -1346,9 +1334,11 @@ export default function WorkoutPage() {
           <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-6 border border-white/10 space-y-4">
             <div className="text-center">
               <div className="text-4xl mb-2">💪</div>
-              <p className="text-sm font-bold text-gray-200 mb-1">No exercises yet for {currentDayWorkoutName}</p>
+              <p className="text-sm font-bold text-gray-200 mb-1">No exercises in {currentDayWorkoutName}</p>
               <p className="text-gray-400 text-xs leading-relaxed">
-                Open a workout plan, add exercises, then pick it with <span className="text-teal-400">Use</span> on the plans screen.
+                In <span className="text-teal-400">Workout plans</span>, tap this plan, add moves, save. Then tap{" "}
+                <span className="text-teal-400">Use</span> and choose which weekdays it runs — or set those days to{" "}
+                <span className="text-gray-300">Rest</span>.
               </p>
             </div>
             <div className="flex flex-col gap-2">
