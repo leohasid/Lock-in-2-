@@ -22,26 +22,27 @@ export default function SubscribePage() {
   const handleSubscribe = async (plan: "monthly" | "yearly") => {
     setLoading(true);
 
-    // TODO: Integrate with actual subscription service
-    // For iOS: Use RevenueCat or native In-App Purchase
-    // For Android: Use RevenueCat or Google Play Billing
-    // For now, we'll simulate a successful subscription
-
     try {
-      // Simulate API call to subscription service
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      const nativeSub =
+        typeof window !== "undefined"
+          ? (window as Window & { MogifiNativeSubscribe?: { purchase: (p: string) => Promise<unknown> } }).MogifiNativeSubscribe
+          : undefined;
 
-      // Store subscription status (persistent storage for iOS/native)
-      const { set } = await import("@/lib/persistent-storage");
-      await set("subscriptionStatus", "active");
-      await set("subscriptionPlan", plan);
-      await set("subscriptionDate", new Date().toISOString());
+      if (nativeSub?.purchase) {
+        await nativeSub.purchase(plan);
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        const { set } = await import("@/lib/persistent-storage");
+        await set("subscriptionStatus", "active");
+        await set("subscriptionPlan", plan);
+        await set("subscriptionDate", new Date().toISOString());
+      }
 
-      // Redirect to main app
       router.push("/");
     } catch (error) {
       console.error("Subscription error:", error);
       alert("Failed to process subscription. Please try again.");
+    } finally {
       setLoading(false);
     }
   };

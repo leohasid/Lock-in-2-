@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
-import { Check, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronRight, Flame, Sparkles, Zap } from "lucide-react";
 import { toLocalDateString } from "@/lib/date-utils";
 
 interface UpcomingItem {
@@ -22,6 +22,112 @@ function getDaysClean(startDate: string): number {
   start.setHours(0, 0, 0, 0);
   const diffTime = today.getTime() - start.getTime();
   return Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+}
+
+function getNutritionStreak(
+  week: Array<{ date: string; calories: number; score: number }>,
+  todayStr: string
+): number {
+  const idx = week.findIndex((d) => d.date === todayStr);
+  if (idx < 0) return 0;
+  let streak = 0;
+  for (let i = idx; i >= 0; i--) {
+    const day = week[i];
+    if (day.calories > 0 && day.score >= 30) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function CircularScoreRing({
+  percent,
+  size,
+  strokeWidth,
+  sublabel,
+  value,
+}: {
+  percent: number;
+  size: number;
+  strokeWidth: number;
+  sublabel: string;
+  value: string | number;
+}) {
+  const r = (size - strokeWidth) / 2;
+  const c = 2 * Math.PI * r;
+  const p = Math.min(100, Math.max(0, percent));
+  const offset = c - (p / 100) * c;
+  return (
+    <div className="relative flex shrink-0 items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" className="stroke-white/10" strokeWidth={strokeWidth} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          className="stroke-teal-400 transition-[stroke-dashoffset] duration-500"
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+        />
+      </svg>
+      <div className="absolute flex flex-col items-center justify-center text-center">
+        <span className="text-3xl font-bold leading-none text-white">{value}</span>
+      </div>
+      <p className="absolute -bottom-5 left-1/2 w-max max-w-[110%] -translate-x-1/2 text-center text-[8px] font-bold uppercase tracking-wider text-gray-500">
+        {sublabel}
+      </p>
+    </div>
+  );
+}
+
+function MacroRing({
+  label,
+  pct,
+  consumed,
+  goal,
+  strokeClass,
+}: {
+  label: string;
+  pct: number;
+  consumed: number;
+  goal: number;
+  strokeClass: string;
+}) {
+  const size = 64;
+  const strokeWidth = 5;
+  const r = (size - strokeWidth) / 2;
+  const c = 2 * Math.PI * r;
+  const p = Math.min(100, Math.max(0, pct));
+  const offset = c - (p / 100) * c;
+  return (
+    <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="-rotate-90">
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" className="stroke-white/10" strokeWidth={strokeWidth} />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            className={`${strokeClass} transition-[stroke-dashoffset] duration-500`}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeDasharray={c}
+            strokeDashoffset={offset}
+          />
+        </svg>
+        <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">
+          {Math.round(p)}%
+        </span>
+      </div>
+      <span className="text-[10px] font-medium text-gray-400">{label}</span>
+      <span className="text-[9px] tabular-nums text-gray-500">
+        {Math.round(consumed)} / {goal}
+      </span>
+    </div>
+  );
 }
 
 export default function Home() {
@@ -44,7 +150,6 @@ export default function Home() {
   }>>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingItem[]>([]);
   const [daysClean, setDaysClean] = useState<number>(0);
-  const [todayWorkout, setTodayWorkout] = useState<{ name: string; time: string } | null>(null);
   const [workoutCompleted, setWorkoutCompleted] = useState(false);
   const [reflectionDone, setReflectionDone] = useState(false);
   const [hasAddictions, setHasAddictions] = useState(false);
@@ -174,17 +279,6 @@ export default function Home() {
       setDaysClean(0);
     }
 
-    const schedule = JSON.parse(localStorage.getItem("workoutSchedule") || "[]");
-    const todayEntry = schedule.find((w: { date: string }) => w.date === todayStr);
-    if (todayEntry && todayEntry.workoutName && todayEntry.workoutName !== "Rest Day") {
-      setTodayWorkout({
-        name: todayEntry.workoutName.replace(" Day", ""),
-        time: "6pm",
-      });
-    } else {
-      setTodayWorkout(null);
-    }
-
     setWorkoutCompleted(localStorage.getItem(`workout_${todayStr}`) === "completed");
 
     const storedReflection = localStorage.getItem(`reflection_${todayStr}`);
@@ -236,16 +330,61 @@ export default function Home() {
       (reflectionDone ? 25 : 0)
   );
 
+  const nutritionStreak = useMemo(
+    () => getNutritionStreak(weeklyNutrition, todayStr),
+    [weeklyNutrition, todayStr]
+  );
+
+  const streakDays = hasAddictions ? daysClean : nutritionStreak;
+  const streakTitle =
+    streakDays > 0
+      ? `${streakDays}-DAY STREAK`
+      : hasAddictions
+        ? "START YOUR STREAK"
+        : "LOG TO BUILD STREAK";
+
+  const calGoal = nutrition.calories.goal || 2000;
+  const calConsumed = nutrition.calories.consumed;
+
+  const proGoal = nutrition.protein.goal || 150;
+  const carbGoal = nutrition.carbs.goal || 250;
+  const fatGoal = nutrition.fat.goal || 65;
+
+  const macroPcts = {
+    cal: calGoal > 0 ? Math.min(100, (calConsumed / calGoal) * 100) : 0,
+    pro: proGoal > 0 ? Math.min(100, (nutrition.protein.consumed / proGoal) * 100) : 0,
+    carb: carbGoal > 0 ? Math.min(100, (nutrition.carbs.consumed / carbGoal) * 100) : 0,
+    fat: fatGoal > 0 ? Math.min(100, (nutrition.fat.consumed / fatGoal) * 100) : 0,
+  };
+
+  const aiReflectionLine = useMemo(() => {
+    if (streakDays >= 14) {
+      return `${streakDays} days strong! Your consistency is building real momentum.`;
+    }
+    if (streakDays >= 7) {
+      return "Solid week — you're stacking wins. Keep showing up.";
+    }
+    if (lockInScore >= 75) {
+      return "You're locked in. Keep the rhythm going today.";
+    }
+    if (nutritionOnTrack && workoutCompleted) {
+      return "Full house today: workout and nutrition on point.";
+    }
+    return "Small steps today become big results tomorrow.";
+  }, [streakDays, lockInScore, nutritionOnTrack, workoutCompleted]);
+
+  const weekDayLetters = ["M", "T", "W", "T", "F", "S", "S"];
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white pb-24">
-      <div className="max-w-md mx-auto px-3 pt-4">
+    <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black pb-28 text-white">
+      <div className="mx-auto max-w-md px-4 pt-4">
         {/* Tab Bar - Home | Goals */}
-        <div className="flex gap-2 mb-4 pt-2 border-b border-teal-500/30">
+        <div className="mb-5 flex gap-2 border-b border-teal-500/30 pt-2">
           <Link
             href="/"
-            className={`flex-1 py-1.5 font-semibold text-center text-xs ${
+            className={`flex-1 py-1.5 text-center text-xs font-semibold ${
               pathname === "/"
-                ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
+                ? "border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent text-teal-400"
                 : "text-gray-400 hover:text-teal-300"
             }`}
           >
@@ -253,9 +392,9 @@ export default function Home() {
           </Link>
           <Link
             href="/goals"
-            className={`flex-1 py-1.5 font-semibold text-center text-xs ${
+            className={`flex-1 py-1.5 text-center text-xs font-semibold ${
               pathname === "/goals"
-                ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
+                ? "border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent text-teal-400"
                 : "text-gray-400 hover:text-teal-300"
             }`}
           >
@@ -263,199 +402,189 @@ export default function Home() {
           </Link>
         </div>
 
+        {/* Score + streak row */}
+        <div className="mb-5 flex items-start gap-4">
+          <div className="flex shrink-0 flex-col items-center pb-6">
+            <CircularScoreRing
+              percent={lockInScore}
+              size={112}
+              strokeWidth={9}
+              sublabel="Lock-in score"
+              value={lockInScore}
+            />
+          </div>
+          <div className="min-w-0 flex-1 pt-1">
+            <div className="mb-2 flex items-center gap-2">
+              <Flame className="h-5 w-5 shrink-0 text-orange-400" strokeWidth={2} />
+              <span className="text-sm font-bold uppercase tracking-wide text-white">{streakTitle}</span>
+            </div>
+            <p className="mb-4 text-xs leading-relaxed text-gray-400">
+              {hasAddictions
+                ? "Every clean day counts toward your lock-in score."
+                : "Log meals and complete your habits to grow your streak."}
+            </p>
+            <div className="flex items-center justify-between gap-1">
+              {weeklyNutrition.map((day, i) => {
+                const isToday = day.date === todayStr;
+                const hit =
+                  calGoal > 0 ? day.calories >= calGoal * 0.5 || day.score >= 50 : day.calories > 0;
+                return (
+                  <div key={day.date} className="flex flex-col items-center gap-1">
+                    <div
+                      className={`h-2.5 w-2.5 rounded-full ${
+                        hit
+                          ? "bg-teal-400"
+                          : isToday
+                            ? "ring-2 ring-teal-400/50 ring-offset-2 ring-offset-[#0c1422]"
+                            : "bg-white/15"
+                      }`}
+                    />
+                    <span
+                      className={`text-[9px] font-medium ${isToday ? "text-teal-400" : "text-gray-500"}`}
+                    >
+                      {weekDayLetters[i]}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Upcoming */}
+        <div className="relative mb-4 overflow-hidden rounded-2xl border border-teal-400/35 bg-gradient-to-br from-[#0d1628] via-[#121c2e] to-[#060a12] p-4 shadow-lg shadow-teal-500/10 ring-1 ring-white/5">
+          <div className="pointer-events-none absolute -right-6 -top-10 h-28 w-28 rounded-full bg-teal-400/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-8 left-1/3 h-20 w-40 rounded-full bg-cyan-500/10 blur-2xl" />
+          <div className="relative">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/25 to-cyan-500/10 shadow-inner ring-1 ring-teal-400/40">
+                  <CalendarDays className="h-5 w-5 text-teal-300" strokeWidth={2} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-400/90">
+                    Coming up
+                  </p>
+                  <p className="text-lg font-bold leading-tight text-white">Your week ahead</p>
+                  <p className="mt-0.5 text-xs text-gray-500">Stay on schedule — never miss a beat</p>
+                </div>
+              </div>
+              {upcomingEvents.length > 0 ? (
+                <span className="flex shrink-0 items-center gap-1 rounded-full bg-teal-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-teal-200 ring-1 ring-teal-400/30">
+                  <Zap className="h-3 w-3 fill-teal-400/40 text-teal-300" />
+                  {upcomingEvents.length} {upcomingEvents.length === 1 ? "item" : "items"}
+                </span>
+              ) : null}
+            </div>
+
+            {upcomingEvents.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-white/10 bg-black/20 px-3 py-4 text-center">
+                <p className="text-sm font-semibold text-white">Nothing scheduled yet</p>
+                <p className="mt-1 text-xs leading-relaxed text-gray-400">
+                  Add reminders or plan your week — give yourself something to chase.
+                </p>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {upcomingEvents.map((event, i) => (
+                  <li
+                    key={event.id}
+                    className="flex gap-3 rounded-xl border border-white/5 bg-black/25 px-3 py-2.5 backdrop-blur-sm transition-colors hover:border-teal-500/25"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-500/15 text-[10px] font-bold text-teal-300 ring-1 ring-teal-400/20">
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-white">{event.title}</p>
+                      <p className="mt-0.5 text-xs text-teal-400/80">
+                        <span className="font-medium text-gray-400">{event.time}</span>
+                        {event.type ? (
+                          <>
+                            <span className="mx-1.5 text-gray-600">·</span>
+                            <span className="capitalize">{event.type}</span>
+                          </>
+                        ) : null}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <Link
+              href="/calendar?view=schedule"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 py-3 text-sm font-bold text-black shadow-md shadow-teal-500/20 transition hover:brightness-110 active:scale-[0.98]"
+            >
+              Open calendar
+              <ChevronRight className="h-4 w-4" strokeWidth={2.5} />
+            </Link>
+          </div>
+        </div>
+
+        {/* Macros — ring row */}
+        <Link
+          href="/nutrition"
+          className="mb-4 block rounded-2xl border border-teal-500/30 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black p-4 transition-colors hover:border-teal-400/50"
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-sm font-bold uppercase tracking-wide text-white">Macros</p>
+            <p className="text-xs tabular-nums text-gray-400">
+              {Math.round(calConsumed).toLocaleString()} / {calGoal.toLocaleString()} kcal
+            </p>
+          </div>
+          <div className="flex justify-between gap-1">
+            <MacroRing
+              label="Calories"
+              pct={macroPcts.cal}
+              consumed={calConsumed}
+              goal={calGoal}
+              strokeClass="stroke-orange-500"
+            />
+            <MacroRing
+              label="Protein"
+              pct={macroPcts.pro}
+              consumed={nutrition.protein.consumed}
+              goal={proGoal}
+              strokeClass="stroke-blue-500"
+            />
+            <MacroRing
+              label="Carbs"
+              pct={macroPcts.carb}
+              consumed={nutrition.carbs.consumed}
+              goal={carbGoal}
+              strokeClass="stroke-purple-500"
+            />
+            <MacroRing
+              label="Fats"
+              pct={macroPcts.fat}
+              consumed={nutrition.fat.consumed}
+              goal={fatGoal}
+              strokeClass="stroke-teal-400"
+            />
+          </div>
+        </Link>
+
         {/* AI Reflection */}
         <Link
           href="/consultation?from=reflection"
-          className="block rounded-xl p-3 mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/40 hover:border-teal-400/60 transition-all"
+          className="mb-4 block rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-950/80 via-[#1a1f35] to-black p-4 transition-all hover:border-teal-400/40"
         >
-          <p className="text-sm font-semibold text-white">✨ AI Reflection</p>
-          <p className="mt-0.5 flex items-center justify-between text-gray-400 text-xs">
-            <span>Review yesterday • Set today</span>
-            <ChevronRight className="w-4 h-4 text-teal-400" />
-          </p>
+          <div className="mb-2 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-violet-400" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-violet-300/90">
+              AI reflection
+            </span>
+          </div>
+          <p className="text-sm font-semibold leading-snug text-white">{aiReflectionLine}</p>
+          <div className="mt-3 flex items-center justify-between text-xs">
+            <p className="text-gray-400">
+              <span className="text-teal-400/90">Review yesterday</span>
+              <span className="mx-1.5 text-gray-600">·</span>
+              <span className="text-teal-400/90">Set today&apos;s goals</span>
+            </p>
+            <ChevronRight className="h-4 w-4 shrink-0 text-teal-400" />
+          </div>
         </Link>
-
-        {/* LOCKED IN TODAY */}
-        <div className="rounded-xl p-3 mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30">
-          <p className="text-xs font-bold text-white flex items-center gap-1.5 mb-3">
-            <span className="text-sm">🔥</span> LOCKED IN TODAY
-          </p>
-          <div className="space-y-1.5 mb-3">
-            <div className="flex items-center gap-1.5">
-              <div className="w-4 h-4 rounded-full bg-teal-500/20 border border-teal-400/50 flex items-center justify-center flex-shrink-0">
-                {cleanStreakPoints > 0 ? <Check className="w-2.5 h-2.5 text-teal-400" strokeWidth={3} /> : null}
-              </div>
-              <p className="text-xs text-white">
-                Clean streak: <span className="font-semibold text-teal-400">{hasAddictions ? `${daysClean} days` : "—"}</span>
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-4 h-4 rounded-full bg-teal-500/20 border border-teal-400/50 flex items-center justify-center flex-shrink-0">
-                {workoutCompleted ? <Check className="w-2.5 h-2.5 text-teal-400" strokeWidth={3} /> : null}
-              </div>
-              <p className="text-xs text-white">
-                Workout:{" "}
-                <span className="font-semibold text-teal-400">
-                  {workoutCompleted ? "Completed" : todayWorkout ? "Pending" : "Rest day"}
-                </span>
-              </p>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-4 h-4 rounded-full bg-teal-500/20 border border-teal-400/50 flex items-center justify-center flex-shrink-0">
-                {nutritionOnTrack ? <Check className="w-2.5 h-2.5 text-teal-400" strokeWidth={3} /> : null}
-              </div>
-              <p className="text-xs text-white">
-                Nutrition:{" "}
-                <span className="font-semibold text-teal-400">
-                  {nutritionOnTrack ? "On track" : "Log food"}
-                </span>
-              </p>
-            </div>
-          </div>
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <p className="text-[10px] text-gray-400">Discipline score</p>
-              <p className="text-xl font-bold text-teal-400">{lockInScore}</p>
-            </div>
-            <div className="flex-1">
-              <p className="text-[10px] text-gray-400 mb-0.5 flex items-center gap-1">
-                <span className="text-xs">🧠</span> Lock-In Score
-              </p>
-              <div className="h-1.5 rounded-full overflow-hidden bg-gray-800">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-red-500 via-yellow-500 to-teal-400 transition-all duration-500"
-                  style={{ width: `${lockInScore}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-[9px] text-gray-500 mt-0.5">
-                <span>0</span>
-                <span>50</span>
-                <span>100</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Macros - 7-day stacked bar chart with individual macro bars per day */}
-        <Link
-          href="/nutrition"
-          className="block rounded-xl p-4 mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30 hover:border-teal-400/50 transition-all"
-        >
-          <p className="text-base font-bold text-white">Macros</p>
-          <p className="text-xs text-gray-400 mb-3">7-day overview</p>
-
-          {/* Legend - colored bars for each macro */}
-          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mb-3">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-2 rounded-sm bg-orange-500" />
-              <span className="text-[10px] text-gray-400">Calories</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-2 rounded-sm bg-blue-500" />
-              <span className="text-[10px] text-gray-400">Protein</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-2 rounded-sm bg-purple-500" />
-              <span className="text-[10px] text-gray-400">Carbs</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-2 rounded-sm bg-teal-400" />
-              <span className="text-[10px] text-gray-400">Fats</span>
-            </div>
-          </div>
-
-          {/* 4 bars side-by-side per day - scaled to nutrition goals. Dotted line = goal complete. */}
-          {(() => {
-            const calGoal = nutrition.calories.goal || 2000;
-            const proGoal = nutrition.protein.goal || 150;
-            const carbGoal = nutrition.carbs.goal || 200;
-            const fatGoal = nutrition.fat.goal || 65;
-            const chartHeight = 72;
-
-            return (
-              <div className="relative">
-                {/* Dashed yellow goal line - at top, marks goal level */}
-                <div className="absolute left-0 right-0 top-0 border-t-2 border-dashed border-yellow-500/80 z-10" />
-                <div className="flex items-end justify-between gap-1">
-                  {weeklyNutrition.map((day, i) => {
-                    const dayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-                    const isToday = day.date === todayStr;
-                    const calPct = calGoal > 0 ? Math.min((day.calories / calGoal) * 100, 100) : 0;
-                    const proPct = proGoal > 0 ? Math.min((day.protein / proGoal) * 100, 100) : 0;
-                    const carbPct = carbGoal > 0 ? Math.min((day.carbs / carbGoal) * 100, 100) : 0;
-                    const fatPct = fatGoal > 0 ? Math.min((day.fat / fatGoal) * 100, 100) : 0;
-
-                    const bars = [
-                      { color: "bg-orange-500", pct: calPct },
-                      { color: "bg-blue-500", pct: proPct },
-                      { color: "bg-purple-500", pct: carbPct },
-                      { color: "bg-teal-400", pct: fatPct },
-                    ];
-
-                    return (
-                      <div key={day.date} className="flex-1 flex flex-col items-center min-w-0">
-                        <div
-                          className="w-full flex items-end justify-between gap-0.5"
-                          style={{ height: `${chartHeight}px` }}
-                        >
-                          {bars.map((bar, j) => (
-                            <div
-                              key={j}
-                              className="flex-1 flex flex-col justify-end min-w-0 h-full"
-                            >
-                              <div
-                                className={`w-full rounded-t min-h-[2px] ${bar.color}`}
-                                style={{
-                                  height: `${Math.max((bar.pct / 100) * chartHeight, 2)}px`,
-                                }}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                        <span
-                          className={`text-[9px] mt-1.5 truncate w-full text-center ${
-                            isToday ? "text-teal-400 font-semibold" : "text-gray-500"
-                          }`}
-                        >
-                          {dayLabels[i]}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
-
-          <p className="text-[9px] text-gray-500 mt-2 text-center">
-            Tap to view & log food in Nutrition
-          </p>
-        </Link>
-
-        {/* UPCOMING */}
-        <div className="rounded-xl p-3 mb-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30">
-          <p className="text-xs font-bold text-white flex items-center gap-1.5 mb-2">
-            <span className="text-sm">🏠</span> UPCOMING
-          </p>
-          {upcomingEvents.length === 0 ? (
-            <p className="text-xs text-gray-400">No upcoming events — stay disciplined.</p>
-          ) : (
-            <div className="space-y-1">
-              {upcomingEvents.map((event) => (
-                <p key={event.id} className="text-xs text-white">
-                  {event.time} — {event.title}
-                </p>
-              ))}
-            </div>
-          )}
-          <Link
-            href="/calendar?view=schedule"
-            className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-teal-400 hover:text-teal-300 transition-colors"
-          >
-            Review routine
-            <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
       </div>
 
       <BottomNav />

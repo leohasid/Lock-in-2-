@@ -204,16 +204,23 @@ export default function OnboardingPage() {
   const handleSubscribeInModal = async () => {
     setSubscribing(true);
     try {
-      // TODO: Integrate with StoreKit/RevenueCat for iOS App Store
-      await new Promise((r) => setTimeout(r, 1200));
-      const { set } = await import("@/lib/persistent-storage");
-      await set("subscriptionStatus", "active");
-      await set("subscriptionPlan", "monthly");
-      await set("subscriptionDate", new Date().toISOString());
+      const nativeSub = typeof window !== "undefined"
+        ? (window as Window & { MogifiNativeSubscribe?: { purchase: (p: string) => Promise<unknown> } }).MogifiNativeSubscribe
+        : undefined;
+      if (nativeSub?.purchase) {
+        await nativeSub.purchase("monthly");
+      } else {
+        await new Promise((r) => setTimeout(r, 1200));
+        const { set } = await import("@/lib/persistent-storage");
+        await set("subscriptionStatus", "active");
+        await set("subscriptionPlan", "monthly");
+        await set("subscriptionDate", new Date().toISOString());
+      }
       setShowSubscribeModal(false);
-      setSubscribing(false);
       setPlanReady(true);
     } catch {
+      // User cancelled StoreKit sheet or purchase failed — keep modal open
+    } finally {
       setSubscribing(false);
     }
   };

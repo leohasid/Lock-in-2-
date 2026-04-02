@@ -12,6 +12,7 @@
 		A10000032F356735007D6CE1 /* WebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000132F356735007D6CE1 /* WebView.swift */; };
 		A10000042F356735007D6CE1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000142F356735007D6CE1 /* Assets.xcassets */; };
 		A10000182F356735007D6CE1 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000192F356735007D6CE1 /* NotificationManager.swift */; };
+		A100002A2F356735007D6CE1 /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100002B2F356735007D6CE1 /* SubscriptionManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +50,7 @@
 				A10000122F356735007D6CE1 /* ContentView.swift */,
 				A10000132F356735007D6CE1 /* WebView.swift */,
 				A10000192F356735007D6CE1 /* NotificationManager.swift */,
+				A100002B2F356735007D6CE1 /* SubscriptionManager.swift */,
 				A10000142F356735007D6CE1 /* Assets.xcassets */,
 			);
 			path = "Mogifi Ai";
@@ -135,6 +137,7 @@
 				A10000022F356735007D6CE1 /* ContentView.swift in Sources */,
 				A10000032F356735007D6CE1 /* WebView.swift in Sources */,
 				A10000182F356735007D6CE1 /* NotificationManager.swift in Sources */,
+				A100002A2F356735007D6CE1 /* SubscriptionManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -35,6 +35,7 @@ struct WebView: UIViewRepresentable {
         config.userContentController.add(coordinator, name: "mogifiNotifications")
         config.userContentController.add(coordinator, name: "mogifiStorage")
         config.userContentController.add(coordinator, name: "mogifiFoodScan")
+        config.userContentController.add(coordinator, name: "mogifiSubscribe")
         
         // Inject storage bridge so web can use native UserDefaults (persists across app restarts)
         let storageScript = WKUserScript(
@@ -61,6 +62,38 @@ struct WebView: UIViewRepresentable {
             forMainFrameOnly: true
         )
         config.userContentController.addUserScript(storageScript)
+
+        let subscribeScript = WKUserScript(
+            source: """
+            window.MogifiNativeSubscribe = {
+              _callbacks: {},
+              purchase: function(plan) {
+                var id = 'sub' + Date.now() + Math.random().toString(36).slice(2);
+                var self = this;
+                return new Promise(function(resolve, reject) {
+                  self._callbacks[id] = { resolve: resolve, reject: reject };
+                  if (!window.webkit || !window.webkit.messageHandlers || !window.webkit.messageHandlers.mogifiSubscribe) {
+                    reject(new Error('Native subscribe not available'));
+                    delete self._callbacks[id];
+                    return;
+                  }
+                  window.webkit.messageHandlers.mogifiSubscribe.postMessage({ plan: plan || 'monthly', id: id });
+                });
+              },
+              _resolve: function(id, result) {
+                var c = this._callbacks[id];
+                if (c) { c.resolve(result); delete this._callbacks[id]; }
+              },
+              _reject: function(id, message) {
+                var c = this._callbacks[id];
+                if (c) { c.reject(new Error(message || 'Purchase failed')); delete this._callbacks[id]; }
+              }
+            };
+            """,
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        config.userContentController.addUserScript(subscribeScript)
         
         let webView = WKWebView(frame: .zero, configuration: config)
         coordinator.webView = webView
@@ -119,6 +152,21 @@ struct WebView: UIViewRepresentable {
                 }
                 return
             }
+
+            if message.name == "mogifiSubscribe" {
+                let plan = body["plan"] as? String ?? "monthly"
+                let callbackId = body["id"] as? String ?? ""
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    do {
+                        let purchasedPlan = try await SubscriptionManager.purchase(plan: plan)
+                        self.resolveSubscribeJavaScriptCallback(callbackId: callbackId, plan: purchasedPlan)
+                    } catch {
+                        self.rejectSubscribeJavaScriptCallback(callbackId: callbackId, error: error)
+                    }
+                }
+                return
+            }
             
             if message.name == "mogifiStorage" {
                 guard let action = body["action"] as? String else { return }
@@ -136,6 +184,21 @@ struct WebView: UIViewRepresentable {
                     UserDefaults.standard.set(value, forKey: prefix + key)
                 }
             }
+        }
+
+        private func resolveSubscribeJavaScriptCallback(callbackId: String, plan: String) {
+            let escapedId = callbackId.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
+            let escapedPlan = plan.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
+            let js = "if(window.MogifiNativeSubscribe&&window.MogifiNativeSubscribe._resolve){window.MogifiNativeSubscribe._resolve('\(escapedId)',{ok:true,plan:'\(escapedPlan)'})}"
+            webView?.evaluateJavaScript(js, completionHandler: nil)
+        }
+
+        private func rejectSubscribeJavaScriptCallback(callbackId: String, error: Error) {
+            let escapedId = callbackId.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
+            let msg = error.localizedDescription
+            let b64 = Data(msg.utf8).base64EncodedString()
+            let js = "if(window.MogifiNativeSubscribe&&window.MogifiNativeSubscribe._reject){try{var m=atob('\(b64)');window.MogifiNativeSubscribe._reject('\(escapedId)',m)}catch(e){window.MogifiNativeSubscribe._reject('\(escapedId)','Purchase failed')}}"
+            webView?.evaluateJavaScript(js, completionHandler: nil)
         }
         
         // MARK: - WKNavigationDelegate
