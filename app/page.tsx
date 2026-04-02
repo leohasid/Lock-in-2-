@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import { CalendarDays, ChevronRight, Flame, Sparkles, Zap } from "lucide-react";
 import { toLocalDateString } from "@/lib/date-utils";
+import { getNotificationSettings } from "@/app/utils/notifications";
 
 interface UpcomingItem {
   id: string;
@@ -13,6 +14,28 @@ interface UpcomingItem {
   date: string;
   time: string;
   type: string;
+}
+
+/** Sort key 0–1439; unknown / missing times sort last */
+function parseScheduleTime(time: string): number {
+  if (!time || time === "—") return 24 * 60 + 59;
+  const t = time.trim().toLowerCase();
+  const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
+  if (m24) {
+    const h = Math.min(23, parseInt(m24[1], 10));
+    const min = Math.min(59, parseInt(m24[2], 10));
+    return h * 60 + min;
+  }
+  const m12 = t.match(/^(\d{1,2}):(\d{2})\s*(am|pm)/);
+  if (m12) {
+    let h = parseInt(m12[1], 10);
+    const min = parseInt(m12[2], 10);
+    const ap = m12[3];
+    if (ap === "am" && h === 12) h = 0;
+    if (ap === "pm" && h !== 12) h += 12;
+    return h * 60 + min;
+  }
+  return 24 * 60 + 59;
 }
 
 function getDaysClean(startDate: string): number {
@@ -37,6 +60,33 @@ function getNutritionStreak(
     else break;
   }
   return streak;
+}
+
+/** Same rules as calendar: sortable minutes, supports 24h and am/pm */
+function parseTimeToMinutes(time: string): number {
+  if (!time) return 0;
+  const t = time.trim().toLowerCase();
+  const pmMatch = t.match(/^(\d{1,2})(?::(\d{2}))?\s*pm$/);
+  const amMatch = t.match(/^(\d{1,2})(?::(\d{2}))?\s*am$/);
+  const colonMatch = t.match(/^(\d{1,2}):(\d{2})$/);
+  if (pmMatch) {
+    let h = parseInt(pmMatch[1], 10);
+    if (h !== 12) h += 12;
+    const m = pmMatch[2] ? parseInt(pmMatch[2], 10) : 0;
+    return h * 60 + m;
+  }
+  if (amMatch) {
+    let h = parseInt(amMatch[1], 10);
+    if (h === 12) h = 0;
+    const m = amMatch[2] ? parseInt(amMatch[2], 10) : 0;
+    return h * 60 + m;
+  }
+  if (colonMatch) {
+    const h = parseInt(colonMatch[1], 10);
+    const m = parseInt(colonMatch[2], 10);
+    return h * 60 + m;
+  }
+  return 0;
 }
 
 function CircularScoreRing({
@@ -148,7 +198,7 @@ export default function Home() {
     fat: number;
     score: number;
   }>>([]);
-  const [upcomingEvents, setUpcomingEvents] = useState<UpcomingItem[]>([]);
+  const [todaySchedule, setTodaySchedule] = useState<UpcomingItem[]>([]);
   const [daysClean, setDaysClean] = useState<number>(0);
   const [workoutCompleted, setWorkoutCompleted] = useState(false);
   const [reflectionDone, setReflectionDone] = useState(false);
@@ -260,13 +310,49 @@ export default function Home() {
     setWeeklyNutrition(weekData);
 
     const reminders = JSON.parse(localStorage.getItem("reminders") || "[]");
-    const futureReminders = reminders
-      .filter((r: { date: string }) => r.date > todayStr)
-      .sort((a: UpcomingItem, b: UpcomingItem) => {
-        const dateCmp = (a.date || "").localeCompare(b.date || "");
-        return dateCmp !== 0 ? dateCmp : (a.time || "").localeCompare(b.time || "");
+    const todayUtc = new Date().toISOString().split("T")[0];
+    const scheduleItems: UpcomingItem[] = reminders
+      .filter(
+        (r: { date?: string; completed?: boolean }) =>
+          (r.date === todayStr || r.date === todayUtc) && !r.completed
+      )
+      .map(
+        (
+          r: { id?: string; title: string; date: string; time: string; type?: string },
+          idx: number
+        ): UpcomingItem => ({
+          id: r.id || `reminder-${todayStr}-${idx}`,
+          title: r.title,
+          date: r.date,
+          time: r.time || "—",
+          type: r.type || "task",
+        })
+      );
+
+    const workoutDone = localStorage.getItem(`workout_${todayStr}`) === "completed";
+    const schedule = JSON.parse(localStorage.getItem("workoutSchedule") || "[]");
+    const todayWorkoutRow = schedule.find(
+      (w: { date?: string }) => w.date === todayStr || w.date === todayUtc
+    );
+    if (
+      !workoutDone &&
+      todayWorkoutRow?.workoutName &&
+      todayWorkoutRow.workoutName !== "Rest Day"
+    ) {
+      const settings = getNotificationSettings();
+      scheduleItems.push({
+        id: `workout-${todayStr}`,
+        title: todayWorkoutRow.workoutName.replace(/\s*Day\s*$/i, "").trim() || todayWorkoutRow.workoutName,
+        date: todayStr,
+        time: settings.gymScheduleTime || "—",
+        type: "workout",
       });
-    setUpcomingEvents(futureReminders.slice(0, 4));
+    }
+
+    scheduleItems.sort(
+      (a, b) => parseScheduleTime(a.time) - parseScheduleTime(b.time)
+    );
+    setTodaySchedule(scheduleItems.slice(0, 8));
 
     const addictions = JSON.parse(localStorage.getItem("addictions") || "[]");
     setHasAddictions(addictions.length > 0);
@@ -451,47 +537,40 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Upcoming */}
-        <div className="relative mb-4 overflow-hidden rounded-2xl border border-teal-400/35 bg-gradient-to-br from-[#0d1628] via-[#121c2e] to-[#060a12] p-4 shadow-lg shadow-teal-500/10 ring-1 ring-white/5">
-          <div className="pointer-events-none absolute -right-6 -top-10 h-28 w-28 rounded-full bg-teal-400/20 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-8 left-1/3 h-20 w-40 rounded-full bg-cyan-500/10 blur-2xl" />
-          <div className="relative">
+        {/* Upcoming today — same surface as Macros card */}
+        <div className="mb-4 rounded-2xl border border-teal-500/30 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black p-4">
             <div className="mb-3 flex items-start justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500/25 to-cyan-500/10 shadow-inner ring-1 ring-teal-400/40">
-                  <CalendarDays className="h-5 w-5 text-teal-300" strokeWidth={2} />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-teal-500/30 bg-teal-500/10">
+                  <CalendarDays className="h-5 w-5 text-teal-400" strokeWidth={2} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-400/90">
-                    Coming up
+                    Upcoming
                   </p>
-                  <p className="text-lg font-bold leading-tight text-white">Your week ahead</p>
-                  <p className="mt-0.5 text-xs text-gray-500">Stay on schedule — never miss a beat</p>
+                  <p className="text-lg font-bold leading-tight text-white">Today</p>
                 </div>
               </div>
-              {upcomingEvents.length > 0 ? (
-                <span className="flex shrink-0 items-center gap-1 rounded-full bg-teal-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-teal-200 ring-1 ring-teal-400/30">
-                  <Zap className="h-3 w-3 fill-teal-400/40 text-teal-300" />
-                  {upcomingEvents.length} {upcomingEvents.length === 1 ? "item" : "items"}
+              {todaySchedule.length > 0 ? (
+                <span className="flex shrink-0 items-center gap-1 rounded-full border border-teal-500/30 bg-teal-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-teal-300">
+                  <Zap className="h-3 w-3 text-teal-400" />
+                  {todaySchedule.length} {todaySchedule.length === 1 ? "task" : "tasks"}
                 </span>
               ) : null}
             </div>
 
-            {upcomingEvents.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-white/10 bg-black/20 px-3 py-4 text-center">
-                <p className="text-sm font-semibold text-white">Nothing scheduled yet</p>
-                <p className="mt-1 text-xs leading-relaxed text-gray-400">
-                  Add reminders or plan your week — give yourself something to chase.
-                </p>
+            {todaySchedule.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-teal-500/25 bg-black/20 px-3 py-4 text-center">
+                <p className="text-sm font-semibold text-white">Nothing upcoming today</p>
               </div>
             ) : (
               <ul className="space-y-2">
-                {upcomingEvents.map((event, i) => (
+                {todaySchedule.map((event, i) => (
                   <li
                     key={event.id}
-                    className="flex gap-3 rounded-xl border border-white/5 bg-black/25 px-3 py-2.5 backdrop-blur-sm transition-colors hover:border-teal-500/25"
+                    className="flex gap-3 rounded-xl border border-teal-500/20 bg-black/20 px-3 py-2.5 transition-colors hover:border-teal-400/40"
                   >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-500/15 text-[10px] font-bold text-teal-300 ring-1 ring-teal-400/20">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-teal-500/25 bg-teal-500/10 text-[10px] font-bold text-teal-400">
                       {i + 1}
                     </span>
                     <div className="min-w-0 flex-1">
@@ -510,15 +589,6 @@ export default function Home() {
                 ))}
               </ul>
             )}
-
-            <Link
-              href="/calendar?view=schedule"
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-500 to-cyan-500 py-3 text-sm font-bold text-black shadow-md shadow-teal-500/20 transition hover:brightness-110 active:scale-[0.98]"
-            >
-              Open calendar
-              <ChevronRight className="h-4 w-4" strokeWidth={2.5} />
-            </Link>
-          </div>
         </div>
 
         {/* Macros — ring row */}
