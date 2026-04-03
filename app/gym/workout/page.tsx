@@ -5,7 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { getBuiltInImageUrl, getExerciseImagePosition } from "@/lib/built-in-exercise-images";
-import { X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, ChevronLeft, Dumbbell, TrendingUp, Target, Zap, Calendar, Activity, Sparkles, Play, Flame, Trophy, Check } from "lucide-react";
+import { X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, ChevronLeft, Dumbbell, TrendingUp, Calendar, Sparkles, Play, Flame, Lightbulb } from "lucide-react";
+import {
+  collectWorkoutDaysFromStorage,
+  buildProgressionTips,
+  computeGoalBasedBests,
+  computeStrengthVolumeTrends,
+  type GoalBestRow,
+  type StrengthTrendRow,
+  type StrengthTrendPeriodId,
+} from "@/lib/workout-progress-analytics";
 import GuidedWorkoutView from "@/components/GuidedWorkoutView";
 import ExerciseNameInput from "@/components/ExerciseNameInput";
 import {
@@ -117,14 +126,12 @@ export default function WorkoutPage() {
   const searchParams = useSearchParams();
   const refreshParam = searchParams.get("refresh");
   const [activeTab, setActiveTab] = useState<"workout" | "progress">("workout");
+  const [strengthTrendPeriod, setStrengthTrendPeriod] = useState<StrengthTrendPeriodId>("month");
   const [weeklyVolume, setWeeklyVolume] = useState<number[]>(Array(7).fill(0));
-  const [weeklyVolumesLast4Weeks, setWeeklyVolumesLast4Weeks] = useState<number[]>([]);
   const [totalWorkoutsLogged, setTotalWorkoutsLogged] = useState(0);
   const [activeStreak, setActiveStreak] = useState(0);
   const [lastWorkout, setLastWorkout] = useState<{ name: string; daysAgo: number } | null>(null);
-  const [personalRecords, setPersonalRecords] = useState({ bench: 0, squat: 0, deadlift: 0 });
   const [caloriesBurnedThisMonth, setCaloriesBurnedThisMonth] = useState(0);
-  const [weeklyConsistency, setWeeklyConsistency] = useState<boolean[]>(Array(7).fill(false));
 
   // Get date from URL on client side
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -720,45 +727,6 @@ export default function WorkoutPage() {
 
     setWeeklyVolume(volumes);
 
-    // Last 4 weeks volume (each week = 7 days)
-    const fourWeeks: number[] = [];
-    for (let w = 3; w >= 0; w--) {
-      let weekVol = 0;
-      for (let d = 0; d < 7; d++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() - (w * 7 + (6 - d)));
-        const dateStr = toLocalDateString(date);
-        const raw = localStorage.getItem(`workout_data_${dateStr}`);
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw);
-            weekVol += calculateVolumeFromData(parsed);
-          } catch {}
-        }
-      }
-      fourWeeks.push(weekVol);
-    }
-    setWeeklyVolumesLast4Weeks(fourWeeks);
-
-    const consistency: boolean[] = [];
-    const dayOfWeek = today.getDay();
-    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - mondayOffset + i);
-      const dateStr = toLocalDateString(date);
-      const raw = localStorage.getItem(`workout_data_${dateStr}`);
-      let has = false;
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          has = calculateVolumeFromData(parsed) > 0;
-        } catch {}
-      }
-      consistency.push(has);
-    }
-    setWeeklyConsistency(consistency);
-
     let workoutsWithVolume = 0;
     Object.keys(localStorage).forEach((key) => {
       if (!key.startsWith("workout_data_")) return;
@@ -806,23 +774,6 @@ export default function WorkoutPage() {
     } else {
       setLastWorkout(null);
     }
-
-    const prs = { bench: 0, squat: 0, deadlift: 0 };
-    const matchExercise = (name: string, patterns: string[]) =>
-      patterns.some((p) => (name || "").toLowerCase().includes(p));
-    Object.keys(localStorage).forEach((key) => {
-      if (!key.startsWith("workout_data_")) return;
-      try {
-        const data = JSON.parse(localStorage.getItem(key) || "[]");
-        (data || []).forEach((ex: { name?: string; sets?: Array<{ weight?: number }> }) => {
-          const maxWeight = Math.max(0, ...(ex.sets || []).map((s) => Number(s.weight) || 0));
-          if (matchExercise(ex.name || "", ["bench", "press"])) prs.bench = Math.max(prs.bench, maxWeight);
-          if (matchExercise(ex.name || "", ["squat"])) prs.squat = Math.max(prs.squat, maxWeight);
-          if (matchExercise(ex.name || "", ["deadlift", "dead lift"])) prs.deadlift = Math.max(prs.deadlift, maxWeight);
-        });
-      } catch {}
-    });
-    setPersonalRecords(prs);
 
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     let monthVolume = 0;
@@ -946,74 +897,80 @@ export default function WorkoutPage() {
     setCustomWorkoutPlan({ ...customWorkoutPlan, [dayType]: updated });
   };
 
-  const exercises = useMemo(() => {
-    const merged = [
+  const hasAnyWorkoutData = totalWorkoutsLogged > 0;
+
+  const weeklyVolumeKey = weeklyVolume.join(",");
+
+  /** Mon–Sun week: days with logged volume vs days that are workout days on your calendar (non–Rest), with fallback to plan weekdays. */
+  const weeklySessionProgress = useMemo(() => {
+    if (typeof window === "undefined") {
+      return { completed: 0, target: 0, hasPlan: false };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const jsDow = today.getDay();
+    const mondayOffset = jsDow === 0 ? 6 : jsDow - 1;
+
+    let target = 0;
+    let completed = 0;
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - mondayOffset + i);
+      const dateStr = toLocalDateString(d);
+      const dow = d.getDay();
+
+      const entry = workoutSchedule.find((w) => w.date === dateStr);
+      let isTrainDay: boolean;
+      if (entry) {
+        isTrainDay = entry.workoutName !== "Rest Day";
+      } else {
+        isTrainDay = selectedWorkoutOptions.some((optId) =>
+          (manualScheduleByPlan[optId]?.days ?? []).some((x) => Number(x) === dow)
+        );
+      }
+
+      if (!isTrainDay) continue;
+      target++;
+
+      const raw = localStorage.getItem(`workout_data_${dateStr}`);
+      let vol = 0;
+      if (raw) {
+        try {
+          vol = calculateVolumeFromData(JSON.parse(raw));
+        } catch {
+          /* ignore */
+        }
+      }
+      if (vol > 0) completed++;
+    }
+
+    return { completed, target, hasPlan: target > 0 };
+  }, [workoutSchedule, selectedWorkoutOptions, manualScheduleByPlan, weeklyVolumeKey]);
+
+  const progressAnalytics = useMemo(() => {
+    if (typeof window === "undefined") {
+      return {
+        goalBests: [] as GoalBestRow[],
+        progressionTips: [] as ReturnType<typeof buildProgressionTips>,
+        strengthTrends: [] as StrengthTrendRow[],
+      };
+    }
+    const history = collectWorkoutDaysFromStorage(
+      (k) => localStorage.getItem(k),
+      Object.keys(localStorage)
+    );
+    const planExercises = [
       ...workoutPlan.pushDay,
       ...workoutPlan.pullDay,
       ...workoutPlan.legsDay,
-    ];
-    return merged.length > 0 ? merged : [];
-  }, [workoutPlan]);
-
-  const progressTotals = useMemo(() => {
-    let totalVolume = 0;
-    let totalSets = 0;
-    let completedSets = 0;
-    exercises.forEach((ex) => {
-      ex.sets.forEach((s) => {
-        totalSets++;
-        if (s.completed) {
-          completedSets++;
-          totalVolume += (Number(s.reps) || 0) * (Number(s.weight) || 0);
-        }
-      });
-    });
-    return {
-      progress: totalSets ? Math.round((completedSets / totalSets) * 100) : 0,
-      totalVolume,
-      completedSets,
-      totalSets,
-    };
-  }, [exercises]);
-
-  const goalVolume = useMemo(() => {
-    return exercises.reduce((sum, ex) => {
-      return sum + ex.goalSets * ex.goalReps * (ex.goalWeight || 0);
-    }, 0);
-  }, [exercises]);
-
-  const volumeProgress = goalVolume
-    ? Math.min((progressTotals.totalVolume / goalVolume) * 100, 100)
-    : 0;
-
-  const weeklyData = weeklyVolume;
-  const maxVolume = Math.max(...weeklyData, 1);
-  const max4Week = weeklyVolumesLast4Weeks.length > 0 ? Math.max(...weeklyVolumesLast4Weeks, 1) : 1;
-
-  const workoutsThisWeek = weeklyData.filter((value) => value > 0).length;
-  const thisWeekVolume = weeklyData.reduce((a, b) => a + b, 0);
-  const lastWeekVolume = weeklyVolumesLast4Weeks.length >= 2 ? weeklyVolumesLast4Weeks[weeklyVolumesLast4Weeks.length - 2] : 0;
-
-  const milestones = [10, 25, 50, 100, 250, 500];
-  const nextMilestone = milestones.find((m) => m > totalWorkoutsLogged);
-  const workoutsToNext = nextMilestone ? nextMilestone - totalWorkoutsLogged : 0;
-  const averageSetVolume = progressTotals.totalSets
-    ? Math.round(progressTotals.totalVolume / progressTotals.totalSets)
-    : 0;
-
-  const heaviestSet = exercises.reduce((max, ex) => {
-    const heaviestInExercise = ex.sets.reduce(
-      (innerMax, set) => Math.max(innerMax, Number(set.weight) || 0),
-      0
-    );
-    return Math.max(max, heaviestInExercise);
-  }, 0);
-
-  const hasAnyWorkoutData = totalWorkoutsLogged > 0;
-  const volumeDelta =
-    hasAnyWorkoutData && lastWeekVolume > 0
-      ? Math.round(((thisWeekVolume - lastWeekVolume) / lastWeekVolume) * 100)
-      : 0;
+    ].map((ex) => ({ name: ex.name, goalReps: ex.goalReps, goalSets: ex.goalSets }));
+    const goalBests = computeGoalBasedBests(history, planExercises);
+    const progressionTips = buildProgressionTips(history, planExercises).slice(0, 2);
+    const strengthTrends = computeStrengthVolumeTrends(history, new Date());
+    return { goalBests, progressionTips, strengthTrends };
+  }, [workoutPlan, weeklyVolumeKey, totalWorkoutsLogged]);
 
   const activeExercise = useMemo(() => {
     if (!activeExerciseId) return null;
@@ -1071,194 +1028,139 @@ export default function WorkoutPage() {
         {/* Content based on active tab */}
         {activeTab === "progress" ? (
           <div className="space-y-4 pb-20">
-            <h1 className="text-2xl font-bold text-white">Your Progress</h1>
-
-            {/* Summary Badges */}
-            <div className="flex flex-wrap gap-2 mb-2">
-              <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/80 border border-gray-700 rounded-xl">
-                <Flame className="w-4 h-4 text-orange-400" />
-                <span className="text-sm font-semibold text-orange-400">{activeStreak} Day Streak</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/80 border border-gray-700 rounded-xl">
-                <Dumbbell className="w-4 h-4 text-green-400" />
-                <span className="text-sm font-semibold text-green-400">{totalWorkoutsLogged} Workouts</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/80 border border-gray-700 rounded-xl">
-                <TrendingUp className={`w-4 h-4 ${volumeDelta >= 0 ? "text-green-400" : "text-red-400"}`} />
-                <span className={`text-sm font-semibold ${volumeDelta >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  {volumeDelta >= 0 ? "+" : ""}{volumeDelta}% Strength
-                </span>
-              </div>
-            </div>
-            {lastWorkout && (
-              <p className="text-sm text-gray-400 mb-4">
-                Last workout: {lastWorkout.name} • {lastWorkout.daysAgo === 0 ? "Today" : lastWorkout.daysAgo === 1 ? "1 day ago" : `${lastWorkout.daysAgo} days ago`}
+            <div>
+              <h1 className="text-2xl font-bold text-white">Progress</h1>
+              <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+                Uses <span className="text-gray-400">completed sets</span> and your plan&apos;s <span className="text-gray-400">rep targets</span>.
               </p>
-            )}
+            </div>
 
-            {/* Strength Progress (Last 30 Days) */}
-            <div className="bg-gray-800/80 border border-gray-700 rounded-xl p-4">
-              <h2 className="text-sm font-semibold text-white mb-3">Strength Progress <span className="text-gray-400 font-normal">(Last 30 Days)</span></h2>
-              {weeklyVolumesLast4Weeks.length >= 4 && hasAnyWorkoutData ? (
-                (() => {
-                  const baseline = weeklyVolumesLast4Weeks[0] || 1;
-                  const totalVol = weeklyVolumesLast4Weeks.reduce((a, b) => a + b, 0);
-                  const hasValidBaseline = baseline > 0 && totalVol > 0;
-                  const rawPct = hasValidBaseline
-                    ? weeklyVolumesLast4Weeks.map((vol) =>
-                        Math.round(((vol - baseline) / baseline) * 100)
-                      )
-                    : [0, 0, 0, 0];
-                  const dataMin = Math.min(...rawPct, 0);
-                  const dataMax = Math.max(...rawPct, 0);
-                  const yMin = Math.min(0, Math.floor(dataMin / 5) * 5);
-                  const yMax = Math.max(0, Math.ceil(dataMax / 5) * 5);
-                  const yMinFinal = dataMax > 0 ? Math.min(yMin, -5) : yMin;
-                  const yMaxFinal = yMax;
-                  const yRange = Math.max(yMaxFinal - yMinFinal, 8);
-                  const chartH = 100;
-                  const padLeft = 28;
-                  const padRight = 8;
-                  const plotW = 220;
-                  const totalW = padLeft + plotW + padRight;
-                  const step = Math.max(1, Math.ceil(yRange / 4));
-                  const yLabels: number[] = [];
-                  for (let v = yMinFinal; v <= yMaxFinal; v += step) {
-                    if (!yLabels.includes(v)) yLabels.push(v);
-                  }
-                  if (!yLabels.includes(0) && yMinFinal < 0 && yMaxFinal > 0) yLabels.push(0);
-                  yLabels.sort((a, b) => a - b);
-                  if (yLabels.length < 2) yLabels.push(yMinFinal, yMaxFinal);
-                  const toY = (pct: number) => {
-                    const v = Math.max(yMinFinal, Math.min(yMaxFinal, pct));
-                    return chartH - ((v - yMinFinal) / yRange) * (chartH - 4);
-                  };
-                  const centerX = (i: number) => totalW * ((i * 2 + 1) / 8);
-                  const coords = rawPct.map((pct, i) => {
-                    const x = centerX(i);
-                    const y = toY(pct);
-                    return { x, y, pct };
-                  });
-                  const pathD = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x} ${c.y}`).join(" ");
-                  const lineColor = "#22c55e";
-                  return (
-                    <>
-                      <div className="flex gap-2">
-                        <div className="relative shrink-0" style={{ width: 24, height: chartH }}>
-                          {yLabels.map((pct) => (
-                            <span key={pct} className="absolute text-[10px] text-gray-400 -translate-y-1/2" style={{ left: 0, top: toY(pct) }}>
-                              {pct > 0 ? `+${pct}%` : `${pct}%`}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="flex-1 min-w-0 overflow-visible" style={{ minWidth: 240 }}>
-                          <svg viewBox={`0 0 ${totalW} ${chartH}`} className="w-full" style={{ height: chartH }} preserveAspectRatio="none">
-                            {yLabels.map((pct) => (
-                              <line key={pct} x1={padLeft} y1={toY(pct)} x2={totalW} y2={toY(pct)} stroke="rgba(148,163,184,0.3)" strokeDasharray="4 2" strokeWidth={0.5} />
-                            ))}
-                            {[0, 1, 2, 3].map((i) => {
-                              const x = centerX(i);
-                              return (
-                                <line key={i} x1={x} y1={0} x2={x} y2={chartH} stroke="rgba(148,163,184,0.3)" strokeDasharray="4 2" strokeWidth={0.5} />
-                              );
-                            })}
-                            <path d={pathD} fill="none" stroke={lineColor} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                            {coords.map((c, i) => (
-                              <g key={i}>
-                                <circle cx={c.x} cy={c.y} r={4} fill={lineColor} />
-                                {i === 3 && (
-                                  <text x={c.x + 6} y={c.y - 4} fill="white" fontSize={10} fontWeight="600">{c.pct}%</text>
-                                )}
-                              </g>
-                            ))}
-                          </svg>
-                          <div className="grid grid-cols-4 gap-0 mt-1">
-                            {["Week 1", "Week 2", "Week 3", "Week 4"].map((l, i) => (
-                              <span key={i} className="text-[10px] text-gray-400 text-center">{l}</span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-green-500 text-sm font-medium mt-3 text-center">
-                        {hasValidBaseline ? `+${rawPct[3] >= 0 ? rawPct[3] : 0}%` : "0%"} this month
-                      </p>
-                    </>
-                  );
-                })()
-              ) : (
-                <p className="text-gray-400 text-sm">
-                  {!hasAnyWorkoutData
-                    ? "Start a workout and complete your sets to see your strength progress."
-                    : "Complete more workouts to see your strength progress."}
-                </p>
+            <div className="flex flex-wrap gap-2 text-[11px] items-center">
+              <span className="inline-flex items-center gap-1 rounded-lg border border-orange-500/25 bg-orange-500/10 px-2 py-1 text-orange-200">
+                <Flame className="w-3.5 h-3.5 shrink-0" />
+                {activeStreak}d streak
+              </span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 ${
+                  weeklySessionProgress.hasPlan
+                    ? "border-teal-500/25 bg-teal-500/10 text-teal-200"
+                    : "border-sky-500/25 bg-sky-500/10 text-sky-200"
+                }`}
+              >
+                <Dumbbell className="w-3.5 h-3.5 shrink-0" />
+                <span className="font-semibold tabular-nums">{weeklySessionProgress.completed}/{weeklySessionProgress.target}</span>
+                <span className={weeklySessionProgress.hasPlan ? "text-teal-300/80" : "text-sky-300/80"}>days complete</span>
+              </span>
+              {lastWorkout && (
+                <span className="text-gray-500">
+                  Last: <span className="text-gray-300">{lastWorkout.name}</span>
+                  {lastWorkout.daysAgo === 0 ? " · today" : lastWorkout.daysAgo === 1 ? " · yesterday" : ` · ${lastWorkout.daysAgo}d ago`}
+                </span>
               )}
             </div>
 
-            {/* Workout Consistency */}
-            <div className="bg-gray-800/80 border border-gray-700 rounded-xl p-4">
-              <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-amber-400" />
-                Workout Consistency
-              </h2>
-              <div className="flex justify-between mb-2">
-                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-                  <span key={day} className="text-[10px] text-gray-400 flex-1 text-center">{day}</span>
-                ))}
+            <div className="rounded-lg border border-violet-500/25 bg-violet-950/20 px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-3.5 h-3.5 text-violet-400/90 shrink-0" />
+                <h2 className="text-[11px] font-semibold text-white whitespace-nowrap">Strength trend</h2>
+                <select
+                  value={strengthTrendPeriod}
+                  onChange={(e) => setStrengthTrendPeriod(e.target.value as StrengthTrendPeriodId)}
+                  className="min-w-0 flex-1 rounded-md border border-white/15 bg-black/50 py-1 pl-2 pr-7 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-violet-500/50 appearance-none bg-[length:14px] bg-[right_0.35rem_center] bg-no-repeat"
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239ca3af'%3E%3Cpath d='M3 5h6l-3 4z'/%3E%3C/svg%3E")`,
+                  }}
+                >
+                  {progressAnalytics.strengthTrends.map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.label}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="flex justify-between">
-                {weeklyConsistency.map((hasWorkout, i) => (
-                  <div key={i} className="flex-1 flex justify-center">
-                    {hasWorkout ? (
-                      <Check className="w-5 h-5 text-green-400" strokeWidth={3} />
-                    ) : (
-                      <X className="w-5 h-5 text-red-400/80" strokeWidth={2.5} />
-                    )}
+              {(() => {
+                const row = progressAnalytics.strengthTrends.find((r) => r.id === strengthTrendPeriod);
+                if (!row) return null;
+                const pctLabel =
+                  row.changePct == null
+                    ? "0%"
+                    : `${row.changePct >= 0 ? "+" : ""}${row.changePct}%`;
+                const pctClass =
+                  row.changePct == null
+                    ? "text-gray-400"
+                    : row.changePct >= 0
+                      ? "text-teal-400"
+                      : "text-red-400";
+                return (
+                  <div className="mt-2 flex justify-center pl-6 pr-0.5 py-0.5">
+                    <span className={`text-base font-bold tabular-nums px-1 ${pctClass}`}>{pctLabel}</span>
                   </div>
-                ))}
-              </div>
-              <p className="text-sm text-gray-400 mt-2 text-center">{weeklyConsistency.filter(Boolean).length} / 7 days</p>
+                );
+              })()}
             </div>
 
-            {/* Personal Records */}
-            <div className="bg-gray-800/80 border border-gray-700 rounded-xl p-4">
-              <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                <Trophy className="w-4 h-4 text-amber-400" />
-                Personal Records
-              </h2>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between py-2 border-b border-gray-700/50">
-                  <span className="text-white text-sm flex items-center gap-2">
-                    <Dumbbell className="w-4 h-4 text-gray-500" /> Bench Press
-                  </span>
-                  <span className="text-gray-400 font-semibold">{personalRecords.bench || "—"} kg</span>
-                </div>
-                <div className="flex items-center justify-between py-2 border-b border-gray-700/50">
-                  <span className="text-white text-sm flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-gray-500" /> Squat
-                  </span>
-                  <span className="text-gray-400 font-semibold">{personalRecords.squat || "—"} kg</span>
-                </div>
-                <div className="flex items-center justify-between py-2">
-                  <span className="text-white text-sm flex items-center gap-2">
-                    <Target className="w-4 h-4 text-gray-500" /> Deadlift
-                  </span>
-                  <span className="text-gray-400 font-semibold">{personalRecords.deadlift || "—"} kg</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Total Calories Burned This Month */}
-            <div className="bg-gray-800/80 border border-gray-700 rounded-xl p-4">
-              <h2 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
-                <Flame className="w-4 h-4 text-orange-400" />
-                Total Calories Burned This Month
-              </h2>
-              <p className="text-2xl font-bold text-white flex items-center gap-2">
-                <Flame className="w-6 h-6 text-orange-400" />
-                {caloriesBurnedThisMonth.toLocaleString()} kcal
+            <div className="rounded-xl border border-gray-700 bg-gray-800/40 p-4">
+              <h2 className="text-sm font-semibold text-white mb-0.5">Best at your rep goal</h2>
+              <p className="text-[10px] text-gray-500 mb-3">
+                Only sets where reps ≥ your plan target. Heaviest weight and most reps can come from different sets.
               </p>
+              {progressAnalytics.goalBests.length === 0 ? (
+                <p className="text-sm text-gray-500">Add exercises in Workout plans so each lift has a rep target.</p>
+              ) : (
+                <ul className="divide-y divide-white/10 rounded-lg border border-white/10 overflow-hidden">
+                  {progressAnalytics.goalBests.map((row) => (
+                    <li key={`${row.exerciseName}-${row.goalReps}`} className="px-3 py-2.5 bg-black/20">
+                      <div className="flex justify-between gap-2 items-start">
+                        <p className="text-sm font-medium text-white">{row.exerciseName}</p>
+                        <span className="text-[10px] text-gray-500 shrink-0">target {row.goalReps}+ reps</span>
+                      </div>
+                      {row.bestWeight == null && row.bestReps == null ? (
+                        <p className="text-[11px] text-gray-500 mt-1">No completed sets at {row.goalReps}+ reps yet.</p>
+                      ) : (
+                        <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+                          {row.bestWeight != null && (
+                            <span className="text-teal-300/90">
+                              Heaviest: <span className="font-bold tabular-nums">{row.bestWeight} kg</span>
+                            </span>
+                          )}
+                          {row.bestReps != null && (
+                            <span className="text-gray-300">
+                              Top reps: <span className="font-semibold tabular-nums">{row.bestReps}</span>
+                            </span>
+                          )}
+                          {row.qualifyingSetCount > 0 && (
+                            <span className="text-gray-600">({row.qualifyingSetCount} sets ≥ goal)</span>
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
+            {progressAnalytics.progressionTips.length > 0 && (
+              <div className="rounded-xl border border-amber-500/20 bg-amber-950/15 p-3">
+                <h2 className="text-xs font-semibold text-white flex items-center gap-2 mb-2">
+                  <Lightbulb className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  Quick tips
+                </h2>
+                <ul className="space-y-2">
+                  {progressAnalytics.progressionTips.map((tip, i) => (
+                    <li key={i}>
+                      <p className="text-[11px] font-medium text-amber-100/90">{tip.title}</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5 leading-snug">{tip.detail}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="rounded-xl border border-gray-700 bg-gray-800/40 p-4">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-gray-500 mb-1">Est. calories this month</p>
+              <p className="text-2xl font-bold text-white tabular-nums">{caloriesBurnedThisMonth.toLocaleString()} kcal</p>
+              <p className="text-[10px] text-gray-600 mt-1">From logged volume × 0.04 (rough estimate)</p>
+            </div>
           </div>
         ) : (
           <>
