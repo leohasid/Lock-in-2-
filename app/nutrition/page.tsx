@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { Upload, Camera, X, Settings, MessageSquare, Sparkles, ChevronRight, Plus } from "lucide-react";
+import { Upload, Camera, X, Settings, MessageSquare, Sparkles, ChevronRight, Plus, Clock } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { toLocalDateString } from "@/lib/date-utils";
+import { recommendedRecipes, recipeCardImageSrc, type Recipe } from "@/lib/recommended-recipes";
 
 interface Meal {
   id: string;
@@ -20,344 +21,179 @@ interface Meal {
   imageUrl?: string;
 }
 
-interface Recipe {
-  id: string;
-  name: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fats: number;
-  sugar?: number;
-  sodium?: number;
-  fiber?: number;
-  description: string;
-  category: string;
-}
+function RecipeDetailModal({
+  recipe,
+  onClose,
+  onAddMeal,
+  favouriteIds,
+  onToggleFavourite,
+}: {
+  recipe: Recipe | null;
+  onClose: () => void;
+  onAddMeal: (meal: Recipe) => void;
+  favouriteIds: string[];
+  onToggleFavourite: (id: string) => void;
+}) {
+  if (!recipe) return null;
+  const img = recipeCardImageSrc(recipe.id);
+  const ingredients = recipe.ingredients ?? [];
+  const steps = recipe.steps ?? [];
 
-// Recommended Healthy Recipes organized by category
-const recommendedRecipes: Recipe[] = [
-  // Chicken Category
-  {
-    id: "1",
-    name: "Grilled Chicken Salad",
-    calories: 350,
-    protein: 35,
-    carbs: 15,
-    fats: 18,
-    sugar: 5,
-    sodium: 400,
-    fiber: 4,
-    description: "Fresh mixed greens with grilled chicken breast, cherry tomatoes, and olive oil dressing",
-    category: "Chicken"
-  },
-  {
-    id: "12",
-    name: "Chicken and Brown Rice",
-    calories: 450,
-    protein: 38,
-    carbs: 48,
-    fats: 10,
-    sugar: 2,
-    sodium: 450,
-    fiber: 4,
-    description: "Grilled chicken breast with brown rice and steamed broccoli",
-    category: "Chicken"
-  },
-  {
-    id: "13",
-    name: "Chicken Teriyaki Bowl",
-    calories: 420,
-    protein: 36,
-    carbs: 52,
-    fats: 8,
-    sugar: 12,
-    sodium: 680,
-    fiber: 3,
-    description: "Grilled teriyaki chicken with jasmine rice and vegetables",
-    category: "Chicken"
-  },
-  {
-    id: "14",
-    name: "Chicken Caesar Wrap",
-    calories: 380,
-    protein: 32,
-    carbs: 38,
-    fats: 14,
-    sugar: 4,
-    sodium: 720,
-    fiber: 5,
-    description: "Grilled chicken, romaine lettuce, parmesan, and caesar dressing in a whole wheat wrap",
-    category: "Chicken"
-  },
-  {
-    id: "15",
-    name: "Lemon Herb Chicken",
-    calories: 320,
-    protein: 34,
-    carbs: 12,
-    fats: 14,
-    sugar: 3,
-    sodium: 380,
-    fiber: 2,
-    description: "Baked chicken breast with lemon, herbs, and roasted vegetables",
-    category: "Chicken"
-  },
-  // Protein Category
-  {
-    id: "2",
-    name: "Salmon with Quinoa",
-    calories: 420,
-    protein: 32,
-    carbs: 35,
-    fats: 18,
-    sugar: 2,
-    sodium: 350,
-    fiber: 5,
-    description: "Baked salmon fillet served with quinoa and steamed vegetables",
-    category: "Protein"
-  },
-  {
-    id: "10",
-    name: "Baked Cod with Sweet Potato",
-    calories: 360,
-    protein: 30,
-    carbs: 42,
-    fats: 8,
-    sugar: 12,
-    sodium: 320,
-    fiber: 7,
-    description: "Oven-baked cod fillet with roasted sweet potato and green beans",
-    category: "Protein"
-  },
-  {
-    id: "5",
-    name: "Turkey Wrap",
-    calories: 380,
-    protein: 28,
-    carbs: 42,
-    fats: 12,
-    sugar: 4,
-    sodium: 680,
-    fiber: 6,
-    description: "Whole wheat wrap with lean turkey, avocado, lettuce, and tomato",
-    category: "Protein"
-  },
-  {
-    id: "16",
-    name: "Tuna Poke Bowl",
-    calories: 390,
-    protein: 30,
-    carbs: 45,
-    fats: 10,
-    sugar: 6,
-    sodium: 520,
-    fiber: 4,
-    description: "Fresh tuna, brown rice, edamame, avocado, and sesame dressing",
-    category: "Protein"
-  },
-  {
-    id: "17",
-    name: "Beef Stir Fry",
-    calories: 410,
-    protein: 35,
-    carbs: 38,
-    fats: 14,
-    sugar: 8,
-    sodium: 580,
-    fiber: 5,
-    description: "Lean beef strips with mixed vegetables in a light soy-ginger sauce",
-    category: "Protein"
-  },
-  // Vegetarian Category
-  {
-    id: "6",
-    name: "Vegetable Stir Fry",
-    calories: 290,
-    protein: 15,
-    carbs: 38,
-    fats: 10,
-    sugar: 8,
-    sodium: 520,
-    fiber: 7,
-    description: "Mixed vegetables stir-fried with tofu in a light soy sauce",
-    category: "Vegetarian"
-  },
-  {
-    id: "9",
-    name: "Quinoa Bowl",
-    calories: 410,
-    protein: 18,
-    carbs: 58,
-    fats: 12,
-    sugar: 6,
-    sodium: 380,
-    fiber: 9,
-    description: "Quinoa base with black beans, corn, avocado, and salsa",
-    category: "Vegetarian"
-  },
-  {
-    id: "18",
-    name: "Mediterranean Bowl",
-    calories: 380,
-    protein: 16,
-    carbs: 48,
-    fats: 16,
-    sugar: 8,
-    sodium: 420,
-    fiber: 10,
-    description: "Chickpeas, cucumber, tomatoes, olives, feta cheese, and tahini",
-    category: "Vegetarian"
-  },
-  {
-    id: "19",
-    name: "Veggie Burger",
-    calories: 350,
-    protein: 18,
-    carbs: 42,
-    fats: 12,
-    sugar: 6,
-    sodium: 580,
-    fiber: 8,
-    description: "Plant-based patty with lettuce, tomato, and whole grain bun",
-    category: "Vegetarian"
-  },
-  {
-    id: "20",
-    name: "Lentil Curry",
-    calories: 320,
-    protein: 20,
-    carbs: 52,
-    fats: 6,
-    sugar: 8,
-    sodium: 480,
-    fiber: 16,
-    description: "Spiced red lentils with basmati rice and naan",
-    category: "Vegetarian"
-  },
-  // Breakfast Category
-  {
-    id: "3",
-    name: "Greek Yogurt Parfait",
-    calories: 280,
-    protein: 20,
-    carbs: 35,
-    fats: 8,
-    sugar: 22,
-    sodium: 120,
-    fiber: 4,
-    description: "Layered Greek yogurt with fresh berries, granola, and honey",
-    category: "Breakfast"
-  },
-  {
-    id: "4",
-    name: "Oatmeal with Berries",
-    calories: 320,
-    protein: 12,
-    carbs: 55,
-    fats: 8,
-    sugar: 18,
-    sodium: 150,
-    fiber: 8,
-    description: "Steel-cut oats topped with mixed berries, almonds, and a drizzle of honey",
-    category: "Breakfast"
-  },
-  {
-    id: "8",
-    name: "Egg White Scramble",
-    calories: 220,
-    protein: 24,
-    carbs: 8,
-    fats: 10,
-    sugar: 3,
-    sodium: 420,
-    fiber: 2,
-    description: "Scrambled egg whites with spinach, mushrooms, and whole grain toast",
-    category: "Breakfast"
-  },
-  {
-    id: "21",
-    name: "Avocado Toast",
-    calories: 290,
-    protein: 10,
-    carbs: 32,
-    fats: 16,
-    sugar: 4,
-    sodium: 380,
-    fiber: 12,
-    description: "Whole grain toast with mashed avocado, poached egg, and cherry tomatoes",
-    category: "Breakfast"
-  },
-  {
-    id: "22",
-    name: "Protein Pancakes",
-    calories: 340,
-    protein: 28,
-    carbs: 38,
-    fats: 8,
-    sugar: 12,
-    sodium: 320,
-    fiber: 6,
-    description: "Protein-rich pancakes with Greek yogurt and fresh fruit",
-    category: "Breakfast"
-  },
-  // Snacks Category
-  {
-    id: "7",
-    name: "Protein Smoothie",
-    calories: 250,
-    protein: 25,
-    carbs: 28,
-    fats: 4,
-    sugar: 20,
-    sodium: 80,
-    fiber: 3,
-    description: "Banana, spinach, protein powder, and almond milk blend",
-    category: "Snacks"
-  },
-  {
-    id: "11",
-    name: "Cottage Cheese Bowl",
-    calories: 200,
-    protein: 22,
-    carbs: 15,
-    fats: 6,
-    sugar: 10,
-    sodium: 380,
-    fiber: 0,
-    description: "Low-fat cottage cheese with fresh peaches and a sprinkle of cinnamon",
-    category: "Snacks"
-  },
-  {
-    id: "23",
-    name: "Protein Bar",
-    calories: 240,
-    protein: 20,
-    carbs: 22,
-    fats: 8,
-    sugar: 14,
-    sodium: 180,
-    fiber: 4,
-    description: "Homemade protein bar with nuts, dates, and chocolate",
-    category: "Snacks"
-  },
-  {
-    id: "24",
-    name: "Hummus & Veggies",
-    calories: 180,
-    protein: 8,
-    carbs: 22,
-    fats: 8,
-    sugar: 4,
-    sodium: 320,
-    fiber: 8,
-    description: "Fresh hummus with carrot sticks, cucumber, and bell peppers",
-    category: "Snacks"
-  }
-];
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+        aria-label="Close recipe"
+        onClick={onClose}
+      />
+      <div className="relative w-full sm:max-w-lg max-h-[92vh] sm:max-h-[85vh] bg-gradient-to-b from-[#0c1422] to-black border border-teal-500/30 sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="flex-shrink-0 h-44 sm:h-48 bg-gray-800 relative">
+          {img ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={img} alt={recipe.name} className="absolute inset-0 w-full h-full object-cover" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-5xl bg-gradient-to-br from-gray-700 to-gray-900">
+              🍽️
+            </div>
+          )}
+          <div className="absolute top-2 left-2 right-2 flex justify-between items-start gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleFavourite(recipe.id)}
+              className={`w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-sm ${
+                favouriteIds.includes(recipe.id) ? "bg-red-500/90 text-white" : "bg-black/50 text-white hover:bg-black/70"
+              }`}
+              aria-label="Favourite"
+            >
+              <svg className="w-4 h-4" fill={favouriteIds.includes(recipe.id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 pb-6 pt-3 space-y-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-teal-400/90 mb-0.5">{recipe.category}</p>
+            <h2 className="text-xl font-bold text-white leading-tight">{recipe.name}</h2>
+            {recipe.prepTime && (
+              <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" />
+                {recipe.prepTime}
+              </p>
+            )}
+            <p className="text-sm text-gray-400 mt-2 leading-relaxed">{recipe.description}</p>
+          </div>
+
+          <div>
+            <h3 className="text-xs font-bold text-white uppercase tracking-wide mb-2">Nutrition (per serving)</h3>
+            <p className="text-[10px] text-gray-500 mb-2">
+              Calories match protein, carbs, and fat (4 kcal/g protein &amp; carbs, 9 kcal/g fat).
+            </p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+                <span className="text-gray-500 block">Calories</span>
+                <span className="text-lg font-bold text-teal-400 tabular-nums">{recipe.calories} kcal</span>
+              </div>
+              <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+                <span className="text-gray-500 block">Protein</span>
+                <span className="text-lg font-bold text-white tabular-nums">{recipe.protein} g</span>
+              </div>
+              <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+                <span className="text-gray-500 block">Carbs</span>
+                <span className="text-lg font-bold text-white tabular-nums">{recipe.carbs} g</span>
+              </div>
+              <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+                <span className="text-gray-500 block">Fat</span>
+                <span className="text-lg font-bold text-white tabular-nums">{recipe.fats} g</span>
+              </div>
+              {recipe.sugar != null && (
+                <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+                  <span className="text-gray-500 block">Sugar</span>
+                  <span className="text-lg font-bold text-white tabular-nums">{recipe.sugar} g</span>
+                </div>
+              )}
+              {recipe.fiber != null && (
+                <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+                  <span className="text-gray-500 block">Fiber</span>
+                  <span className="text-lg font-bold text-white tabular-nums">{recipe.fiber} g</span>
+                </div>
+              )}
+              {recipe.sodium != null && (
+                <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 col-span-2">
+                  <span className="text-gray-500 block">Sodium</span>
+                  <span className="text-lg font-bold text-white tabular-nums">{recipe.sodium} mg</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-xs font-bold text-white uppercase tracking-wide mb-2">Ingredients</h3>
+            {ingredients.length > 0 ? (
+              <ul className="list-disc list-inside text-sm text-gray-300 space-y-1.5 marker:text-teal-500">
+                {ingredients.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-500">No ingredient list for this recipe.</p>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-xs font-bold text-white uppercase tracking-wide mb-2">Directions</h3>
+            {steps.length > 0 ? (
+              <ol className="list-decimal list-inside text-sm text-gray-300 space-y-2 marker:text-teal-500 marker:font-semibold">
+                {steps.map((line, i) => (
+                  <li key={i} className="leading-relaxed pl-0.5">
+                    <span className="-ml-1">{line}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="text-sm text-gray-500">No steps for this recipe.</p>
+            )}
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                onAddMeal(recipe);
+                onClose();
+              }}
+              className="flex-1 py-3 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-xl font-bold text-sm shadow-lg shadow-teal-500/30"
+            >
+              Add to log
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-3 rounded-xl border border-white/20 text-gray-300 text-sm font-medium hover:bg-white/5"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Recipes View Component - Delivery App Style
 function RecipesView({ onAddMeal }: { onAddMeal: (meal: Recipe) => void }) {
   const scrollRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [detailRecipe, setDetailRecipe] = useState<Recipe | null>(null);
   const [favourites, setFavourites] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
     const stored = localStorage.getItem("favouriteRecipes");
@@ -387,6 +223,13 @@ function RecipesView({ onAddMeal }: { onAddMeal: (meal: Recipe) => void }) {
 
   return (
     <div className="space-y-4">
+      <RecipeDetailModal
+        recipe={detailRecipe}
+        onClose={() => setDetailRecipe(null)}
+        onAddMeal={onAddMeal}
+        favouriteIds={favourites}
+        onToggleFavourite={toggleFavourite}
+      />
       {categories.map((category) => {
         const categoryRecipes = getRecipesByCategory(category);
         if (categoryRecipes.length === 0) return null;
@@ -408,20 +251,45 @@ function RecipesView({ onAddMeal }: { onAddMeal: (meal: Recipe) => void }) {
 
             {/* Horizontal Scrollable Recipe Cards */}
             <div ref={(el) => { scrollRefs.current[category] = el; }} className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              {categoryRecipes.map((recipe) => (
+              {categoryRecipes.map((recipe) => {
+                const cardImage = recipeCardImageSrc(recipe.id);
+                return (
                 <div
                   key={recipe.id}
                   className="flex-shrink-0 w-[220px] bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-lg overflow-hidden border border-teal-500/20 hover:border-teal-400/40 transition-all"
                 >
-                  {/* Food Image Placeholder */}
-                  <div className="w-full h-28 bg-gradient-to-br from-gray-700 to-gray-900 relative">
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-3xl">🍽️</span>
-                    </div>
-                    {/* Favourite Button */}
+                  {/* Recipe photo or placeholder */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setDetailRecipe(recipe)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setDetailRecipe(recipe);
+                      }
+                    }}
+                    className="w-full h-28 bg-gradient-to-br from-gray-700 to-gray-900 relative overflow-hidden cursor-pointer group"
+                  >
+                    {cardImage ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={cardImage}
+                        alt={recipe.name}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:opacity-95 transition-opacity"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-3xl">🍽️</span>
+                      </div>
+                    )}
                     <button
-                      onClick={() => toggleFavourite(recipe.id)}
-                      className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm transition-colors ${
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavourite(recipe.id);
+                      }}
+                      className={`absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm transition-colors z-10 ${
                         favourites.includes(recipe.id)
                           ? "bg-red-500/90 text-white"
                           : "bg-white/20 text-gray-300 hover:bg-white/30"
@@ -435,22 +303,34 @@ function RecipesView({ onAddMeal }: { onAddMeal: (meal: Recipe) => void }) {
 
                   {/* Recipe Info */}
                   <div className="p-3">
-                    <h3 className="text-sm font-bold text-white mb-1">{recipe.name}</h3>
-                    <p className="text-[10px] text-gray-400 mb-2 line-clamp-2">{recipe.description}</p>
-                    
-                    {/* Nutrition Info */}
-                    <div className="flex items-center gap-1.5 text-[9px] text-gray-300 mb-2">
-                      <span className="font-semibold text-teal-400">{recipe.calories} kcal</span>
-                      <span>•</span>
-                      <span>P: {recipe.protein}g</span>
-                      <span>•</span>
-                      <span>C: {recipe.carbs}g</span>
-                      <span>•</span>
-                      <span>F: {recipe.fats}g</span>
-                    </div>
-
-                    {/* Add Button */}
                     <button
+                      type="button"
+                      onClick={() => setDetailRecipe(recipe)}
+                      className="text-left w-full"
+                    >
+                      <h3 className="text-sm font-bold text-white mb-1 hover:text-teal-200 transition-colors">{recipe.name}</h3>
+                      <p className="text-[10px] text-gray-400 mb-2 line-clamp-2">{recipe.description}</p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDetailRecipe(recipe)}
+                      className="w-full text-left"
+                    >
+                      <div className="flex items-center gap-1.5 text-[9px] text-gray-300 mb-1">
+                        <span className="font-semibold text-teal-400">{recipe.calories} kcal</span>
+                        <span>•</span>
+                        <span>P: {recipe.protein}g</span>
+                        <span>•</span>
+                        <span>C: {recipe.carbs}g</span>
+                        <span>•</span>
+                        <span>F: {recipe.fats}g</span>
+                      </div>
+                      <p className="text-[9px] text-teal-400/80 font-medium mb-2">Tap for full recipe &amp; macros</p>
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => onAddMeal(recipe)}
                       className="w-full py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-lg font-bold text-xs transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
                     >
@@ -458,7 +338,8 @@ function RecipesView({ onAddMeal }: { onAddMeal: (meal: Recipe) => void }) {
                     </button>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
         );
@@ -520,8 +401,27 @@ function FavouritesView({ meals, onAddMeal }: { meals: Meal[]; onAddMeal: (meal:
     savePersonalRecipes(personalRecipes.filter(r => r.id !== id));
   };
 
+  const [detailRecipe, setDetailRecipe] = useState<Recipe | null>(null);
+
+  const toggleFavourite = (recipeId: string) => {
+    const updated = favourites.includes(recipeId)
+      ? favourites.filter((id) => id !== recipeId)
+      : [...favourites, recipeId];
+    setFavourites(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("favouriteRecipes", JSON.stringify(updated));
+    }
+  };
+
   return (
     <div className="space-y-4">
+      <RecipeDetailModal
+        recipe={detailRecipe}
+        onClose={() => setDetailRecipe(null)}
+        onAddMeal={onAddMeal}
+        favouriteIds={favourites}
+        onToggleFavourite={toggleFavourite}
+      />
       <button
         onClick={() => setShowAddRecipe(true)}
         className="w-full py-3 rounded-xl border-2 border-dashed border-teal-500/40 text-teal-400 font-semibold flex items-center justify-center gap-2 hover:bg-teal-500/10 transition-colors"
@@ -544,19 +444,25 @@ function FavouritesView({ meals, onAddMeal }: { meals: Meal[]; onAddMeal: (meal:
               className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-teal-500/20"
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-bold text-white mb-1">{recipe.name}</h3>
-                  <p className="text-xs text-gray-400 mb-2">{recipe.description}</p>
-                  <div className="flex items-center gap-3 text-[10px] text-gray-300">
+                <button
+                  type="button"
+                  onClick={() => setDetailRecipe(recipe)}
+                  className="flex-1 min-w-0 text-left"
+                >
+                  <h3 className="text-base font-bold text-white mb-1 hover:text-teal-200 transition-colors">{recipe.name}</h3>
+                  <p className="text-xs text-gray-400 mb-2 line-clamp-3">{recipe.description}</p>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-gray-300">
                     <span className="font-semibold text-teal-400">{recipe.calories} kcal</span>
                     <span>•</span>
                     <span>P: {recipe.protein}g</span>
                     <span>C: {recipe.carbs}g</span>
                     <span>F: {recipe.fats}g</span>
                   </div>
-                </div>
+                  <p className="text-[10px] text-teal-400/80 font-medium mt-1.5">Tap for details &amp; recipe</p>
+                </button>
                 <div className="flex gap-2 shrink-0">
                   <button
+                    type="button"
                     onClick={() => onAddMeal(recipe)}
                     className="py-2 px-3 bg-teal-400 hover:bg-teal-500 text-black text-xs font-bold rounded-lg transition-colors"
                   >
@@ -564,6 +470,7 @@ function FavouritesView({ meals, onAddMeal }: { meals: Meal[]; onAddMeal: (meal:
                   </button>
                   {recipe.id.startsWith("personal-") && (
                     <button
+                      type="button"
                       onClick={() => handleRemovePersonalRecipe(recipe.id)}
                       className="p-2 text-gray-400 hover:text-red-400 transition-colors"
                       title="Remove"
@@ -1484,9 +1391,9 @@ Provide a helpful, conversational response.`;
               protein: meal.protein.toString(),
               carbs: meal.carbs.toString(),
               fats: meal.fats.toString(),
-              sugar: "",
-              sodium: "",
-              fiber: "",
+              sugar: meal.sugar?.toString() ?? "",
+              sodium: meal.sodium?.toString() ?? "",
+              fiber: meal.fiber?.toString() ?? "",
             });
             setShowAddMeal(true);
           }}
