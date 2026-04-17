@@ -346,9 +346,9 @@ export default function GoalsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white">
-      <div className="max-w-md mx-auto pb-24 px-5">
+      <div className="max-w-md mx-auto pb-24 px-4 pt-6">
         {/* Tab Bar */}
-        <div className="flex gap-1 mb-6 pt-4 bg-white/5 border border-white/8 rounded-2xl p-1">
+        <div className="flex gap-1 mb-6 bg-white/5 border border-white/8 rounded-2xl p-1">
           <Link href="/" className="flex-1 py-2.5 text-center text-sm font-semibold text-gray-500 hover:text-gray-300 rounded-xl transition-colors">
             Home
           </Link>

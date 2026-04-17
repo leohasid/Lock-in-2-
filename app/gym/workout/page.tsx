@@ -1002,23 +1002,19 @@ export default function WorkoutPage() {
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white pb-20">
       <div className="max-w-md mx-auto px-3 py-3">
         {/* Tab Selection Bar - Always visible at the top */}
-        <div className="flex gap-2 mb-5 border-b border-teal-500/30 pt-2">
+        <div className="flex gap-1 mb-5 bg-white/5 border border-white/8 rounded-2xl p-1">
           <button
             onClick={() => setActiveTab("workout")}
-            className={`flex-1 px-4 py-2 font-semibold transition-all transform hover:scale-105 ${
-              activeTab === "workout"
-                ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
-                : "text-gray-400 hover:text-teal-300"
+            className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-colors ${
+              activeTab === "workout" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
             }`}
           >
             My Workout
           </button>
           <button
             onClick={() => setActiveTab("progress")}
-            className={`flex-1 px-4 py-2 font-semibold transition-all transform hover:scale-105 ${
-              activeTab === "progress"
-                ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
-                : "text-gray-400 hover:text-teal-300"
+            className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-colors ${
+              activeTab === "progress" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
             }`}
           >
             Progress
