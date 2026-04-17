@@ -14,10 +14,147 @@ interface Reminder {
   id: string;
   title: string;
   type: "supplement" | "task" | "habit";
+  /** Start time HH:mm */
   time: string;
+  /** End time HH:mm (optional; schedule tasks) */
+  endTime?: string;
   date: string; // ISO date string (YYYY-MM-DD)
   completed: boolean;
   repeatFrequency?: string; // e.g., "daily", "weekly", "every 3 days", etc.
+}
+
+function formatReminderTimeDisplay(reminder: Reminder): string {
+  const start = reminder.time || "";
+  const end = reminder.endTime?.trim();
+  if (!start) return "";
+  if (end) return `${start} – ${end}`;
+  return start;
+}
+
+/** Same metadata as expanded recurring / batch tasks → same "series" for delete-all */
+function reminderSeriesKey(r: Reminder): string {
+  const end = r.endTime?.trim() ?? "";
+  const rep = r.repeatFrequency?.trim() ?? "";
+  return [r.type, r.title, r.time, end, rep].join("\u0001");
+}
+
+function remindersMatchingSeries(reminder: Reminder, all: Reminder[]): Reminder[] {
+  const key = reminderSeriesKey(reminder);
+  return all.filter((x) => reminderSeriesKey(x) === key);
+}
+
+function localDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Map words in user "when" text to JS getDay() indices (0 Sun … 6 Sat) */
+function parseWeekdayPattern(whenRaw: string): number[] | null {
+  const when = whenRaw
+    .toLowerCase()
+    .replace(/\bthis\s+month\b/gi, " ")
+    .replace(/,/g, " ")
+    .replace(/&/g, " ")
+    .replace(/\band\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!when) return null;
+
+  if (/\bweekdays?\b/.test(when) || /\bmon-?fri\b/.test(when) || /\bmon to fri\b/.test(when) || /\bwork\s*days?\b/.test(when)) {
+    return [1, 2, 3, 4, 5];
+  }
+  if (/\bweekends?\b/.test(when)) {
+    return [0, 6];
+  }
+
+  const patterns: [RegExp, number][] = [
+    [/\b(sundays?|sun)\b/, 0],
+    [/\b(mondays?|mon)\b/, 1],
+    [/\b(tuesdays?|tues?)\b/, 2],
+    [/\b(wednesdays?|wed)\b/, 3],
+    [/\b(thursdays?|thur?s?)\b/, 4],
+    [/\b(fridays?|fri)\b/, 5],
+    [/\b(saturdays?|sat)\b/, 6],
+  ];
+
+  const found = new Set<number>();
+  for (const [re, idx] of patterns) {
+    if (re.test(when)) found.add(idx);
+  }
+  return found.size > 0 ? Array.from(found).sort((a, b) => a - b) : null;
+}
+
+/** True → repeat on all matching weekdays (e.g. every Monday). False → only the next occurrence of each named day. */
+function isRecurringWeekdayWhen(whenRaw: string): boolean {
+  const t = whenRaw.toLowerCase();
+  if (/\bevery\b/.test(t)) return true;
+  if (/\beach\b/.test(t)) return true;
+  if (/\bweekly\b/.test(t)) return true;
+  if (/\ball\s+(the\s+)?(weekday|weekend|monday|tuesday|wednesday|thursday|friday|saturday|sunday)s?\b/.test(t)) {
+    return true;
+  }
+  if (
+    /\b(mondays|tuesdays|wednesdays|thursdays|fridays|saturdays|sundays)\b/.test(t)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function firstOccurrenceOnOrAfter(startDateStr: string, weekday: number): string | null {
+  const start = new Date(`${startDateStr}T12:00:00`);
+  if (Number.isNaN(start.getTime())) return null;
+  for (let i = 0; i < 370; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    if (d.getDay() === weekday) return localDateStr(d);
+  }
+  return null;
+}
+
+/** One calendar entry per listed weekday: next time that weekday happens on or after start (not recurring). */
+function nextOccurrencePerWeekday(startDateStr: string, weekdays: number[]): string[] {
+  const dates: string[] = [];
+  for (const w of weekdays) {
+    const d = firstOccurrenceOnOrAfter(startDateStr, w);
+    if (d) dates.push(d);
+  }
+  return [...new Set(dates)].sort();
+}
+
+/** From start date, collect up to maxCount calendar dates whose weekday is in weekdays */
+function expandOccurrencesOnWeekdays(startDateStr: string, weekdays: number[], maxCount: number): string[] {
+  const dates: string[] = [];
+  const start = new Date(`${startDateStr}T12:00:00`);
+  if (Number.isNaN(start.getTime()) || weekdays.length === 0) return dates;
+
+  for (let i = 0; i < 370 && dates.length < maxCount; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    if (weekdays.includes(d.getDay())) {
+      dates.push(localDateStr(d));
+    }
+  }
+  return dates;
+}
+
+/** All dates in the same calendar month as anchorDate that fall on one of weekdays */
+function datesInMonthMatchingWeekdays(anchorDateStr: string, weekdays: number[]): string[] {
+  const anchor = new Date(`${anchorDateStr}T12:00:00`);
+  if (Number.isNaN(anchor.getTime()) || weekdays.length === 0) return [];
+  const y = anchor.getFullYear();
+  const m = anchor.getMonth();
+  const lastDay = new Date(y, m + 1, 0).getDate();
+  const out: string[] = [];
+  for (let day = 1; day <= lastDay; day++) {
+    const d = new Date(y, m, day, 12, 0, 0);
+    if (weekdays.includes(d.getDay())) {
+      out.push(localDateStr(d));
+    }
+  }
+  return out;
 }
 
 export default function CalendarPage() {
@@ -31,6 +168,7 @@ export default function CalendarPage() {
     title: "",
     type: "task" as Reminder["type"],
     time: "",
+    endTime: "",
     date: new Date().toISOString().split("T")[0], // Default to today
     repeatFrequency: "",
   });
@@ -50,6 +188,14 @@ export default function CalendarPage() {
   const [selectedWeek, setSelectedWeek] = useState(new Date());
   const [routineView, setRoutineView] = useState<"fullWeek" | "today">("fullWeek");
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  /** Calendar flows use “reminder” copy; schedule (weekly grid) uses “task” copy */
+  const [addFormKind, setAddFormKind] = useState<"reminder" | "task">("reminder");
+  /** Whether the day-detail popup was opened from the month calendar vs the schedule week */
+  const [dateModalSource, setDateModalSource] = useState<"calendar" | "schedule" | null>(null);
+  const [deleteSeriesModal, setDeleteSeriesModal] = useState<{
+    reminder: Reminder;
+    series: Reminder[];
+  } | null>(null);
 
   // Load reminders from localStorage on mount
   useEffect(() => {
@@ -283,55 +429,144 @@ Check if they specified days. If not, ask specifically about days.`
   const handleAddReminder = () => {
     if (newReminder.title && newReminder.time && newReminder.date) {
       const remindersToAdd: Reminder[] = [];
-      const startDate = new Date(newReminder.date);
-      
-      const repeatInfo = parseRepeatFrequency(newReminder.repeatFrequency);
-      
-      if (repeatInfo) {
-        // Create repeating reminders
-        for (let i = 0; i < repeatInfo.count; i++) {
-          const date = new Date(startDate);
-          date.setDate(date.getDate() + (i * repeatInfo.days));
+      const startDate = new Date(`${newReminder.date}T12:00:00`);
+      const whenText = newReminder.repeatFrequency.trim();
+      const repeatLabel = whenText || undefined;
+      const endTimeField: string | undefined =
+        addFormKind === "task" ? newReminder.endTime.trim() || undefined : undefined;
+
+      if (addFormKind === "task") {
+        const weekdaySet = whenText ? parseWeekdayPattern(whenText) : null;
+
+        if (weekdaySet && weekdaySet.length > 0) {
+          const thisMonthScope = /\bthis\s+month\b/i.test(whenText);
+          const dayStrings = thisMonthScope
+            ? datesInMonthMatchingWeekdays(newReminder.date, weekdaySet)
+            : isRecurringWeekdayWhen(whenText)
+              ? expandOccurrencesOnWeekdays(newReminder.date, weekdaySet, 52)
+              : nextOccurrencePerWeekday(newReminder.date, weekdaySet);
+          const baseId = Date.now();
+          dayStrings.forEach((dateStr, i) => {
+            remindersToAdd.push({
+              id: `${baseId}-d${i}`,
+              title: newReminder.title,
+              type: "task",
+              time: newReminder.time,
+              ...(endTimeField ? { endTime: endTimeField } : {}),
+              date: dateStr,
+              completed: false,
+              repeatFrequency: whenText,
+            });
+          });
+        } else {
+          const repeatInfo = parseRepeatFrequency(whenText);
+          if (repeatInfo) {
+            for (let i = 0; i < repeatInfo.count; i++) {
+              const date = new Date(startDate);
+              date.setDate(date.getDate() + i * repeatInfo.days);
+              remindersToAdd.push({
+                id: `${Date.now()}-${i}`,
+                title: newReminder.title,
+                type: "task",
+                time: newReminder.time,
+                ...(endTimeField ? { endTime: endTimeField } : {}),
+                date: localDateStr(date),
+                completed: false,
+                repeatFrequency: whenText,
+              });
+            }
+          } else {
+            remindersToAdd.push({
+              id: Date.now().toString(),
+              title: newReminder.title,
+              type: "task",
+              time: newReminder.time,
+              ...(endTimeField ? { endTime: endTimeField } : {}),
+              date: newReminder.date,
+              completed: false,
+              repeatFrequency: repeatLabel,
+            });
+          }
+        }
+      } else {
+        const repeatInfo = parseRepeatFrequency(whenText);
+
+        if (repeatInfo) {
+          for (let i = 0; i < repeatInfo.count; i++) {
+            const date = new Date(startDate);
+            date.setDate(date.getDate() + i * repeatInfo.days);
+            remindersToAdd.push({
+              id: `${Date.now()}-${i}`,
+              title: newReminder.title,
+              type: newReminder.type,
+              time: newReminder.time,
+              ...(endTimeField ? { endTime: endTimeField } : {}),
+              date: localDateStr(date),
+              completed: false,
+              repeatFrequency: whenText,
+            });
+          }
+        } else {
           remindersToAdd.push({
-            id: `${Date.now()}-${i}`,
+            id: Date.now().toString(),
             title: newReminder.title,
             type: newReminder.type,
             time: newReminder.time,
-            date: date.toISOString().split("T")[0],
+            ...(endTimeField ? { endTime: endTimeField } : {}),
+            date: newReminder.date,
             completed: false,
-            repeatFrequency: newReminder.repeatFrequency,
+            repeatFrequency: repeatLabel,
           });
         }
-      } else {
-        // Single reminder, no repeat
-        remindersToAdd.push({
-          id: Date.now().toString(),
-          title: newReminder.title,
-          type: newReminder.type,
-          time: newReminder.time,
-          date: newReminder.date,
-          completed: false,
-        });
       }
-      
+
       setReminders([...reminders, ...remindersToAdd]);
       setNewReminder({ 
         title: "", 
-        type: "supplement", 
+        type: "task", 
         time: "", 
+        endTime: "",
         date: new Date().toISOString().split("T")[0],
         repeatFrequency: "",
       });
       setShowAddForm(false);
       setShowDateModal(false);
       setClickedDate(null);
+      setDateModalSource(null);
     }
   };
 
   const handleDateClick = (date: Date) => {
     setSelectedDate(date);
     setClickedDate(date);
+    setDateModalSource("calendar");
     setShowDateModal(true);
+  };
+
+  const openAddFormFromCalendar = (dateStr: string) => {
+    setAddFormKind("reminder");
+    setNewReminder({
+      title: "",
+      type: "task",
+      time: "",
+      endTime: "",
+      date: dateStr,
+      repeatFrequency: "",
+    });
+    setShowAddForm(true);
+  };
+
+  const openAddFormFromSchedule = (dateStr: string) => {
+    setAddFormKind("task");
+    setNewReminder({
+      title: "",
+      type: "task",
+      time: "",
+      endTime: "",
+      date: dateStr,
+      repeatFrequency: "",
+    });
+    setShowAddForm(true);
   };
 
   const toggleComplete = (id: string) => {
@@ -340,10 +575,20 @@ Check if they specified days. If not, ask specifically about days.`
     );
   };
 
-  const deleteReminder = (id: string) => {
-    if (confirm("Are you sure you want to delete this task?")) {
-      setReminders(reminders.filter((r) => r.id !== id));
+  const performDeleteReminderIds = (ids: Iterable<string>) => {
+    const idSet = new Set(ids);
+    setReminders((prev) => prev.filter((r) => !idSet.has(r.id)));
+  };
+
+  const requestDeleteReminder = (reminder: Reminder) => {
+    const series = remindersMatchingSeries(reminder, reminders);
+    if (series.length <= 1) {
+      if (confirm("Delete this entry?")) {
+        performDeleteReminderIds([reminder.id]);
+      }
+      return;
     }
+    setDeleteSeriesModal({ reminder, series });
   };
 
   const getReminderIcon = (type: Reminder["type"]) => {
@@ -411,6 +656,11 @@ Check if they specified days. If not, ask specifically about days.`
   const getSelectedDateReminders = () => {
     const selectedDateStr = selectedDate.toISOString().split("T")[0];
     return reminders.filter((r) => r.date === selectedDateStr);
+  };
+
+  const getRemindersForDate = (date: Date) => {
+    const d = date.toISOString().split("T")[0];
+    return reminders.filter((r) => r.date === d);
   };
 
   // Calendar generation
@@ -563,42 +813,40 @@ Check if they specified days. If not, ask specifically about days.`
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white px-4 pt-4 pb-28">
       <div className="container mx-auto px-4 py-4">
         {/* Header */}
-        <div className="mb-5 flex items-start justify-end">
-          <div className="flex gap-2">
+        <div className="mb-5 flex items-center justify-end gap-2">
+          {activeView === "calendar" && (
             <button
-              onClick={() => setShowAddForm(true)}
-              className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-xl text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 flex items-center gap-1.5 shadow-lg"
+              type="button"
+              onClick={() => openAddFormFromCalendar(selectedDate.toISOString().split("T")[0])}
+              className="px-4 py-2 rounded-xl text-xs font-bold transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white hover:bg-[rgba(20,30,35,1)] min-h-[38px]"
             >
-              + Add Task
+              + Add reminder
             </button>
-            <button
-              onClick={() => setShowAIGenerator(true)}
-              className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-xl text-xs font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 flex items-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              AI Schedule
-            </button>
-          </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowAIGenerator(true)}
+            className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-xl text-xs font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 flex items-center justify-center gap-1.5 min-h-[38px]"
+          >
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            AI Schedule
+          </button>
         </div>
 
         {/* View Tabs */}
-        <div className="flex gap-2 mb-5 border-b border-teal-500/30">
+        <div className="flex gap-1 mb-5 bg-white/5 border border-white/8 rounded-2xl p-1">
           <button
             onClick={() => setActiveView("calendar")}
-            className={`px-4 py-2 font-semibold transition-all transform hover:scale-105 ${
-              activeView === "calendar"
-                ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
-                : "text-gray-400 hover:text-teal-300"
+            className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-colors ${
+              activeView === "calendar" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
             }`}
           >
             Calendar
           </button>
           <button
             onClick={() => setActiveView("routine")}
-            className={`px-4 py-2 font-semibold transition-all transform hover:scale-105 ${
-              activeView === "routine"
-                ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
-                : "text-gray-400 hover:text-teal-300"
+            className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-colors ${
+              activeView === "routine" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
             }`}
           >
             Schedule
@@ -606,14 +854,23 @@ Check if they specified days. If not, ask specifically about days.`
         </div>
 
         {/* Date Click Modal - Shows Tasks for Selected Date */}
-        {showDateModal && clickedDate && (
+        {showDateModal && clickedDate && (() => {
+          const modalReminders = getRemindersForDate(clickedDate).sort((a, b) => a.time.localeCompare(b.time));
+          const isCalendarModal = dateModalSource === "calendar";
+          const emptyLabel = isCalendarModal ? "No reminders for this date" : "No tasks for this date";
+          const addLabel = isCalendarModal ? "Add reminder" : "Add task";
+          const addAnotherLabel = isCalendarModal ? "+ Add another reminder" : "+ Add another task";
+          const dateStr = clickedDate.toISOString().split("T")[0];
+          const closeModal = () => {
+            setShowDateModal(false);
+            setClickedDate(null);
+            setDateModalSource(null);
+            setSelectedDate(new Date());
+          };
+          return (
           <div
             className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-            onClick={() => {
-              setShowDateModal(false);
-              setClickedDate(null);
-              setSelectedDate(new Date());
-            }}
+            onClick={closeModal}
           >
             <div
               className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto border border-white/10"
@@ -629,41 +886,34 @@ Check if they specified days. If not, ask specifically about days.`
                   })}
                 </h2>
                 <button
-                  onClick={() => {
-                    setShowDateModal(false);
-                    setClickedDate(null);
-                    setSelectedDate(new Date());
-                  }}
+                  type="button"
+                  onClick={closeModal}
                   className="text-gray-400 hover:text-white text-2xl"
                 >
                   ×
                 </button>
               </div>
               
-              {getSelectedDateReminders().length === 0 ? (
+              {modalReminders.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-400 text-lg mb-4">No tasks for this date</p>
+                  <p className="text-gray-400 text-lg mb-4">{emptyLabel}</p>
                   <button
+                    type="button"
                     onClick={() => {
-                      setShowAddForm(true);
-                      setNewReminder({
-                        ...newReminder,
-                        date: clickedDate.toISOString().split("T")[0],
-                        type: "task",
-                      });
+                      if (isCalendarModal) openAddFormFromCalendar(dateStr);
+                      else openAddFormFromSchedule(dateStr);
                       setShowDateModal(false);
                       setClickedDate(null);
+                      setDateModalSource(null);
                     }}
                     className="bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
                   >
-                    Add Task
+                    {addLabel}
                   </button>
                 </div>
               ) : (
                 <div className="space-y-3 mb-4">
-                  {getSelectedDateReminders()
-                    .sort((a, b) => a.time.localeCompare(b.time))
-                    .map((reminder) => (
+                  {modalReminders.map((reminder) => (
                       <div
                         key={reminder.id}
                         className={`bg-gradient-to-br from-[rgba(10,15,20,0.8)] to-[rgba(5,10,15,0.8)] rounded-xl p-4 border border-teal-500/20 hover:border-teal-400/40 transition-all hover:shadow-lg hover:shadow-teal-500/10 flex items-center justify-between ${
@@ -680,7 +930,7 @@ Check if they specified days. If not, ask specifically about days.`
                             >
                               {reminder.title}
                             </h3>
-                            <p className="text-gray-400 text-sm">{reminder.time}</p>
+                            <p className="text-gray-400 text-sm">{formatReminderTimeDisplay(reminder)}</p>
                             {reminder.repeatFrequency && (
                               <p className="text-teal-400/70 text-xs mt-1 font-medium">
                                 Repeats: {reminder.repeatFrequency}
@@ -700,7 +950,7 @@ Check if they specified days. If not, ask specifically about days.`
                             {reminder.completed ? "Undo" : "Done"}
                           </button>
                           <button
-                            onClick={() => deleteReminder(reminder.id)}
+                            onClick={() => requestDeleteReminder(reminder)}
                             className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-all transform hover:scale-110 shadow-lg"
                             title="Delete task"
                           >
@@ -712,32 +962,84 @@ Check if they specified days. If not, ask specifically about days.`
                 </div>
               )}
               
-              {getSelectedDateReminders().length > 0 && (
+              {modalReminders.length > 0 && (
                 <button
+                  type="button"
                   onClick={() => {
-                    setShowAddForm(true);
-                    setNewReminder({
-                      ...newReminder,
-                      date: clickedDate.toISOString().split("T")[0],
-                      type: "task",
-                    });
+                    if (isCalendarModal) openAddFormFromCalendar(dateStr);
+                    else openAddFormFromSchedule(dateStr);
                     setShowDateModal(false);
                     setClickedDate(null);
+                    setDateModalSource(null);
                   }}
                   className="w-full bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
                 >
-                  + Add Another Task
+                  {addAnotherLabel}
                 </button>
               )}
             </div>
           </div>
+          );
+        })()}
+
+        {deleteSeriesModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full border border-teal-500/20 shadow-xl">
+              <h2 className="text-xl font-bold text-white mb-2">Delete</h2>
+              <p className="text-gray-400 text-sm leading-relaxed mb-1">
+                <span className="text-white font-semibold">{deleteSeriesModal.reminder.title}</span> is on{" "}
+                <span className="text-teal-300 font-semibold">{deleteSeriesModal.series.length}</span>{" "}
+                {deleteSeriesModal.series.length === 1 ? "day" : "days"}. Choose what to remove.
+              </p>
+              <p className="text-gray-500 text-xs mb-5">
+                Only{" "}
+                {new Date(deleteSeriesModal.reminder.date + "T12:00:00").toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}{" "}
+                or every matching entry.
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    performDeleteReminderIds([deleteSeriesModal.reminder.id]);
+                    setDeleteSeriesModal(null);
+                  }}
+                  className="w-full py-3 rounded-lg font-bold bg-gradient-to-b from-[#0c1422] to-black border border-white/15 text-white hover:border-teal-400/40 transition-colors"
+                >
+                  Only this day
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    performDeleteReminderIds(deleteSeriesModal.series.map((r) => r.id));
+                    setDeleteSeriesModal(null);
+                  }}
+                  className="w-full py-3 rounded-lg font-bold bg-red-500/15 border border-red-400/40 text-red-200 hover:bg-red-500/25 transition-colors"
+                >
+                  All {deleteSeriesModal.series.length} days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteSeriesModal(null)}
+                  className="w-full py-3 rounded-lg font-bold text-gray-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* Add Task Modal */}
+        {/* Add reminder (calendar) / Add task (schedule) */}
         {showAddForm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <h2 className="text-2xl font-bold text-white mb-6">Add Task</h2>
+              <h2 className="text-2xl font-bold text-white mb-6">
+                {addFormKind === "reminder" ? "Add reminder" : "Add task"}
+              </h2>
               <div className="space-y-4">
                 <div>
                   <label className="block text-gray-300 mb-2">Title</label>
@@ -745,33 +1047,62 @@ Check if they specified days. If not, ask specifically about days.`
                     type="text"
                     value={newReminder.title}
                     onChange={(e) => setNewReminder({ ...newReminder, title: e.target.value })}
-                    placeholder="e.g., Take Vitamin D, Call mom, Workout..."
-                    className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-300 mb-2">Type</label>
-                  <select
-                    value={newReminder.type}
-                    onChange={(e) =>
-                      setNewReminder({ ...newReminder, type: e.target.value as Reminder["type"] })
+                    placeholder={
+                      addFormKind === "task"
+                        ? "e.g., Gym, Study block, Team standup…"
+                        : "e.g., Take Vitamin D, Call mom, Workout..."
                     }
                     className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
-                  >
-                    <option value="supplement">💊 Supplement</option>
-                    <option value="task">✅ Task</option>
-                    <option value="habit">🔄 Habit</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-gray-300 mb-2">Time</label>
-                  <input
-                    type="time"
-                    value={newReminder.time}
-                    onChange={(e) => setNewReminder({ ...newReminder, time: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
                   />
                 </div>
+                {addFormKind === "reminder" && (
+                  <div>
+                    <label className="block text-gray-300 mb-2">Type</label>
+                    <select
+                      value={newReminder.type}
+                      onChange={(e) =>
+                        setNewReminder({ ...newReminder, type: e.target.value as Reminder["type"] })
+                      }
+                      className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
+                    >
+                      <option value="supplement">💊 Supplement</option>
+                      <option value="task">✅ Task</option>
+                      <option value="habit">🔄 Habit</option>
+                    </select>
+                  </div>
+                )}
+                {addFormKind === "reminder" ? (
+                  <div>
+                    <label className="block text-gray-300 mb-2">Time</label>
+                    <input
+                      type="time"
+                      value={newReminder.time}
+                      onChange={(e) => setNewReminder({ ...newReminder, time: e.target.value })}
+                      className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
+                    />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-gray-300 mb-2">Start time</label>
+                      <input
+                        type="time"
+                        value={newReminder.time}
+                        onChange={(e) => setNewReminder({ ...newReminder, time: e.target.value })}
+                        className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-300 mb-2">End time (optional)</label>
+                      <input
+                        type="time"
+                        value={newReminder.endTime}
+                        onChange={(e) => setNewReminder({ ...newReminder, endTime: e.target.value })}
+                        className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
+                      />
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="block text-gray-300 mb-2">Date</label>
                   <input
@@ -783,34 +1114,55 @@ Check if they specified days. If not, ask specifically about days.`
                   />
                 </div>
                 <div>
-                  <label className="block text-gray-300 mb-2">Repeat Frequency</label>
+                  <label className="block text-gray-300 mb-2">
+                    {addFormKind === "task" ? "When (optional)" : "Repeat frequency (optional)"}
+                  </label>
                   <input
                     type="text"
                     value={newReminder.repeatFrequency}
                     onChange={(e) => setNewReminder({ ...newReminder, repeatFrequency: e.target.value })}
-                    placeholder="e.g., daily, weekly, every 3 days, 2 weeks"
+                    placeholder={
+                      addFormKind === "task"
+                        ? "e.g. every Monday, Tuesday this month, Wednesday and Thursday…"
+                        : "e.g., daily, weekly, every 3 days, 2 weeks"
+                    }
                     className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
                   />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Examples: "daily", "weekly", "every 3 days", "2 weeks", or leave empty for one-time
-                  </p>
+                  {addFormKind === "task" ? (
+                    <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                      <span className="text-gray-300">Date</span> sets the calendar month for “this month” and the anchor for other patterns.{" "}
+                      <span className="text-gray-300">One-off:</span> e.g. <span className="text-gray-300">Wednesday and Thursday</span> (next occurrence of each on or after Date).{" "}
+                      <span className="text-gray-300">This month:</span> e.g. <span className="text-gray-300">Tuesday this month</span> — every matching weekday in that month.{" "}
+                      <span className="text-gray-300">Repeating:</span> <span className="text-gray-300">every Monday</span>, plurals, <span className="text-gray-300">weekly</span> — up to 52 future days.
+                      <span className="text-gray-300"> Weekdays / weekends</span> without &quot;every&quot; = next Mon–Fri or Sat+Sun once.
+                      Intervals like <span className="text-gray-300">daily</span> still work; leave empty for a single task on Date only.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Examples: &quot;daily&quot;, &quot;weekly&quot;, &quot;every 3 days&quot;, &quot;2 weeks&quot;, or leave empty for one-time.
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-4 pt-4">
                   <button
+                    type="button"
                     onClick={handleAddReminder}
                     className="flex-1 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
                   >
-                    Add Task
+                    {addFormKind === "reminder" ? "Save reminder" : "Save task"}
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       setShowAddForm(false);
                       setShowDateModal(false);
                       setClickedDate(null);
+                      setDateModalSource(null);
                       setNewReminder({ 
                         title: "", 
                         type: "task", 
                         time: "", 
+                        endTime: "",
                         date: new Date().toISOString().split("T")[0],
                         repeatFrequency: "",
                       });
@@ -902,20 +1254,12 @@ Check if they specified days. If not, ask specifically about days.`
                   ← Back to Days
                 </button>
                   <button
-                    onClick={() => {
-                      setShowAddForm(true);
-                      setNewReminder({
-                        title: "",
-                        type: "task",
-                        time: "",
-                        date: selectedDay.toISOString().split("T")[0],
-                        repeatFrequency: "",
-                      });
-                    }}
+                    type="button"
+                    onClick={() => openAddFormFromSchedule(selectedDay.toISOString().split("T")[0])}
                     className="flex-1 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 font-bold flex items-center justify-center gap-2"
                   >
                     <Plus className="w-4 h-4" />
-                    Add Task
+                    Add task
                   </button>
                 </div>
                 
@@ -965,16 +1309,29 @@ Check if they specified days. If not, ask specifically about days.`
                           reminderElement = (
                             <div
                               key={reminder.id}
+                              role="button"
+                              tabIndex={0}
                               onClick={() => {
+                                setSelectedDate(selectedDay);
                                 setClickedDate(selectedDay);
+                                setDateModalSource("schedule");
                                 setShowDateModal(true);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setSelectedDate(selectedDay);
+                                  setClickedDate(selectedDay);
+                                  setDateModalSource("schedule");
+                                  setShowDateModal(true);
+                                }
                               }}
                               className={`p-3 rounded-lg cursor-pointer transition-all hover:scale-[1.02] border ${colorClass} ${
                                 reminder.completed ? "opacity-50 line-through" : ""
                               }`}
                             >
                               <div className="font-bold text-sm">{reminder.title}</div>
-                              <div className="text-xs mt-1 opacity-90">{reminder.time}</div>
+                              <div className="text-xs mt-1 opacity-90">{formatReminderTimeDisplay(reminder)}</div>
                             </div>
                           );
                         }
@@ -1039,7 +1396,7 @@ Check if they specified days. If not, ask specifically about days.`
                     <div>
                       <h3 className="font-bold text-white">{next.title}</h3>
                       <p className="text-gray-400 text-sm">
-                        {dateLabel} at {next.time}
+                        {dateLabel} at {formatReminderTimeDisplay(next)}
                       </p>
                       {next.repeatFrequency && (
                         <p className="text-teal-400/70 text-xs mt-1 font-medium">
@@ -1062,6 +1419,7 @@ Check if they specified days. If not, ask specifically about days.`
             <div className="flex items-center justify-center mb-4">
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={() => navigateMonth("prev")}
                   className="bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 shadow-lg"
                 >
@@ -1071,6 +1429,7 @@ Check if they specified days. If not, ask specifically about days.`
                   {monthNames[selectedDate.getMonth()]} {selectedDate.getFullYear()}
                 </span>
                 <button
+                  type="button"
                   onClick={() => navigateMonth("next")}
                   className="bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 shadow-lg"
                 >
@@ -1139,12 +1498,13 @@ Check if they specified days. If not, ask specifically about days.`
               </h2>
             {getSelectedDateReminders().length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-400 text-lg mb-4">No tasks for this date!</p>
+                <p className="text-gray-400 text-lg mb-4">No reminders for this date</p>
                 <button
-                  onClick={() => setShowAddForm(true)}
+                  type="button"
+                  onClick={() => openAddFormFromCalendar(selectedDate.toISOString().split("T")[0])}
                   className="bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
                 >
-                  Add Task
+                  Add reminder
                 </button>
               </div>
             ) : (
@@ -1168,7 +1528,7 @@ Check if they specified days. If not, ask specifically about days.`
                           >
                             {reminder.title}
                           </h3>
-                          <p className="text-gray-400 text-sm">{reminder.time}</p>
+                          <p className="text-gray-400 text-sm">{formatReminderTimeDisplay(reminder)}</p>
                           {reminder.repeatFrequency && (
                             <p className="text-teal-400/70 text-xs mt-1 font-medium">
                               Repeats: {reminder.repeatFrequency}
@@ -1188,7 +1548,7 @@ Check if they specified days. If not, ask specifically about days.`
                           {reminder.completed ? "Undo" : "Complete"}
                         </button>
                         <button
-                          onClick={() => deleteReminder(reminder.id)}
+                          onClick={() => requestDeleteReminder(reminder)}
                           className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-all transform hover:scale-110 shadow-lg"
                           title="Delete task"
                         >
@@ -1197,6 +1557,13 @@ Check if they specified days. If not, ask specifically about days.`
                       </div>
                     </div>
                   ))}
+                <button
+                  type="button"
+                  onClick={() => openAddFormFromCalendar(selectedDate.toISOString().split("T")[0])}
+                  className="w-full mt-2 py-2.5 rounded-lg text-xs font-bold border border-teal-500/40 text-teal-200 hover:bg-teal-500/10 transition-colors"
+                >
+                  + Add another reminder
+                </button>
               </div>
             )}
             </div>
@@ -1281,6 +1648,7 @@ Check if they specified days. If not, ask specifically about days.`
                           title: r.title,
                           type: r.type || "task",
                           time: r.time,
+                          ...(r.endTime?.trim() ? { endTime: r.endTime.trim() } : {}),
                           date: r.date,
                           completed: false,
                           repeatFrequency: r.repeatFrequency || "",
@@ -1324,7 +1692,7 @@ Check if they specified days. If not, ask specifically about days.`
                             {new Date(reminder.date).toLocaleDateString("en-US", { 
                               month: "short", 
                               day: "numeric" 
-                            })} at {reminder.time}
+                            })} at {formatReminderTimeDisplay(reminder)}
                           </p>
                           {reminder.repeatFrequency && (
                             <p className="text-gray-500 text-[10px] mt-0.5">

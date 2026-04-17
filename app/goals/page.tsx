@@ -348,23 +348,13 @@ export default function GoalsPage() {
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white">
       <div className="max-w-md mx-auto pb-24 px-5">
         {/* Tab Bar */}
-        <div className="flex gap-2 mb-6 pt-4 border-b border-teal-500/30">
-          <Link
-            href="/"
-            className={`flex-1 py-2 font-semibold text-center text-sm ${
-              pathname === "/" ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent" : "text-gray-400 hover:text-teal-300"
-            }`}
-          >
+        <div className="flex gap-1 mb-6 pt-4 bg-white/5 border border-white/8 rounded-2xl p-1">
+          <Link href="/" className="flex-1 py-2.5 text-center text-sm font-semibold text-gray-500 hover:text-gray-300 rounded-xl transition-colors">
             Home
           </Link>
-          <Link
-            href="/goals"
-            className={`flex-1 py-2 font-semibold text-center text-sm ${
-              pathname === "/goals" ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent" : "text-gray-400 hover:text-teal-300"
-            }`}
-          >
+          <div className="flex-1 py-2.5 text-center text-sm font-bold text-white bg-white/10 rounded-xl">
             Goals
-          </Link>
+          </div>
         </div>
 
         {/* Header */}

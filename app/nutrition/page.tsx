@@ -1311,33 +1311,27 @@ Provide a helpful, conversational response.`;
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white px-4 pt-4 pb-28">
       {/* Tab Selection Bar - At the very top */}
-      <div className="flex gap-2 mb-5 border-b border-teal-500/30">
+      <div className="flex gap-1 mb-5 bg-white/5 border border-white/8 rounded-2xl p-1">
         <button
           onClick={() => setActiveTab("macros")}
-          className={`flex-1 px-4 py-2 font-semibold transition-all transform hover:scale-105 ${
-            activeTab === "macros"
-              ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
-              : "text-gray-400 hover:text-teal-300"
+          className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-colors ${
+            activeTab === "macros" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
           }`}
         >
           Macros
         </button>
         <button
           onClick={() => setActiveTab("recipes")}
-          className={`flex-1 px-4 py-2 font-semibold transition-all transform hover:scale-105 ${
-            activeTab === "recipes"
-              ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
-              : "text-gray-400 hover:text-teal-300"
+          className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-colors ${
+            activeTab === "recipes" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
           }`}
         >
           Recipes
         </button>
         <button
           onClick={() => setActiveTab("favourites")}
-          className={`flex-1 px-4 py-2 font-semibold transition-all transform hover:scale-105 ${
-            activeTab === "favourites"
-              ? "text-teal-400 border-b-2 border-teal-400 bg-gradient-to-t from-teal-400/10 to-transparent"
-              : "text-gray-400 hover:text-teal-300"
+          className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-colors ${
+            activeTab === "favourites" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
           }`}
         >
           Favourites
