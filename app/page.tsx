@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
-import { ChevronRight, Flame, Sparkles, Dumbbell, Check } from "lucide-react";
+import { ChevronRight, Sparkles, Dumbbell, Check } from "lucide-react";
 import { toLocalDateString } from "@/lib/date-utils";
 import { getNotificationSettings } from "@/app/utils/notifications";
 
@@ -263,13 +263,23 @@ export default function Home() {
     return "Small steps today become big results tomorrow.";
   }, [streakDays, lockInScore, nutritionOnTrack, workoutCompleted]);
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  const dateLabel = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
-
   const todayWorkout = todaySchedule.find(e => e.type === "workout");
   const reminders = todaySchedule.filter(e => e.type !== "workout");
-  const weekLetters = ["M", "T", "W", "T", "F", "S", "S"];
+
+  // Upcoming: current (most recent past task) + next (first future task)
+  const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+  let upcomingCurrent: UpcomingItem | null = null;
+  let upcomingNext: UpcomingItem | null = null;
+  for (let i = todaySchedule.length - 1; i >= 0; i--) {
+    if (parseScheduleTime(todaySchedule[i].time) <= nowMinutes) {
+      upcomingCurrent = todaySchedule[i];
+      upcomingNext = todaySchedule[i + 1] ?? null;
+      break;
+    }
+  }
+  if (!upcomingCurrent) {
+    upcomingNext = todaySchedule[0] ?? null;
+  }
 
   const habits = [
     { label: "Workout", done: workoutCompleted },
@@ -282,14 +292,13 @@ export default function Home() {
     <div className="min-h-screen bg-black text-white pb-28">
       <div className="max-w-md mx-auto px-4 pt-6">
 
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <p className="text-sm text-gray-500 mb-0.5">{greeting}</p>
-            <h1 className="text-2xl font-black text-white leading-tight">{dateLabel}</h1>
+        {/* Tab bar */}
+        <div className="flex gap-1 mb-6 bg-white/5 border border-white/8 rounded-2xl p-1">
+          <div className="flex-1 py-2.5 text-center text-sm font-bold text-white bg-white/10 rounded-xl">
+            Home
           </div>
-          <Link href="/goals" className="mt-1 text-xs font-semibold text-teal-400/70 hover:text-teal-400 transition-colors">
-            Goals →
+          <Link href="/goals" className="flex-1 py-2.5 text-center text-sm font-semibold text-gray-500 hover:text-gray-300 rounded-xl transition-colors">
+            Goals
           </Link>
         </div>
 
@@ -404,35 +413,56 @@ export default function Home() {
           </div>
         </Link>
 
-        {/* Week + streak */}
-        <div className="mb-4 rounded-2xl border border-white/8 bg-[#0c1422] p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-bold text-white">This week</p>
-            {streakDays > 0 && (
-              <div className="flex items-center gap-1.5 bg-orange-500/10 border border-orange-500/20 rounded-full px-3 py-1">
-                <Flame className="w-3 h-3 text-orange-400" />
-                <span className="text-[11px] font-bold text-orange-300">{streakDays}-day streak</span>
-              </div>
-            )}
+        {/* Upcoming */}
+        <div className="mb-4 rounded-2xl border border-white/8 bg-[#0c1422] overflow-hidden">
+          <div className="px-4 pt-4 pb-3 flex items-center justify-between border-b border-white/5">
+            <p className="text-sm font-bold text-white">Upcoming</p>
+            <Link href="/calendar" className="text-[11px] font-semibold text-teal-400/60 hover:text-teal-400 transition-colors">
+              View all →
+            </Link>
           </div>
-          <div className="grid grid-cols-7 gap-1.5">
-            {weeklyNutrition.map((day, i) => {
-              const isToday = day.date === todayStr;
-              const hit = calGoal > 0 ? day.calories >= calGoal * 0.5 || day.score >= 50 : day.calories > 0;
-              return (
-                <div key={day.date} className="flex flex-col items-center gap-1.5">
-                  <div className={`w-full aspect-square rounded-xl transition-colors ${
-                    hit ? "bg-teal-400" :
-                    isToday ? "border-2 border-teal-500/40" :
-                    "bg-white/5"
-                  }`} />
-                  <span className={`text-[9px] font-bold ${isToday ? "text-teal-400" : "text-gray-600"}`}>
-                    {weekLetters[i]}
-                  </span>
+          {!upcomingCurrent && !upcomingNext ? (
+            <div className="px-4 py-6 text-center">
+              <p className="text-sm text-gray-600">Nothing scheduled for today</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-white/5">
+              {upcomingCurrent && (
+                <div className="flex items-center gap-3 px-4 py-3.5">
+                  <div className="flex flex-col items-center gap-1 shrink-0 w-8">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-teal-400">NOW</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-teal-400 shadow-[0_0_6px_rgba(45,212,191,0.8)]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{upcomingCurrent.title}</p>
+                    {upcomingCurrent.time && upcomingCurrent.time !== "—" && (
+                      <p className="text-[11px] text-gray-500 mt-0.5">{upcomingCurrent.time}</p>
+                    )}
+                  </div>
+                  {upcomingCurrent.type === "workout" && (
+                    <Dumbbell className="w-4 h-4 text-teal-400/50 shrink-0" />
+                  )}
                 </div>
-              );
-            })}
-          </div>
+              )}
+              {upcomingNext && (
+                <div className="flex items-center gap-3 px-4 py-3.5">
+                  <div className="flex flex-col items-center gap-1 shrink-0 w-8">
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-gray-600">NEXT</span>
+                    <div className="w-1.5 h-1.5 rounded-full bg-gray-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-300 truncate">{upcomingNext.title}</p>
+                    {upcomingNext.time && upcomingNext.time !== "—" && (
+                      <p className="text-[11px] text-gray-600 mt-0.5">{upcomingNext.time}</p>
+                    )}
+                  </div>
+                  {upcomingNext.type === "workout" && (
+                    <Dumbbell className="w-4 h-4 text-gray-600 shrink-0" />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* AI Reflection */}
