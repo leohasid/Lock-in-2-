@@ -205,81 +205,112 @@ export default function WorkoutOptionPage() {
         {/* Exercises Section */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-white">Exercises</h2>
+            <div>
+              <h2 className="text-base font-bold text-white">Exercises</h2>
+              <p className="text-[11px] text-gray-500 mt-0.5">
+                {exercises.filter(e => e.name.trim()).length} exercise{exercises.filter(e => e.name.trim()).length !== 1 ? "s" : ""} added
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => {
                 setExercises([...exercises, { name: "", sets: 3, reps: 10 }]);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-400 hover:bg-cyan-500 text-black text-sm font-semibold rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 bg-teal-400 hover:bg-teal-500 text-black text-sm font-bold rounded-xl transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Add Exercise
+              Add
             </button>
           </div>
-          <div className="space-y-3">
-            {exercises.map((exercise, index) => (
-              <div key={index} className="bg-gradient-to-b from-[#0c1422] to-black rounded-lg p-3 border border-white/10">
-                <div className="flex items-center justify-end mb-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = exercises.filter((_, i) => i !== index);
-                      setExercises(updated);
-                    }}
-                    className="text-red-400 hover:text-red-300"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <ExerciseNameInput
-                    value={exercise.name}
-                    onChange={(name) => {
-                      const updated = [...exercises];
-                      updated[index].name = name;
-                      setExercises(updated);
-                    }}
-                    placeholder="e.g. Bench Press"
-                    className="w-full bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
-                  />
-                  <div>
-                    <label className="block text-gray-400 mb-1 text-xs">Sets</label>
-                    <input
-                      type="number"
-                      value={exercise.sets}
-                      onChange={(e) => {
-                        const updated = [...exercises];
-                        updated[index].sets = parseInt(e.target.value) || 0;
+
+          {exercises.length === 0 ? (
+            <button
+              type="button"
+              onClick={() => setExercises([{ name: "", sets: 3, reps: 10 }])}
+              className="w-full py-8 border-2 border-dashed border-teal-500/30 rounded-2xl text-teal-400/60 text-sm font-medium hover:border-teal-500/50 hover:text-teal-400 transition-colors"
+            >
+              <Plus className="w-5 h-5 mx-auto mb-1" />
+              Add your first exercise
+            </button>
+          ) : (
+            <div className="space-y-3">
+              {exercises.map((exercise, index) => (
+                <div
+                  key={index}
+                  className="bg-[#0c1422] border border-white/10 rounded-2xl p-4"
+                >
+                  {/* Card header */}
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[11px] font-bold text-teal-400/70 uppercase tracking-widest">
+                      Exercise {index + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const updated = exercises.filter((_, i) => i !== index);
                         setExercises(updated);
                       }}
-                      min="1"
-                      className="w-full bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
-                    />
+                      className="p-1 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-400/10"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-gray-400 mb-1 text-xs">Reps</label>
-                    <input
-                      type="number"
-                      value={exercise.reps}
-                      onChange={(e) => {
+
+                  {/* Exercise name — full width */}
+                  <div className="mb-3">
+                    <ExerciseNameInput
+                      value={exercise.name}
+                      onChange={(name) => {
                         const updated = [...exercises];
-                        updated[index].reps = parseInt(e.target.value) || 0;
+                        updated[index].name = name;
                         setExercises(updated);
                       }}
-                      min="1"
-                      className="w-full bg-black text-white p-2 rounded border border-white/10 focus:outline-none focus:border-teal-400 text-sm"
+                      placeholder="e.g. Bench Press"
+                      className="w-full bg-black/50 text-white px-3 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-teal-400 text-sm placeholder:text-gray-600"
                     />
                   </div>
+
+                  {/* Sets + Reps — equal columns */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                        Sets
+                      </label>
+                      <input
+                        type="number"
+                        value={exercise.sets}
+                        onChange={(e) => {
+                          const updated = [...exercises];
+                          updated[index].sets = parseInt(e.target.value) || 0;
+                          setExercises(updated);
+                        }}
+                        min="1"
+                        inputMode="numeric"
+                        className="w-full bg-black/50 text-white px-3 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-teal-400 text-sm text-center font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
+                        Reps
+                      </label>
+                      <input
+                        type="number"
+                        value={exercise.reps}
+                        onChange={(e) => {
+                          const updated = [...exercises];
+                          updated[index].reps = parseInt(e.target.value) || 0;
+                          setExercises(updated);
+                        }}
+                        min="1"
+                        inputMode="numeric"
+                        className="w-full bg-black/50 text-white px-3 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-teal-400 text-sm text-center font-semibold"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
-            {exercises.length === 0 && (
-              <div className="p-4 bg-black/60 rounded-lg text-gray-400 text-center text-sm">
-                No exercises yet. Click "Add Exercise" to get started.
-              </div>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Save Button */}

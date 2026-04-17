@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
-import { CalendarDays, ChevronRight, Flame, Sparkles, Zap } from "lucide-react";
+import { CalendarDays, ChevronRight, Flame, Sparkles, Zap, Dumbbell, Clock } from "lucide-react";
 import { toLocalDateString } from "@/lib/date-utils";
 import { getNotificationSettings } from "@/app/utils/notifications";
 
@@ -19,7 +19,11 @@ interface UpcomingItem {
 /** Sort key 0–1439; unknown / missing times sort last */
 function parseScheduleTime(time: string): number {
   if (!time || time === "—") return 24 * 60 + 59;
-  const t = time.trim().toLowerCase();
+  let t = time.trim().toLowerCase();
+  const rangeSep = /\s*[–—-]\s*/;
+  if (rangeSep.test(t)) {
+    t = t.split(rangeSep)[0].trim();
+  }
   const m24 = t.match(/^(\d{1,2}):(\d{2})$/);
   if (m24) {
     const h = Math.min(23, parseInt(m24[1], 10));
@@ -318,15 +322,28 @@ export default function Home() {
       )
       .map(
         (
-          r: { id?: string; title: string; date: string; time: string; type?: string },
+          r: {
+            id?: string;
+            title: string;
+            date: string;
+            time: string;
+            endTime?: string;
+            type?: string;
+          },
           idx: number
-        ): UpcomingItem => ({
-          id: r.id || `reminder-${todayStr}-${idx}`,
-          title: r.title,
-          date: r.date,
-          time: r.time || "—",
-          type: r.type || "task",
-        })
+        ): UpcomingItem => {
+          const start = r.time || "";
+          const end = r.endTime?.trim();
+          const display =
+            start && end ? `${start} – ${end}` : start ? start : "—";
+          return {
+            id: r.id || `reminder-${todayStr}-${idx}`,
+            title: r.title,
+            date: r.date,
+            time: display,
+            type: r.type || "task",
+          };
+        }
       );
 
     const workoutDone = localStorage.getItem(`workout_${todayStr}`) === "completed";
@@ -560,33 +577,61 @@ export default function Home() {
             </div>
 
             {todaySchedule.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-teal-500/25 bg-black/20 px-3 py-4 text-center">
-                <p className="text-sm font-semibold text-white">Nothing upcoming today</p>
-              </div>
+              <Link
+                href="/calendar"
+                className="flex items-center justify-between rounded-xl border border-dashed border-teal-500/25 bg-black/20 px-4 py-4 hover:border-teal-400/40 transition-colors group"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-white">Nothing scheduled today</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Tap to add reminders</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-teal-400 transition-colors" />
+              </Link>
             ) : (
               <ul className="space-y-2">
-                {todaySchedule.map((event, i) => (
-                  <li
-                    key={event.id}
-                    className="flex gap-3 rounded-xl border border-teal-500/20 bg-black/20 px-3 py-2.5 transition-colors hover:border-teal-400/40"
-                  >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-teal-500/25 bg-teal-500/10 text-[10px] font-bold text-teal-400">
-                      {i + 1}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-white">{event.title}</p>
-                      <p className="mt-0.5 text-xs text-teal-400/80">
-                        <span className="font-medium text-gray-400">{event.time}</span>
-                        {event.type ? (
-                          <>
-                            <span className="mx-1.5 text-gray-600">·</span>
-                            <span className="capitalize">{event.type}</span>
-                          </>
-                        ) : null}
-                      </p>
-                    </div>
-                  </li>
-                ))}
+                {todaySchedule.map((event) => {
+                  const isWorkout = event.type === "workout";
+                  const href = isWorkout ? "/gym/workout" : "/calendar";
+                  const displayTime = !event.time || event.time === "—" ? null : event.time;
+                  return (
+                    <li key={event.id}>
+                      <Link
+                        href={href}
+                        className={`flex gap-3 rounded-xl border px-3 py-2.5 transition-all hover:scale-[1.01] active:scale-[0.99] ${
+                          isWorkout
+                            ? "border-teal-500/30 bg-teal-500/8 hover:border-teal-400/50"
+                            : "border-white/8 bg-black/20 hover:border-white/15"
+                        }`}
+                      >
+                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                          isWorkout
+                            ? "bg-teal-500/20 border border-teal-500/30"
+                            : "bg-white/5 border border-white/10"
+                        }`}>
+                          {isWorkout
+                            ? <Dumbbell className="w-4 h-4 text-teal-400" />
+                            : <Clock className="w-3.5 h-3.5 text-gray-400" />
+                          }
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className={`truncate text-sm font-semibold ${isWorkout ? "text-teal-100" : "text-white"}`}>
+                            {event.title}
+                          </p>
+                          <p className="mt-0.5 flex items-center gap-1.5 text-xs">
+                            {displayTime ? (
+                              <span className="text-gray-400">{displayTime}</span>
+                            ) : null}
+                            {displayTime && event.type ? <span className="text-gray-700">·</span> : null}
+                            <span className={`capitalize ${isWorkout ? "text-teal-400/80" : "text-gray-500"}`}>
+                              {event.type}
+                            </span>
+                          </p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 shrink-0 self-center text-gray-700" />
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             )}
         </div>

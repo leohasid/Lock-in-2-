@@ -448,36 +448,52 @@ export default function WorkoutsPage() {
           </button>
         ) : null}
 
-        {/* Workout Options - swipe left to delete */}
-        <div className="grid grid-cols-1 gap-3">
-          {workoutOptions.map((option) => (
-            <SwipeableRow
-              key={option.id}
-              isSelected={selectedWorkoutOptions.includes(option.id)}
-              isDisabled={!selectedWorkoutOptions.includes(option.id) && selectedWorkoutOptions.length >= 10}
-              onSelect={() => handleSelectOption(option.id)}
-              onUse={() => handleUseOption(option.id)}
-              onRemove={() => handleRemoveOption(option.id)}
-            >
-              <div className="flex-1 min-w-0 flex items-center gap-2">
-                <PencilLine className="w-3.5 h-3.5 text-gray-500 shrink-0" aria-hidden />
-                <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-white truncate">{option.name}</h3>
-                  {(() => {
-                    const n =
-                      (option.days?.day1?.length ?? 0) +
-                      (option.days?.day2?.length ?? 0) +
-                      (option.days?.day3?.length ?? 0);
-                    return (
-                      <p className="text-[10px] text-gray-500 mt-0.5">
-                        {n === 0 ? "No exercises — tap to build" : `${n} exercise${n === 1 ? "" : "s"} in this plan`}
-                      </p>
-                    );
-                  })()}
+        {/* Workout options */}
+        <div className="grid grid-cols-1 gap-2.5">
+          {workoutOptions.map((option) => {
+            const exerciseCount =
+              (option.days?.day1?.length ?? 0) +
+              (option.days?.day2?.length ?? 0) +
+              (option.days?.day3?.length ?? 0);
+            const isEmpty = exerciseCount === 0;
+            const isActive = selectedWorkoutOptions.includes(option.id);
+            const scheduledDays = (manualSchedule[option.id]?.days ?? [])
+              .map((d: number) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d])
+              .join(", ");
+
+            return (
+              <SwipeableRow
+                key={option.id}
+                isSelected={isActive}
+                isDisabled={!isActive && selectedWorkoutOptions.length >= 10}
+                onSelect={() => handleSelectOption(option.id)}
+                onUse={() => handleUseOption(option.id)}
+                onRemove={() => handleRemoveOption(option.id)}
+              >
+                <div className={`flex-1 min-w-0 flex items-center gap-2.5 ${isEmpty ? "opacity-50" : ""}`}>
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+                    isActive
+                      ? "border-teal-500/50 bg-teal-500/15"
+                      : isEmpty
+                        ? "border-white/8 bg-white/4"
+                        : "border-white/10 bg-white/5"
+                  }`}>
+                    <PencilLine className={`w-3.5 h-3.5 ${isActive ? "text-teal-400" : "text-gray-500"}`} aria-hidden />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-white truncate">{option.name}</h3>
+                    <p className="text-[10px] text-gray-500 mt-0.5">
+                      {isEmpty
+                        ? "Empty — tap to build"
+                        : scheduledDays
+                          ? `${exerciseCount} exercises · ${scheduledDays}`
+                          : `${exerciseCount} exercise${exerciseCount !== 1 ? "s" : ""} · no days set`}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </SwipeableRow>
-          ))}
+              </SwipeableRow>
+            );
+          })}
         </div>
 
       </div>
