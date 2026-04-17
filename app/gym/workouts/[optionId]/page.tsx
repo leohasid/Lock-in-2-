@@ -4,219 +4,269 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { ArrowLeft, Plus, Trash2, Edit2, Check, X } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Check, X, Minus } from "lucide-react";
 import ExerciseNameInput from "@/components/ExerciseNameInput";
+import { persistWorkoutSchedule } from "@/lib/schedule-utils";
 
 interface WorkoutOption {
   id: string;
   name: string;
-  days: {
-    day1: any[];
-    day2: any[];
-    day3: any[];
-  };
-  dayNames: {
-    day1: string;
-    day2: string;
-    day3: string;
-  };
+  days: { day1: any[]; day2: any[]; day3: any[] };
+  dayNames: { day1: string; day2: string; day3: string };
 }
 
-interface CustomExercise {
+interface Exercise {
   name: string;
   sets: number;
   reps: number;
+}
+
+const WEEK_DAYS = [
+  { label: "M", day: 1 },
+  { label: "T", day: 2 },
+  { label: "W", day: 3 },
+  { label: "T", day: 4 },
+  { label: "F", day: 5 },
+  { label: "S", day: 6 },
+  { label: "S", day: 0 },
+];
+
+function Stepper({
+  label,
+  value,
+  onChange,
+  min = 1,
+  max = 30,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  max?: number;
+}) {
+  return (
+    <div className="bg-black/50 border border-white/8 rounded-2xl px-3 py-3 flex flex-col items-center gap-2.5">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{label}</p>
+      <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onPointerDown={(e) => e.currentTarget.classList.add("scale-90")}
+          onPointerUp={(e) => e.currentTarget.classList.remove("scale-90")}
+          onClick={() => onChange(Math.max(min, value - 1))}
+          className="w-10 h-10 rounded-xl bg-white/8 border border-white/10 flex items-center justify-center text-gray-300 active:bg-white/20 transition-colors"
+        >
+          <Minus className="w-4 h-4" />
+        </button>
+        <span className="text-3xl font-black text-white w-9 text-center tabular-nums leading-none">
+          {value}
+        </span>
+        <button
+          type="button"
+          onPointerDown={(e) => e.currentTarget.classList.add("scale-90")}
+          onPointerUp={(e) => e.currentTarget.classList.remove("scale-90")}
+          onClick={() => onChange(Math.min(max, value + 1))}
+          className="w-10 h-10 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center text-teal-400 active:bg-teal-500/40 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function WorkoutOptionPage() {
   const router = useRouter();
   const params = useParams();
   const optionId = params?.optionId as string;
-  
+
   const [workoutOptions, setWorkoutOptions] = useState<WorkoutOption[]>([]);
   const [currentOption, setCurrentOption] = useState<WorkoutOption | null>(null);
   const [workoutName, setWorkoutName] = useState("");
   const [isEditingName, setIsEditingName] = useState(false);
-  const [tempWorkoutName, setTempWorkoutName] = useState("");
-  const [exercises, setExercises] = useState<CustomExercise[]>([]);
+  const [tempName, setTempName] = useState("");
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !optionId) return;
-    
-    // Load workout options
-    const storedOptions = localStorage.getItem("workoutOptions");
-    if (storedOptions) {
+
+    const stored = localStorage.getItem("workoutOptions");
+    if (stored) {
       try {
-        const options = JSON.parse(storedOptions);
+        const options: WorkoutOption[] = JSON.parse(stored);
         setWorkoutOptions(options);
-        const option = options.find((o: WorkoutOption) => o.id === optionId);
-        if (option) {
-          setCurrentOption(option);
-          setWorkoutName(option.name);
-          setTempWorkoutName(option.name);
-          
-          // Load exercises for this option - combine all days into one list
-          const convertToCustom = (exercises: any[]): CustomExercise[] => {
-            if (!exercises || exercises.length === 0) return [];
-            return exercises.map(ex => ({
+        const opt = options.find((o) => o.id === optionId);
+        if (opt) {
+          setCurrentOption(opt);
+          setWorkoutName(opt.name);
+          setTempName(opt.name);
+
+          const toEx = (exs: any[]): Exercise[] =>
+            (exs || []).map((ex) => ({
               name: ex.name || "",
-              sets: ex.goalSets || ex.sets || 3,
-              reps: ex.goalReps || ex.reps || 10,
+              sets: ex.goalSets || 3,
+              reps: ex.goalReps || 10,
             }));
-          };
-          
-          // Combine all exercises from all days into one list
-          const allExercises = [
-            ...convertToCustom(option.days.day1),
-            ...convertToCustom(option.days.day2),
-            ...convertToCustom(option.days.day3),
+
+          const all = [
+            ...toEx(opt.days.day1),
+            ...toEx(opt.days.day2),
+            ...toEx(opt.days.day3),
           ];
-          
-          setExercises(allExercises.length > 0 ? allExercises : [{ name: "", sets: 3, reps: 10 }]);
+          setExercises(all);
         }
-      } catch (e) {
-        console.error("Error loading workout options:", e);
-      }
+      } catch {}
+    }
+
+    // Load existing schedule days
+    const sched = localStorage.getItem("manualScheduleByPlan");
+    if (sched) {
+      try {
+        const s = JSON.parse(sched);
+        if (s[optionId]?.days) setSelectedDays(s[optionId].days);
+      } catch {}
     }
   }, [optionId]);
 
+  const updateExercise = (index: number, field: keyof Exercise, value: string | number) => {
+    setExercises((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  const toggleDay = (day: number) => {
+    setSelectedDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  };
+
   const handleSave = () => {
-    if (!currentOption || !workoutName.trim()) {
-      alert("Please enter a workout name");
-      return;
-    }
+    if (!currentOption || !workoutName.trim()) return;
 
-    // Save the workout name if it was edited
-    if (isEditingName) {
-      setIsEditingName(false);
-    }
+    const converted = exercises
+      .filter((ex) => ex.name.trim())
+      .map((ex, i) => ({
+        id: `custom-${Date.now()}-${i}`,
+        name: ex.name,
+        goalSets: ex.sets,
+        goalReps: ex.reps,
+        goalWeight: 0,
+        sets: Array.from({ length: ex.sets }, () => ({
+          reps: ex.reps,
+          weight: 0,
+          completed: false,
+        })),
+      }));
 
-    // Convert exercises to Exercise format
-    const convertExercises = (exercises: CustomExercise[]): any[] => {
-      return exercises
-        .filter((ex) => ex.name.trim() !== "")
-        .map((ex, index) => ({
-          id: `custom-${Date.now()}-${index}`,
-          name: ex.name,
-          goalSets: ex.sets,
-          goalReps: ex.reps,
-          goalWeight: 0,
-          sets: Array.from({ length: ex.sets }, () => ({
-            reps: ex.reps,
-            weight: 0,
-            completed: false,
-          })),
-        }));
-    };
-
-    const convertedExercises = convertExercises(exercises);
-
-    // Each option is one workout - user names it (e.g. "Chest and Tri") and adds exercises
-    const day1Exercises = convertedExercises;
-    const day2Exercises: any[] = [];
-    const day3Exercises: any[] = [];
-
-    const updatedOptions = workoutOptions.map(opt =>
+    const updatedOptions = workoutOptions.map((opt) =>
       opt.id === optionId
-        ? { ...opt, name: workoutName, days: { day1: day1Exercises, day2: day2Exercises, day3: day3Exercises } }
+        ? { ...opt, name: workoutName, days: { day1: converted, day2: [], day3: [] } }
         : opt
     );
     setWorkoutOptions(updatedOptions);
+
     if (typeof window !== "undefined") {
       localStorage.setItem("workoutOptions", JSON.stringify(updatedOptions));
-      // Auto-select this option so exercises show on main workout page
-      const current = JSON.parse(localStorage.getItem("selectedWorkoutOptions") || "[]");
-      const next = current.includes(optionId) ? current : [...current, optionId];
-      localStorage.setItem("selectedWorkoutOptions", JSON.stringify(next));
+
+      const curSelected: string[] = JSON.parse(
+        localStorage.getItem("selectedWorkoutOptions") || "[]"
+      );
+      const newSelected = curSelected.includes(optionId)
+        ? curSelected
+        : [...curSelected, optionId];
+      localStorage.setItem("selectedWorkoutOptions", JSON.stringify(newSelected));
       localStorage.setItem("selectedWorkoutOption", optionId);
+
+      // Save schedule with the days picked on this page
+      const existingSched: Record<string, { days: number[] }> = JSON.parse(
+        localStorage.getItem("manualScheduleByPlan") || "{}"
+      );
+      existingSched[optionId] = { days: selectedDays };
+      persistWorkoutSchedule(existingSched, newSelected, updatedOptions);
     }
 
-    router.push("/gym/workout?schedulePrompt=1");
+    router.push("/gym/workout");
   };
 
   if (!currentOption) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white pb-20">
-        <div className="max-w-md mx-auto px-4 py-6">
-          <p className="text-gray-400">Loading...</p>
-        </div>
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <p className="text-gray-500 text-sm">Loading…</p>
       </div>
     );
   }
 
+  const namedCount = exercises.filter((e) => e.name.trim()).length;
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white pb-20">
-      <div className="max-w-md mx-auto px-4 py-6">
+    <div className="min-h-screen bg-black text-white pb-32">
+      <div className="max-w-md mx-auto px-4 py-4">
+
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <Link
-            href="/gym/workouts"
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-          >
+        <div className="flex items-center gap-3 mb-6">
+          <Link href="/gym/workouts" className="p-2 hover:bg-white/10 rounded-xl transition-colors shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </Link>
           {isEditingName ? (
-            <div className="flex items-center gap-2 flex-1 mx-4">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
               <input
                 type="text"
-                value={tempWorkoutName}
-                onChange={(e) => setTempWorkoutName(e.target.value)}
-                placeholder="e.g., Push Day, Chest & Biceps"
-                className="flex-1 bg-black/40 border border-cyan-400 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-cyan-400"
+                value={tempName}
+                onChange={(e) => setTempName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { setWorkoutName(tempName); setIsEditingName(false); }
+                  if (e.key === "Escape") { setTempName(workoutName); setIsEditingName(false); }
+                }}
+                placeholder="e.g. Push Day"
+                className="flex-1 min-w-0 bg-white/5 border border-teal-400/40 rounded-xl px-3 py-2 text-white font-bold text-base focus:outline-none"
                 autoFocus
               />
               <button
-                onClick={() => {
-                  setWorkoutName(tempWorkoutName);
-                  setIsEditingName(false);
-                }}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-green-400"
+                type="button"
+                onClick={() => { setWorkoutName(tempName); setIsEditingName(false); }}
+                className="p-2 text-teal-400 hover:bg-teal-400/10 rounded-xl shrink-0"
               >
-                <Check className="w-4 h-4" />
+                <Check className="w-5 h-5" />
               </button>
               <button
-                onClick={() => {
-                  setTempWorkoutName(workoutName);
-                  setIsEditingName(false);
-                }}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-red-400"
+                type="button"
+                onClick={() => { setTempName(workoutName); setIsEditingName(false); }}
+                className="p-2 text-gray-500 hover:bg-white/10 rounded-xl shrink-0"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
           ) : (
-            <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent flex-1 text-center">
-              {workoutName || "Workout"}
-            </h1>
-          )}
-          {!isEditingName && (
             <button
-              onClick={() => {
-                setTempWorkoutName(workoutName);
-                setIsEditingName(true);
-              }}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              type="button"
+              className="flex-1 min-w-0 text-left group"
+              onClick={() => { setTempName(workoutName); setIsEditingName(true); }}
             >
-              <Edit2 className="w-5 h-5" />
+              <h1 className="text-xl font-bold text-white truncate group-hover:text-teal-300 transition-colors">
+                {workoutName || "Workout"}
+              </h1>
+              <p className="text-[11px] text-gray-600 group-hover:text-teal-400/60 transition-colors">
+                Tap to rename
+              </p>
             </button>
           )}
         </div>
 
-        {/* Exercises Section */}
-        <div className="mb-6">
+        {/* Exercises section */}
+        <div className="mb-5">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="text-base font-bold text-white">Exercises</h2>
-              <p className="text-[11px] text-gray-500 mt-0.5">
-                {exercises.filter(e => e.name.trim()).length} exercise{exercises.filter(e => e.name.trim()).length !== 1 ? "s" : ""} added
+              <p className="text-[11px] text-gray-600 mt-0.5">
+                {namedCount > 0 ? `${namedCount} added` : "None yet"}
               </p>
             </div>
             <button
               type="button"
-              onClick={() => {
-                setExercises([...exercises, { name: "", sets: 3, reps: 10 }]);
-              }}
-              className="flex items-center gap-1.5 px-3 py-2 bg-teal-400 hover:bg-teal-500 text-black text-sm font-bold rounded-xl transition-colors"
+              onClick={() => setExercises((prev) => [...prev, { name: "", sets: 3, reps: 10 }])}
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-teal-400 hover:bg-teal-500 active:bg-teal-600 text-black text-sm font-bold rounded-xl transition-colors"
             >
               <Plus className="w-4 h-4" />
               Add
@@ -227,85 +277,55 @@ export default function WorkoutOptionPage() {
             <button
               type="button"
               onClick={() => setExercises([{ name: "", sets: 3, reps: 10 }])}
-              className="w-full py-8 border-2 border-dashed border-teal-500/30 rounded-2xl text-teal-400/60 text-sm font-medium hover:border-teal-500/50 hover:text-teal-400 transition-colors"
+              className="w-full py-12 rounded-2xl border-2 border-dashed border-white/8 flex flex-col items-center gap-2 text-gray-600 hover:border-teal-500/30 hover:text-teal-400/50 transition-colors"
             >
-              <Plus className="w-5 h-5 mx-auto mb-1" />
-              Add your first exercise
+              <Plus className="w-7 h-7" />
+              <span className="text-sm font-medium">Add your first exercise</span>
             </button>
           ) : (
             <div className="space-y-3">
-              {exercises.map((exercise, index) => (
+              {exercises.map((ex, idx) => (
                 <div
-                  key={index}
-                  className="bg-[#0c1422] border border-white/10 rounded-2xl p-4"
+                  key={idx}
+                  className="bg-[#0c1422] border border-white/8 rounded-2xl p-4"
                 >
                   {/* Card header */}
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-[11px] font-bold text-teal-400/70 uppercase tracking-widest">
-                      Exercise {index + 1}
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-teal-400/50">
+                      Exercise {idx + 1}
                     </span>
                     <button
                       type="button"
-                      onClick={() => {
-                        const updated = exercises.filter((_, i) => i !== index);
-                        setExercises(updated);
-                      }}
-                      className="p-1 text-gray-600 hover:text-red-400 transition-colors rounded-lg hover:bg-red-400/10"
+                      onClick={() => setExercises((prev) => prev.filter((_, i) => i !== idx))}
+                      className="p-1.5 text-gray-700 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
 
                   {/* Exercise name — full width */}
-                  <div className="mb-3">
+                  <div className="mb-4">
                     <ExerciseNameInput
-                      value={exercise.name}
-                      onChange={(name) => {
-                        const updated = [...exercises];
-                        updated[index].name = name;
-                        setExercises(updated);
-                      }}
-                      placeholder="e.g. Bench Press"
-                      className="w-full bg-black/50 text-white px-3 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-teal-400 text-sm placeholder:text-gray-600"
+                      value={ex.name}
+                      onChange={(name) => updateExercise(idx, "name", name)}
+                      placeholder="Exercise name…"
+                      className="w-full bg-black/60 text-white px-4 py-3 rounded-xl border border-white/10 focus:outline-none focus:border-teal-400/60 text-base placeholder:text-gray-700"
                     />
                   </div>
 
-                  {/* Sets + Reps — equal columns */}
+                  {/* Stepper row */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
-                        Sets
-                      </label>
-                      <input
-                        type="number"
-                        value={exercise.sets}
-                        onChange={(e) => {
-                          const updated = [...exercises];
-                          updated[index].sets = parseInt(e.target.value) || 0;
-                          setExercises(updated);
-                        }}
-                        min="1"
-                        inputMode="numeric"
-                        className="w-full bg-black/50 text-white px-3 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-teal-400 text-sm text-center font-semibold"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">
-                        Reps
-                      </label>
-                      <input
-                        type="number"
-                        value={exercise.reps}
-                        onChange={(e) => {
-                          const updated = [...exercises];
-                          updated[index].reps = parseInt(e.target.value) || 0;
-                          setExercises(updated);
-                        }}
-                        min="1"
-                        inputMode="numeric"
-                        className="w-full bg-black/50 text-white px-3 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-teal-400 text-sm text-center font-semibold"
-                      />
-                    </div>
+                    <Stepper
+                      label="Sets"
+                      value={ex.sets}
+                      onChange={(v) => updateExercise(idx, "sets", v)}
+                    />
+                    <Stepper
+                      label="Reps"
+                      value={ex.reps}
+                      onChange={(v) => updateExercise(idx, "reps", v)}
+                      max={50}
+                    />
                   </div>
                 </div>
               ))}
@@ -313,15 +333,48 @@ export default function WorkoutOptionPage() {
           )}
         </div>
 
-        {/* Save Button */}
+        {/* Training days */}
+        <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-6">
+          <h3 className="text-sm font-bold text-white mb-0.5">Training days</h3>
+          <p className="text-[11px] text-gray-500 mb-4">
+            Which days of the week do you do this workout?
+          </p>
+          <div className="flex gap-1.5">
+            {WEEK_DAYS.map((d) => {
+              const active = selectedDays.includes(d.day);
+              return (
+                <button
+                  key={d.day}
+                  type="button"
+                  onClick={() => toggleDay(d.day)}
+                  className={`flex-1 aspect-square rounded-xl text-xs font-bold transition-all active:scale-90 ${
+                    active
+                      ? "bg-teal-400 text-black shadow-lg shadow-teal-500/20"
+                      : "bg-white/5 border border-white/8 text-gray-500 hover:bg-white/10 hover:text-gray-300"
+                  }`}
+                >
+                  {d.label}
+                </button>
+              );
+            })}
+          </div>
+          {selectedDays.length > 0 && (
+            <p className="text-[11px] text-teal-400/60 text-center mt-3">
+              {selectedDays.length} day{selectedDays.length !== 1 ? "s" : ""} selected
+            </p>
+          )}
+        </div>
+
+        {/* Save */}
         <button
+          type="button"
           onClick={handleSave}
-          className="w-full py-3 bg-teal-400 hover:bg-teal-500 text-black font-bold rounded-lg transition-colors"
+          disabled={!workoutName.trim()}
+          className="w-full py-4 bg-teal-400 hover:bg-teal-500 active:bg-teal-600 disabled:opacity-30 text-black font-bold text-base rounded-2xl transition-colors"
         >
-          Save Workout
+          Save workout
         </button>
       </div>
-
       <BottomNav />
     </div>
   );

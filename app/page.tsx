@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
-import { CalendarDays, ChevronRight, Flame, Sparkles, Zap, Dumbbell, Clock } from "lucide-react";
+import { ChevronRight, Flame, Sparkles, Dumbbell, Clock } from "lucide-react";
 import { toLocalDateString } from "@/lib/date-utils";
 import { getNotificationSettings } from "@/app/utils/notifications";
 
@@ -203,6 +203,7 @@ export default function Home() {
     score: number;
   }>>([]);
   const [todaySchedule, setTodaySchedule] = useState<UpcomingItem[]>([]);
+  const [todayExerciseCount, setTodayExerciseCount] = useState(0);
   const [daysClean, setDaysClean] = useState<number>(0);
   const [workoutCompleted, setWorkoutCompleted] = useState(false);
   const [reflectionDone, setReflectionDone] = useState(false);
@@ -364,6 +365,20 @@ export default function Home() {
         time: settings.gymScheduleTime || "—",
         type: "workout",
       });
+      // Look up exercise count for the featured workout card
+      if (todayWorkoutRow?.optionId) {
+        try {
+          const opts = JSON.parse(localStorage.getItem("workoutOptions") || "[]");
+          const opt = opts.find((o: any) => o.id === todayWorkoutRow.optionId);
+          if (opt) {
+            setTodayExerciseCount(
+              (opt.days?.day1?.length || 0) +
+              (opt.days?.day2?.length || 0) +
+              (opt.days?.day3?.length || 0)
+            );
+          }
+        } catch {}
+      }
     }
 
     scheduleItems.sort(
@@ -554,86 +569,108 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Upcoming today — same surface as Macros card */}
-        <div className="mb-4 rounded-2xl border border-teal-500/30 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black p-4">
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-teal-500/30 bg-teal-500/10">
-                  <CalendarDays className="h-5 w-5 text-teal-400" strokeWidth={2} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-teal-400/90">
-                    Upcoming
-                  </p>
-                  <p className="text-lg font-bold leading-tight text-white">Today</p>
-                </div>
-              </div>
-              {todaySchedule.length > 0 ? (
-                <span className="flex shrink-0 items-center gap-1 rounded-full border border-teal-500/30 bg-teal-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-teal-300">
-                  <Zap className="h-3 w-3 text-teal-400" />
-                  {todaySchedule.length} {todaySchedule.length === 1 ? "task" : "tasks"}
-                </span>
-              ) : null}
+        {/* Your day */}
+        <div className="mb-4 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black">
+          <div className="flex items-center justify-between px-4 pt-4 pb-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                Your day
+              </p>
+              <p className="mt-0.5 text-lg font-bold leading-tight text-white">
+                {todaySchedule.length === 0
+                  ? "Nothing scheduled"
+                  : `${todaySchedule.length} item${todaySchedule.length !== 1 ? "s" : ""}`}
+              </p>
             </div>
+            <Link
+              href="/calendar"
+              className="text-[11px] font-semibold text-teal-400/60 hover:text-teal-400 transition-colors"
+            >
+              View all →
+            </Link>
+          </div>
 
-            {todaySchedule.length === 0 ? (
-              <Link
-                href="/calendar"
-                className="flex items-center justify-between rounded-xl border border-dashed border-teal-500/25 bg-black/20 px-4 py-4 hover:border-teal-400/40 transition-colors group"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-white">Nothing scheduled today</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Tap to add reminders</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-teal-400 transition-colors" />
-              </Link>
-            ) : (
-              <ul className="space-y-2">
-                {todaySchedule.map((event) => {
-                  const isWorkout = event.type === "workout";
-                  const href = isWorkout ? "/gym/workout" : "/calendar";
-                  const displayTime = !event.time || event.time === "—" ? null : event.time;
+          {todaySchedule.length === 0 ? (
+            <Link
+              href="/calendar"
+              className="mx-4 mb-4 flex items-center justify-between rounded-xl border border-dashed border-white/10 px-4 py-4 hover:border-teal-500/30 transition-colors group"
+            >
+              <div>
+                <p className="text-sm font-semibold text-white">Nothing planned yet</p>
+                <p className="text-xs text-gray-500 mt-0.5">Add reminders and tasks</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-teal-400 transition-colors" />
+            </Link>
+          ) : (
+            <div className="px-4 pb-4 space-y-2">
+              {todaySchedule.map((event, i) => {
+                const isWorkout = event.type === "workout";
+                const displayTime = !event.time || event.time === "—" ? null : event.time;
+                const featuredWorkout = isWorkout && i === todaySchedule.findIndex(e => e.type === "workout");
+
+                if (featuredWorkout) {
                   return (
-                    <li key={event.id}>
-                      <Link
-                        href={href}
-                        className={`flex gap-3 rounded-xl border px-3 py-2.5 transition-all hover:scale-[1.01] active:scale-[0.99] ${
-                          isWorkout
-                            ? "border-teal-500/30 bg-teal-500/8 hover:border-teal-400/50"
-                            : "border-white/8 bg-black/20 hover:border-white/15"
-                        }`}
-                      >
-                        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                          isWorkout
-                            ? "bg-teal-500/20 border border-teal-500/30"
-                            : "bg-white/5 border border-white/10"
-                        }`}>
-                          {isWorkout
-                            ? <Dumbbell className="w-4 h-4 text-teal-400" />
-                            : <Clock className="w-3.5 h-3.5 text-gray-400" />
-                          }
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className={`truncate text-sm font-semibold ${isWorkout ? "text-teal-100" : "text-white"}`}>
+                    <div
+                      key={event.id}
+                      className="relative overflow-hidden rounded-2xl border border-teal-500/30 bg-gradient-to-br from-teal-900/40 to-teal-900/10 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-teal-400/70 mb-1">
+                            {displayTime ? `${displayTime} · ` : ""}Workout
+                          </p>
+                          <p className="text-xl font-black text-white leading-tight truncate">
                             {event.title}
                           </p>
-                          <p className="mt-0.5 flex items-center gap-1.5 text-xs">
-                            {displayTime ? (
-                              <span className="text-gray-400">{displayTime}</span>
-                            ) : null}
-                            {displayTime && event.type ? <span className="text-gray-700">·</span> : null}
-                            <span className={`capitalize ${isWorkout ? "text-teal-400/80" : "text-gray-500"}`}>
-                              {event.type}
-                            </span>
-                          </p>
+                          {todayExerciseCount > 0 && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              {todayExerciseCount} exercise{todayExerciseCount !== 1 ? "s" : ""}
+                            </p>
+                          )}
                         </div>
-                        <ChevronRight className="w-4 h-4 shrink-0 self-center text-gray-700" />
-                      </Link>
-                    </li>
+                        <Link
+                          href="/gym/workout"
+                          className="shrink-0 flex items-center gap-1 px-4 py-2.5 bg-teal-400 hover:bg-teal-500 active:bg-teal-600 text-black text-sm font-bold rounded-xl transition-colors"
+                        >
+                          Start
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </Link>
+                      </div>
+                    </div>
                   );
-                })}
-              </ul>
-            )}
+                }
+
+                return (
+                  <Link
+                    key={event.id}
+                    href={isWorkout ? "/gym/workout" : "/calendar"}
+                    className="flex items-center gap-3 rounded-xl border border-white/8 bg-black/20 px-3 py-2.5 hover:border-white/15 transition-colors group"
+                  >
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                        isWorkout
+                          ? "border border-teal-500/25 bg-teal-500/15"
+                          : "border border-white/8 bg-white/5"
+                      }`}
+                    >
+                      {isWorkout ? (
+                        <Dumbbell className="w-4 h-4 text-teal-400" />
+                      ) : (
+                        <Clock className="w-3.5 h-3.5 text-gray-500" />
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-white">{event.title}</p>
+                      {displayTime && (
+                        <p className="mt-0.5 text-[11px] text-gray-500">{displayTime}</p>
+                      )}
+                    </div>
+                    <ChevronRight className="w-4 h-4 shrink-0 text-gray-700 group-hover:text-gray-400 transition-colors" />
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Macros — ring row */}
