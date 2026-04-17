@@ -1309,7 +1309,8 @@ Provide a helpful, conversational response.`;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white px-4 pt-4 pb-28">
+    <div className="min-h-screen bg-black text-white pb-28">
+      <div className="max-w-md mx-auto px-4 pt-6">
       {/* Tab Selection Bar - At the very top */}
       <div className="flex gap-1 mb-5 bg-white/5 border border-white/8 rounded-2xl p-1">
         <button
@@ -1951,6 +1952,7 @@ Provide a helpful, conversational response.`;
       )}
 
       <BottomNav />
+      </div>
     </div>
   );
 }
