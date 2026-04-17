@@ -10,28 +10,20 @@ interface WorkoutExercise {
   sets: Array<{ reps: number; weight: number; completed: boolean }>;
 }
 
+interface LiftProgress {
+  name: string;
+  weights: number[];
+  first: number;
+  latest: number;
+  delta: number;
+  sessions: number;
+}
+
 interface PREntry {
   exercise: string;
   weight: number;
   reps: number;
   date: string;
-}
-
-interface RecentSession {
-  date: string;
-  volume: number;
-  exerciseCount: number;
-  setCount: number;
-}
-
-function calcVolume(exercises: WorkoutExercise[]): number {
-  let v = 0;
-  exercises.forEach((ex) =>
-    ex.sets?.forEach((s) => {
-      if (s.completed) v += (Number(s.reps) || 0) * (Number(s.weight) || 0);
-    })
-  );
-  return v;
 }
 
 function formatDate(dateStr: string): string {
@@ -48,88 +40,46 @@ function formatDate(dateStr: string): string {
   }
 }
 
-// Smooth SVG area/line chart
-function AreaChart({ data, labels }: { data: number[]; labels: string[] }) {
-  const max = Math.max(...data, 1);
-  const W = 100;
-  const H = 56;
-  const PAD = 3;
+function Sparkline({ weights, positive }: { weights: number[]; positive: boolean }) {
+  const data = weights.slice(-7);
+  if (data.length < 2) return <div style={{ width: 72, height: 36 }} />;
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const W = 72, H = 36, PAD = 3;
+
   const pts = data.map((v, i) => ({
-    x: PAD + (i / Math.max(data.length - 1, 1)) * (W - PAD * 2),
-    y: H - PAD - (v / max) * (H - PAD * 2),
+    x: PAD + (i / (data.length - 1)) * (W - PAD * 2),
+    y: H - PAD - ((v - min) / range) * (H - PAD * 2),
   }));
 
-  let linePath = `M ${pts[0].x},${pts[0].y}`;
+  let path = `M ${pts[0].x},${pts[0].y}`;
   for (let i = 1; i < pts.length; i++) {
-    const prev = pts[i - 1];
-    const curr = pts[i];
-    const cpX = (prev.x + curr.x) / 2;
-    linePath += ` C ${cpX},${prev.y} ${cpX},${curr.y} ${curr.x},${curr.y}`;
+    const cx = (pts[i - 1].x + pts[i].x) / 2;
+    path += ` C ${cx},${pts[i - 1].y} ${cx},${pts[i].y} ${pts[i].x},${pts[i].y}`;
   }
-  const areaPath =
-    linePath + ` L ${pts[pts.length - 1].x},${H} L ${pts[0].x},${H} Z`;
+
+  const areaPath = `${path} L ${pts[pts.length - 1].x},${H} L ${pts[0].x},${H} Z`;
+  const stroke = positive ? "#2dd4bf" : "#f87171";
+  const fill = positive ? "rgba(45,212,191,0.12)" : "rgba(248,113,113,0.12)";
+  const last = pts[pts.length - 1];
 
   return (
-    <div>
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="none"
-        className="w-full"
-        style={{ height: 72 }}
-      >
-        <defs>
-          <linearGradient id="areaG" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#2dd4bf" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={areaPath} fill="url(#areaG)" />
-        <path
-          d={linePath}
-          fill="none"
-          stroke="#2dd4bf"
-          strokeWidth="1.3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        {pts.map((p, i) =>
-          data[i] > 0 ? (
-            <circle
-              key={i}
-              cx={p.x}
-              cy={p.y}
-              r={i === pts.length - 1 ? 2.5 : 1.8}
-              fill={i === pts.length - 1 ? "#2dd4bf" : "#0f766e"}
-            />
-          ) : null
-        )}
-      </svg>
-      {labels.length > 0 && (
-        <div className="flex mt-1.5">
-          {labels.map((l, i) => (
-            <span
-              key={i}
-              className={`flex-1 text-center text-[9px] font-medium ${
-                i === labels.length - 1 ? "text-teal-400" : "text-gray-600"
-              }`}
-            >
-              {l}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: 72, height: 36, flexShrink: 0 }}>
+      <path d={areaPath} fill={fill} />
+      <path d={path} fill="none" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={last.x} cy={last.y} r="2.5" fill={stroke} />
+    </svg>
   );
 }
 
-// 4-week × 7-day training calendar
 function TrainingCalendar({ workoutDates }: { workoutDates: Set<string> }) {
   const today = new Date();
   const dow = today.getDay();
   const daysToMon = dow === 0 ? 6 : dow - 1;
   const mon = new Date(today);
   mon.setDate(today.getDate() - daysToMon);
-
   const start = new Date(mon);
   start.setDate(mon.getDate() - 21);
 
@@ -147,9 +97,7 @@ function TrainingCalendar({ workoutDates }: { workoutDates: Set<string> }) {
     <div>
       <div className="grid grid-cols-7 mb-2">
         {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-          <span key={i} className="text-[9px] text-gray-600 text-center font-bold uppercase">
-            {d}
-          </span>
+          <span key={i} className="text-[9px] text-gray-600 text-center font-bold uppercase">{d}</span>
         ))}
       </div>
       <div className="space-y-1.5">
@@ -185,142 +133,114 @@ function TrainingCalendar({ workoutDates }: { workoutDates: Set<string> }) {
 }
 
 export default function GymStatsPage() {
-  const [weeklyData, setWeeklyData] = useState<number[]>(Array(7).fill(0));
-  const [weeklyLabels, setWeeklyLabels] = useState<string[]>([]);
-  const [monthlyData, setMonthlyData] = useState<number[]>([]);
+  const [totalSessions, setTotalSessions] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [thisMonthCount, setThisMonthCount] = useState(0);
   const [workoutDates, setWorkoutDates] = useState<Set<string>>(new Set());
-  const [totalWorkouts, setTotalWorkouts] = useState(0);
-  const [workoutsThisWeek, setWorkoutsThisWeek] = useState(0);
-  const [activeStreak, setActiveStreak] = useState(0);
-  const [volumeDelta, setVolumeDelta] = useState<number | null>(null);
+  const [liftProgress, setLiftProgress] = useState<LiftProgress[]>([]);
   const [personalRecords, setPersonalRecords] = useState<PREntry[]>([]);
-  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
+  const [recentSessions, setRecentSessions] = useState<
+    { date: string; exerciseCount: number; setCount: number }[]
+  >([]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const today = new Date();
-    const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const todayStr = today.toISOString().split("T")[0];
 
-    // Weekly volumes
-    const vols: number[] = [];
-    const lbls: string[] = [];
-    let thisWeekVol = 0;
-    for (let off = 6; off >= 0; off--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - off);
-      const ds = d.toISOString().split("T")[0];
-      lbls.push(off === 0 ? "Today" : dayNames[d.getDay()].slice(0, 3));
-      let v = 0;
-      const raw = localStorage.getItem(`workout_data_${ds}`);
-      if (raw) { try { v = calcVolume(JSON.parse(raw)); } catch {} }
-      vols.push(v);
-      thisWeekVol += v;
-    }
-    setWeeklyData(vols);
-    setWeeklyLabels(lbls);
-    setWorkoutsThisWeek(vols.filter((v) => v > 0).length);
-
-    // 4-week trend
-    const mVols: number[] = [];
-    let lastWeekVol = 0;
-    for (let w = 3; w >= 0; w--) {
-      let wv = 0;
-      for (let d = 0; d < 7; d++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() - (w * 7 + (6 - d)));
-        const ds = date.toISOString().split("T")[0];
-        const raw = localStorage.getItem(`workout_data_${ds}`);
-        if (raw) { try { wv += calcVolume(JSON.parse(raw)); } catch {} }
-      }
-      if (w === 1) lastWeekVol = wv;
-      mVols.push(wv);
-    }
-    setMonthlyData(mVols);
-    if (lastWeekVol > 0) {
-      setVolumeDelta(Math.round(((thisWeekVol - lastWeekVol) / lastWeekVol) * 100));
-    }
-
-    // All keys newest first
     const allKeys = Object.keys(localStorage)
       .filter((k) => k.startsWith("workout_data_"))
-      .sort()
-      .reverse();
-    setTotalWorkouts(allKeys.length);
+      .sort(); // oldest → newest
 
-    // Dates with volume (for calendar)
-    const dates = new Set<string>();
-    allKeys.forEach((k) => {
-      const ds = k.replace("workout_data_", "");
-      try {
-        const data = JSON.parse(localStorage.getItem(k) || "[]");
-        if (calcVolume(data) > 0) dates.add(ds);
-      } catch {}
-    });
-    setWorkoutDates(dates);
-
-    // Streak
-    let streak = 0;
-    for (let off = 0; off < 90; off++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - off);
-      const ds = d.toISOString().split("T")[0];
-      const raw = localStorage.getItem(`workout_data_${ds}`);
-      if (raw) {
-        try { if (calcVolume(JSON.parse(raw)) > 0) { streak++; continue; } } catch {}
-      }
-      break;
-    }
-    setActiveStreak(streak);
-
-    // PRs
+    // Per-exercise weight history: name → [{date, maxWeight}]
+    const exerciseMap: Record<string, { date: string; maxWeight: number }[]> = {};
     const prs: Record<string, { weight: number; reps: number; date: string }> = {};
+    const datesWithData = new Set<string>();
+    const sessionsArr: { date: string; exerciseCount: number; setCount: number }[] = [];
+
     allKeys.forEach((k) => {
       const date = k.replace("workout_data_", "");
       try {
         const data: WorkoutExercise[] = JSON.parse(localStorage.getItem(k) || "[]");
+        let setCount = 0;
+        let hasData = false;
+
         data.forEach((ex) => {
+          if (!ex.name?.trim()) return;
+          const name = ex.name.trim();
+          let maxW = 0;
           ex.sets?.forEach((s) => {
-            if (s.completed && Number(s.weight) > 0) {
-              const cur = prs[ex.name];
-              if (!cur || Number(s.weight) > cur.weight) {
-                prs[ex.name] = { weight: Number(s.weight), reps: Number(s.reps) || 0, date };
+            if (s.completed) {
+              setCount++;
+              hasData = true;
+              const w = Number(s.weight) || 0;
+              if (w > maxW) maxW = w;
+              const cur = prs[name];
+              if (!cur || w > cur.weight) {
+                prs[name] = { weight: w, reps: Number(s.reps) || 0, date };
               }
             }
           });
+          if (maxW > 0) {
+            if (!exerciseMap[name]) exerciseMap[name] = [];
+            exerciseMap[name].push({ date, maxWeight: maxW });
+          }
         });
+
+        if (hasData) {
+          datesWithData.add(date);
+          sessionsArr.push({ date, exerciseCount: data.length, setCount });
+        }
       } catch {}
     });
+
+    setTotalSessions(allKeys.length);
+    setWorkoutDates(datesWithData);
+    setRecentSessions([...sessionsArr].reverse().slice(0, 6));
+
+    const ym = todayStr.slice(0, 7);
+    setThisMonthCount([...datesWithData].filter((d) => d.startsWith(ym)).length);
+
+    // Streak: consecutive days with workout (allow today to be in-progress)
+    let s = 0;
+    const startOff = datesWithData.has(todayStr) ? 0 : 1;
+    for (let off = startOff; off < 90; off++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - off);
+      if (datesWithData.has(d.toISOString().split("T")[0])) { s++; continue; }
+      break;
+    }
+    setStreak(s);
+
+    // Lift progressions: exercises with 2+ sessions
+    const progresses: LiftProgress[] = Object.entries(exerciseMap)
+      .filter(([, history]) => history.length >= 2)
+      .map(([name, history]) => {
+        const weights = history.map((h) => h.maxWeight);
+        const first = weights[0];
+        const latest = weights[weights.length - 1];
+        return { name, weights, first, latest, delta: latest - first, sessions: weights.length };
+      })
+      .sort((a, b) => b.sessions - a.sessions || a.name.localeCompare(b.name))
+      .slice(0, 8);
+
+    setLiftProgress(progresses);
+
     setPersonalRecords(
       Object.entries(prs)
         .map(([exercise, v]) => ({ exercise, ...v }))
+        .filter((pr) => pr.weight > 0)
         .sort((a, b) => b.weight - a.weight)
         .slice(0, 6)
     );
-
-    // Recent sessions
-    const sessions: RecentSession[] = [];
-    allKeys.slice(0, 8).forEach((k) => {
-      const date = k.replace("workout_data_", "");
-      try {
-        const data: WorkoutExercise[] = JSON.parse(localStorage.getItem(k) || "[]");
-        const volume = calcVolume(data);
-        const setCount = data.reduce(
-          (s, ex) => s + (ex.sets?.filter((set) => set.completed)?.length || 0),
-          0
-        );
-        if (setCount > 0 || volume > 0)
-          sessions.push({ date, volume, exerciseCount: data.length, setCount });
-      } catch {}
-    });
-    setRecentSessions(sessions);
   }, []);
 
-  const isEmpty = totalWorkouts === 0;
-  const thisWeekVolume = weeklyData.reduce((a, b) => a + b, 0);
+  const isEmpty = totalSessions === 0;
 
   return (
     <div className="min-h-screen bg-black text-white pb-28">
       <div className="max-w-md mx-auto px-4 py-4">
+
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <Link href="/gym/workout" className="p-2 hover:bg-white/10 rounded-xl transition-colors">
@@ -347,135 +267,110 @@ export default function GymStatsPage() {
           </div>
         ) : (
           <>
-            {/* Hero card */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-teal-900/50 via-[#0c1422] to-black border border-teal-500/25 rounded-2xl p-5 mb-4">
-              <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 to-transparent pointer-events-none" />
-              <div className="relative">
-                <div className="flex items-start justify-between mb-5">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-teal-400/60 mb-1">
-                      This week
-                    </p>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-5xl font-black text-white leading-none">
-                        {workoutsThisWeek}
-                      </span>
-                      <span className="text-gray-400 text-sm">
-                        session{workoutsThisWeek !== 1 ? "s" : ""}
-                      </span>
-                    </div>
-                    {thisWeekVolume > 0 && (
-                      <p className="text-sm text-teal-300/70 mt-1">
-                        {thisWeekVolume.toLocaleString()} kg lifted
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    {activeStreak > 0 && (
-                      <div className="flex items-center gap-1.5 bg-orange-500/15 border border-orange-500/20 rounded-xl px-3 py-1.5">
-                        <Flame className="w-3.5 h-3.5 text-orange-400" />
-                        <span className="text-sm font-bold text-orange-300">
-                          {activeStreak}d streak
-                        </span>
-                      </div>
-                    )}
-                    {volumeDelta !== null && (
-                      <div
-                        className={`flex items-center gap-1 text-xs font-semibold ${
-                          volumeDelta >= 0 ? "text-green-400" : "text-red-400"
-                        }`}
-                      >
-                        {volumeDelta >= 0 ? (
-                          <TrendingUp className="w-3.5 h-3.5" />
-                        ) : (
-                          <TrendingDown className="w-3.5 h-3.5" />
-                        )}
-                        {volumeDelta >= 0 ? "+" : ""}
-                        {volumeDelta}% vs last wk
-                      </div>
-                    )}
-                  </div>
+            {/* Hero stats — 3 tiles */}
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 flex flex-col items-center justify-center">
+                <span className="text-3xl font-black text-white leading-none">{totalSessions}</span>
+                <span className="text-[10px] text-gray-500 uppercase tracking-wide mt-1.5 text-center leading-tight">
+                  Sessions
+                </span>
+              </div>
+              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 flex flex-col items-center justify-center">
+                <div className="flex items-center gap-0.5">
+                  {streak > 0 && <Flame className="w-4 h-4 text-orange-400 mb-0.5" />}
+                  <span className="text-3xl font-black text-white leading-none">{streak}</span>
                 </div>
-                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/8">
-                  <div>
-                    <p className="text-2xl font-black text-white">{totalWorkouts}</p>
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wide">
-                      All-time sessions
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black text-white">
-                      {thisWeekVolume > 0
-                        ? `${(thisWeekVolume / 1000).toFixed(1)}k`
-                        : "—"}
-                    </p>
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wide">
-                      kg this week
-                    </p>
-                  </div>
-                </div>
+                <span className="text-[10px] text-gray-500 uppercase tracking-wide mt-1.5 text-center leading-tight">
+                  Day streak
+                </span>
+              </div>
+              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 flex flex-col items-center justify-center">
+                <span className="text-3xl font-black text-teal-400 leading-none">{thisMonthCount}</span>
+                <span className="text-[10px] text-gray-500 uppercase tracking-wide mt-1.5 text-center leading-tight">
+                  This month
+                </span>
               </div>
             </div>
 
-            {/* Training calendar */}
-            <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-4">
+            {/* Strength Trends */}
+            {liftProgress.length > 0 && (
+              <div className="mb-5">
+                <div className="flex items-end justify-between mb-3">
+                  <h2 className="text-base font-bold text-white">Strength Trends</h2>
+                  <span className="text-[11px] text-gray-600">max weight / session</span>
+                </div>
+                <div className="space-y-2">
+                  {liftProgress.map((lift, i) => {
+                    const isUp = lift.delta >= 0;
+                    return (
+                      <div
+                        key={i}
+                        className="bg-[#0c1422] border border-white/8 rounded-2xl px-4 py-3.5 flex items-center gap-3"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-white truncate">{lift.name}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xl font-black text-white leading-none">
+                              {lift.latest}
+                              <span className="text-sm font-normal text-gray-500 ml-0.5">kg</span>
+                            </span>
+                            <span
+                              className={`flex items-center gap-0.5 text-[11px] font-bold px-1.5 py-0.5 rounded-lg ${
+                                isUp
+                                  ? "bg-teal-500/15 text-teal-400"
+                                  : "bg-red-500/15 text-red-400"
+                              }`}
+                            >
+                              {isUp ? (
+                                <TrendingUp className="w-3 h-3" />
+                              ) : (
+                                <TrendingDown className="w-3 h-3" />
+                              )}
+                              {isUp ? "+" : ""}
+                              {lift.delta}kg
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-gray-600 mt-0.5">
+                            {lift.sessions} sessions · started at {lift.first}kg
+                          </p>
+                        </div>
+                        <Sparkline weights={lift.weights} positive={isUp} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Training Calendar */}
+            <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-5">
               <p className="text-[10px] font-bold uppercase tracking-widest text-teal-400/60 mb-3">
                 Training calendar · last 28 days
               </p>
               <TrainingCalendar workoutDates={workoutDates} />
             </div>
 
-            {/* Volume chart this week */}
-            <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-4">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-teal-400/60">
-                  Volume · this week
-                </p>
-                {thisWeekVolume > 0 && (
-                  <span className="text-xs font-semibold text-teal-400">
-                    {thisWeekVolume.toLocaleString()} kg
-                  </span>
-                )}
-              </div>
-              <AreaChart data={weeklyData} labels={weeklyLabels} />
-            </div>
-
-            {/* 4-week trend */}
-            {monthlyData.some((v) => v > 0) && (
-              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-teal-400/60 mb-3">
-                  Volume trend · 4 weeks
-                </p>
-                <AreaChart
-                  data={monthlyData}
-                  labels={["3 wks ago", "2 wks ago", "Last week", "This week"]}
-                />
-              </div>
-            )}
-
-            {/* PRs */}
+            {/* Personal Records */}
             {personalRecords.length > 0 && (
-              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-4">
+              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-5">
                 <div className="flex items-center gap-2 mb-3">
                   <Trophy className="w-4 h-4 text-yellow-400" />
                   <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-400/80">
-                    Personal records
+                    Personal Records
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {personalRecords.map((pr, i) => (
                     <div
                       key={i}
-                      className="bg-black/50 border border-white/6 rounded-xl p-3"
+                      className="bg-black/50 border border-yellow-500/10 rounded-xl p-3"
                     >
-                      <p className="text-xs font-semibold text-gray-300 truncate mb-2">
+                      <p className="text-xs font-semibold text-gray-400 truncate mb-1.5">
                         {pr.exercise}
                       </p>
                       <p className="text-2xl font-black text-yellow-400 leading-none">
                         {pr.weight}
-                        <span className="text-sm font-normal text-yellow-500/60 ml-0.5">
-                          kg
-                        </span>
+                        <span className="text-sm font-normal text-yellow-600/50 ml-0.5">kg</span>
                       </p>
                       {pr.reps > 0 && (
                         <p className="text-[10px] text-gray-600 mt-0.5">× {pr.reps} reps</p>
@@ -487,12 +382,12 @@ export default function GymStatsPage() {
               </div>
             )}
 
-            {/* Recent sessions */}
+            {/* Recent Sessions */}
             {recentSessions.length > 0 && (
               <div className="bg-[#0c1422] border border-white/8 rounded-2xl overflow-hidden">
                 <div className="px-4 pt-4 pb-2">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-teal-400/60">
-                    Recent sessions
+                    Recent Sessions
                   </p>
                 </div>
                 {recentSessions.map((s, i) => (
@@ -506,11 +401,7 @@ export default function GymStatsPage() {
                         {s.exerciseCount} exercises · {s.setCount} sets
                       </p>
                     </div>
-                    {s.volume > 0 && (
-                      <p className="text-sm font-bold text-teal-400">
-                        {s.volume.toLocaleString()} kg
-                      </p>
-                    )}
+                    <div className="w-2 h-2 rounded-full bg-teal-400/40" />
                   </div>
                 ))}
               </div>
