@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import BottomNav from "@/components/BottomNav";
 import { appBlockingBridge } from "@/app/utils/app-blocking";
 import { showImmediateNotification, requestNotificationPermission } from "@/app/utils/notifications";
-import { Shield, X, PiggyBank, Plus, Flame } from "lucide-react";
+import { Shield, X, PiggyBank, Plus, Flame, Users } from "lucide-react";
+import Link from "next/link";
 
 interface AppBlock {
   appName: string;
@@ -587,6 +588,21 @@ export default function AddictionsPage() {
           Track New
         </button>
       </div>
+
+      {/* Support Community */}
+      <Link
+        href="/addictions/support"
+        className="flex items-center gap-3 w-full bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-4 hover:border-teal-500/30 transition-colors"
+      >
+        <div className="w-9 h-9 rounded-xl bg-teal-400/10 border border-teal-400/20 flex items-center justify-center flex-shrink-0">
+          <Users className="w-4 h-4 text-teal-400" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-bold text-white">Support Community</p>
+          <p className="text-[11px] text-gray-500">Connect with others on the same journey</p>
+        </div>
+        <span className="text-[10px] font-semibold text-teal-400 bg-teal-400/10 border border-teal-400/20 px-2 py-0.5 rounded-full">Join</span>
+      </Link>
 
       {/* ADDICTIONS LIST */}
       <div className="space-y-3">
