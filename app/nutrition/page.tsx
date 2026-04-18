@@ -1395,50 +1395,74 @@ Provide a helpful, conversational response.`;
         />
       ) : (
         <>
-      {/* Calories card */}
+      {/* Calories ring + macro bars */}
       <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-bold text-white">Calories</p>
-          <p className="text-xs tabular-nums text-gray-500">
-            {totals.calories.toLocaleString()} / {dailyGoals.calories.toLocaleString()} kcal
-          </p>
-        </div>
-        <div className="h-1.5 w-full rounded-full bg-white/8 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-orange-400 transition-all duration-700"
-            style={{ width: `${Math.min(caloriesPercentage, 100)}%` }}
-          />
-        </div>
-        <p className="text-xs text-gray-600 mt-1.5 tabular-nums">{caloriesPercentage}% of daily goal</p>
-      </div>
-
-      {/* Macros card */}
-      <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-4">
-        <p className="text-sm font-bold text-white mb-3.5">Macros</p>
-        <div className="space-y-3.5">
-          {[
-            { label: "Protein", value: totals.protein, goal: dailyGoals.protein, pct: proteinPercentage, color: "bg-blue-400", unit: "g" },
-            { label: "Carbs", value: totals.carbs, goal: dailyGoals.carbs, pct: carbsPercentage, color: "bg-violet-400", unit: "g" },
-            { label: "Fats", value: totals.fats, goal: dailyGoals.fats, pct: fatsPercentage, color: "bg-amber-400", unit: "g" },
-            { label: "Sugar", value: totals.sugar, goal: dailyGoals.sugar, pct: sugarPercentage, color: "bg-pink-400", unit: "g" },
-            { label: "Sodium", value: totals.sodium, goal: dailyGoals.sodium, pct: sodiumPercentage, color: "bg-indigo-400", unit: "mg" },
-            { label: "Fibre", value: totals.fiber, goal: dailyGoals.fiber, pct: fiberPercentage, color: "bg-green-400", unit: "g" },
-          ].map((m) => (
-            <div key={m.label}>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-semibold text-gray-400">{m.label}</span>
-                <span className="text-xs tabular-nums text-gray-500">
-                  {Math.round(m.value)}<span className="text-gray-700 text-[10px]"> / {m.goal}{m.unit}</span>
-                </span>
+        <div className="flex items-center gap-4">
+          {/* Left macro bars */}
+          <div className="flex-1 space-y-3">
+            {[
+              { label: "Protein", value: totals.protein, goal: dailyGoals.protein, pct: proteinPercentage, color: "bg-blue-400", unit: "g" },
+              { label: "Carbs", value: totals.carbs, goal: dailyGoals.carbs, pct: carbsPercentage, color: "bg-violet-400", unit: "g" },
+              { label: "Fats", value: totals.fats, goal: dailyGoals.fats, pct: fatsPercentage, color: "bg-amber-400", unit: "g" },
+            ].map((m) => (
+              <div key={m.label}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-semibold text-gray-400">{m.label}</span>
+                  <span className="text-[9px] tabular-nums text-gray-600">{Math.round(m.value)}{m.unit}</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+                  <div className={`h-full rounded-full transition-all duration-700 ${m.color}`}
+                    style={{ width: `${Math.min(m.pct, 100)}%` }} />
+                </div>
               </div>
-              <div className="h-1.5 w-full rounded-full bg-white/8 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-700 ${m.color}`}
-                  style={{ width: `${Math.min(m.pct, 100)}%` }}
+            ))}
+          </div>
+
+          {/* Center calorie ring */}
+          <div className="flex-shrink-0 flex flex-col items-center">
+            <div className="relative w-28 h-28">
+              <svg className="w-28 h-28 -rotate-90" viewBox="0 0 112 112">
+                <circle cx="56" cy="56" r="46" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+                <circle
+                  cx="56" cy="56" r="46" fill="none"
+                  stroke="#fb923c"
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 46}
+                  strokeDashoffset={2 * Math.PI * 46 - (2 * Math.PI * 46 * Math.min(caloriesPercentage, 100)) / 100}
+                  className="transition-all duration-700"
                 />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <p className="text-lg font-black text-white leading-none tabular-nums">
+                  {totals.calories.toLocaleString()}
+                </p>
+                <p className="text-[9px] text-gray-500 mt-0.5">/{dailyGoals.calories.toLocaleString()}</p>
+                <p className="text-[10px] font-bold text-orange-400 mt-1">{caloriesPercentage}%</p>
               </div>
             </div>
-          ))}
+            <p className="text-[10px] text-gray-500 mt-1.5">kcal</p>
+          </div>
+
+          {/* Right macro bars */}
+          <div className="flex-1 space-y-3">
+            {[
+              { label: "Sugar", value: totals.sugar, goal: dailyGoals.sugar, pct: sugarPercentage, color: "bg-pink-400", unit: "g" },
+              { label: "Sodium", value: totals.sodium, goal: dailyGoals.sodium, pct: sodiumPercentage, color: "bg-indigo-400", unit: "mg" },
+              { label: "Fibre", value: totals.fiber, goal: dailyGoals.fiber, pct: fiberPercentage, color: "bg-green-400", unit: "g" },
+            ].map((m) => (
+              <div key={m.label}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-semibold text-gray-400">{m.label}</span>
+                  <span className="text-[9px] tabular-nums text-gray-600">{Math.round(m.value)}{m.unit}</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+                  <div className={`h-full rounded-full transition-all duration-700 ${m.color}`}
+                    style={{ width: `${Math.min(m.pct, 100)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
