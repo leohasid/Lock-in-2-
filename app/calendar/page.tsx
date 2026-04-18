@@ -810,7 +810,7 @@ Check if they specified days. If not, ask specifically about days.`
   const weekDayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white px-4 pt-4 pb-28">
+    <div className="min-h-screen bg-black text-white px-4 pt-4 pb-28">
       <div className="container mx-auto px-4 py-4">
         {/* Header */}
         <div className="mb-5 flex items-center justify-end gap-2">
@@ -818,7 +818,7 @@ Check if they specified days. If not, ask specifically about days.`
             <button
               type="button"
               onClick={() => openAddFormFromCalendar(selectedDate.toISOString().split("T")[0])}
-              className="px-4 py-2 rounded-xl text-xs font-bold transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white hover:bg-[rgba(20,30,35,1)] min-h-[38px]"
+              className="px-4 py-2 rounded-xl text-xs font-bold transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-1.5 bg-[#0c1422] border border-white/8 text-white hover:bg-white/10 min-h-[38px]"
             >
               + Add reminder
             </button>
@@ -873,7 +873,7 @@ Check if they specified days. If not, ask specifically about days.`
             onClick={closeModal}
           >
             <div
-              className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto border border-white/10"
+              className="bg-[#0c1422] rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto border border-white/8"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-6">
@@ -916,7 +916,7 @@ Check if they specified days. If not, ask specifically about days.`
                   {modalReminders.map((reminder) => (
                       <div
                         key={reminder.id}
-                        className={`bg-gradient-to-br from-[rgba(10,15,20,0.8)] to-[rgba(5,10,15,0.8)] rounded-xl p-4 border border-teal-500/20 hover:border-teal-400/40 transition-all hover:shadow-lg hover:shadow-teal-500/10 flex items-center justify-between ${
+                        className={`bg-[#0c1422] rounded-xl p-4 border border-white/8 hover:border-teal-400/40 transition-all hover:shadow-lg hover:shadow-teal-500/10 flex items-center justify-between ${
                           reminder.completed ? "opacity-50" : ""
                         }`}
                       >
@@ -943,7 +943,7 @@ Check if they specified days. If not, ask specifically about days.`
                             onClick={() => toggleComplete(reminder.id)}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all transform hover:scale-105 shadow-lg ${
                               reminder.completed
-                                ? "bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-gray-300"
+                                ? "bg-[#0c1422] border border-white/8 text-gray-300"
                                 : "bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-black shadow-green-500/30"
                             }`}
                           >
@@ -984,7 +984,7 @@ Check if they specified days. If not, ask specifically about days.`
 
         {deleteSeriesModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full border border-teal-500/20 shadow-xl">
+            <div className="bg-[#0c1422] rounded-2xl p-6 max-w-md w-full border border-white/8 shadow-xl">
               <h2 className="text-xl font-bold text-white mb-2">Delete</h2>
               <p className="text-gray-400 text-sm leading-relaxed mb-1">
                 <span className="text-white font-semibold">{deleteSeriesModal.reminder.title}</span> is on{" "}
@@ -1007,7 +1007,7 @@ Check if they specified days. If not, ask specifically about days.`
                     performDeleteReminderIds([deleteSeriesModal.reminder.id]);
                     setDeleteSeriesModal(null);
                   }}
-                  className="w-full py-3 rounded-lg font-bold bg-gradient-to-b from-[#0c1422] to-black border border-white/15 text-white hover:border-teal-400/40 transition-colors"
+                  className="w-full py-3 rounded-lg font-bold bg-[#0c1422] border border-white/8 text-white hover:border-teal-400/40 transition-colors"
                 >
                   Only this day
                 </button>
@@ -1036,7 +1036,7 @@ Check if they specified days. If not, ask specifically about days.`
         {/* Add reminder (calendar) / Add task (schedule) */}
         {showAddForm && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="bg-[#0c1422] rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
               <h2 className="text-2xl font-bold text-white mb-6">
                 {addFormKind === "reminder" ? "Add reminder" : "Add task"}
               </h2>
@@ -1052,7 +1052,7 @@ Check if they specified days. If not, ask specifically about days.`
                         ? "e.g., Gym, Study block, Team standup…"
                         : "e.g., Take Vitamin D, Call mom, Workout..."
                     }
-                    className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
+                    className="w-full bg-white/5 text-white p-3 rounded-lg"
                   />
                 </div>
                 {addFormKind === "reminder" && (
@@ -1063,7 +1063,7 @@ Check if they specified days. If not, ask specifically about days.`
                       onChange={(e) =>
                         setNewReminder({ ...newReminder, type: e.target.value as Reminder["type"] })
                       }
-                      className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
+                      className="w-full bg-white/5 text-white p-3 rounded-lg"
                     >
                       <option value="supplement">💊 Supplement</option>
                       <option value="task">✅ Task</option>
@@ -1078,7 +1078,7 @@ Check if they specified days. If not, ask specifically about days.`
                       type="time"
                       value={newReminder.time}
                       onChange={(e) => setNewReminder({ ...newReminder, time: e.target.value })}
-                      className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
+                      className="w-full bg-white/5 text-white p-3 rounded-lg"
                     />
                   </div>
                 ) : (
@@ -1089,7 +1089,7 @@ Check if they specified days. If not, ask specifically about days.`
                         type="time"
                         value={newReminder.time}
                         onChange={(e) => setNewReminder({ ...newReminder, time: e.target.value })}
-                        className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
+                        className="w-full bg-white/5 text-white p-3 rounded-lg"
                       />
                     </div>
                     <div>
@@ -1098,7 +1098,7 @@ Check if they specified days. If not, ask specifically about days.`
                         type="time"
                         value={newReminder.endTime}
                         onChange={(e) => setNewReminder({ ...newReminder, endTime: e.target.value })}
-                        className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
+                        className="w-full bg-white/5 text-white p-3 rounded-lg"
                       />
                     </div>
                   </div>
@@ -1109,7 +1109,7 @@ Check if they specified days. If not, ask specifically about days.`
                     type="date"
                     value={newReminder.date}
                     onChange={(e) => setNewReminder({ ...newReminder, date: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
+                    className="w-full bg-white/5 text-white p-3 rounded-lg"
                     min={new Date().toISOString().split("T")[0]}
                   />
                 </div>
@@ -1126,7 +1126,7 @@ Check if they specified days. If not, ask specifically about days.`
                         ? "e.g. every Monday, Tuesday this month, Wednesday and Thursday…"
                         : "e.g., daily, weekly, every 3 days, 2 weeks"
                     }
-                    className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg"
+                    className="w-full bg-white/5 text-white p-3 rounded-lg"
                   />
                   {addFormKind === "task" ? (
                     <p className="text-xs text-gray-400 mt-1 leading-relaxed">
@@ -1167,7 +1167,7 @@ Check if they specified days. If not, ask specifically about days.`
                         repeatFrequency: "",
                       });
                     }}
-                    className="flex-1 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 hover:bg-[rgba(20,30,35,1)] text-white px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg"
+                    className="flex-1 bg-[#0c1422] border border-white/8 hover:bg-white/10 text-white px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg"
                   >
                     Cancel
                   </button>
@@ -1181,13 +1181,13 @@ Check if they specified days. If not, ask specifically about days.`
         {activeView === "routine" && (
           <div className="mb-4">
             {/* Week Navigation Bar */}
-            <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-3 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group mb-4">
+            <div className="bg-[#0c1422] rounded-2xl p-3 border border-white/8 shadow-lg shadow-teal-500/10 relative overflow-hidden group mb-4">
               <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <div className="relative z-10 flex items-center justify-center">
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => navigateWeek("prev")}
-                    className="bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white px-4 py-2 rounded-lg text-base hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 shadow-lg font-bold"
+                    className="bg-[#0c1422] border border-white/8 text-white px-4 py-2 rounded-lg text-base hover:bg-white/10 transition-all transform hover:scale-105 shadow-lg font-bold"
                   >
                     ←
                   </button>
@@ -1196,7 +1196,7 @@ Check if they specified days. If not, ask specifically about days.`
                   </span>
                   <button
                     onClick={() => navigateWeek("next")}
-                    className="bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white px-4 py-2 rounded-lg text-base hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 shadow-lg font-bold"
+                    className="bg-[#0c1422] border border-white/8 text-white px-4 py-2 rounded-lg text-base hover:bg-white/10 transition-all transform hover:scale-105 shadow-lg font-bold"
                   >
                     →
                   </button>
@@ -1215,10 +1215,10 @@ Check if they specified days. If not, ask specifically about days.`
                     <button
                       key={index}
                       onClick={() => setSelectedDay(day)}
-                      className={`w-full bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border-2 transition-all transform hover:scale-[1.02] text-left shadow-lg ${
+                      className={`w-full bg-[#0c1422] rounded-xl p-4 border-2 transition-all transform hover:scale-[1.02] text-left shadow-lg ${
                         isToday
                           ? "border-teal-400 shadow-teal-500/30"
-                          : "border-white/10 hover:border-teal-400/50"
+                          : "border-white/8 hover:border-teal-400/50"
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -1249,7 +1249,7 @@ Check if they specified days. If not, ask specifically about days.`
                 <div className="flex items-center gap-3 mb-4">
                 <button
                   onClick={() => setSelectedDay(null)}
-                    className="flex-1 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white px-4 py-2 rounded-lg hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 shadow-lg font-bold flex items-center justify-center gap-2"
+                    className="flex-1 bg-[#0c1422] border border-white/8 text-white px-4 py-2 rounded-lg hover:bg-white/10 transition-all transform hover:scale-105 shadow-lg font-bold flex items-center justify-center gap-2"
                 >
                   ← Back to Days
                 </button>
@@ -1263,10 +1263,10 @@ Check if they specified days. If not, ask specifically about days.`
                   </button>
                 </div>
                 
-                <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group">
+                <div className="bg-[#0c1422] rounded-2xl p-4 border border-white/8 shadow-lg shadow-teal-500/10 relative overflow-hidden group">
                   <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   <div className="relative z-10">
-                    <h2 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent mb-4">
+                    <h2 className="text-xl font-bold text-white mb-4">
                       {weekDayNames[selectedDay.getDay() === 0 ? 6 : selectedDay.getDay() - 1]} {selectedDay.toLocaleDateString("en-US", { month: "long", day: "numeric" })}
                     </h2>
                     
@@ -1343,7 +1343,7 @@ Check if they specified days. If not, ask specifically about days.`
                               {time}
                             </div>
                             {/* Horizontal line extending across */}
-                            <div className="absolute left-20 right-0 top-6 border-t border-white/10"></div>
+                            <div className="absolute left-20 right-0 top-6 border-t border-white/8"></div>
                             {/* Reminder or empty space on the right */}
                             <div className="flex-1 pl-6 pt-2">
                               {reminderElement || (
@@ -1365,11 +1365,11 @@ Check if they specified days. If not, ask specifically about days.`
         {activeView === "calendar" && (
           <>
         {/* Upcoming Reminders */}
-        <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group mb-4">
+        <div className="bg-[#0c1422] rounded-2xl p-4 border border-white/8 shadow-lg shadow-teal-500/10 relative overflow-hidden group mb-4">
           <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
+              <h2 className="text-lg font-bold text-white">
                 Upcoming Reminders
               </h2>
               <Link
@@ -1390,7 +1390,7 @@ Check if they specified days. If not, ask specifically about days.`
               const tomorrowStr = tomorrow.toISOString().split("T")[0];
               const dateLabel = isToday ? "Today" : next.date === tomorrowStr ? "Tomorrow" : new Date(next.date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
               return (
-                <div className="bg-gradient-to-br from-[rgba(10,15,20,0.8)] to-[rgba(5,10,15,0.8)] rounded-xl p-4 border border-teal-500/20 hover:border-teal-400/40 transition-all">
+                <div className="bg-[#0c1422] rounded-xl p-4 border border-white/8 hover:border-teal-400/40 transition-all">
                   <div className="flex items-center gap-4">
                     <div className="text-2xl">{getReminderIcon(next.type)}</div>
                     <div>
@@ -1413,7 +1413,7 @@ Check if they specified days. If not, ask specifically about days.`
 
 
         {/* Calendar */}
-        <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group mb-4">
+        <div className="bg-[#0c1422] rounded-2xl p-4 border border-white/8 shadow-lg shadow-teal-500/10 relative overflow-hidden group mb-4">
           <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <div className="relative z-10">
             <div className="flex items-center justify-center mb-4">
@@ -1421,7 +1421,7 @@ Check if they specified days. If not, ask specifically about days.`
                 <button
                   type="button"
                   onClick={() => navigateMonth("prev")}
-                  className="bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 shadow-lg"
+                  className="bg-[#0c1422] border border-white/8 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-white/10 transition-all transform hover:scale-105 shadow-lg"
                 >
                   ←
                 </button>
@@ -1431,7 +1431,7 @@ Check if they specified days. If not, ask specifically about days.`
                 <button
                   type="button"
                   onClick={() => navigateMonth("next")}
-                  className="bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 shadow-lg"
+                  className="bg-[#0c1422] border border-white/8 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-white/10 transition-all transform hover:scale-105 shadow-lg"
                 >
                   →
                 </button>
@@ -1467,7 +1467,7 @@ Check if they specified days. If not, ask specifically about days.`
                       ? "bg-gradient-to-r from-teal-400 to-cyan-500 text-black shadow-teal-500/50 border-2 border-teal-400"
                       : isCurrentDay
                       ? "bg-gradient-to-br from-[rgba(20,241,217,0.15)] to-[rgba(20,241,217,0.05)] text-white border-2 border-teal-400/50 shadow-teal-500/20"
-                      : "bg-gradient-to-br from-[rgba(10,15,20,0.8)] to-[rgba(5,10,15,0.8)] text-white hover:bg-[rgba(20,30,35,1)] border border-teal-500/20 hover:border-teal-400/40"
+                      : "bg-[#0c1422] text-white hover:bg-white/10 border border-white/8 hover:border-teal-400/40"
                   }`}
                 >
                   <div className="flex flex-col items-center justify-center h-full">
@@ -1485,10 +1485,10 @@ Check if they specified days. If not, ask specifically about days.`
 
         {/* Selected Date Reminders - Shows below calendar when date is clicked */}
         {activeView === "calendar" && !isSameDay(selectedDate, new Date()) && (
-          <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group mb-4">
+          <div className="bg-[#0c1422] rounded-2xl p-4 border border-white/8 shadow-lg shadow-teal-500/10 relative overflow-hidden group mb-4">
             <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="relative z-10">
-              <h2 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent mb-3">
+              <h2 className="text-lg font-bold text-white mb-3">
                 {selectedDate.toLocaleDateString("en-US", { 
                   weekday: "long", 
                   year: "numeric", 
@@ -1514,7 +1514,7 @@ Check if they specified days. If not, ask specifically about days.`
                   .map((reminder) => (
                     <div
                       key={reminder.id}
-                      className={`bg-gradient-to-br from-[rgba(10,15,20,0.8)] to-[rgba(5,10,15,0.8)] rounded-xl p-4 border border-teal-500/20 hover:border-teal-400/40 transition-all hover:shadow-lg hover:shadow-teal-500/10 flex items-center justify-between ${
+                      className={`bg-[#0c1422] rounded-xl p-4 border border-white/8 hover:border-teal-400/40 transition-all hover:shadow-lg hover:shadow-teal-500/10 flex items-center justify-between ${
                         reminder.completed ? "opacity-50" : ""
                       }`}
                     >
@@ -1541,7 +1541,7 @@ Check if they specified days. If not, ask specifically about days.`
                           onClick={() => toggleComplete(reminder.id)}
                           className={`px-4 py-2 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg ${
                             reminder.completed
-                              ? "bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-gray-300"
+                              ? "bg-[#0c1422] border border-white/8 text-gray-300"
                               : "bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-black shadow-green-500/30"
                           }`}
                         >
@@ -1575,7 +1575,7 @@ Check if they specified days. If not, ask specifically about days.`
         {/* AI Schedule Generator Modal */}
         {showAIGenerator && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto border border-white/10">
+            <div className="bg-[#0c1422] rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto border border-white/8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-white flex items-center gap-2">
                   <Sparkles className="w-6 h-6 text-teal-400" />
@@ -1605,7 +1605,7 @@ Check if they specified days. If not, ask specifically about days.`
                       value={aiPreferences}
                       onChange={(e) => setAiPreferences(e.target.value)}
                       placeholder="e.g., I want to workout 4 times a week, take vitamins daily at 8am, meal prep on Sundays, meditate every morning, drink water every 2 hours..."
-                      className="w-full bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg min-h-[120px] resize-none"
+                      className="w-full bg-white/5 text-white p-3 rounded-lg min-h-[120px] resize-none"
                     />
                     <p className="text-xs text-gray-400 mt-1">
                       Be specific about times, frequencies, and activities you want included
@@ -1683,7 +1683,7 @@ Check if they specified days. If not, ask specifically about days.`
                     {generatedReminders.slice(0, 20).map((reminder, index) => (
                       <div
                         key={reminder.id}
-                        className="bg-[rgba(20,30,35,0.85)] rounded-lg p-3 flex items-center gap-3"
+                        className="bg-white/5 rounded-lg p-3 flex items-center gap-3"
                       >
                         <div className="text-xl">{getReminderIcon(reminder.type)}</div>
                         <div className="flex-1 min-w-0">
@@ -1731,7 +1731,7 @@ Check if they specified days. If not, ask specifically about days.`
                         setShowGeneratedPreview(false);
                         setGeneratedReminders([]);
                       }}
-                      className="flex-1 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 hover:bg-[rgba(20,30,35,1)] text-white px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg"
+                      className="flex-1 bg-[#0c1422] border border-white/8 hover:bg-white/10 text-white px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg"
                     >
                       Regenerate
                     </button>
@@ -1745,7 +1745,7 @@ Check if they specified days. If not, ask specifically about days.`
         {/* Schedule Chat Modal */}
         {showScheduleChat && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-md w-full max-h-[90vh] flex flex-col border border-white/10">
+            <div className="bg-[#0c1422] rounded-2xl p-6 max-w-md w-full max-h-[90vh] flex flex-col border border-white/8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-teal-400" />
@@ -1775,7 +1775,7 @@ Check if they specified days. If not, ask specifically about days.`
                       className={`max-w-[80%] rounded-lg p-3 ${
                         msg.role === "user"
                           ? "bg-teal-400 text-black"
-                          : "bg-[rgba(20,30,35,0.85)] text-white"
+                          : "bg-white/5 text-white"
                       }`}
                     >
                       <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
@@ -1784,7 +1784,7 @@ Check if they specified days. If not, ask specifically about days.`
                 ))}
                 {isScheduleChatLoading && (
                   <div className="flex justify-start">
-                    <div className="bg-[rgba(20,30,35,0.85)] rounded-lg p-3">
+                    <div className="bg-white/5 rounded-lg p-3">
                       <p className="text-sm text-gray-400">AI is thinking...</p>
                     </div>
                   </div>
@@ -1803,7 +1803,7 @@ Check if they specified days. If not, ask specifically about days.`
                     }
                   }}
                   placeholder="Type your response..."
-                  className="flex-1 bg-[rgba(20,30,35,0.85)] text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  className="flex-1 bg-white/5 text-white p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400"
                   disabled={isScheduleChatLoading}
                 />
                 <button

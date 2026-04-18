@@ -34,7 +34,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white pb-24">
+    <div className="min-h-screen bg-black text-white pb-24">
       <div className="max-w-md mx-auto px-4 py-4">
         {/* Tab Bar - Home | Goals */}
         <div className="flex gap-1 mb-6 pt-4 bg-white/5 border border-white/8 rounded-2xl p-1">
@@ -57,7 +57,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Notification Settings */}
-        <div className="rounded-2xl bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-teal-500/30 p-5 mb-6">
+        <div className="rounded-2xl bg-[#0c1422] border border-white/8 p-5 mb-6">
           <div className="flex items-center gap-2 mb-4">
             <Bell className="w-5 h-5 text-teal-400" />
             <h2 className="text-lg font-semibold">Notification Settings</h2>
@@ -78,7 +78,7 @@ export default function SettingsPage() {
                 onChange={(e) =>
                   setSettings({ ...settings, gymScheduleTime: e.target.value })
                 }
-                className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-teal-500"
+                className="w-full bg-white/5 border border-white/8 rounded-lg p-3 text-white focus:outline-none focus:border-teal-500"
               />
               <p className="text-xs text-gray-500 mt-1">
                 When you plan to work out (1hr before &amp; 1hr after reminders use this)
@@ -96,7 +96,7 @@ export default function SettingsPage() {
                 onChange={(e) =>
                   setSettings({ ...settings, workoutReminderTime: e.target.value })
                 }
-                className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-teal-500"
+                className="w-full bg-white/5 border border-white/8 rounded-lg p-3 text-white focus:outline-none focus:border-teal-500"
               />
               <p className="text-xs text-gray-500 mt-1">
                 When to remind you about today&apos;s workout (e.g. 11:45 AM)
@@ -115,7 +115,7 @@ export default function SettingsPage() {
                   setSettings({ ...settings, workoutReminderTitle: e.target.value })
                 }
                 placeholder="💪 Missed Workout Reminder"
-                className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-500"
+                className="w-full bg-white/5 border border-white/8 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-500"
               />
             </div>
 
@@ -131,7 +131,7 @@ export default function SettingsPage() {
                   setSettings({ ...settings, workoutReminderMessage: e.target.value })
                 }
                 placeholder="Don't forget your {workoutName} workout today!"
-                className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-500"
+                className="w-full bg-white/5 border border-white/8 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-500"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Use {"{workoutName}"} where the workout name should appear
@@ -150,7 +150,7 @@ export default function SettingsPage() {
                   setSettings({ ...settings, taskReminderTitle: e.target.value })
                 }
                 placeholder="🔔 Task Reminder"
-                className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-500"
+                className="w-full bg-white/5 border border-white/8 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-500"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Title for schedule task reminders (the task name appears as the message)
@@ -158,7 +158,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Daily tasks summary - divider */}
-            <div className="pt-4 mt-4 border-t border-white/10">
+            <div className="pt-4 mt-4 border-t border-white/8">
               <p className="text-sm font-medium text-teal-400 mb-3">📋 Daily tasks reminder</p>
               <p className="text-xs text-gray-500 mb-3">
                 A morning notification summarizing your outstanding tasks (e.g. &quot;You have 4 tasks outstanding. Next: Meeting at 2pm&quot;)
@@ -176,7 +176,7 @@ export default function SettingsPage() {
                 onChange={(e) =>
                   setSettings({ ...settings, dailySummaryTime: e.target.value })
                 }
-                className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-teal-500"
+                className="w-full bg-white/5 border border-white/8 rounded-lg p-3 text-white focus:outline-none focus:border-teal-500"
               />
               <p className="text-xs text-gray-500 mt-1">
                 When to remind you about today&apos;s tasks (e.g. 9:00 AM)
@@ -195,7 +195,7 @@ export default function SettingsPage() {
                   setSettings({ ...settings, dailySummaryTitle: e.target.value })
                 }
                 placeholder="📋 Today's Schedule"
-                className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-500"
+                className="w-full bg-white/5 border border-white/8 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-500"
               />
             </div>
 
@@ -211,7 +211,7 @@ export default function SettingsPage() {
                   setSettings({ ...settings, dailySummaryMessage: e.target.value })
                 }
                 placeholder="You have {count} task(s) outstanding today. {nextTask}"
-                className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-500"
+                className="w-full bg-white/5 border border-white/8 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-500"
               />
               <p className="text-xs text-gray-500 mt-1">
                 Use {"{count}"} for number of tasks, {"{nextTask}"} for &quot;Next: Meeting at 2pm&quot; etc.

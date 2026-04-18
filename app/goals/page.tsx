@@ -345,7 +345,7 @@ export default function GoalsPage() {
   const completedTasksCount = tasks.filter((t) => t.completed).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white">
+    <div className="min-h-screen bg-black text-white">
       <div className="max-w-md mx-auto pb-24 px-4 pt-6">
         {/* Tab Bar */}
         <div className="flex gap-1 mb-6 bg-white/5 border border-white/8 rounded-2xl p-1">
@@ -373,7 +373,7 @@ export default function GoalsPage() {
             </button>
             <button
               onClick={() => setIsEditing(!isEditing)}
-              className="px-4 py-2 rounded-lg bg-gradient-to-b from-[#0c1422] to-black border border-teal-500/30 text-white text-sm hover:bg-[rgba(20,30,35,1)] transition-colors"
+              className="px-4 py-2 rounded-lg bg-[#0c1422] border border-white/8 text-white text-sm hover:bg-white/10 transition-colors"
             >
               <Edit2 className="w-4 h-4" />
             </button>
@@ -388,7 +388,7 @@ export default function GoalsPage() {
             return (
               <div
                 key={goal.id}
-                className="rounded-xl bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30 p-4"
+                className="rounded-xl bg-[#0c1422] border border-white/8 p-4"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
@@ -437,7 +437,7 @@ export default function GoalsPage() {
         {longTermGoals.length > LONG_TERM_GOALS_PREVIEW && !showMoreGoals && (
           <button
             onClick={() => setShowMoreGoals(true)}
-            className="w-full py-3 rounded-lg border border-dashed border-teal-500/30 text-gray-500 text-sm hover:border-teal-400/50 hover:text-gray-400 transition-colors mb-8"
+            className="w-full py-3 rounded-lg border border-dashed border-white/8 text-gray-500 text-sm hover:border-teal-400/50 hover:text-gray-400 transition-colors mb-8"
           >
             + {hiddenGoalsCount} more goal{hiddenGoalsCount !== 1 ? "s" : ""}
           </button>
@@ -452,7 +452,7 @@ export default function GoalsPage() {
         </div>
 
         {/* Quick Add Input */}
-        <div className="flex items-center gap-2 mb-4 rounded-xl bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30 px-4 py-3">
+        <div className="flex items-center gap-2 mb-4 rounded-xl bg-[#0c1422] border border-white/8 px-4 py-3">
           <input
             type="text"
             value={quickTaskInput}
@@ -474,7 +474,7 @@ export default function GoalsPage() {
           {tasks.map((task) => (
             <div
               key={task.id}
-              className="flex items-center gap-3 rounded-xl bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-teal-500/30 px-4 py-3 relative"
+              className="flex items-center gap-3 rounded-xl bg-[#0c1422] border border-white/8 px-4 py-3 relative"
             >
               <button
                 onClick={() => handleToggleTask(task.id)}
@@ -555,10 +555,10 @@ export default function GoalsPage() {
               aria-hidden="true"
             />
             <div
-              className="relative w-full max-w-md bg-gradient-to-b from-[#0c1422] via-[#1a2332] to-black rounded-2xl border border-teal-500/30 max-h-[80vh] overflow-hidden flex flex-col shadow-2xl"
+              className="relative w-full max-w-md bg-gradient-to-b from-[#0c1422] via-[#1a2332] to-black rounded-2xl border border-white/8 max-h-[80vh] overflow-hidden flex flex-col shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between p-4 border-b border-white/10">
+              <div className="flex items-center justify-between p-4 border-b border-white/8">
                 <h3 className="text-lg font-bold text-white">Time Alerts</h3>
                 <button
                   onClick={() => setReminderTaskId(null)}
@@ -578,7 +578,7 @@ export default function GoalsPage() {
                       className={`py-3 px-4 rounded-xl text-sm font-medium transition-colors ${
                         draftReminderTimes.includes(opt.value)
                           ? "bg-teal-500/30 text-teal-400 border border-teal-400/50"
-                          : "bg-white/5 text-white border border-white/10 hover:border-teal-400/30"
+                          : "bg-white/5 text-white border border-white/8 hover:border-teal-400/30"
                       }`}
                     >
                       {opt.label}
@@ -590,7 +590,7 @@ export default function GoalsPage() {
                     type="time"
                     value={customTimeInput}
                     onChange={(e) => setCustomTimeInput(e.target.value)}
-                    className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-teal-400"
+                    className="flex-1 bg-black/40 border border-white/8 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-teal-400"
                   />
                   <button
                     onClick={() => {
@@ -611,7 +611,7 @@ export default function GoalsPage() {
                       {draftReminderTimes.map((time) => (
                         <div
                           key={time}
-                          className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/5 border border-white/10"
+                          className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/5 border border-white/8"
                         >
                           <span className="text-white text-sm">{getReminderLabel(time)}</span>
                           <button
@@ -626,11 +626,11 @@ export default function GoalsPage() {
                   </div>
                 )}
               </div>
-              <div className="p-4 border-t border-white/10 flex gap-3">
+              <div className="p-4 border-t border-white/8 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setReminderTaskId(null)}
-                  className="flex-1 py-3 min-h-[48px] rounded-xl border border-white/10 text-gray-400 hover:text-white transition-colors font-medium"
+                  className="flex-1 py-3 min-h-[48px] rounded-xl border border-white/8 text-gray-400 hover:text-white transition-colors font-medium"
                 >
                   Cancel
                 </button>
@@ -650,7 +650,7 @@ export default function GoalsPage() {
       {/* Add/Edit Goal Modal */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-xl p-5 max-w-md w-full border border-teal-500/30 max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#0c1422] rounded-xl p-5 max-w-md w-full border border-white/8 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-white mb-4">
               {editingGoal ? "Edit Goal" : "Add New Goal"}
             </h3>
@@ -662,7 +662,7 @@ export default function GoalsPage() {
                     type="button"
                     onClick={() => setFormData((prev) => ({ ...prev, goalType: "daily" }))}
                     className={`flex-1 py-2 rounded-lg font-semibold text-sm ${
-                      formData.goalType === "daily" ? "bg-teal-400 text-black" : "bg-[rgba(20,30,35,0.85)] border border-teal-500/30 text-white"
+                      formData.goalType === "daily" ? "bg-teal-400 text-black" : "bg-white/5 border border-white/8 text-white"
                     }`}
                   >
                     Daily
@@ -671,7 +671,7 @@ export default function GoalsPage() {
                     type="button"
                     onClick={() => setFormData((prev) => ({ ...prev, goalType: "long-term" }))}
                     className={`flex-1 py-2 rounded-lg font-semibold text-sm ${
-                      formData.goalType === "long-term" ? "bg-teal-400 text-black" : "bg-[rgba(20,30,35,0.85)] border border-teal-500/30 text-white"
+                      formData.goalType === "long-term" ? "bg-teal-400 text-black" : "bg-white/5 border border-white/8 text-white"
                     }`}
                   >
                     Long-term
@@ -686,7 +686,7 @@ export default function GoalsPage() {
                     const t = GOAL_TYPES.find((x) => x.value === e.target.value);
                     setFormData((prev) => ({ ...prev, type: e.target.value, unit: t?.unit || prev.unit }));
                   }}
-                  className="w-full bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-teal-400"
+                  className="w-full bg-white/5 border border-white/8 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-teal-400"
                 >
                   <option value="">Select...</option>
                   {GOAL_TYPES.map((t) => (
@@ -704,7 +704,7 @@ export default function GoalsPage() {
                         value={formData.title}
                         onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                         placeholder={formData.type === "fitness" ? "e.g., Lose 10kg" : "Enter goal"}
-                        className="w-full bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
+                        className="w-full bg-white/5 border border-white/8 rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
                       />
                     </div>
                   )}
@@ -720,14 +720,14 @@ export default function GoalsPage() {
                           }
                         }}
                         placeholder={formData.type === "financial" ? "e.g., 10k" : "Target"}
-                        className="flex-1 bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
+                        className="flex-1 bg-white/5 border border-white/8 rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
                       />
                       <input
                         type="text"
                         value={formData.unit}
                         onChange={(e) => setFormData((prev) => ({ ...prev, unit: e.target.value }))}
                         placeholder="unit"
-                        className="w-20 bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
+                        className="w-20 bg-white/5 border border-white/8 rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
                       />
                     </div>
                   </div>
@@ -738,7 +738,7 @@ export default function GoalsPage() {
                         type="date"
                         value={formData.targetDate}
                         onChange={(e) => setFormData((prev) => ({ ...prev, targetDate: e.target.value }))}
-                        className="w-full bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-teal-400"
+                        className="w-full bg-white/5 border border-white/8 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-teal-400"
                         min={todayStr}
                       />
                     </div>
@@ -755,7 +755,7 @@ export default function GoalsPage() {
                           }
                         }}
                         placeholder="0"
-                        className="w-full bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
+                        className="w-full bg-white/5 border border-white/8 rounded-lg p-3 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
                       />
                     </div>
                   )}
@@ -775,7 +775,7 @@ export default function GoalsPage() {
                     setEditingGoal(null);
                     setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
                   }}
-                  className="flex-1 py-3 bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg font-semibold text-white hover:bg-[rgba(20,30,35,1)]"
+                  className="flex-1 py-3 bg-white/5 border border-white/8 rounded-lg font-semibold text-white hover:bg-white/10"
                 >
                   Cancel
                 </button>
@@ -788,7 +788,7 @@ export default function GoalsPage() {
       {/* Progress Update Modal */}
       {showProgressModal && selectedGoalForProgress && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-xl p-6 max-w-md w-full border border-teal-500/30">
+          <div className="bg-[#0c1422] rounded-xl p-6 max-w-md w-full border border-white/8">
             <h3 className="text-xl font-bold text-white mb-2">Update Progress</h3>
             <p className="text-sm text-[#555555] mb-4">{selectedGoalForProgress.title}</p>
             <div className="space-y-4">
@@ -803,7 +803,7 @@ export default function GoalsPage() {
                         setProgressValue(e.target.value);
                       }
                     }}
-                    className="flex-1 bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-teal-400"
+                    className="flex-1 bg-white/5 border border-white/8 rounded-lg p-3 text-sm text-white focus:outline-none focus:border-teal-400"
                     placeholder="Enter value"
                     autoFocus
                   />
@@ -823,7 +823,7 @@ export default function GoalsPage() {
                     setSelectedGoalForProgress(null);
                     setProgressValue("");
                   }}
-                  className="flex-1 py-3 bg-[rgba(20,30,35,0.85)] border border-teal-500/30 rounded-lg font-semibold text-white hover:bg-[rgba(20,30,35,1)]"
+                  className="flex-1 py-3 bg-white/5 border border-white/8 rounded-lg font-semibold text-white hover:bg-white/10"
                 >
                   Cancel
                 </button>

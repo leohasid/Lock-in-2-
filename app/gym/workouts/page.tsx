@@ -100,7 +100,7 @@ function SwipeableRow({
       >
         <div
           onClick={handleRowClick}
-          className="p-3 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border border-white/10 rounded-lg flex items-center justify-between gap-2 cursor-pointer"
+          className="p-3 bg-[#0c1422] border border-white/8 rounded-lg flex items-center justify-between gap-2 cursor-pointer"
         >
           {children}
           <button
@@ -407,7 +407,7 @@ export default function WorkoutsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white pb-20">
+    <div className="min-h-screen bg-black text-white pb-20">
       <div className="max-w-md mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -419,7 +419,7 @@ export default function WorkoutsPage() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-lg font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center px-1">
+          <h1 className="text-lg font-bold text-white text-center px-1">
             Workout plans
           </h1>
           <button
@@ -441,7 +441,7 @@ export default function WorkoutsPage() {
           <button
             type="button"
             onClick={() => setShowScheduleModal(true)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 mb-4 rounded-xl bg-white/5 border border-white/15 text-sm font-medium text-teal-300 hover:bg-white/10 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2.5 mb-4 rounded-xl bg-white/5 border border-white/8 text-sm font-medium text-teal-300 hover:bg-white/10 transition-colors"
           >
             <Calendar className="w-4 h-4 shrink-0" />
             Which days do you train?
@@ -476,7 +476,7 @@ export default function WorkoutsPage() {
                       ? "border-teal-500/50 bg-teal-500/15"
                       : isEmpty
                         ? "border-white/8 bg-white/4"
-                        : "border-white/10 bg-white/5"
+                        : "border-white/8 bg-white/5"
                   }`}>
                     <PencilLine className={`w-3.5 h-3.5 ${isActive ? "text-teal-400" : "text-gray-500"}`} aria-hidden />
                   </div>
@@ -501,7 +501,7 @@ export default function WorkoutsPage() {
       {/* Schedule modal - day-first: pick one workout (or Rest) per day */}
       {showScheduleModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto border border-white/10 shadow-xl">
+          <div className="bg-[#0c1422] rounded-2xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto border border-white/8 shadow-xl">
             <h2 className="text-lg font-bold text-white mb-2">Assign workout to each day</h2>
             <p className="text-sm text-gray-400 mb-4">
               Pick which workout (or Rest) for each day. One choice per day.
@@ -522,7 +522,7 @@ export default function WorkoutsPage() {
                 return (
                   <div
                     key={dayIndex}
-                    className="flex items-center justify-between gap-3 py-2 px-3 rounded-xl bg-white/5 border border-white/10"
+                    className="flex items-center justify-between gap-3 py-2 px-3 rounded-xl bg-white/5 border border-white/8"
                   >
                     <span className="text-white font-medium w-24 shrink-0">{label}</span>
                     <select

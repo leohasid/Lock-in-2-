@@ -47,7 +47,7 @@ function RecipeDetailModal({
         aria-label="Close recipe"
         onClick={onClose}
       />
-      <div className="relative w-full sm:max-w-lg max-h-[92vh] sm:max-h-[85vh] bg-gradient-to-b from-[#0c1422] to-black border border-teal-500/30 sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col overflow-hidden">
+      <div className="relative w-full sm:max-w-lg max-h-[92vh] sm:max-h-[85vh] bg-[#0c1422] border border-white/8 sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col overflow-hidden">
         <div className="flex-shrink-0 h-44 sm:h-48 bg-gray-800 relative">
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -100,36 +100,36 @@ function RecipeDetailModal({
               Calories match protein, carbs, and fat (4 kcal/g protein &amp; carbs, 9 kcal/g fat).
             </p>
             <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+              <div className="rounded-lg bg-white/5 border border-white/8 px-3 py-2">
                 <span className="text-gray-500 block">Calories</span>
                 <span className="text-lg font-bold text-teal-400 tabular-nums">{recipe.calories} kcal</span>
               </div>
-              <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+              <div className="rounded-lg bg-white/5 border border-white/8 px-3 py-2">
                 <span className="text-gray-500 block">Protein</span>
                 <span className="text-lg font-bold text-white tabular-nums">{recipe.protein} g</span>
               </div>
-              <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+              <div className="rounded-lg bg-white/5 border border-white/8 px-3 py-2">
                 <span className="text-gray-500 block">Carbs</span>
                 <span className="text-lg font-bold text-white tabular-nums">{recipe.carbs} g</span>
               </div>
-              <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+              <div className="rounded-lg bg-white/5 border border-white/8 px-3 py-2">
                 <span className="text-gray-500 block">Fat</span>
                 <span className="text-lg font-bold text-white tabular-nums">{recipe.fats} g</span>
               </div>
               {recipe.sugar != null && (
-                <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+                <div className="rounded-lg bg-white/5 border border-white/8 px-3 py-2">
                   <span className="text-gray-500 block">Sugar</span>
                   <span className="text-lg font-bold text-white tabular-nums">{recipe.sugar} g</span>
                 </div>
               )}
               {recipe.fiber != null && (
-                <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2">
+                <div className="rounded-lg bg-white/5 border border-white/8 px-3 py-2">
                   <span className="text-gray-500 block">Fiber</span>
                   <span className="text-lg font-bold text-white tabular-nums">{recipe.fiber} g</span>
                 </div>
               )}
               {recipe.sodium != null && (
-                <div className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 col-span-2">
+                <div className="rounded-lg bg-white/5 border border-white/8 px-3 py-2 col-span-2">
                   <span className="text-gray-500 block">Sodium</span>
                   <span className="text-lg font-bold text-white tabular-nums">{recipe.sodium} mg</span>
                 </div>
@@ -256,7 +256,7 @@ function RecipesView({ onAddMeal }: { onAddMeal: (meal: Recipe) => void }) {
                 return (
                 <div
                   key={recipe.id}
-                  className="flex-shrink-0 w-[220px] bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-lg overflow-hidden border border-teal-500/20 hover:border-teal-400/40 transition-all"
+                  className="flex-shrink-0 w-[220px] bg-[#0c1422] rounded-lg overflow-hidden border border-white/8 hover:border-teal-400/40 transition-all"
                 >
                   {/* Recipe photo or placeholder */}
                   <div
@@ -441,7 +441,7 @@ function FavouritesView({ meals, onAddMeal }: { meals: Meal[]; onAddMeal: (meal:
           {allRecipes.map((recipe) => (
             <div
               key={recipe.id}
-              className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-4 border border-teal-500/20"
+              className="bg-[#0c1422] rounded-xl p-4 border border-white/8"
             >
               <div className="flex items-start justify-between gap-2">
                 <button
@@ -487,21 +487,21 @@ function FavouritesView({ meals, onAddMeal }: { meals: Meal[]; onAddMeal: (meal:
 
       {showAddRecipe && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 w-full max-w-md border border-teal-500/30">
+          <div className="bg-[#0c1422] rounded-2xl p-6 w-full max-w-md border border-white/8">
             <h3 className="text-lg font-bold text-white mb-4">Add personal recipe</h3>
             <div className="space-y-3">
               <input
                 value={newRecipe.name}
                 onChange={(e) => setNewRecipe(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="Recipe name *"
-                className="w-full bg-black/40 border border-teal-500/30 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
+                className="w-full bg-black/40 border border-white/8 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
               />
               <input
                 type="number"
                 value={newRecipe.calories}
                 onChange={(e) => setNewRecipe(prev => ({ ...prev, calories: e.target.value }))}
                 placeholder="Calories *"
-                className="w-full bg-black/40 border border-teal-500/30 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
+                className="w-full bg-black/40 border border-white/8 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
               />
               <div className="grid grid-cols-3 gap-2">
                 <input
@@ -509,28 +509,28 @@ function FavouritesView({ meals, onAddMeal }: { meals: Meal[]; onAddMeal: (meal:
                   value={newRecipe.protein}
                   onChange={(e) => setNewRecipe(prev => ({ ...prev, protein: e.target.value }))}
                   placeholder="Protein (g)"
-                  className="w-full bg-black/40 border border-teal-500/30 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400 text-sm"
+                  className="w-full bg-black/40 border border-white/8 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400 text-sm"
                 />
                 <input
                   type="number"
                   value={newRecipe.carbs}
                   onChange={(e) => setNewRecipe(prev => ({ ...prev, carbs: e.target.value }))}
                   placeholder="Carbs (g)"
-                  className="w-full bg-black/40 border border-teal-500/30 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400 text-sm"
+                  className="w-full bg-black/40 border border-white/8 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400 text-sm"
                 />
                 <input
                   type="number"
                   value={newRecipe.fats}
                   onChange={(e) => setNewRecipe(prev => ({ ...prev, fats: e.target.value }))}
                   placeholder="Fats (g)"
-                  className="w-full bg-black/40 border border-teal-500/30 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400 text-sm"
+                  className="w-full bg-black/40 border border-white/8 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400 text-sm"
                 />
               </div>
               <input
                 value={newRecipe.description}
                 onChange={(e) => setNewRecipe(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Description (optional)"
-                className="w-full bg-black/40 border border-teal-500/30 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
+                className="w-full bg-black/40 border border-white/8 rounded-lg p-3 text-white placeholder:text-gray-500 focus:outline-none focus:border-teal-400"
               />
             </div>
             <div className="flex gap-3 mt-6">
@@ -1345,7 +1345,7 @@ Provide a helpful, conversational response.`;
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowAIConsultation(true)}
-              className="px-3 py-1.5 bg-gradient-to-b from-[#0c1422] to-black border border-white/10 text-white rounded-xl text-xs font-medium hover:bg-[rgba(20,30,35,1)] transition-all transform hover:scale-105 flex items-center gap-1.5 shadow-lg"
+              className="px-3 py-1.5 bg-[#0c1422] border border-white/8 text-white rounded-xl text-xs font-medium hover:bg-white/10 transition-all transform hover:scale-105 flex items-center gap-1.5 shadow-lg"
             >
               <MessageSquare className="w-3.5 h-3.5 text-teal-400" />
               AI Coach
@@ -1422,7 +1422,7 @@ Provide a helpful, conversational response.`;
         {/* Calories Circle - Center - Much Bigger */}
         <div className="flex-shrink-0 relative flex flex-col items-center">
           <p className="text-[10px] font-semibold text-gray-300 mb-1.5">Calories</p>
-          <div className="w-40 h-40 rounded-full border-4 border-teal-500/30 flex items-center justify-center bg-gradient-to-br from-teal-900/20 to-cyan-900/20 shadow-lg">
+          <div className="w-40 h-40 rounded-full border-4 border-white/8 flex items-center justify-center bg-gradient-to-br from-teal-900/20 to-cyan-900/20 shadow-lg">
             <div className="w-36 h-36 rounded-full border-4 border-transparent flex items-center justify-center relative">
               <svg className="w-36 h-36 transform -rotate-90 absolute inset-0">
                 <circle
@@ -1453,7 +1453,7 @@ Provide a helpful, conversational response.`;
                 </defs>
               </svg>
               <div className="text-center z-10">
-                <p className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent leading-none">
+                <p className="text-3xl font-bold text-white leading-none">
                   {totals.calories.toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">/{dailyGoals.calories.toLocaleString()}</p>
@@ -1488,8 +1488,8 @@ Provide a helpful, conversational response.`;
 
       {/* Meal Analysis - Show when at least one target is hit */}
       {hasTargetHit && (mealAnalysis || isAnalyzingMeals) && (
-        <div className="mb-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10">
-          <h3 className="text-base font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent mb-3">
+        <div className="mb-4 bg-[#0c1422] rounded-2xl p-4 border border-white/8 shadow-lg shadow-teal-500/10">
+          <h3 className="text-base font-bold text-white mb-3">
             📊 Daily Meal Analysis
           </h3>
           {isAnalyzingMeals ? (
@@ -1503,11 +1503,11 @@ Provide a helpful, conversational response.`;
       )}
 
       {/* MEALS BOX - Fun design */}
-      <div className="mb-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-4 border-2 border-teal-500/30 shadow-lg shadow-teal-500/10 relative overflow-hidden group">
+      <div className="mb-4 bg-[#0c1422] rounded-2xl p-4 border border-white/8 shadow-lg shadow-teal-500/10 relative overflow-hidden group">
         <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">Today's Meals</h2>
+            <h2 className="text-base font-bold text-white">Today's Meals</h2>
               <button
               onClick={() => setShowMacroSettings(true)}
               className="text-[10px] text-teal-400 hover:text-teal-300 transition-colors font-medium"
@@ -1520,7 +1520,7 @@ Provide a helpful, conversational response.`;
               meals.map((meal) => (
                 <div
                   key={meal.id}
-                  className="flex justify-between items-start bg-gradient-to-br from-[rgba(10,15,20,0.8)] to-[rgba(5,10,15,0.8)] rounded-xl p-3 border border-teal-500/20 hover:border-teal-400/40 transition-all hover:shadow-lg hover:shadow-teal-500/10"
+                  className="flex justify-between items-start bg-[#0c1422] rounded-xl p-3 border border-white/8 hover:border-teal-400/40 transition-all hover:shadow-lg hover:shadow-teal-500/10"
                 >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -1567,7 +1567,7 @@ Provide a helpful, conversational response.`;
       {/* ADD MEAL MODAL */}
       {showAddMeal && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-5 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#0c1422] rounded-2xl p-5 max-w-md w-full border border-white/8 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Add Meal</h2>
                     <button
@@ -1593,7 +1593,7 @@ Provide a helpful, conversational response.`;
                     type="text"
                     value={newMeal.name}
                     onChange={(e) => setNewMeal({ ...newMeal, name: e.target.value })}
-                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                  className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                   placeholder="e.g., Grilled chicken"
                   />
                 </div>
@@ -1604,7 +1604,7 @@ Provide a helpful, conversational response.`;
                     type="number"
                     value={newMeal.calories}
                     onChange={(e) => setNewMeal({ ...newMeal, calories: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="200"
                   />
                 </div>
@@ -1614,7 +1614,7 @@ Provide a helpful, conversational response.`;
                       type="number"
                       value={newMeal.protein}
                       onChange={(e) => setNewMeal({ ...newMeal, protein: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="20"
                     />
                   </div>
@@ -1624,7 +1624,7 @@ Provide a helpful, conversational response.`;
                       type="number"
                       value={newMeal.carbs}
                       onChange={(e) => setNewMeal({ ...newMeal, carbs: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="30"
                     />
                   </div>
@@ -1634,7 +1634,7 @@ Provide a helpful, conversational response.`;
                       type="number"
                       value={newMeal.fats}
                       onChange={(e) => setNewMeal({ ...newMeal, fats: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="10"
                     />
                   </div>
@@ -1644,7 +1644,7 @@ Provide a helpful, conversational response.`;
                       type="number"
                       value={newMeal.sugar}
                       onChange={(e) => setNewMeal({ ...newMeal, sugar: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="5"
                     />
                 </div>
@@ -1654,7 +1654,7 @@ Provide a helpful, conversational response.`;
                       type="number"
                       value={newMeal.sodium}
                       onChange={(e) => setNewMeal({ ...newMeal, sodium: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="500"
                     />
                   </div>
@@ -1664,7 +1664,7 @@ Provide a helpful, conversational response.`;
                       type="number"
                       value={newMeal.fiber}
                       onChange={(e) => setNewMeal({ ...newMeal, fiber: e.target.value })}
-                    className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                    className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                     placeholder="5"
                     />
                   </div>
@@ -1677,7 +1677,7 @@ Provide a helpful, conversational response.`;
                       setShowScanOptions(true);
                       setShowAddMeal(false);
                     }}
-                  className="flex-1 py-2.5 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
+                  className="flex-1 py-2.5 bg-white/5 border border-white/8 rounded-lg font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   <Camera className="w-4 h-4" />
                   Scan
@@ -1698,7 +1698,7 @@ Provide a helpful, conversational response.`;
       {/* SCAN OPTIONS MODAL */}
       {showScanOptions && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-5 max-w-md w-full border border-white/10">
+          <div className="bg-[#0c1422] rounded-2xl p-5 max-w-md w-full border border-white/8">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">{scanStep === 1 ? "What are you eating?" : "Scan Food"}</h2>
               <button
@@ -1719,7 +1719,7 @@ Provide a helpful, conversational response.`;
                   value={foodToScan}
                   onChange={(e) => setFoodToScan(e.target.value)}
                   placeholder="e.g. chicken salad, pizza, oatmeal..."
-                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm mb-4 focus:outline-none focus:border-[#14f1d9]"
+                  className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm mb-4 focus:outline-none focus:border-[#14f1d9]"
                 />
                 <button
                   onClick={() => setScanStep(2)}
@@ -1739,7 +1739,7 @@ Provide a helpful, conversational response.`;
                 <div className="space-y-2">
                 <button
                   onClick={openCamera}
-                  className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
+                  className="w-full py-3 bg-white/5 border border-white/8 rounded-lg font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   <Camera className="w-4 h-4" />
                   Take Photo
@@ -1747,13 +1747,13 @@ Provide a helpful, conversational response.`;
                 {useNativeFoodScan ? (
                   <button
                     onClick={() => triggerNativeFoodScan(true)}
-                    className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm"
+                    className="w-full py-3 bg-white/5 border border-white/8 rounded-lg font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-2 text-sm"
                   >
                     <Upload className="w-4 h-4" />
                     Upload Photo
                   </button>
                 ) : (
-                  <label className="w-full py-3 bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg font-medium hover:bg-[rgba(20,30,35,1)] transition-colors flex items-center justify-center gap-2 text-sm cursor-pointer block">
+                  <label className="w-full py-3 bg-white/5 border border-white/8 rounded-lg font-medium hover:bg-white/10 transition-colors flex items-center justify-center gap-2 text-sm cursor-pointer block">
                     <Upload className="w-4 h-4" />
                     Upload Photo
                     <input
@@ -1785,7 +1785,7 @@ Provide a helpful, conversational response.`;
       {/* AI ESTIMATE MODAL */}
       {isAnalyzing && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-8 border border-white/10 max-w-sm">
+          <div className="bg-[#0c1422] rounded-2xl p-8 border border-white/8 max-w-sm">
             <div className="flex justify-center mb-4">
               <div className="w-12 h-12 rounded-full border-2 border-[#14f1d9]/50 border-t-[#14f1d9] animate-spin" />
             </div>
@@ -1798,7 +1798,7 @@ Provide a helpful, conversational response.`;
       {/* AI CONSULTATION MODAL */}
       {showAIConsultation && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-5 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#0c1422] rounded-2xl p-5 max-w-md w-full border border-white/8 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 text-[#14f1d9]" />
@@ -1821,7 +1821,7 @@ Provide a helpful, conversational response.`;
                   value={aiConsultationMessage}
                   onChange={(e) => setAiConsultationMessage(e.target.value)}
                   placeholder="Ask: How should I change my calorie plan now that I've lost weight?"
-                  className="w-full bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg p-3 text-sm mb-3 focus:outline-none focus:border-[#14f1d9] resize-none"
+                  className="w-full bg-[rgba(10,15,20,0.6)] border border-white/8 rounded-lg p-3 text-sm mb-3 focus:outline-none focus:border-[#14f1d9] resize-none"
                   rows={4}
                 />
                 <button
@@ -1849,7 +1849,7 @@ Provide a helpful, conversational response.`;
                     setAiConsultationResponse("");
                     setAiConsultationMessage("");
                           }}
-                  className="w-full py-2.5 bg-[rgba(10,15,20,0.6)] border border-white/10 rounded-lg text-sm font-medium hover:bg-[rgba(10,15,20,0.8)] transition-colors"
+                  className="w-full py-2.5 bg-[rgba(10,15,20,0.6)] border border-white/8 rounded-lg text-sm font-medium hover:bg-[rgba(10,15,20,0.8)] transition-colors"
                         >
                   New Question
                         </button>
@@ -1862,7 +1862,7 @@ Provide a helpful, conversational response.`;
       {/* MACRO SETTINGS MODAL */}
       {showMacroSettings && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-5 max-w-md w-full border border-white/10 max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#0c1422] rounded-2xl p-5 max-w-md w-full border border-white/8 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Edit Macro Goals</h2>
               <button
@@ -1879,7 +1879,7 @@ Provide a helpful, conversational response.`;
                   type="number"
                   value={macroSettings.calories}
                   onChange={(e) => setMacroSettings({ ...macroSettings, calories: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                  className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                 />
               </div>
               <div>
@@ -1888,7 +1888,7 @@ Provide a helpful, conversational response.`;
                   type="number"
                   value={macroSettings.protein}
                   onChange={(e) => setMacroSettings({ ...macroSettings, protein: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                  className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                 />
               </div>
               <div>
@@ -1897,7 +1897,7 @@ Provide a helpful, conversational response.`;
                   type="number"
                   value={macroSettings.carbs}
                   onChange={(e) => setMacroSettings({ ...macroSettings, carbs: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                  className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                 />
               </div>
               <div>
@@ -1906,7 +1906,7 @@ Provide a helpful, conversational response.`;
                   type="number"
                   value={macroSettings.fats}
                   onChange={(e) => setMacroSettings({ ...macroSettings, fats: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                  className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                 />
               </div>
               <div>
@@ -1915,7 +1915,7 @@ Provide a helpful, conversational response.`;
                   type="number"
                   value={macroSettings.sugar}
                   onChange={(e) => setMacroSettings({ ...macroSettings, sugar: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                  className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                 />
             </div>
               <div>
@@ -1924,7 +1924,7 @@ Provide a helpful, conversational response.`;
                   type="number"
                   value={macroSettings.sodium}
                   onChange={(e) => setMacroSettings({ ...macroSettings, sodium: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                  className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                 />
               </div>
               <div>
@@ -1933,7 +1933,7 @@ Provide a helpful, conversational response.`;
                   type="number"
                   value={macroSettings.fiber}
                   onChange={(e) => setMacroSettings({ ...macroSettings, fiber: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-[rgba(20,30,35,0.85)] border border-white/10 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
+                  className="w-full bg-white/5 border border-white/8 rounded-lg p-2.5 text-sm focus:outline-none focus:border-[#14f1d9]"
                 />
               </div>
               <button
