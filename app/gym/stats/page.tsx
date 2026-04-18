@@ -3,18 +3,20 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
-import { ArrowLeft, Trophy, Flame, TrendingUp, TrendingDown, Dumbbell } from "lucide-react";
+import { ArrowLeft, Trophy, Flame, Dumbbell } from "lucide-react";
 
 interface WorkoutExercise {
   name: string;
   sets: Array<{ reps: number; weight: number; completed: boolean }>;
 }
 
-interface LiftProgress {
+interface LiftData {
   name: string;
   weights: number[];
+  dates: string[];
   first: number;
   latest: number;
+  best: number;
   delta: number;
   sessions: number;
 }
@@ -26,7 +28,13 @@ interface PREntry {
   date: string;
 }
 
-function formatDate(dateStr: string): string {
+function fmt(dateStr: string): string {
+  try {
+    return new Date(dateStr + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  } catch { return ""; }
+}
+
+function fmtFull(dateStr: string): string {
   try {
     const d = new Date(dateStr + "T12:00:00");
     const today = new Date();
@@ -35,69 +43,214 @@ function formatDate(dateStr: string): string {
     if (d.toDateString() === today.toDateString()) return "Today";
     if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-  } catch {
-    return dateStr;
-  }
+  } catch { return dateStr; }
 }
 
-function Sparkline({ weights, positive }: { weights: number[]; positive: boolean }) {
-  const data = weights.slice(-7);
-  if (data.length < 2) return <div style={{ width: 72, height: 36 }} />;
+function uid(s: string) {
+  return s.replace(/[^a-zA-Z0-9]/g, "_");
+}
 
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const range = max - min || 1;
-  const W = 72, H = 36, PAD = 3;
-
-  const pts = data.map((v, i) => ({
-    x: PAD + (i / (data.length - 1)) * (W - PAD * 2),
-    y: H - PAD - ((v - min) / range) * (H - PAD * 2),
-  }));
-
-  let path = `M ${pts[0].x},${pts[0].y}`;
-  for (let i = 1; i < pts.length; i++) {
-    const cx = (pts[i - 1].x + pts[i].x) / 2;
-    path += ` C ${cx},${pts[i - 1].y} ${cx},${pts[i].y} ${pts[i].x},${pts[i].y}`;
-  }
-
-  const areaPath = `${path} L ${pts[pts.length - 1].x},${H} L ${pts[0].x},${H} Z`;
-  const stroke = positive ? "#2dd4bf" : "#f87171";
-  const fill = positive ? "rgba(45,212,191,0.12)" : "rgba(248,113,113,0.12)";
-  const last = pts[pts.length - 1];
-
+// --- Donut consistency ring ---
+function ConsistencyRing({ worked, total }: { worked: number; total: number }) {
+  const pct = total > 0 ? Math.min(1, worked / total) : 0;
+  const R = 44;
+  const C = 2 * Math.PI * R;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ width: 72, height: 36, flexShrink: 0 }}>
-      <path d={areaPath} fill={fill} />
-      <path d={path} fill="none" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={last.x} cy={last.y} r="2.5" fill={stroke} />
+    <svg width={108} height={108} viewBox="0 0 108 108" className="shrink-0">
+      <defs>
+        <linearGradient id="ringG" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0%" stopColor="#0d9488" />
+          <stop offset="100%" stopColor="#5eead4" />
+        </linearGradient>
+      </defs>
+      <circle cx={54} cy={54} r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={9} />
+      {pct > 0 && (
+        <circle
+          cx={54} cy={54} r={R}
+          fill="none"
+          stroke="url(#ringG)"
+          strokeWidth={9}
+          strokeLinecap="round"
+          strokeDasharray={`${pct * C} ${C}`}
+          transform="rotate(-90 54 54)"
+        />
+      )}
+      <text x="54" y="48" textAnchor="middle" fontSize="21" fontWeight="900" fill="white">{worked}</text>
+      <text x="54" y="62" textAnchor="middle" fontSize="8.5" fill="rgba(156,163,175,0.65)">of {total} days</text>
     </svg>
   );
 }
 
+// --- 7-day presence bars ---
+function WeekBars({ data, labels, todayIdx }: { data: number[]; labels: string[]; todayIdx: number }) {
+  return (
+    <div className="flex items-end gap-1.5" style={{ height: 72 }}>
+      {data.map((v, i) => {
+        const worked = v > 0;
+        const isFuture = i > todayIdx;
+        const isToday = i === todayIdx;
+        return (
+          <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+            <div
+              className="w-full rounded-lg transition-all"
+              style={{
+                height: worked ? 54 : 5,
+                background: isFuture
+                  ? "rgba(255,255,255,0.03)"
+                  : worked
+                  ? isToday
+                    ? "linear-gradient(to top, #0d9488, #5eead4)"
+                    : "linear-gradient(to top, #0d9488, #2dd4bf)"
+                  : "rgba(255,255,255,0.06)",
+              }}
+            />
+            <span className={`text-[9px] font-bold ${
+              isFuture ? "text-gray-700" : isToday ? "text-teal-400" : "text-gray-500"
+            }`}>
+              {labels[i]}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// --- Full line chart per exercise ---
+function LiftChart({ lift, index }: { lift: LiftData; index: number }) {
+  const pts_n = Math.min(lift.weights.length, 10);
+  const wts = lift.weights.slice(-pts_n);
+  const dts = lift.dates.slice(-pts_n);
+
+  const rawMin = Math.min(...wts);
+  const rawMax = Math.max(...wts);
+  const pad = Math.max((rawMax - rawMin) * 0.2, rawMax * 0.08, 3);
+  const yMin = Math.max(0, rawMin - pad);
+  const yMax = rawMax + pad * 0.5;
+  const yRange = yMax - yMin || 1;
+
+  const W = 300, H = 100;
+  const ML = 36, MR = 8, MT = 10, MB = 22;
+  const cW = W - ML - MR;
+  const cH = H - MT - MB;
+
+  const toX = (i: number) => ML + (i / Math.max(wts.length - 1, 1)) * cW;
+  const toY = (v: number) => MT + (1 - (v - yMin) / yRange) * cH;
+
+  const pts = wts.map((v, i) => ({ x: toX(i), y: toY(v) }));
+
+  let line = `M ${pts[0].x},${pts[0].y}`;
+  for (let i = 1; i < pts.length; i++) {
+    const cx = (pts[i - 1].x + pts[i].x) / 2;
+    line += ` C ${cx},${pts[i - 1].y} ${cx},${pts[i].y} ${pts[i].x},${pts[i].y}`;
+  }
+  const area = `${line} L ${pts[pts.length - 1].x},${MT + cH} L ${pts[0].x},${MT + cH} Z`;
+
+  const yTicks = [
+    Math.round(yMin + yRange * 0.1),
+    Math.round(yMin + yRange * 0.5),
+    Math.round(yMin + yRange * 0.9),
+  ];
+
+  const gId = `lg_${index}_${uid(lift.name)}`;
+  const isUp = lift.delta >= 0;
+  const pctChange = lift.first > 0 ? Math.round(Math.abs((lift.delta / lift.first) * 100)) : 0;
+
+  return (
+    <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <p className="text-sm font-bold text-white">{lift.name}</p>
+          <p className="text-[11px] text-gray-500 mt-0.5">{lift.sessions} sessions</p>
+        </div>
+        <div className="text-right">
+          <p className="text-xl font-black text-white leading-none">{lift.latest}kg</p>
+          <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold mt-0.5 px-2 py-0.5 rounded-lg ${
+            isUp ? "bg-teal-500/15 text-teal-400" : "bg-red-500/15 text-red-400"
+          }`}>
+            {isUp ? "▲" : "▼"} {isUp ? "+" : ""}{lift.delta}kg ({pctChange}%)
+          </span>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 100 }}>
+        <defs>
+          <linearGradient id={gId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#2dd4bf" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        {/* Grid + Y labels */}
+        {yTicks.map((t, idx) => {
+          const y = toY(t);
+          return (
+            <g key={idx}>
+              <line x1={ML} y1={y} x2={W - MR} y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="0.8" />
+              <text x={ML - 4} y={y + 3.5} textAnchor="end" fontSize="7.5" fill="rgba(156,163,175,0.5)">{t}</text>
+            </g>
+          );
+        })}
+
+        {/* Area */}
+        <path d={area} fill={`url(#${gId})`} />
+        {/* Line */}
+        <path d={line} fill="none" stroke="#2dd4bf" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+
+        {/* Dots */}
+        {pts.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y}
+            r={i === pts.length - 1 ? 3.5 : 2.2}
+            fill={i === pts.length - 1 ? "#2dd4bf" : "rgba(45,212,191,0.55)"}
+          />
+        ))}
+
+        {/* X labels: first + last */}
+        <text x={pts[0].x} y={H - 4} textAnchor="middle" fontSize="7.5" fill="rgba(156,163,175,0.4)">{fmt(dts[0])}</text>
+        {pts.length > 1 && (
+          <text x={pts[pts.length - 1].x} y={H - 4} textAnchor="middle" fontSize="7.5" fill="rgba(156,163,175,0.6)">{fmt(dts[dts.length - 1])}</text>
+        )}
+      </svg>
+
+      {/* Baseline bar */}
+      <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-white/5">
+        <span className="text-[10px] text-gray-600 shrink-0">Started {lift.first}kg</span>
+        <div className="flex-1 h-1.5 bg-white/6 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-teal-600 to-teal-400"
+            style={{ width: `${Math.min(100, (lift.latest / lift.best) * 100)}%` }}
+          />
+        </div>
+        <span className="text-[10px] text-teal-400 font-bold shrink-0">Best {lift.best}kg</span>
+      </div>
+    </div>
+  );
+}
+
+// --- 4-week training calendar ---
 function TrainingCalendar({ workoutDates }: { workoutDates: Set<string> }) {
   const today = new Date();
   const dow = today.getDay();
   const daysToMon = dow === 0 ? 6 : dow - 1;
-  const mon = new Date(today);
-  mon.setDate(today.getDate() - daysToMon);
-  const start = new Date(mon);
-  start.setDate(mon.getDate() - 21);
+  const start = new Date(today);
+  start.setDate(today.getDate() - daysToMon - 21);
 
-  const weeks: Date[][] = Array.from({ length: 4 }, (_, w) =>
+  const weeks = Array.from({ length: 4 }, (_, w) =>
     Array.from({ length: 7 }, (_, d) => {
       const date = new Date(start);
       date.setDate(start.getDate() + w * 7 + d);
       return date;
     })
   );
-
   const todayStr = today.toISOString().split("T")[0];
 
   return (
     <div>
       <div className="grid grid-cols-7 mb-2">
         {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-          <span key={i} className="text-[9px] text-gray-600 text-center font-bold uppercase">{d}</span>
+          <span key={i} className="text-[9px] text-gray-600 text-center font-bold">{d}</span>
         ))}
       </div>
       <div className="space-y-1.5">
@@ -109,20 +262,13 @@ function TrainingCalendar({ workoutDates }: { workoutDates: Set<string> }) {
               const isFuture = date > today;
               const hit = workoutDates.has(ds);
               return (
-                <div
-                  key={di}
-                  className={`aspect-square rounded-lg ${
-                    isFuture
-                      ? "opacity-0 pointer-events-none"
-                      : isToday
-                      ? hit
-                        ? "bg-teal-400 ring-2 ring-teal-300/60 ring-offset-[2px] ring-offset-[#0c1422]"
-                        : "ring-2 ring-teal-500/40 ring-offset-[2px] ring-offset-[#0c1422] bg-transparent"
-                      : hit
-                      ? "bg-teal-500/80"
-                      : "bg-white/5"
-                  }`}
-                />
+                <div key={di} className={`aspect-square rounded-lg ${
+                  isFuture ? "opacity-0 pointer-events-none"
+                  : isToday
+                    ? hit ? "bg-teal-400 ring-2 ring-teal-300/60 ring-offset-[2px] ring-offset-[#0c1422]"
+                          : "ring-2 ring-teal-500/40 ring-offset-[2px] ring-offset-[#0c1422]"
+                  : hit ? "bg-teal-500/80" : "bg-white/5"
+                }`} />
               );
             })}
           </div>
@@ -135,50 +281,50 @@ function TrainingCalendar({ workoutDates }: { workoutDates: Set<string> }) {
 export default function GymStatsPage() {
   const [totalSessions, setTotalSessions] = useState(0);
   const [streak, setStreak] = useState(0);
-  const [thisMonthCount, setThisMonthCount] = useState(0);
+  const [thisMonthWorked, setThisMonthWorked] = useState(0);
+  const [daysPassedInMonth, setDaysPassedInMonth] = useState(1);
   const [workoutDates, setWorkoutDates] = useState<Set<string>>(new Set());
-  const [liftProgress, setLiftProgress] = useState<LiftProgress[]>([]);
-  const [personalRecords, setPersonalRecords] = useState<PREntry[]>([]);
-  const [recentSessions, setRecentSessions] = useState<
-    { date: string; exerciseCount: number; setCount: number }[]
-  >([]);
+  const [weeklyData, setWeeklyData] = useState<number[]>(Array(7).fill(0));
+  const [weeklyLabels, setWeeklyLabels] = useState<string[]>([]);
+  const [weeklyTodayIdx, setWeeklyTodayIdx] = useState(6);
+  const [liftData, setLiftData] = useState<LiftData[]>([]);
+  const [prs, setPrs] = useState<PREntry[]>([]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
+    const ym = todayStr.slice(0, 7);
+
+    setDaysPassedInMonth(today.getDate());
 
     const allKeys = Object.keys(localStorage)
-      .filter((k) => k.startsWith("workout_data_"))
-      .sort(); // oldest → newest
+      .filter(k => k.startsWith("workout_data_"))
+      .sort();
 
-    // Per-exercise weight history: name → [{date, maxWeight}]
+    setTotalSessions(allKeys.length);
+
     const exerciseMap: Record<string, { date: string; maxWeight: number }[]> = {};
-    const prs: Record<string, { weight: number; reps: number; date: string }> = {};
+    const prMap: Record<string, { weight: number; reps: number; date: string }> = {};
     const datesWithData = new Set<string>();
-    const sessionsArr: { date: string; exerciseCount: number; setCount: number }[] = [];
 
-    allKeys.forEach((k) => {
+    allKeys.forEach(k => {
       const date = k.replace("workout_data_", "");
       try {
         const data: WorkoutExercise[] = JSON.parse(localStorage.getItem(k) || "[]");
-        let setCount = 0;
         let hasData = false;
-
-        data.forEach((ex) => {
+        data.forEach(ex => {
           if (!ex.name?.trim()) return;
           const name = ex.name.trim();
           let maxW = 0;
-          ex.sets?.forEach((s) => {
+          ex.sets?.forEach(s => {
             if (s.completed) {
-              setCount++;
               hasData = true;
               const w = Number(s.weight) || 0;
               if (w > maxW) maxW = w;
-              const cur = prs[name];
-              if (!cur || w > cur.weight) {
-                prs[name] = { weight: w, reps: Number(s.reps) || 0, date };
-              }
+              const cur = prMap[name];
+              if (!cur || w > cur.weight)
+                prMap[name] = { weight: w, reps: Number(s.reps) || 0, date };
             }
           });
           if (maxW > 0) {
@@ -186,22 +332,14 @@ export default function GymStatsPage() {
             exerciseMap[name].push({ date, maxWeight: maxW });
           }
         });
-
-        if (hasData) {
-          datesWithData.add(date);
-          sessionsArr.push({ date, exerciseCount: data.length, setCount });
-        }
+        if (hasData) datesWithData.add(date);
       } catch {}
     });
 
-    setTotalSessions(allKeys.length);
     setWorkoutDates(datesWithData);
-    setRecentSessions([...sessionsArr].reverse().slice(0, 6));
+    setThisMonthWorked([...datesWithData].filter(d => d.startsWith(ym)).length);
 
-    const ym = todayStr.slice(0, 7);
-    setThisMonthCount([...datesWithData].filter((d) => d.startsWith(ym)).length);
-
-    // Streak: consecutive days with workout (allow today to be in-progress)
+    // Streak
     let s = 0;
     const startOff = datesWithData.has(todayStr) ? 0 : 1;
     for (let off = startOff; off < 90; off++) {
@@ -212,37 +350,59 @@ export default function GymStatsPage() {
     }
     setStreak(s);
 
-    // Lift progressions: exercises with 2+ sessions
-    const progresses: LiftProgress[] = Object.entries(exerciseMap)
-      .filter(([, history]) => history.length >= 2)
-      .map(([name, history]) => {
-        const weights = history.map((h) => h.maxWeight);
+    // Weekly presence bars
+    const dow = today.getDay();
+    const daysToMon = dow === 0 ? 6 : dow - 1;
+    const dayLetters = ["M", "T", "W", "T", "F", "S", "S"];
+    const vols: number[] = [];
+    const lbls: string[] = [];
+    let todayIdx = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - daysToMon + i);
+      const ds = d.toISOString().split("T")[0];
+      if (ds === todayStr) todayIdx = i;
+      lbls.push(dayLetters[i]);
+      vols.push(datesWithData.has(ds) ? 1 : 0);
+    }
+    setWeeklyData(vols);
+    setWeeklyLabels(lbls);
+    setWeeklyTodayIdx(todayIdx);
+
+    // Lift progressions (2+ sessions with weights)
+    const lifts: LiftData[] = Object.entries(exerciseMap)
+      .filter(([, h]) => h.length >= 2)
+      .map(([name, h]) => {
+        const weights = h.map(x => x.maxWeight);
+        const dates = h.map(x => x.date);
         const first = weights[0];
         const latest = weights[weights.length - 1];
-        return { name, weights, first, latest, delta: latest - first, sessions: weights.length };
+        const best = Math.max(...weights);
+        return { name, weights, dates, first, latest, best, delta: latest - first, sessions: weights.length };
       })
-      .sort((a, b) => b.sessions - a.sessions || a.name.localeCompare(b.name))
-      .slice(0, 8);
+      .sort((a, b) => b.sessions - a.sessions)
+      .slice(0, 6);
 
-    setLiftProgress(progresses);
+    setLiftData(lifts);
 
-    setPersonalRecords(
-      Object.entries(prs)
+    setPrs(
+      Object.entries(prMap)
         .map(([exercise, v]) => ({ exercise, ...v }))
-        .filter((pr) => pr.weight > 0)
+        .filter(pr => pr.weight > 0)
         .sort((a, b) => b.weight - a.weight)
         .slice(0, 6)
     );
   }, []);
 
   const isEmpty = totalSessions === 0;
+  const workoutsThisWeek = weeklyData.filter(v => v > 0).length;
 
   return (
     <div className="min-h-screen bg-black text-white pb-28">
       <div className="max-w-md mx-auto px-4 py-4">
 
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-5">
           <Link href="/gym/workout" className="p-2 hover:bg-white/10 rounded-xl transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </Link>
@@ -258,152 +418,91 @@ export default function GymStatsPage() {
             <p className="text-gray-400 text-sm mb-8 max-w-[220px] leading-relaxed">
               Complete your first workout to start tracking progress.
             </p>
-            <Link
-              href="/gym/workout"
-              className="px-8 py-3.5 bg-teal-400 hover:bg-teal-500 text-black font-bold rounded-2xl transition-colors"
-            >
+            <Link href="/gym/workout" className="px-8 py-3.5 bg-teal-400 hover:bg-teal-500 text-black font-bold rounded-2xl transition-colors">
               Start a workout
             </Link>
           </div>
         ) : (
           <>
-            {/* Hero stats — 3 tiles */}
-            <div className="grid grid-cols-3 gap-3 mb-5">
-              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 flex flex-col items-center justify-center">
-                <span className="text-3xl font-black text-white leading-none">{totalSessions}</span>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wide mt-1.5 text-center leading-tight">
-                  Sessions
-                </span>
-              </div>
-              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 flex flex-col items-center justify-center">
-                <div className="flex items-center gap-0.5">
-                  {streak > 0 && <Flame className="w-4 h-4 text-orange-400 mb-0.5" />}
-                  <span className="text-3xl font-black text-white leading-none">{streak}</span>
+            {/* ── HERO: Consistency ring + stats ── */}
+            <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-4 flex items-center gap-4">
+              <ConsistencyRing worked={thisMonthWorked} total={daysPassedInMonth} />
+              <div className="flex-1 space-y-2.5">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600">This month</p>
+                  <div className="flex items-baseline gap-1.5 mt-0.5">
+                    <span className="text-2xl font-black text-teal-400">{thisMonthWorked}</span>
+                    <span className="text-sm text-gray-500">workouts</span>
+                  </div>
                 </div>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wide mt-1.5 text-center leading-tight">
-                  Day streak
-                </span>
-              </div>
-              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 flex flex-col items-center justify-center">
-                <span className="text-3xl font-black text-teal-400 leading-none">{thisMonthCount}</span>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wide mt-1.5 text-center leading-tight">
-                  This month
-                </span>
-              </div>
-            </div>
-
-            {/* Strength Trends */}
-            {liftProgress.length > 0 && (
-              <div className="mb-5">
-                <div className="flex items-end justify-between mb-3">
-                  <h2 className="text-base font-bold text-white">Strength Trends</h2>
-                  <span className="text-[11px] text-gray-600">max weight / session</span>
-                </div>
-                <div className="space-y-2">
-                  {liftProgress.map((lift, i) => {
-                    const isUp = lift.delta >= 0;
-                    return (
-                      <div
-                        key={i}
-                        className="bg-[#0c1422] border border-white/8 rounded-2xl px-4 py-3.5 flex items-center gap-3"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-white truncate">{lift.name}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xl font-black text-white leading-none">
-                              {lift.latest}
-                              <span className="text-sm font-normal text-gray-500 ml-0.5">kg</span>
-                            </span>
-                            <span
-                              className={`flex items-center gap-0.5 text-[11px] font-bold px-1.5 py-0.5 rounded-lg ${
-                                isUp
-                                  ? "bg-teal-500/15 text-teal-400"
-                                  : "bg-red-500/15 text-red-400"
-                              }`}
-                            >
-                              {isUp ? (
-                                <TrendingUp className="w-3 h-3" />
-                              ) : (
-                                <TrendingDown className="w-3 h-3" />
-                              )}
-                              {isUp ? "+" : ""}
-                              {lift.delta}kg
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-gray-600 mt-0.5">
-                            {lift.sessions} sessions · started at {lift.first}kg
-                          </p>
-                        </div>
-                        <Sparkline weights={lift.weights} positive={isUp} />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Training Calendar */}
-            <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-5">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-teal-400/60 mb-3">
-                Training calendar · last 28 days
-              </p>
-              <TrainingCalendar workoutDates={workoutDates} />
-            </div>
-
-            {/* Personal Records */}
-            {personalRecords.length > 0 && (
-              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Trophy className="w-4 h-4 text-yellow-400" />
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-400/80">
-                    Personal Records
-                  </p>
-                </div>
+                <div className="h-px w-full bg-white/6" />
                 <div className="grid grid-cols-2 gap-2">
-                  {personalRecords.map((pr, i) => (
-                    <div
-                      key={i}
-                      className="bg-black/50 border border-yellow-500/10 rounded-xl p-3"
-                    >
-                      <p className="text-xs font-semibold text-gray-400 truncate mb-1.5">
-                        {pr.exercise}
-                      </p>
-                      <p className="text-2xl font-black text-yellow-400 leading-none">
-                        {pr.weight}
-                        <span className="text-sm font-normal text-yellow-600/50 ml-0.5">kg</span>
-                      </p>
-                      {pr.reps > 0 && (
-                        <p className="text-[10px] text-gray-600 mt-0.5">× {pr.reps} reps</p>
-                      )}
-                      <p className="text-[10px] text-gray-700 mt-1">{formatDate(pr.date)}</p>
+                  <div>
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wide">All-time</p>
+                    <p className="text-xl font-black text-white">{totalSessions}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wide">Streak</p>
+                    <div className="flex items-center gap-1">
+                      {streak > 0 && <Flame className="w-3.5 h-3.5 text-orange-400" />}
+                      <p className="text-xl font-black text-white">{streak}d</p>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── THIS WEEK bar chart ── */}
+            <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-4">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-bold text-white">This week</p>
+                <span className="text-[11px] font-semibold text-teal-400">{workoutsThisWeek} / 7 days</span>
+              </div>
+              <WeekBars data={weeklyData} labels={weeklyLabels} todayIdx={weeklyTodayIdx} />
+            </div>
+
+            {/* ── STRENGTH PROGRESS charts ── */}
+            {liftData.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-end justify-between mb-3">
+                  <h2 className="text-base font-bold text-white">Strength Progress</h2>
+                  <span className="text-[11px] text-gray-600">max weight · per session</span>
+                </div>
+                <div className="space-y-3">
+                  {liftData.map((lift, i) => (
+                    <LiftChart key={lift.name} lift={lift} index={i} />
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Recent Sessions */}
-            {recentSessions.length > 0 && (
-              <div className="bg-[#0c1422] border border-white/8 rounded-2xl overflow-hidden">
-                <div className="px-4 pt-4 pb-2">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-teal-400/60">
-                    Recent Sessions
-                  </p>
+            {/* ── TRAINING CALENDAR ── */}
+            <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-teal-400/60 mb-3">
+                Training Calendar · last 28 days
+              </p>
+              <TrainingCalendar workoutDates={workoutDates} />
+            </div>
+
+            {/* ── PERSONAL RECORDS ── */}
+            {prs.length > 0 && (
+              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Trophy className="w-4 h-4 text-yellow-400" />
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-400/80">Personal Records</p>
                 </div>
-                {recentSessions.map((s, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between px-4 py-3 border-t border-white/5"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-white">{formatDate(s.date)}</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">
-                        {s.exerciseCount} exercises · {s.setCount} sets
+                <div className="grid grid-cols-2 gap-2">
+                  {prs.map((pr, i) => (
+                    <div key={i} className="bg-black/50 border border-yellow-500/10 rounded-xl p-3">
+                      <p className="text-xs font-semibold text-gray-400 truncate mb-1.5">{pr.exercise}</p>
+                      <p className="text-2xl font-black text-yellow-400 leading-none">
+                        {pr.weight}<span className="text-sm font-normal text-yellow-600/50 ml-0.5">kg</span>
                       </p>
+                      {pr.reps > 0 && <p className="text-[10px] text-gray-600 mt-0.5">× {pr.reps} reps</p>}
+                      <p className="text-[10px] text-gray-700 mt-1">{fmtFull(pr.date)}</p>
                     </div>
-                    <div className="w-2 h-2 rounded-full bg-teal-400/40" />
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </>
