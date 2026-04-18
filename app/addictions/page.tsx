@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import BottomNav from "@/components/BottomNav";
 import { appBlockingBridge } from "@/app/utils/app-blocking";
 import { showImmediateNotification, requestNotificationPermission } from "@/app/utils/notifications";
-import { Shield, X, ChevronRight, PiggyBank, Plus, Flame } from "lucide-react";
+import { Shield, X, PiggyBank, Plus, Flame } from "lucide-react";
 
 interface AppBlock {
   appName: string;
@@ -604,23 +604,28 @@ export default function AddictionsPage() {
           return (
             <button
               onClick={() => setShowPhoneDetail(true)}
-              className="w-full bg-[#0c1422] border border-white/8 rounded-2xl p-4 hover:border-white/15 transition-colors text-left"
+              className="w-full bg-[#0c1422] border border-white/8 rounded-2xl p-4 hover:border-teal-500/30 transition-colors text-left"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center">
-                    <Shield className="w-4 h-4 text-gray-400" />
+                  <div className="w-9 h-9 rounded-xl bg-teal-400/10 border border-teal-400/20 flex items-center justify-center">
+                    <Shield className="w-4 h-4 text-teal-400" />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-white">Phone</p>
-                    <p className="text-[11px] text-gray-500">{daysClean} days clean</p>
+                    <p className="text-[11px] text-teal-400/70">{daysClean} days clean</p>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-600" />
+                {daysClean >= 1 && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-400/10 border border-orange-400/20 rounded-full">
+                    <Flame className="w-3 h-3 text-orange-400" />
+                    <span className="text-[10px] font-bold text-orange-400">{daysClean}d</span>
+                  </span>
+                )}
               </div>
 
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-1">Screen Time Today</p>
-              <p className="text-xs font-semibold text-white mb-2">
+              <p className="text-xs font-semibold text-teal-300 mb-2">
                 {formatMinutes(phoneAddiction.totalCurrentUsage)} / {formatMinutes(phoneAddiction.totalDailyLimit)}
               </p>
 
@@ -667,11 +672,9 @@ export default function AddictionsPage() {
                 );
               })()}
 
-              <div className="flex items-center gap-4 mt-3">
-                <div className="flex items-center gap-1.5">
-                  <Flame className="w-3.5 h-3.5 text-orange-400" />
-                  <span className="text-[11px] text-gray-500">Best: {bestStreak}d</span>
-                </div>
+              <div className="flex items-center gap-2 mt-3">
+                <span className="text-[11px] text-gray-500">Best streak:</span>
+                <span className="text-[11px] font-bold text-orange-400">{bestStreak}d</span>
               </div>
             </button>
           );
@@ -684,36 +687,47 @@ export default function AddictionsPage() {
           const money = calculateMoneySaved(addiction, daysClean);
           const bestStreak = addiction.bestStreak || daysClean;
 
+          const typeColor = addiction.type === "vape"
+            ? { icon: "bg-orange-400/10 border-orange-400/20 text-orange-400", timer: "text-orange-300", hover: "hover:border-orange-400/30", sub: "text-orange-400/70" }
+            : addiction.type === "goon"
+            ? { icon: "bg-violet-400/10 border-violet-400/20 text-violet-400", timer: "text-violet-300", hover: "hover:border-violet-400/30", sub: "text-violet-400/70" }
+            : { icon: "bg-blue-400/10 border-blue-400/20 text-blue-400", timer: "text-blue-300", hover: "hover:border-blue-400/30", sub: "text-blue-400/70" };
+
           return (
             <button
               key={addiction.id}
               onClick={() => setShowOtherDetail(addiction.id)}
-              className="w-full bg-[#0c1422] border border-white/8 rounded-2xl p-4 hover:border-white/15 transition-colors text-left"
+              className={`w-full bg-[#0c1422] border border-white/8 rounded-2xl p-4 ${typeColor.hover} transition-colors text-left`}
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center">
-                    <Shield className="w-4 h-4 text-gray-400" />
+                  <div className={`w-9 h-9 rounded-xl border flex items-center justify-center ${typeColor.icon}`}>
+                    <Shield className="w-4 h-4" />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-white">{addiction.name}</p>
-                    <p className="text-[11px] text-gray-500">{daysClean} days clean</p>
+                    <p className={`text-[11px] ${typeColor.sub}`}>{daysClean} days clean</p>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-600" />
+                {daysClean >= 1 && (
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-400/10 border border-orange-400/20 rounded-full">
+                    <Flame className="w-3 h-3 text-orange-400" />
+                    <span className="text-[10px] font-bold text-orange-400">{daysClean}d</span>
+                  </span>
+                )}
               </div>
 
               <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-1.5">Time clean</p>
-              <p className="text-2xl font-black text-white font-mono tracking-wider mb-3">{formatCountdownTime(elapsed)}</p>
+              <p className={`text-2xl font-black font-mono tracking-wider mb-3 ${typeColor.timer}`}>{formatCountdownTime(elapsed)}</p>
 
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5">
-                  <Flame className="w-3.5 h-3.5 text-orange-400" />
-                  <span className="text-[11px] text-gray-500">Best: {bestStreak}d</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-gray-500">Best streak:</span>
+                  <span className="text-[11px] font-bold text-orange-400">{bestStreak}d</span>
                 </div>
                 {money.total > 0 && (
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] text-gray-500">Saved</span>
+                    <PiggyBank className="w-3 h-3 text-teal-400" />
                     <span className="text-[11px] font-bold text-teal-400">{currencyInfo.symbol}{money.total.toFixed(2)}</span>
                   </div>
                 )}
