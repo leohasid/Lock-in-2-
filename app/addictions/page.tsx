@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { appBlockingBridge } from "@/app/utils/app-blocking";
 import { showImmediateNotification, requestNotificationPermission } from "@/app/utils/notifications";
-import { Shield, Clock, AlertTriangle, Lock, Unlock, Settings, X, Zap, ChevronRight, PiggyBank, Star, CheckCircle2, MessageCircle, Heart } from "lucide-react";
+import { Shield, X, ChevronRight, PiggyBank, Plus, Flame } from "lucide-react";
 
 interface AppBlock {
   appName: string;
@@ -575,21 +574,16 @@ export default function AddictionsPage() {
   }, [otherAddictions, currentTime, currencyInfo]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-[#0c1422] to-black text-white px-5 pt-6 pb-28">
+    <div className="min-h-screen bg-black text-white pb-28">
+      <div className="max-w-md mx-auto px-4 pt-6">
       {/* HEADER */}
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <Link
-          href="/addictions/support"
-          className="flex-1 px-4 py-2.5 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-xl text-sm font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 flex items-center justify-center gap-2"
-        >
-          <MessageCircle className="w-5 h-5" />
-          <span>Support Community</span>
-        </Link>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-xl font-bold">Recovery</h1>
         <button
           onClick={() => setShowAddForm(true)}
-          className="px-4 py-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black rounded-xl text-sm font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30 flex items-center gap-2"
+          className="flex items-center gap-1.5 px-3 py-2 bg-teal-400/10 border border-teal-400/20 text-teal-400 rounded-xl text-sm font-semibold hover:bg-teal-400/15 transition-colors"
         >
-          <span className="text-lg">+</span>
+          <Plus className="w-4 h-4" />
           Track New
         </button>
       </div>
@@ -610,126 +604,74 @@ export default function AddictionsPage() {
           return (
             <button
               onClick={() => setShowPhoneDetail(true)}
-              className="w-full bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-teal-500/30 hover:border-teal-400/60 flex items-center gap-3 hover:shadow-lg hover:shadow-teal-500/20 transition-all relative overflow-hidden group"
+              className="w-full bg-[#0c1422] border border-white/8 rounded-2xl p-4 hover:border-white/15 transition-colors text-left"
             >
-              {/* Animated background gradient */}
-              <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              
-              {/* Icon with glow effect */}
-              <div className="text-3xl flex-shrink-0 relative z-10 filter drop-shadow-lg">📱</div>
-
-              {/* Content */}
-              <div className="flex-1 min-w-0 relative z-10">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-base font-bold text-white">Phone</h3>
-                  {bestStreak >= 7 && (
-                    <span className="px-2 py-0.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-[10px] font-bold rounded-full animate-pulse">
-                      🔥 {bestStreak} Day Streak!
-                    </span>
-                  )}
-          </div>
-                <p className="text-[10px] text-teal-400 mb-1.5 font-medium">
-                  ⭐ Best streak: {bestStreak} Day{bestStreak !== 1 ? 's' : ''}
-                </p>
-                <p className="text-xs font-semibold text-white mb-2">
-                  {formatMinutes(phoneAddiction.totalCurrentUsage)} / {formatMinutes(phoneAddiction.totalDailyLimit)} Today
-                </p>
-                
-                {/* Progress bar showing time until block */}
-                <div className="mb-2">
-                  <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden shadow-inner">
-                    <div
-                      className={`h-2 rounded-full transition-all duration-500 ${
-                        totalPercent >= 100
-                          ? "bg-gradient-to-r from-red-500 to-red-600"
-                          : totalPercent >= 80
-                          ? "bg-gradient-to-r from-yellow-400 to-orange-500"
-                          : "bg-gradient-to-r from-teal-400 to-cyan-500"
-                      }`}
-                      style={{ width: `${totalPercent}%` }}
-                    />
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center">
+                    <Shield className="w-4 h-4 text-gray-400" />
                   </div>
-                  <p className={`text-[10px] mt-1 font-medium ${
-                    totalPercent >= 100 ? "text-red-400" :
-                    totalPercent >= 80 ? "text-yellow-400" :
-                    "text-teal-400"
-                  }`}>
-                    {formatTimeUntilBlock(totalRemainingMinutes)} until block
-                  </p>
-        </div>
-
-                {/* App-specific progress bars - sorted by closest to being blocked */}
-                {phoneAddiction.apps.length > 0 && (() => {
-                  // Sort apps by remaining time (closest to block first)
-                  const sortedApps = [...phoneAddiction.apps].sort((a, b) => {
-                    const remainingA = Math.max(a.dailyLimit - a.currentUsage, 0);
-                    const remainingB = Math.max(b.dailyLimit - b.currentUsage, 0);
-                    return remainingA - remainingB; // Sort ascending (lowest remaining first)
-                  });
-
-                  return (
-                    <div className="space-y-1.5 mt-2">
-                      {sortedApps.slice(0, 3).map((app) => {
-                        const remaining = Math.max(app.dailyLimit - app.currentUsage, 0);
-                        const percent = app.dailyLimit > 0 
-                          ? Math.min((app.currentUsage / app.dailyLimit) * 100, 100)
-                          : 0;
-                        const isCloseToBlock = percent >= 80 && percent < 100;
-                        const isBlocked = percent >= 100;
-                        
-                        return (
-                          <div 
-                            key={app.appName} 
-                            className={`flex items-center gap-2 p-1.5 rounded ${
-                              isBlocked ? "bg-red-500/10 border border-red-500/20" :
-                              isCloseToBlock ? "bg-yellow-500/10 border border-yellow-500/20" :
-                              "bg-transparent"
-                            }`}
-                          >
-                            <span className={`text-[10px] w-16 truncate ${
-                              isBlocked ? "text-red-400 font-semibold" :
-                              isCloseToBlock ? "text-yellow-400 font-medium" :
-                              "text-gray-400"
-                            }`}>
-                              {app.appName}
-                            </span>
-                            <div className="flex-1 bg-white/10 rounded-full h-1">
-                              <div
-                                className={`h-1 rounded-full ${
-                                  percent >= 100 ? "bg-red-500" : percent >= 80 ? "bg-yellow-500" : "bg-[#14f1d9]"
-                                }`}
-                                style={{ width: `${percent}%` }}
-                              />
-                            </div>
-                            <span className={`text-[10px] w-16 text-right ${
-                              isBlocked ? "text-red-400 font-semibold" :
-                              isCloseToBlock ? "text-yellow-400 font-medium" :
-                              "text-gray-400"
-                            }`}>
-                              {formatTimeUntilBlock(remaining)}
-                            </span>
-                          </div>
-                        );
-                      })}
-                      {phoneAddiction.apps.length > 3 && (
-                        <p className="text-[10px] text-gray-500">+{phoneAddiction.apps.length - 3} more apps</p>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                <div className="flex items-center gap-2 mt-2 px-2 py-1 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
-                  <Zap className="w-3.5 h-3.5 text-yellow-400" />
-                  <span className="text-[10px] font-bold text-yellow-300">Current: {daysClean} Days</span>
+                  <div>
+                    <p className="text-sm font-bold text-white">Phone</p>
+                    <p className="text-[11px] text-gray-500">{daysClean} days clean</p>
+                  </div>
                 </div>
+                <ChevronRight className="w-4 h-4 text-gray-600" />
               </div>
 
-              {/* Lightning bolt and arrow */}
-              <div className="flex items-center gap-1.5 flex-shrink-0 relative z-10">
-                <div className="p-1.5 bg-gradient-to-br from-yellow-400/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
-                  <Zap className="w-4 h-4 text-yellow-400" />
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-1">Screen Time Today</p>
+              <p className="text-xs font-semibold text-white mb-2">
+                {formatMinutes(phoneAddiction.totalCurrentUsage)} / {formatMinutes(phoneAddiction.totalDailyLimit)}
+              </p>
+
+              <div className="h-1.5 w-full rounded-full bg-white/8 overflow-hidden mb-2">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    totalPercent >= 100 ? "bg-red-400" : totalPercent >= 80 ? "bg-amber-400" : "bg-teal-400"
+                  }`}
+                  style={{ width: `${totalPercent}%` }}
+                />
+              </div>
+
+              {phoneAddiction.apps.length > 0 && (() => {
+                const sortedApps = [...phoneAddiction.apps].sort((a, b) => {
+                  const remainingA = Math.max(a.dailyLimit - a.currentUsage, 0);
+                  const remainingB = Math.max(b.dailyLimit - b.currentUsage, 0);
+                  return remainingA - remainingB;
+                });
+                return (
+                  <div className="space-y-1.5 mt-2">
+                    {sortedApps.slice(0, 3).map((app) => {
+                      const percent = app.dailyLimit > 0
+                        ? Math.min((app.currentUsage / app.dailyLimit) * 100, 100)
+                        : 0;
+                      return (
+                        <div key={app.appName} className="flex items-center gap-2">
+                          <span className="text-[10px] w-16 truncate text-gray-500">{app.appName}</span>
+                          <div className="flex-1 bg-white/8 rounded-full h-1">
+                            <div
+                              className={`h-1 rounded-full ${percent >= 100 ? "bg-red-400" : percent >= 80 ? "bg-amber-400" : "bg-teal-400"}`}
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] w-12 text-right text-gray-600">
+                            {formatTimeUntilBlock(Math.max(app.dailyLimit - app.currentUsage, 0))}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {phoneAddiction.apps.length > 3 && (
+                      <p className="text-[10px] text-gray-600">+{phoneAddiction.apps.length - 3} more apps</p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="flex items-center gap-4 mt-3">
+                <div className="flex items-center gap-1.5">
+                  <Flame className="w-3.5 h-3.5 text-orange-400" />
+                  <span className="text-[11px] text-gray-500">Best: {bestStreak}d</span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-teal-400" />
               </div>
             </button>
           );
@@ -746,107 +688,70 @@ export default function AddictionsPage() {
             <button
               key={addiction.id}
               onClick={() => setShowOtherDetail(addiction.id)}
-              className="w-full bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-xl p-3 border border-teal-500/30 hover:border-teal-400/60 flex items-center gap-3 hover:shadow-lg hover:shadow-teal-500/20 transition-all relative overflow-hidden group"
+              className="w-full bg-[#0c1422] border border-white/8 rounded-2xl p-4 hover:border-white/15 transition-colors text-left"
             >
-              {/* Animated background gradient */}
-              <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/5 to-teal-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              
-              {/* Icon with glow effect */}
-              <div className="text-3xl flex-shrink-0 relative z-10 filter drop-shadow-lg">{getAddictionIcon(addiction)}</div>
-
-              {/* Content */}
-              <div className="flex-1 min-w-0 relative z-10">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-base font-bold text-white">{addiction.name}</h3>
-                  {bestStreak >= 7 && (
-                    <span className="px-1.5 py-0.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-[9px] font-bold rounded-full">
-                      🔥 {bestStreak} Day Streak!
-                    </span>
-                  )}
-                </div>
-                
-                {/* Best Streak */}
-                <p className="text-[10px] text-teal-400 mb-1.5 font-medium">
-                  ⭐ Best streak: {bestStreak} Day{bestStreak !== 1 ? 's' : ''}
-                </p>
-
-                {/* Countdown Display in 00:00:00:00 format - More exciting */}
-                <div className="mb-2 p-2 bg-gradient-to-r from-purple-900/30 via-blue-900/30 to-teal-900/30 rounded-lg border border-teal-500/30">
-                  <div className="text-xl font-bold bg-gradient-to-r from-teal-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent font-mono tracking-wider">
-                    {formatCountdownTime(elapsed)}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center">
+                    <Shield className="w-4 h-4 text-gray-400" />
                   </div>
-                  <p className="text-[9px] text-teal-400 mt-0.5 font-medium">Time Clean</p>
+                  <div>
+                    <p className="text-sm font-bold text-white">{addiction.name}</p>
+                    <p className="text-[11px] text-gray-500">{daysClean} days clean</p>
+                  </div>
                 </div>
-
-                {/* Additional info based on type */}
-                <div className="flex items-center gap-2 mt-2">
-                  {addiction.type === "goon" && (
-                    <div className="px-2 py-1 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-lg border border-green-500/30 flex items-center gap-1.5">
-                      <PiggyBank className="w-3.5 h-3.5 text-green-400" />
-                      <span className="text-[10px] font-bold text-green-300">Saved: {currencyInfo.symbol}{money.total.toFixed(2)}</span>
-                    </div>
-                  )}
-                  {addiction.type === "vape" && (
-                    <div className="px-2 py-1 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg border border-purple-500/30 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" />
-                      <span className="text-[10px] font-bold text-purple-300">Challenge: {daysClean + 1} Days</span>
-                    </div>
-                  )}
-                  {addiction.type === "other" && (
-                    <div className="px-2 py-1 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 rounded-lg border border-blue-500/30 flex items-center gap-1.5">
-                      <Star className="w-3.5 h-3.5 text-blue-400" />
-                      <span className="text-[10px] font-bold text-blue-300">Current: {daysClean} Days</span>
-                    </div>
-                  )}
-                </div>
+                <ChevronRight className="w-4 h-4 text-gray-600" />
               </div>
 
-              {/* Lightning bolt and arrow */}
-              <div className="flex items-center gap-1.5 flex-shrink-0 relative z-10">
-                <div className="p-1.5 bg-gradient-to-br from-yellow-400/20 to-orange-500/20 rounded-lg border border-yellow-500/30">
-                  <Zap className="w-4 h-4 text-yellow-400" />
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-600 mb-1.5">Time clean</p>
+              <p className="text-2xl font-black text-white font-mono tracking-wider mb-3">{formatCountdownTime(elapsed)}</p>
+
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <Flame className="w-3.5 h-3.5 text-orange-400" />
+                  <span className="text-[11px] text-gray-500">Best: {bestStreak}d</span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-teal-400" />
+                {money.total > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] text-gray-500">Saved</span>
+                    <span className="text-[11px] font-bold text-teal-400">{currencyInfo.symbol}{money.total.toFixed(2)}</span>
+                  </div>
+                )}
               </div>
             </button>
           );
         })}
       </div>
 
-      {/* Total Saved Summary - More exciting */}
+      {/* Total Saved Summary */}
       {otherAddictions.length > 0 && totalSaved > 0 && (
-        <div className="mt-6 p-5 bg-gradient-to-r from-green-500/20 via-emerald-500/20 to-green-500/20 rounded-2xl border-2 border-green-500/40 shadow-lg shadow-green-500/20">
-          <div className="flex items-center justify-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-green-400 to-emerald-500 rounded-xl">
-              <PiggyBank className="w-6 h-6 text-black" />
+        <div className="mt-5 bg-[#0c1422] border border-white/8 rounded-2xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center">
+              <PiggyBank className="w-4 h-4 text-teal-400" />
             </div>
             <div>
-              <p className="text-xs text-green-400 font-medium">Total Saved</p>
-              <p className="text-2xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-                {currencyInfo.symbol}{totalSaved.toFixed(2)}
-              </p>
+              <p className="text-[11px] text-gray-500">Total Saved</p>
+              <p className="text-lg font-bold text-teal-400">{currencyInfo.symbol}{totalSaved.toFixed(2)}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Empty State - More fun */}
+      {/* Empty State */}
       {addictions.length === 0 && (
-        <div className="bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black rounded-2xl p-10 border-2 border-teal-500/30 text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-teal-500/0 via-teal-500/10 to-teal-500/0 animate-pulse" />
-          <div className="relative z-10">
-            <div className="text-6xl mb-4 animate-bounce">🎯</div>
-            <h3 className="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent mb-2">
-              Start Your Recovery Journey
-            </h3>
-            <p className="text-gray-400 text-sm mb-6">Track your progress and celebrate every win!</p>
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black px-8 py-3 rounded-xl font-bold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
-            >
-              🚀 Track Your First Addiction
-            </button>
+        <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-10 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-teal-400/10 border border-teal-400/20 flex items-center justify-center mx-auto mb-4">
+            <Shield className="w-6 h-6 text-teal-400" />
           </div>
+          <h3 className="text-base font-bold text-white mb-1.5">Start Your Recovery Journey</h3>
+          <p className="text-gray-500 text-sm mb-5">Track your progress and celebrate every win.</p>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="bg-teal-400/10 border border-teal-400/20 text-teal-400 px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-teal-400/15 transition-colors"
+          >
+            Track Your First Addiction
+          </button>
         </div>
       )}
 
@@ -1102,7 +1007,7 @@ export default function AddictionsPage() {
                   </div>
 
                 <div className="flex items-center gap-2 pt-2">
-                  <Zap className="w-4 h-4 text-yellow-400" />
+                  <Flame className="w-4 h-4 text-orange-400" />
                   <span className="text-sm text-gray-400">Streak: {daysClean} Days</span>
                       </div>
 
@@ -1204,6 +1109,7 @@ export default function AddictionsPage() {
           );
         })()}
 
+      </div>
       <BottomNav />
     </div>
   );

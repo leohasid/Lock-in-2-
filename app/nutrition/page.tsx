@@ -1395,93 +1395,49 @@ Provide a helpful, conversational response.`;
         />
       ) : (
         <>
-      {/* CALORIES CIRCLE + MACROS - No box, on hard background */}
-      <div className="mb-5 flex items-center gap-6">
-        {/* Left Macros - 3 macros */}
-        <div className="flex-1 space-y-3">
-          {[
-            { label: "Protein", value: totals.protein, target: dailyGoals.protein, percent: proteinPercentage, color: "from-blue-400 to-cyan-500", unit: "g" },
-            { label: "Carbs", value: totals.carbs, target: dailyGoals.carbs, percent: carbsPercentage, color: "from-purple-400 to-pink-500", unit: "g" },
-            { label: "Fats", value: totals.fats, target: dailyGoals.fats, percent: fatsPercentage, color: "from-yellow-400 to-orange-500", unit: "g" },
-          ].map((m) => (
-            <div key={m.label} className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold text-gray-300">{m.label}</span>
-                <span className="text-[9px] text-gray-400">{m.value}/{m.target}{m.unit}</span>
-              </div>
-              <div className="h-2.5 rounded-full bg-white/10 overflow-hidden shadow-inner">
-                <div
-                  className={`h-2.5 rounded-full bg-gradient-to-r ${m.color} transition-all duration-500 shadow-lg`}
-                  style={{ width: `${m.percent}%` }}
-            />
-          </div>
-            </div>
-          ))}
+      {/* Calories card */}
+      <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-bold text-white">Calories</p>
+          <p className="text-xs tabular-nums text-gray-500">
+            {totals.calories.toLocaleString()} / {dailyGoals.calories.toLocaleString()} kcal
+          </p>
         </div>
+        <div className="h-1.5 w-full rounded-full bg-white/8 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-orange-400 transition-all duration-700"
+            style={{ width: `${Math.min(caloriesPercentage, 100)}%` }}
+          />
+        </div>
+        <p className="text-xs text-gray-600 mt-1.5 tabular-nums">{caloriesPercentage}% of daily goal</p>
+      </div>
 
-        {/* Calories Circle - Center - Much Bigger */}
-        <div className="flex-shrink-0 relative flex flex-col items-center">
-          <p className="text-[10px] font-semibold text-gray-300 mb-1.5">Calories</p>
-          <div className="w-40 h-40 rounded-full border-4 border-white/8 flex items-center justify-center bg-gradient-to-br from-teal-900/20 to-cyan-900/20 shadow-lg">
-            <div className="w-36 h-36 rounded-full border-4 border-transparent flex items-center justify-center relative">
-              <svg className="w-36 h-36 transform -rotate-90 absolute inset-0">
-                <circle
-                  cx="72"
-                  cy="72"
-                  r="66"
-                  fill="none"
-                  stroke="rgba(20, 241, 217, 0.2)"
-                  strokeWidth="8"
-                />
-                <circle
-                  cx="72"
-                  cy="72"
-                  r="66"
-                  fill="none"
-                  stroke="url(#caloriesGradient)"
-                  strokeWidth="8"
-                  strokeDasharray={2 * Math.PI * 66}
-                  strokeDashoffset={2 * Math.PI * 66 - (2 * Math.PI * 66 * caloriesPercentage) / 100}
-                  strokeLinecap="round"
-                  className="transition-all duration-500"
-                />
-                <defs>
-                  <linearGradient id="caloriesGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#14f1d9" />
-                    <stop offset="100%" stopColor="#0ddfc8" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <div className="text-center z-10">
-                <p className="text-3xl font-bold text-white leading-none">
-                  {totals.calories.toLocaleString()}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">/{dailyGoals.calories.toLocaleString()}</p>
-                <p className="text-sm font-bold text-teal-400 mt-1.5">{caloriesPercentage}%</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        {/* Right Macros - 3 macros */}
-        <div className="flex-1 space-y-3">
+      {/* Macros card */}
+      <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 mb-4">
+        <p className="text-sm font-bold text-white mb-3.5">Macros</p>
+        <div className="space-y-3.5">
           {[
-            { label: "Sugar", value: totals.sugar, target: dailyGoals.sugar, percent: sugarPercentage, color: "from-pink-400 to-rose-500", unit: "g" },
-            { label: "Sodium", value: totals.sodium, target: dailyGoals.sodium, percent: sodiumPercentage, color: "from-indigo-400 to-purple-500", unit: "mg" },
-            { label: "Fibre", value: totals.fiber, target: dailyGoals.fiber, percent: fiberPercentage, color: "from-green-400 to-emerald-500", unit: "g" },
+            { label: "Protein", value: totals.protein, goal: dailyGoals.protein, pct: proteinPercentage, color: "bg-blue-400", unit: "g" },
+            { label: "Carbs", value: totals.carbs, goal: dailyGoals.carbs, pct: carbsPercentage, color: "bg-violet-400", unit: "g" },
+            { label: "Fats", value: totals.fats, goal: dailyGoals.fats, pct: fatsPercentage, color: "bg-amber-400", unit: "g" },
+            { label: "Sugar", value: totals.sugar, goal: dailyGoals.sugar, pct: sugarPercentage, color: "bg-pink-400", unit: "g" },
+            { label: "Sodium", value: totals.sodium, goal: dailyGoals.sodium, pct: sodiumPercentage, color: "bg-indigo-400", unit: "mg" },
+            { label: "Fibre", value: totals.fiber, goal: dailyGoals.fiber, pct: fiberPercentage, color: "bg-green-400", unit: "g" },
           ].map((m) => (
-            <div key={m.label} className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold text-gray-300">{m.label}</span>
-                <span className="text-[9px] text-gray-400">{m.value}/{m.target}{m.unit}</span>
+            <div key={m.label}>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-semibold text-gray-400">{m.label}</span>
+                <span className="text-xs tabular-nums text-gray-500">
+                  {Math.round(m.value)}<span className="text-gray-700 text-[10px]"> / {m.goal}{m.unit}</span>
+                </span>
               </div>
-              <div className="h-2.5 rounded-full bg-white/10 overflow-hidden shadow-inner">
+              <div className="h-1.5 w-full rounded-full bg-white/8 overflow-hidden">
                 <div
-                  className={`h-2.5 rounded-full bg-gradient-to-r ${m.color} transition-all duration-500 shadow-lg`}
-                  style={{ width: `${m.percent}%` }}
+                  className={`h-full rounded-full transition-all duration-700 ${m.color}`}
+                  style={{ width: `${Math.min(m.pct, 100)}%` }}
                 />
+              </div>
             </div>
-          </div>
           ))}
         </div>
       </div>
@@ -1552,7 +1508,6 @@ Provide a helpful, conversational response.`;
             ))
           ) : (
             <div className="text-center py-6">
-              <div className="text-4xl mb-2 animate-bounce">🍽️</div>
               <p className="text-sm text-gray-400">No meals logged today</p>
               <p className="text-xs text-gray-500 mt-1">Start tracking your nutrition!</p>
           </div>
