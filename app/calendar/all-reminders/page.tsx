@@ -11,9 +11,18 @@ interface Reminder {
   title: string;
   type: "supplement" | "task" | "habit";
   time: string;
+  endTime?: string;
   date: string;
   completed: boolean;
   repeatFrequency?: string;
+}
+
+function formatReminderTimeDisplay(r: Reminder): string {
+  const start = r.time || "";
+  const end = r.endTime?.trim();
+  if (!start) return "";
+  if (end) return `${start} – ${end}`;
+  return start;
 }
 
 export default function AllRemindersPage() {
@@ -134,7 +143,7 @@ export default function AllRemindersPage() {
                   >
                     {reminder.title}
                   </p>
-                  <p className="text-xs text-gray-500">{reminder.time}</p>
+                  <p className="text-xs text-gray-500">{formatReminderTimeDisplay(reminder)}</p>
                 </div>
                 <button
                   onClick={() => deleteReminder(reminder.id)}

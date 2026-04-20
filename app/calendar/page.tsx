@@ -812,26 +812,6 @@ Check if they specified days. If not, ask specifically about days.`
   return (
     <div className="min-h-screen bg-black text-white px-4 pt-4 pb-28">
       <div className="container mx-auto px-4 py-4">
-        {/* View Tabs */}
-        <div className="flex gap-1 mb-5 bg-white/5 border border-white/8 rounded-2xl p-1">
-          <button
-            onClick={() => setActiveView("calendar")}
-            className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-colors ${
-              activeView === "calendar" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            Calendar
-          </button>
-          <button
-            onClick={() => setActiveView("routine")}
-            className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-colors ${
-              activeView === "routine" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
-            }`}
-          >
-            Schedule
-          </button>
-        </div>
-
         {/* Header */}
         <div className="mb-5 flex items-center justify-end gap-2">
           {activeView === "calendar" && (
@@ -850,6 +830,26 @@ Check if they specified days. If not, ask specifically about days.`
           >
             <Sparkles className="w-3.5 h-3.5 shrink-0" />
             AI Schedule
+          </button>
+        </div>
+
+        {/* View Tabs */}
+        <div className="flex gap-1 mb-5 bg-white/5 border border-white/8 rounded-2xl p-1">
+          <button
+            onClick={() => setActiveView("calendar")}
+            className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-colors ${
+              activeView === "calendar" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            Calendar
+          </button>
+          <button
+            onClick={() => setActiveView("routine")}
+            className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-colors ${
+              activeView === "routine" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            Schedule
           </button>
         </div>
 

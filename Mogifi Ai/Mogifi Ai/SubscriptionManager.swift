@@ -2,8 +2,21 @@
 //  SubscriptionManager.swift
 //  Mogifi Ai
 //
-//  StoreKit 2 purchases from the WKWebView “Subscribe” button.
-//  Create matching auto-renewable subscription product IDs in App Store Connect.
+//  StoreKit 2 purchases from the WKWebView “Subscribe” button (onboarding + /subscribe).
+//
+//  ── 3-day free trial, then paid billing ─────────────────────────────────────────
+//  You do NOT implement trial dates in Swift. Apple bills after the trial when you
+//  configure an Introductory Offer on each subscription in App Store Connect:
+//    • Subscription group → add Monthly + Yearly auto-renewable products
+//    • Product IDs must match monthlyProductId / yearlyProductId below exactly
+//    • Each product → Subscription pricing → Introductory Offer → Free for 3 days
+//      (eligibility: new subscribers; Apple shows the exact sheet text per region)
+//
+//  Local testing: add Products.storekit to the Xcode project, then
+//  Product → Scheme → Edit Scheme → Run → Options → StoreKit Configuration → Products.storekit
+//
+//  Production: products + introductory offers must exist in App Store Connect; the
+//  same product.purchase() call applies the trial automatically for eligible users.
 //
 
 import Foundation
@@ -13,6 +26,7 @@ enum SubscriptionError: LocalizedError {
     case productUnavailable
     case userCancelled
     case pending
+    case noActiveSubscription
     case unknown
 
     var errorDescription: String? {
@@ -23,6 +37,8 @@ enum SubscriptionError: LocalizedError {
             return "Purchase cancelled."
         case .pending:
             return "Purchase is pending approval."
+        case .noActiveSubscription:
+            return "No active subscription found. Try Subscribe, or use Restore if you already purchased."
         case .unknown:
             return "Something went wrong."
         }
@@ -36,6 +52,65 @@ enum SubscriptionManager {
     static let monthlyProductId = "com.mogifiai.Mogifi_Ai.subscription.monthly"
     static let yearlyProductId = "com.mogifiai.Mogifi_Ai.subscription.yearly"
 
+    private static var transactionListenerTask: Task<Void, Never>?
+
+    /// Call once at launch. Handles renewals, upgrades, and restores delivered while the app runs.
+    static func startObservingTransactions() {
+        guard transactionListenerTask == nil else { return }
+        transactionListenerTask = Task { @MainActor in
+            for await result in Transaction.updates {
+                guard case .verified(let transaction) = result else { continue }
+                guard transaction.productID == monthlyProductId || transaction.productID == yearlyProductId else { continue }
+                await transaction.finish()
+                await syncEntitlementsToUserDefaults()
+            }
+        }
+    }
+
+    /// Reads `mogifi_` keys written for the web layer (MogifiNativeStorage).
+    static func subscriptionStatusFromUserDefaults() -> (active: Bool, plan: String) {
+        let ud = UserDefaults.standard
+        let active = ud.string(forKey: userDefaultsPrefix + "subscriptionStatus") == "active"
+        let plan = ud.string(forKey: userDefaultsPrefix + "subscriptionPlan") ?? ""
+        return (active, plan)
+    }
+
+    /// Reconcile UserDefaults with StoreKit (source of truth). Clears keys if no active entitlement.
+    @MainActor
+    static func syncEntitlementsToUserDefaults() async {
+        var hasYearly = false
+        var hasMonthly = false
+        for await result in Transaction.currentEntitlements {
+            guard case .verified(let transaction) = result else { continue }
+            if transaction.revocationDate != nil { continue }
+            switch transaction.productID {
+            case yearlyProductId:
+                hasYearly = true
+            case monthlyProductId:
+                hasMonthly = true
+            default:
+                break
+            }
+        }
+        if hasYearly {
+            writeSubscriptionState(plan: "yearly")
+        } else if hasMonthly {
+            writeSubscriptionState(plan: "monthly")
+        } else {
+            clearSubscriptionState()
+        }
+    }
+
+    @MainActor
+    static func restorePurchases() async throws {
+        try await AppStore.sync()
+        await syncEntitlementsToUserDefaults()
+        let (active, _) = subscriptionStatusFromUserDefaults()
+        if !active {
+            throw SubscriptionError.noActiveSubscription
+        }
+    }
+
     @MainActor
     static func purchase(plan: String) async throws -> String {
         let productId: String
@@ -48,6 +123,7 @@ enum SubscriptionManager {
 
         let products = try await Product.products(for: [productId])
         guard let product = products.first else {
+            print("Mogifi IAP: StoreKit returned 0 products for \(productId). Fix ASC metadata, link subscription to app, sandbox Apple ID, or Xcode Scheme → StoreKit Configuration → Products.storekit.")
             throw SubscriptionError.productUnavailable
         }
 
@@ -59,6 +135,7 @@ enum SubscriptionManager {
             let planKey = productId == yearlyProductId ? "yearly" : "monthly"
             writeSubscriptionState(plan: planKey)
             await transaction.finish()
+            await syncEntitlementsToUserDefaults()
             return planKey
 
         case .userCancelled:
@@ -88,5 +165,12 @@ enum SubscriptionManager {
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         ud.set(iso.string(from: Date()), forKey: userDefaultsPrefix + "subscriptionDate")
+    }
+
+    private static func clearSubscriptionState() {
+        let ud = UserDefaults.standard
+        ud.removeObject(forKey: userDefaultsPrefix + "subscriptionStatus")
+        ud.removeObject(forKey: userDefaultsPrefix + "subscriptionPlan")
+        ud.removeObject(forKey: userDefaultsPrefix + "subscriptionDate")
     }
 }

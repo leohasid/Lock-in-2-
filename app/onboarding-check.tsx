@@ -19,6 +19,12 @@ export default function OnboardingCheck({ children }: { children: React.ReactNod
 
     (async () => {
       await migrateFromLocalStorage();
+      try {
+        const { syncNativeSubscriptionState } = await import("@/lib/native-subscribe");
+        await syncNativeSubscriptionState();
+      } catch {
+        /* non-iOS or sync unavailable */
+      }
 
       const subscriptionStatus = await get("subscriptionStatus");
       if (subscriptionStatus === "active") {

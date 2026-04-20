@@ -23,7 +23,7 @@ struct WebView: UIViewRepresentable {
     
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
-        config.processPool = WKProcessPool()
+        // WKProcessPool is deprecated as of iOS 15; the system uses a single shared pool.
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
         // CRITICAL: Use default persistent store so localStorage (onboarding, subscription) persists
@@ -67,7 +67,7 @@ struct WebView: UIViewRepresentable {
             source: """
             window.MogifiNativeSubscribe = {
               _callbacks: {},
-              purchase: function(plan) {
+              _post: function(action, extra, plan) {
                 var id = 'sub' + Date.now() + Math.random().toString(36).slice(2);
                 var self = this;
                 return new Promise(function(resolve, reject) {
@@ -77,8 +77,20 @@ struct WebView: UIViewRepresentable {
                     delete self._callbacks[id];
                     return;
                   }
-                  window.webkit.messageHandlers.mogifiSubscribe.postMessage({ plan: plan || 'monthly', id: id });
+                  var msg = { action: action || 'purchase', id: id };
+                  if (plan) msg.plan = plan;
+                  if (extra) { for (var k in extra) { if (Object.prototype.hasOwnProperty.call(extra, k)) msg[k] = extra[k]; } }
+                  window.webkit.messageHandlers.mogifiSubscribe.postMessage(msg);
                 });
+              },
+              purchase: function(plan) {
+                return this._post('purchase', null, plan || 'monthly');
+              },
+              restore: function() {
+                return this._post('restore', null, null);
+              },
+              sync: function() {
+                return this._post('sync', null, null);
               },
               _resolve: function(id, result) {
                 var c = this._callbacks[id];
@@ -154,13 +166,43 @@ struct WebView: UIViewRepresentable {
             }
 
             if message.name == "mogifiSubscribe" {
-                let plan = body["plan"] as? String ?? "monthly"
+                let action = (body["action"] as? String) ?? "purchase"
                 let callbackId = body["id"] as? String ?? ""
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     do {
-                        let purchasedPlan = try await SubscriptionManager.purchase(plan: plan)
-                        self.resolveSubscribeJavaScriptCallback(callbackId: callbackId, plan: purchasedPlan)
+                        switch action {
+                        case "purchase":
+                            let plan = body["plan"] as? String ?? "monthly"
+                            let purchasedPlan = try await SubscriptionManager.purchase(plan: plan)
+                            self.resolveSubscribeJavaScriptCallback(
+                                callbackId: callbackId,
+                                plan: purchasedPlan,
+                                active: true
+                            )
+                        case "restore":
+                            try await SubscriptionManager.restorePurchases()
+                            let (_, plan) = SubscriptionManager.subscriptionStatusFromUserDefaults()
+                            let resolvedPlan = plan.isEmpty ? "monthly" : plan
+                            self.resolveSubscribeJavaScriptCallback(
+                                callbackId: callbackId,
+                                plan: resolvedPlan,
+                                active: true
+                            )
+                        case "sync":
+                            await SubscriptionManager.syncEntitlementsToUserDefaults()
+                            let (active, plan) = SubscriptionManager.subscriptionStatusFromUserDefaults()
+                            self.resolveSubscribeJavaScriptCallback(
+                                callbackId: callbackId,
+                                plan: plan.isEmpty ? "monthly" : plan,
+                                active: active
+                            )
+                        default:
+                            self.rejectSubscribeJavaScriptCallback(
+                                callbackId: callbackId,
+                                error: SubscriptionError.unknown
+                            )
+                        }
                     } catch {
                         self.rejectSubscribeJavaScriptCallback(callbackId: callbackId, error: error)
                     }
@@ -186,16 +228,20 @@ struct WebView: UIViewRepresentable {
             }
         }
 
-        private func resolveSubscribeJavaScriptCallback(callbackId: String, plan: String) {
+        private func resolveSubscribeJavaScriptCallback(callbackId: String, plan: String, active: Bool) {
             let escapedId = callbackId.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
             let escapedPlan = plan.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
-            let js = "if(window.MogifiNativeSubscribe&&window.MogifiNativeSubscribe._resolve){window.MogifiNativeSubscribe._resolve('\(escapedId)',{ok:true,plan:'\(escapedPlan)'})}"
+            let activeJs = active ? "true" : "false"
+            let js = "if(window.MogifiNativeSubscribe&&window.MogifiNativeSubscribe._resolve){window.MogifiNativeSubscribe._resolve('\(escapedId)',{ok:true,plan:'\(escapedPlan)',active:\(activeJs)})}"
             webView?.evaluateJavaScript(js, completionHandler: nil)
         }
 
         private func rejectSubscribeJavaScriptCallback(callbackId: String, error: Error) {
             let escapedId = callbackId.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
-            let msg = error.localizedDescription
+            let ns = error as NSError
+            let detail = "[\(ns.domain) \(ns.code)] \(error.localizedDescription)"
+            print("MogifiSubscribe bridge error: \(detail)")
+            let msg = detail.isEmpty ? "Unknown StoreKit error" : detail
             let b64 = Data(msg.utf8).base64EncodedString()
             let js = "if(window.MogifiNativeSubscribe&&window.MogifiNativeSubscribe._reject){try{var m=atob('\(b64)');window.MogifiNativeSubscribe._reject('\(escapedId)',m)}catch(e){window.MogifiNativeSubscribe._reject('\(escapedId)','Purchase failed')}}"
             webView?.evaluateJavaScript(js, completionHandler: nil)
@@ -343,7 +389,7 @@ struct WebView: UIViewRepresentable {
                 vc.present(picker, animated: true)
             } else if UIImagePickerController.isSourceTypeAvailable(.camera) {
                 let alert = UIAlertController(title: "Scan Food", message: nil, preferredStyle: .alert)
-                alert.addAction(UIAlertAction(title: "Take Photo", style: .default) { [weak self] _ in
+                alert.addAction(UIAlertAction(title: "Take Photo", style: .default) { _ in
                     let p = UIImagePickerController()
                     p.sourceType = .camera
                     p.mediaTypes = [UTType.image.identifier]

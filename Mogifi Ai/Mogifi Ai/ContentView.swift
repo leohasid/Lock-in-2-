@@ -8,7 +8,14 @@
 import SwiftUI
 
 struct ContentView: View {
-    private static let appURL = URL(string: "https://lock-in-2-please.vercel.app")!
+    /// Per-build query helps avoid WKWebView/CDN serving a very old HTML shell (unknown query params are ignored by Next.js).
+    private static var appURL: URL {
+        let ver = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
+        var c = URLComponents(string: "https://lock-in-2-please.vercel.app")!
+        c.queryItems = [URLQueryItem(name: "native_build", value: "\(ver)(\(build))")]
+        return c.url!
+    }
     
     @State private var isLoading = true
     @State private var loadError: String?

@@ -10,6 +10,10 @@ import SwiftUI
 
 @main
 struct MogifiAiApp: App {
+    init() {
+        SubscriptionManager.startObservingTransactions()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

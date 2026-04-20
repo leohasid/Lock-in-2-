@@ -3,6 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  isNativeIapAvailable,
+  purchaseNative,
+  restoreNativePurchases,
+  syncNativeSubscriptionState,
+} from "@/lib/native-subscribe";
 
 type FitnessGoal = "lose_weight" | "gain_weight" | "build_muscle";
 type Equipment = "full_gym" | "home_gym" | "minimal" | "bodyweight_only";
@@ -79,6 +85,11 @@ export default function OnboardingPage() {
   // Redirect if user is already subscribed (they shouldn't see onboarding)
   useEffect(() => {
     (async () => {
+      try {
+        await syncNativeSubscriptionState();
+      } catch {
+        /* ignore */
+      }
       const { get } = await import("@/lib/persistent-storage");
       const subscriptionStatus = await get("subscriptionStatus");
       if (subscriptionStatus === "active") {
@@ -204,11 +215,12 @@ export default function OnboardingPage() {
   const handleSubscribeInModal = async () => {
     setSubscribing(true);
     try {
-      const nativeSub = typeof window !== "undefined"
-        ? (window as Window & { MogifiNativeSubscribe?: { purchase: (p: string) => Promise<unknown> } }).MogifiNativeSubscribe
-        : undefined;
-      if (nativeSub?.purchase) {
-        await nativeSub.purchase("monthly");
+      if (isNativeIapAvailable()) {
+        const result = await purchaseNative("monthly");
+        if (result.active === false) {
+          alert("Subscription was not activated. Please try again.");
+          return;
+        }
       } else {
         await new Promise((r) => setTimeout(r, 1200));
         const { set } = await import("@/lib/persistent-storage");
@@ -218,8 +230,26 @@ export default function OnboardingPage() {
       }
       setShowSubscribeModal(false);
       setPlanReady(true);
-    } catch {
-      // User cancelled StoreKit sheet or purchase failed — keep modal open
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg && !msg.toLowerCase().includes("cancel")) {
+        alert(msg);
+      }
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
+  const handleRestoreInModal = async () => {
+    if (!isNativeIapAvailable()) return;
+    setSubscribing(true);
+    try {
+      await restoreNativePurchases();
+      setShowSubscribeModal(false);
+      setPlanReady(true);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Restore failed.";
+      alert(msg);
     } finally {
       setSubscribing(false);
     }
@@ -555,6 +585,16 @@ export default function OnboardingPage() {
                     >
                       {subscribing ? "Processing..." : loading ? "Creating plan..." : "Subscribe"}
                     </button>
+                    {isNativeIapAvailable() && (
+                      <button
+                        type="button"
+                        onClick={handleRestoreInModal}
+                        disabled={subscribing || loading}
+                        className="w-full py-2 text-sm font-semibold text-teal-300/90 hover:text-teal-200 disabled:opacity-50"
+                      >
+                        Restore purchases
+                      </button>
+                    )}
                   </div>
                 </>
               ) : (
@@ -573,6 +613,16 @@ export default function OnboardingPage() {
                     >
                       {subscribing ? "Processing..." : "Subscribe"}
                     </button>
+                    {isNativeIapAvailable() && (
+                      <button
+                        type="button"
+                        onClick={handleRestoreInModal}
+                        disabled={subscribing}
+                        className="w-full py-2 text-sm font-semibold text-teal-300/90 hover:text-teal-200 disabled:opacity-50"
+                      >
+                        Restore purchases
+                      </button>
+                    )}
                   </div>
                 </>
               )}

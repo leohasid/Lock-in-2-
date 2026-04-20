@@ -3,14 +3,40 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Crown } from "lucide-react";
+import {
+  isNativeIapAvailable,
+  purchaseNative,
+  restoreNativePurchases,
+  syncNativeSubscriptionState,
+} from "@/lib/native-subscribe";
+
+/** Bump when changing subscribe / IAP UI so you can confirm Vercel + device picked up the build. */
+const SUBSCRIBE_UI_BUILD = "2026-04-21-iap-panel";
+
+function formatUnknownError(error: unknown): string {
+  if (error instanceof Error) return error.message || error.name || "Error (no message)";
+  if (typeof error === "string") return error;
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
 
 export default function SubscribePage() {
   const router = useRouter();
   const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [subscribeError, setSubscribeError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
+      try {
+        await syncNativeSubscriptionState();
+      } catch {
+        /* ignore */
+      }
       const { get } = await import("@/lib/persistent-storage");
       const subscriptionStatus = await get("subscriptionStatus");
       if (subscriptionStatus === "active") {
@@ -21,15 +47,20 @@ export default function SubscribePage() {
 
   const handleSubscribe = async (plan: "monthly" | "yearly") => {
     setLoading(true);
+    setSubscribeError(null);
 
     try {
-      const nativeSub =
-        typeof window !== "undefined"
-          ? (window as Window & { MogifiNativeSubscribe?: { purchase: (p: string) => Promise<unknown> } }).MogifiNativeSubscribe
-          : undefined;
-
-      if (nativeSub?.purchase) {
-        await nativeSub.purchase(plan);
+      if (isNativeIapAvailable()) {
+        await purchaseNative(plan);
+        await syncNativeSubscriptionState();
+        const { get } = await import("@/lib/persistent-storage");
+        const status = await get("subscriptionStatus");
+        if (status !== "active") {
+          setSubscribeError(
+            "Apple’s sheet may have completed but status didn’t sync yet. Tap Restore purchases below, wait a minute, or force-quit and reopen the app."
+          );
+          return;
+        }
       } else {
         await new Promise((resolve) => setTimeout(resolve, 1500));
         const { set } = await import("@/lib/persistent-storage");
@@ -41,9 +72,39 @@ export default function SubscribePage() {
       router.push("/");
     } catch (error) {
       console.error("Subscription error:", error);
-      alert("Failed to process subscription. Please try again.");
+      const msg = formatUnknownError(error);
+      if (msg.toLowerCase().includes("cancel")) return;
+      let detail = msg;
+      if (/not available|couldn.?t find|invalid product|no products|storekit|product/i.test(msg)) {
+        detail +=
+          " — Often: App Store Connect metadata still incomplete, product ID mismatch, or not signed in with a Sandbox Apple ID for testing.";
+      }
+      setSubscribeError(detail);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    if (!isNativeIapAvailable()) {
+      alert("Restore purchases is only available in the Mogifi iOS app.");
+      return;
+    }
+    setRestoring(true);
+    try {
+      await restoreNativePurchases();
+      const { get } = await import("@/lib/persistent-storage");
+      const subscriptionStatus = await get("subscriptionStatus");
+      if (subscriptionStatus === "active") {
+        router.push("/");
+      } else {
+        alert("No active subscription found for this Apple ID.");
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Restore failed.";
+      alert(msg);
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -113,6 +174,27 @@ export default function SubscribePage() {
           </button>
         </div>
 
+        {subscribeError && (
+          <div
+            role="alert"
+            className="mb-4 rounded-xl border border-red-400/50 bg-red-950/80 p-4 text-left text-sm text-red-100"
+          >
+            <p className="font-semibold text-red-200 mb-1">Subscription didn’t finish</p>
+            <p className="whitespace-pre-wrap break-words text-red-100/95">{subscribeError}</p>
+            <button
+              type="button"
+              onClick={() => setSubscribeError(null)}
+              className="mt-3 text-xs font-bold text-red-300 underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        <p className="text-[10px] text-gray-600 text-center mb-3 font-mono">
+          UI {SUBSCRIBE_UI_BUILD}
+        </p>
+
         {/* Pricing Card */}
         <div className="relative overflow-hidden rounded-2xl mb-8 p-6 bg-gradient-to-br from-[#0c1929] via-[#0f1a2e] to-[#0a0f1a] border border-blue-500/30 shadow-xl shadow-blue-500/5">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 pointer-events-none" />
@@ -159,6 +241,17 @@ export default function SubscribePage() {
             ))}
           </ul>
         </div>
+
+        {isNativeIapAvailable() && (
+          <button
+            type="button"
+            onClick={handleRestore}
+            disabled={restoring || loading}
+            className="w-full mb-4 py-3 text-sm font-semibold text-blue-300/90 hover:text-blue-200 disabled:opacity-50 transition-colors"
+          >
+            {restoring ? "Restoring…" : "Restore purchases"}
+          </button>
+        )}
 
         {/* Terms */}
         <p className="text-xs text-gray-500 text-center leading-relaxed">
