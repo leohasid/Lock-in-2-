@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
@@ -87,7 +87,6 @@ export default function Home() {
   const [weeklyWorkoutStats, setWeeklyWorkoutStats] = useState({ completed: 0, scheduled: 0 });
   const [mogMessage, setMogMessage] = useState("");
   const [isFetchingMessage, setIsFetchingMessage] = useState(false);
-  const lastFetchedScore = useRef<number>(-1);
 
   const loadData = () => {
     if (typeof window === "undefined") return;
@@ -294,24 +293,115 @@ export default function Home() {
     return Math.min(100, todayPts + taskPts + nutritionPts + workoutPts);
   }, [workoutCompleted, nutritionOnTrack, weeklyTaskStats, weeklyNutrition, weeklyWorkoutStats]);
 
-  // Fetch AI message whenever mogScore changes
+  // Fetch daily AI analysis — rich snapshot of all app data
   useEffect(() => {
-    if (mogScore === lastFetchedScore.current) return;
-    const cacheKey = `mogMessage_${mogScore}`;
+    if (typeof window === "undefined") return;
+    const cacheKey = `mogMessage_${todayStr}`;
     const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      setMogMessage(cached);
-      lastFetchedScore.current = mogScore;
-      return;
-    }
-    const nutritionDaysLogged = weeklyNutrition.filter(d => d.calories > 100).length;
-    const prompt = `The user's Mog Score is ${mogScore}/100 this week.
-Weekly tasks: ${weeklyTaskStats.completed} completed out of ${weeklyTaskStats.total}.
-Workouts this week: ${weeklyWorkoutStats.completed} done out of ${weeklyWorkoutStats.scheduled} scheduled.
-Nutrition tracked: ${nutritionDaysLogged} days this week.
-Today: workout ${workoutCompleted ? "completed" : "not done"}, nutrition ${nutritionOnTrack ? "on track" : "not tracked yet"}.${hasAddictions ? `\nClean streak: ${daysClean} days.` : ""}
+    if (cached) { setMogMessage(cached); return; }
 
-Write exactly 2 short sentences for a fitness app home screen. First sentence: acknowledge what they're doing well. Second sentence: one specific actionable improvement. Be direct and motivating. Max 25 words total. No emojis.`;
+    // --- Gym: exercise strength trends ---
+    const allWorkoutKeys = Object.keys(localStorage).filter(k => k.startsWith("workout_data_")).sort();
+    const exerciseHistory: Record<string, { date: string; maxWeight: number; maxReps: number }[]> = {};
+    allWorkoutKeys.forEach(k => {
+      const date = k.replace("workout_data_", "");
+      try {
+        const data = JSON.parse(localStorage.getItem(k) || "[]");
+        data.forEach((ex: any) => {
+          if (!ex.name?.trim()) return;
+          const name = ex.name.trim();
+          let maxW = 0, maxR = 0;
+          ex.sets?.forEach((s: any) => {
+            if (s.completed) {
+              const w = Number(s.weight) || 0;
+              const r = Number(s.reps) || 0;
+              if (w > maxW) { maxW = w; maxR = r; }
+            }
+          });
+          if (maxW > 0) {
+            if (!exerciseHistory[name]) exerciseHistory[name] = [];
+            exerciseHistory[name].push({ date, maxWeight: maxW, maxReps: maxR });
+          }
+        });
+      } catch {}
+    });
+
+    // Build strength summary: exercises with progress
+    const strengthLines: string[] = [];
+    Object.entries(exerciseHistory).forEach(([name, history]) => {
+      if (history.length < 2) return;
+      const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
+      const first = sorted[0];
+      const latest = sorted[sorted.length - 1];
+      const diff = latest.maxWeight - first.maxWeight;
+      const recent = sorted.slice(-3);
+      const trend = recent.length >= 2
+        ? recent[recent.length - 1].maxWeight - recent[0].maxWeight
+        : 0;
+      strengthLines.push(`${name}: latest ${latest.maxWeight}kg×${latest.maxReps} (${diff >= 0 ? "+" : ""}${diff.toFixed(1)}kg from first session, recent trend ${trend >= 0 ? "+" : ""}${trend.toFixed(1)}kg)`);
+    });
+
+    // PRs
+    const prLines: string[] = [];
+    Object.entries(exerciseHistory).forEach(([name, history]) => {
+      const best = history.reduce((max, h) => h.maxWeight > max.maxWeight ? h : max, history[0]);
+      prLines.push(`${name}: ${best.maxWeight}kg on ${best.date}`);
+    });
+
+    // Workout frequency (last 30 days)
+    const last30 = new Date(); last30.setDate(last30.getDate() - 30);
+    const workoutSessionsLast30 = allWorkoutKeys.filter(k => {
+      const d = k.replace("workout_data_", "");
+      return new Date(`${d}T12:00:00`) >= last30;
+    }).length;
+
+    // --- Nutrition: weekly summary ---
+    const nutritionDaysLogged = weeklyNutrition.filter(d => d.calories > 100).length;
+    const avgCalories = nutritionDaysLogged > 0
+      ? Math.round(weeklyNutrition.filter(d => d.calories > 100).reduce((s, d) => s + d.calories, 0) / nutritionDaysLogged)
+      : 0;
+    const avgProtein = nutritionDaysLogged > 0
+      ? Math.round(weeklyNutrition.filter(d => d.protein > 0).reduce((s, d) => s + d.protein, 0) / nutritionDaysLogged)
+      : 0;
+
+    // --- Addictions ---
+    const addictionsData = JSON.parse(localStorage.getItem("addictions") || "[]");
+    const addictionLines = addictionsData.map((a: any) => {
+      const days = a.startDate ? Math.max(0, Math.floor((new Date().getTime() - new Date(a.startDate).getTime()) / 86400000)) : 0;
+      return `${a.name || a.type}: ${days} days clean (best: ${a.bestStreak || days} days)`;
+    });
+
+    // Build prompt
+    const promptLines = [
+      `Today's Mog Score: ${mogScore}/100.`,
+      `\n=== GYM ===`,
+      `Workouts in last 30 days: ${workoutSessionsLast30}`,
+      `This week: ${weeklyWorkoutStats.completed}/${weeklyWorkoutStats.scheduled} scheduled workouts done. Today's workout: ${workoutCompleted ? "completed" : "not yet done"}.`,
+    ];
+    if (strengthLines.length > 0) {
+      promptLines.push(`Strength progress (all-time per exercise):\n${strengthLines.slice(0, 6).join("\n")}`);
+    }
+    if (prLines.length > 0) {
+      promptLines.push(`Personal records:\n${prLines.slice(0, 5).join("\n")}`);
+    }
+    promptLines.push(
+      `\n=== NUTRITION ===`,
+      `Tracking days this week: ${nutritionDaysLogged}/7.`,
+      avgCalories > 0 ? `Avg daily calories (tracked days): ${avgCalories} kcal (goal: ${nutrition.calories.goal}).` : "No nutrition logged yet this week.",
+      avgProtein > 0 ? `Avg daily protein: ${avgProtein}g (goal: ${proGoal}g).` : "",
+      `Today: ${nutritionOnTrack ? `${Math.round(calConsumed)} kcal logged (on track)` : calConsumed > 0 ? `${Math.round(calConsumed)} kcal logged (below goal)` : "nothing logged yet"}.`,
+      `\n=== TASKS ===`,
+      `This week: ${weeklyTaskStats.completed} of ${weeklyTaskStats.total} tasks completed.`,
+    );
+    if (addictionLines.length > 0) {
+      promptLines.push(`\n=== RECOVERY ===`, addictionLines.join("\n"));
+    }
+    promptLines.push(`\nToday's date: ${todayStr}.`);
+    promptLines.push(
+      `\nWrite a 2-3 sentence personal performance analysis for the user's home screen. Be specific — reference actual numbers from the data above (weights lifted, calories, task counts, clean days, etc.). First highlight one genuine strength. Then give one specific, actionable thing to improve today. Vary the focus each day (don't always lead with gym — sometimes lead with nutrition, tasks, or recovery). Tone: direct, motivating, like a sharp coach. Max 50 words. No emojis. No generic phrases like "keep it up" or "you're doing great" without specifics.`
+    );
+
+    const prompt = promptLines.filter(Boolean).join("\n");
 
     setIsFetchingMessage(true);
     fetch("/api/ai", {
@@ -324,12 +414,11 @@ Write exactly 2 short sentences for a fitness app home screen. First sentence: a
         if (data.response) {
           setMogMessage(data.response);
           localStorage.setItem(cacheKey, data.response);
-          lastFetchedScore.current = mogScore;
         }
       })
       .catch(() => {})
       .finally(() => setIsFetchingMessage(false));
-  }, [mogScore]);
+  }, [mogScore, todayStr]);
 
   const todayWorkout = todaySchedule.find(e => e.type === "workout");
   const reminders = todaySchedule.filter(e => e.type !== "workout");
