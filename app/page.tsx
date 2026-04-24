@@ -93,6 +93,7 @@ export default function Home() {
   const [workoutCompleted, setWorkoutCompleted] = useState(false);
   const [reflectionDone, setReflectionDone] = useState(false);
   const [hasAddictions, setHasAddictions] = useState(false);
+  const [goalsActive, setGoalsActive] = useState(false);
   const [weeklyTaskStats, setWeeklyTaskStats] = useState({ completed: 0, total: 0 });
   const [weeklyWorkoutStats, setWeeklyWorkoutStats] = useState({ completed: 0, scheduled: 0 });
   const [mogMessage, setMogMessage] = useState("");
@@ -215,6 +216,11 @@ export default function Home() {
     if (storedRef) {
       try { setReflectionDone(!!(JSON.parse(storedRef).aiFeedback)); } catch { setReflectionDone(false); }
     } else setReflectionDone(false);
+
+    try {
+      const goals = JSON.parse(localStorage.getItem("goals") || "[]");
+      setGoalsActive(goals.length > 0 && goals.some((g: any) => Number(g.current) > 0));
+    } catch { setGoalsActive(false); }
 
     // Weekly task stats (Mon → today)
     const allReminders = JSON.parse(localStorage.getItem("reminders") || "[]");
@@ -459,6 +465,7 @@ export default function Home() {
     { label: "Nutrition", done: nutritionOnTrack },
     { label: "Clean", done: hasAddictions ? daysClean > 0 : true },
     { label: "Reflect", done: reflectionDone },
+    { label: "Goals", done: goalsActive },
   ];
 
   return (
@@ -483,41 +490,18 @@ export default function Home() {
             background: "radial-gradient(ellipse at top right, rgba(45,212,191,0.15) 0%, transparent 60%)"
           }} />
           <div className="relative p-4">
-            {/* Score number + habits row */}
-            <div className="flex items-center gap-4 mb-3">
-              <div className="flex items-baseline gap-1.5 shrink-0">
-                <span className="text-5xl font-black leading-none tracking-tighter" style={{
-                  background: "linear-gradient(135deg, #ffffff 40%, #2dd4bf 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                }}>
-                  {mogScore}
-                </span>
-                <div>
-                  <span className="text-lg font-bold text-gray-600">/100</span>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-teal-400/60">Mog Score</p>
-                </div>
-              </div>
-
-              {/* 4 habits inline */}
-              <div className="flex gap-1.5 flex-1 justify-end">
-                {habits.map((h) => (
-                  <div
-                    key={h.label}
-                    className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition-colors ${
-                      h.done ? "bg-teal-500/20 border border-teal-500/30" : "bg-white/4 border border-white/8"
-                    }`}
-                  >
-                    <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                      h.done ? "bg-teal-400" : "border border-gray-700"
-                    }`}>
-                      {h.done && <Check className="w-2.5 h-2.5 text-black" strokeWidth={3} />}
-                    </div>
-                    <span className={`text-[8px] font-bold uppercase tracking-wide ${
-                      h.done ? "text-teal-300" : "text-gray-600"
-                    }`}>{h.label}</span>
-                  </div>
-                ))}
+            {/* Score number */}
+            <div className="flex items-baseline gap-1.5 mb-3">
+              <span className="text-5xl font-black leading-none tracking-tighter" style={{
+                background: "linear-gradient(135deg, #ffffff 40%, #2dd4bf 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}>
+                {mogScore}
+              </span>
+              <div>
+                <span className="text-lg font-bold text-gray-600">/100</span>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-teal-400/60">Mog Score</p>
               </div>
             </div>
 
@@ -534,9 +518,30 @@ export default function Home() {
               />
             </div>
 
+            {/* 5 habits */}
+            <div className="grid grid-cols-5 gap-1.5 mb-3">
+              {habits.map((h) => (
+                <div
+                  key={h.label}
+                  className={`flex flex-col items-center gap-1 py-2 rounded-xl transition-colors ${
+                    h.done ? "bg-teal-500/20 border border-teal-500/30" : "bg-white/4 border border-white/8"
+                  }`}
+                >
+                  <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                    h.done ? "bg-teal-400" : "border border-gray-700"
+                  }`}>
+                    {h.done && <Check className="w-2.5 h-2.5 text-black" strokeWidth={3} />}
+                  </div>
+                  <span className={`text-[8px] font-bold uppercase tracking-wide ${
+                    h.done ? "text-teal-300" : "text-gray-600"
+                  }`}>{h.label}</span>
+                </div>
+              ))}
+            </div>
+
             {/* AI message */}
             {isFetchingMessage ? (
-              <div className="flex items-center gap-1.5 pt-1">
+              <div className="flex items-center gap-1.5">
                 <div className="w-1 h-1 rounded-full bg-teal-400 animate-pulse" />
                 <div className="w-1 h-1 rounded-full bg-teal-400 animate-pulse delay-75" />
                 <div className="w-1 h-1 rounded-full bg-teal-400 animate-pulse delay-150" />
