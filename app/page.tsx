@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
@@ -42,16 +42,6 @@ function getDaysClean(startDate: string): number {
   return Math.max(0, Math.floor((today.getTime() - start.getTime()) / 86400000));
 }
 
-function getNutritionStreak(week: Array<{ date: string; calories: number; score: number }>, todayStr: string): number {
-  const idx = week.findIndex((d) => d.date === todayStr);
-  if (idx < 0) return 0;
-  let streak = 0;
-  for (let i = idx; i >= 0; i--) {
-    if (week[i].calories > 0 && week[i].score >= 30) streak++;
-    else break;
-  }
-  return streak;
-}
 
 function MacroBar({ label, pct, consumed, goal, unit, color }: {
   label: string; pct: number; consumed: number; goal: number; unit: string; color: string;
@@ -93,6 +83,11 @@ export default function Home() {
   const [workoutCompleted, setWorkoutCompleted] = useState(false);
   const [reflectionDone, setReflectionDone] = useState(false);
   const [hasAddictions, setHasAddictions] = useState(false);
+  const [weeklyTaskStats, setWeeklyTaskStats] = useState({ completed: 0, total: 0 });
+  const [weeklyWorkoutStats, setWeeklyWorkoutStats] = useState({ completed: 0, scheduled: 0 });
+  const [mogMessage, setMogMessage] = useState("");
+  const [isFetchingMessage, setIsFetchingMessage] = useState(false);
+  const lastFetchedScore = useRef<number>(-1);
 
   const loadData = () => {
     if (typeof window === "undefined") return;
@@ -211,6 +206,38 @@ export default function Home() {
     if (storedRef) {
       try { setReflectionDone(!!(JSON.parse(storedRef).aiFeedback)); } catch { setReflectionDone(false); }
     } else setReflectionDone(false);
+
+    // Weekly task stats (Mon → today)
+    const allReminders = JSON.parse(localStorage.getItem("reminders") || "[]");
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() + mondayOffset);
+    let weekTaskCompleted = 0, weekTaskTotal = 0;
+    const daysElapsedInWeek = today.getDay() === 0 ? 7 : today.getDay(); // Mon=1..Sun=7
+    for (let i = 0; i < daysElapsedInWeek; i++) {
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      const dStr = toLocalDateString(d);
+      const utcStr = d.toISOString().split("T")[0];
+      const dayTasks = allReminders.filter((r: any) => r.date === dStr || r.date === utcStr);
+      weekTaskTotal += dayTasks.length;
+      weekTaskCompleted += dayTasks.filter((r: any) => r.completed).length;
+    }
+    setWeeklyTaskStats({ completed: weekTaskCompleted, total: weekTaskTotal });
+
+    // Weekly workout stats
+    let weekWorkoutCompleted = 0, weekWorkoutScheduled = 0;
+    for (let i = 0; i < daysElapsedInWeek; i++) {
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      const dStr = toLocalDateString(d);
+      const utcStr = d.toISOString().split("T")[0];
+      const workoutRow = schedule.find((w: any) => w.date === dStr || w.date === utcStr);
+      if (workoutRow?.workoutName && workoutRow.workoutName !== "Rest Day") {
+        weekWorkoutScheduled++;
+        if (localStorage.getItem(`workout_${dStr}`) === "completed") weekWorkoutCompleted++;
+      }
+    }
+    setWeeklyWorkoutStats({ completed: weekWorkoutCompleted, scheduled: weekWorkoutScheduled });
   };
 
   useEffect(() => {
@@ -234,13 +261,6 @@ export default function Home() {
     nutrition.calories.consumed >= nutrition.calories.goal * 0.5 &&
     nutrition.calories.consumed <= nutrition.calories.goal * 1.5;
 
-  const cleanStreakPoints = hasAddictions ? (daysClean > 0 ? 25 : 0) : 25;
-  const lockInScore = Math.min(100,
-    (workoutCompleted ? 25 : 0) + (nutritionOnTrack ? 25 : 0) + cleanStreakPoints + (reflectionDone ? 25 : 0)
-  );
-
-  const nutritionStreak = useMemo(() => getNutritionStreak(weeklyNutrition, todayStr), [weeklyNutrition, todayStr]);
-  const streakDays = hasAddictions ? daysClean : nutritionStreak;
 
   const calGoal = nutrition.calories.goal || 2000;
   const calConsumed = nutrition.calories.consumed;
@@ -255,13 +275,61 @@ export default function Home() {
     fat: fatGoal > 0 ? Math.min(100, (nutrition.fat.consumed / fatGoal) * 100) : 0,
   };
 
-  const aiLine = useMemo(() => {
-    if (streakDays >= 14) return `${streakDays} days strong. Your consistency is building real momentum.`;
-    if (streakDays >= 7) return "Solid week — you're stacking wins. Keep showing up.";
-    if (lockInScore >= 75) return "You're locked in. Keep the rhythm going today.";
-    if (nutritionOnTrack && workoutCompleted) return "Full house today — workout and nutrition on point.";
-    return "Small steps today become big results tomorrow.";
-  }, [streakDays, lockInScore, nutritionOnTrack, workoutCompleted]);
+  // Mog Score: weekly-weighted (0-100)
+  const mogScore = useMemo(() => {
+    // Today's habits: 40 pts
+    const todayPts = (workoutCompleted ? 20 : 0) + (nutritionOnTrack ? 20 : 0);
+    // Weekly task completion: 35 pts
+    const taskRate = weeklyTaskStats.total > 0 ? weeklyTaskStats.completed / weeklyTaskStats.total : 0;
+    const taskPts = Math.round(taskRate * 35);
+    // Weekly nutrition logging: 15 pts
+    const nutritionDaysLogged = weeklyNutrition.filter(d => d.calories > 100).length;
+    const daysIntoWeek = Math.max(1, weeklyNutrition.filter(d => new Date(`${d.date}T12:00:00`) <= new Date()).length);
+    const nutritionPts = Math.round((nutritionDaysLogged / daysIntoWeek) * 15);
+    // Weekly workout consistency: 10 pts
+    const workoutRate = weeklyWorkoutStats.scheduled > 0
+      ? weeklyWorkoutStats.completed / weeklyWorkoutStats.scheduled
+      : workoutCompleted ? 1 : 0;
+    const workoutPts = Math.round(workoutRate * 10);
+    return Math.min(100, todayPts + taskPts + nutritionPts + workoutPts);
+  }, [workoutCompleted, nutritionOnTrack, weeklyTaskStats, weeklyNutrition, weeklyWorkoutStats]);
+
+  // Fetch AI message whenever mogScore changes
+  useEffect(() => {
+    if (mogScore === lastFetchedScore.current) return;
+    const cacheKey = `mogMessage_${mogScore}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      setMogMessage(cached);
+      lastFetchedScore.current = mogScore;
+      return;
+    }
+    const nutritionDaysLogged = weeklyNutrition.filter(d => d.calories > 100).length;
+    const prompt = `The user's Mog Score is ${mogScore}/100 this week.
+Weekly tasks: ${weeklyTaskStats.completed} completed out of ${weeklyTaskStats.total}.
+Workouts this week: ${weeklyWorkoutStats.completed} done out of ${weeklyWorkoutStats.scheduled} scheduled.
+Nutrition tracked: ${nutritionDaysLogged} days this week.
+Today: workout ${workoutCompleted ? "completed" : "not done"}, nutrition ${nutritionOnTrack ? "on track" : "not tracked yet"}.${hasAddictions ? `\nClean streak: ${daysClean} days.` : ""}
+
+Write exactly 2 short sentences for a fitness app home screen. First sentence: acknowledge what they're doing well. Second sentence: one specific actionable improvement. Be direct and motivating. Max 25 words total. No emojis.`;
+
+    setIsFetchingMessage(true);
+    fetch("/api/ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.response) {
+          setMogMessage(data.response);
+          localStorage.setItem(cacheKey, data.response);
+          lastFetchedScore.current = mogScore;
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsFetchingMessage(false));
+  }, [mogScore]);
 
   const todayWorkout = todaySchedule.find(e => e.type === "workout");
   const reminders = todaySchedule.filter(e => e.type !== "workout");
@@ -284,7 +352,7 @@ export default function Home() {
   const habits = [
     { label: "Workout", done: workoutCompleted },
     { label: "Nutrition", done: nutritionOnTrack },
-    { label: "Clean", done: cleanStreakPoints > 0 },
+    { label: "Clean", done: hasAddictions ? daysClean > 0 : true },
     { label: "Reflect", done: reflectionDone },
   ];
 
@@ -317,12 +385,12 @@ export default function Home() {
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
               }}>
-                {lockInScore}
+                {mogScore}
               </span>
               <div>
                 <span className="text-3xl font-bold text-gray-600">/100</span>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-teal-400/60 mt-0.5">
-                  Lock-in score
+                  Mog Score
                 </p>
               </div>
             </div>
@@ -332,9 +400,9 @@ export default function Home() {
               <div
                 className="h-full rounded-full transition-all duration-700"
                 style={{
-                  width: `${lockInScore}%`,
-                  background: lockInScore >= 75 ? "linear-gradient(90deg, #0d9488, #2dd4bf)" :
-                    lockInScore >= 50 ? "linear-gradient(90deg, #d97706, #f59e0b)" :
+                  width: `${mogScore}%`,
+                  background: mogScore >= 75 ? "linear-gradient(90deg, #0d9488, #2dd4bf)" :
+                    mogScore >= 50 ? "linear-gradient(90deg, #d97706, #f59e0b)" :
                     "linear-gradient(90deg, #dc2626, #ef4444)"
                 }}
               />
@@ -361,6 +429,21 @@ export default function Home() {
                   }`}>{h.label}</span>
                 </div>
               ))}
+            </div>
+
+            {/* AI message */}
+            <div className="mt-4 pt-4 border-t border-white/8">
+              {isFetchingMessage ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-1 rounded-full bg-teal-400 animate-pulse" />
+                  <div className="w-1 h-1 rounded-full bg-teal-400 animate-pulse delay-75" />
+                  <div className="w-1 h-1 rounded-full bg-teal-400 animate-pulse delay-150" />
+                </div>
+              ) : mogMessage ? (
+                <p className="text-xs text-gray-400 leading-relaxed">{mogMessage}</p>
+              ) : (
+                <p className="text-xs text-gray-600 leading-relaxed">Analysing your week...</p>
+              )}
             </div>
           </div>
         </div>
@@ -475,7 +558,7 @@ export default function Home() {
             <Sparkles className="h-3.5 w-3.5 text-violet-400" />
             <span className="text-[10px] font-bold uppercase tracking-widest text-violet-300/70">AI Reflection</span>
           </div>
-          <p className="text-sm font-semibold text-white leading-relaxed mb-3">{aiLine}</p>
+          <p className="text-sm font-semibold text-white leading-relaxed mb-3">{mogMessage || "Log your wins, set your goals, get AI feedback."}</p>
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-gray-600">Review · Set goals · Get feedback</span>
             <ChevronRight className="h-4 w-4 text-violet-400/60" />
