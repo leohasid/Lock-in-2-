@@ -144,6 +144,7 @@ export default function GoalsPage() {
   };
 
   const longTermGoals = allGoals.filter((g) => g.goalType === "long-term");
+  const dailyGoals = allGoals.filter((g) => g.goalType === "daily");
   const displayedLongTermGoals = showMoreGoals
     ? longTermGoals
     : longTermGoals.slice(0, LONG_TERM_GOALS_PREVIEW);
@@ -345,6 +346,9 @@ export default function GoalsPage() {
   };
 
   const completedTasksCount = tasks.filter((t) => t.completed).length;
+  const dailyGoalsMetCount = dailyGoals.filter((g) => g.target > 0 && g.current >= g.target).length;
+  const todaySectionDone = completedTasksCount + dailyGoalsMetCount;
+  const todaySectionTotal = tasks.length + dailyGoals.length;
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -449,8 +453,8 @@ export default function GoalsPage() {
         {/* Today's Tasks Section */}
         <div className="flex items-center justify-between mb-3 mt-8">
           <p className="text-[11px] font-semibold text-gray-500 tracking-wider">TODAY&apos;S TASKS</p>
-          <span className="text-[11px] font-semibold text-teal-400">
-            {completedTasksCount}/{tasks.length}
+          <span className="text-[11px] font-semibold text-teal-400" title="Tasks done + daily goals met">
+            {todaySectionDone}/{todaySectionTotal}
           </span>
         </div>
 
@@ -524,7 +528,67 @@ export default function GoalsPage() {
           ))}
         </div>
 
-        {longTermGoals.length === 0 && tasks.length === 0 && (
+        {/* Daily goals (reset daily) — under today&apos;s task list, same "Today" section */}
+        {dailyGoals.length > 0 && (
+          <>
+            <p className="mb-3 mt-5 text-[11px] font-semibold tracking-wider text-gray-500">DAILY GOALS</p>
+            <div className="space-y-3">
+              {dailyGoals.map((goal) => {
+                const percent = goal.target > 0 ? Math.min(Math.round((goal.current / goal.target) * 100), 100) : 0;
+                return (
+                  <div
+                    key={goal.id}
+                    className="rounded-xl border border-white/8 bg-[#0c1422] p-4"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-base font-medium text-white">{goal.title}</p>
+                        <p className="mt-0.5 text-xs text-gray-500">{formatProgressText(goal)}</p>
+                      </div>
+                      <div className="flex flex-shrink-0 items-center gap-2">
+                        <span className="text-lg font-bold text-teal-400">{percent}%</span>
+                        {isEditing ? (
+                          <div className="flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenProgressModal(goal)}
+                              className="p-1 text-gray-500 hover:text-white"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteGoal(goal.id)}
+                              className="p-1 text-red-400 hover:text-red-300"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenProgressModal(goal)}
+                            className="p-1 text-gray-500 hover:text-white"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-gray-800">
+                      <div
+                        className="h-2 rounded-full bg-teal-500 transition-all duration-300"
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {longTermGoals.length === 0 && dailyGoals.length === 0 && tasks.length === 0 && (
           <p className="text-center text-gray-500 py-12 text-sm">
             No goals yet. Click &quot;+ Add&quot; to create one.
           </p>
