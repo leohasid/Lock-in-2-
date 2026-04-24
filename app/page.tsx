@@ -293,10 +293,14 @@ export default function Home() {
     return Math.min(100, todayPts + taskPts + nutritionPts + workoutPts);
   }, [workoutCompleted, nutritionOnTrack, weeklyTaskStats, weeklyNutrition, weeklyWorkoutStats]);
 
-  // Fetch daily AI analysis — rich snapshot of all app data
+  // Fetch weekly AI analysis — rich snapshot of all app data, refreshes each Monday
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const cacheKey = `mogMessage_${todayStr}`;
+    const today = new Date();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (today.getDay() === 0 ? 6 : today.getDay() - 1));
+    const weekKey = toLocalDateString(monday);
+    const cacheKey = `mogMessage_week_${weekKey}`;
     const cached = localStorage.getItem(cacheKey);
     if (cached) { setMogMessage(cached); return; }
 
@@ -414,6 +418,8 @@ export default function Home() {
         if (data.response) {
           setMogMessage(data.response);
           localStorage.setItem(cacheKey, data.response);
+          // Clean up old daily/score-keyed messages
+          Object.keys(localStorage).filter(k => k.startsWith("mogMessage_") && k !== cacheKey).forEach(k => localStorage.removeItem(k));
         }
       })
       .catch(() => {})
