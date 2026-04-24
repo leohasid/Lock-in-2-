@@ -412,7 +412,7 @@ export default function Home() {
     }
     promptLines.push(`\nToday's date: ${todayStr}.`);
     promptLines.push(
-      `\nWrite a 2-3 sentence personal performance analysis for the user's home screen. Be specific — reference actual numbers from the data above (weights lifted, calories, task counts, clean days, etc.). First highlight one genuine strength. Then give one specific, actionable thing to improve today. Vary the focus each day (don't always lead with gym — sometimes lead with nutrition, tasks, or recovery). Tone: direct, motivating, like a sharp coach. Max 50 words. No emojis. No generic phrases like "keep it up" or "you're doing great" without specifics.`
+      `\nWrite ONE sentence (max 20 words) for the user's home screen. Reference a specific number from the data. Be direct and motivating. No emojis. Vary focus weekly — gym, nutrition, tasks, or recovery. No generic praise.`
     );
 
     const prompt = promptLines.filter(Boolean).join("\n");
@@ -476,32 +476,53 @@ export default function Home() {
         </div>
 
         {/* Score hero card */}
-        <div className="relative overflow-hidden rounded-3xl mb-4" style={{
+        <div className="relative overflow-hidden rounded-2xl mb-4" style={{
           background: "linear-gradient(135deg, #0a1628 0%, #0f2a2a 50%, #071a14 100%)"
         }}>
           <div className="absolute inset-0 opacity-40" style={{
             background: "radial-gradient(ellipse at top right, rgba(45,212,191,0.15) 0%, transparent 60%)"
           }} />
-          <div className="relative p-5">
-            {/* Score number */}
-            <div className="flex items-baseline gap-3 mb-3">
-              <span className="text-8xl font-black leading-none tracking-tighter" style={{
-                background: "linear-gradient(135deg, #ffffff 40%, #2dd4bf 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}>
-                {mogScore}
-              </span>
-              <div>
-                <span className="text-3xl font-bold text-gray-600">/100</span>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-teal-400/60 mt-0.5">
-                  Mog Score
-                </p>
+          <div className="relative p-4">
+            {/* Score number + habits row */}
+            <div className="flex items-center gap-4 mb-3">
+              <div className="flex items-baseline gap-1.5 shrink-0">
+                <span className="text-5xl font-black leading-none tracking-tighter" style={{
+                  background: "linear-gradient(135deg, #ffffff 40%, #2dd4bf 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}>
+                  {mogScore}
+                </span>
+                <div>
+                  <span className="text-lg font-bold text-gray-600">/100</span>
+                  <p className="text-[9px] font-bold uppercase tracking-widest text-teal-400/60">Mog Score</p>
+                </div>
+              </div>
+
+              {/* 4 habits inline */}
+              <div className="flex gap-1.5 flex-1 justify-end">
+                {habits.map((h) => (
+                  <div
+                    key={h.label}
+                    className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition-colors ${
+                      h.done ? "bg-teal-500/20 border border-teal-500/30" : "bg-white/4 border border-white/8"
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                      h.done ? "bg-teal-400" : "border border-gray-700"
+                    }`}>
+                      {h.done && <Check className="w-2.5 h-2.5 text-black" strokeWidth={3} />}
+                    </div>
+                    <span className={`text-[8px] font-bold uppercase tracking-wide ${
+                      h.done ? "text-teal-300" : "text-gray-600"
+                    }`}>{h.label}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
             {/* Progress bar */}
-            <div className="h-1 w-full rounded-full bg-white/8 mb-5 overflow-hidden">
+            <div className="h-1 w-full rounded-full bg-white/8 mb-3 overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-700"
                 style={{
@@ -513,43 +534,16 @@ export default function Home() {
               />
             </div>
 
-            {/* 4 habits */}
-            <div className="grid grid-cols-4 gap-2">
-              {habits.map((h) => (
-                <div
-                  key={h.label}
-                  className={`flex flex-col items-center gap-1.5 py-2.5 rounded-xl transition-colors ${
-                    h.done
-                      ? "bg-teal-500/20 border border-teal-500/30"
-                      : "bg-white/4 border border-white/8"
-                  }`}
-                >
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                    h.done ? "bg-teal-400" : "border border-gray-700"
-                  }`}>
-                    {h.done && <Check className="w-3 h-3 text-black" strokeWidth={3} />}
-                  </div>
-                  <span className={`text-[9px] font-bold uppercase tracking-wide ${
-                    h.done ? "text-teal-300" : "text-gray-600"
-                  }`}>{h.label}</span>
-                </div>
-              ))}
-            </div>
-
             {/* AI message */}
-            <div className="mt-4 pt-4 border-t border-white/8">
-              {isFetchingMessage ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-teal-400 animate-pulse" />
-                  <div className="w-1 h-1 rounded-full bg-teal-400 animate-pulse delay-75" />
-                  <div className="w-1 h-1 rounded-full bg-teal-400 animate-pulse delay-150" />
-                </div>
-              ) : mogMessage ? (
-                <p className="text-xs text-gray-400 leading-relaxed">{mogMessage}</p>
-              ) : (
-                <p className="text-xs text-gray-600 leading-relaxed">Analysing your week...</p>
-              )}
-            </div>
+            {isFetchingMessage ? (
+              <div className="flex items-center gap-1.5 pt-1">
+                <div className="w-1 h-1 rounded-full bg-teal-400 animate-pulse" />
+                <div className="w-1 h-1 rounded-full bg-teal-400 animate-pulse delay-75" />
+                <div className="w-1 h-1 rounded-full bg-teal-400 animate-pulse delay-150" />
+              </div>
+            ) : mogMessage ? (
+              <p className="text-[11px] text-gray-400 leading-relaxed">{mogMessage}</p>
+            ) : null}
           </div>
         </div>
 
