@@ -43,23 +43,33 @@ function getDaysClean(startDate: string): number {
 }
 
 
-function MacroBar({ label, pct, consumed, goal, unit, color }: {
-  label: string; pct: number; consumed: number; goal: number; unit: string; color: string;
+function MacroRing({ label, pct, consumed, goal, unit, stroke }: {
+  label: string; pct: number; consumed: number; goal: number; unit: string; stroke: string;
 }) {
+  const r = 26;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (circ * Math.min(pct, 100)) / 100;
   return (
-    <div>
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs font-semibold text-gray-400">{label}</span>
-        <span className="text-xs tabular-nums text-gray-500">
-          {Math.round(consumed)}<span className="text-gray-700 text-[10px]"> / {goal}{unit}</span>
-        </span>
+    <div className="flex flex-col items-center gap-1.5">
+      <div className="relative w-16 h-16">
+        <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
+          <circle
+            cx="32" cy="32" r={r} fill="none"
+            stroke={stroke}
+            strokeWidth="5"
+            strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={offset}
+            className="transition-all duration-700"
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-[11px] font-black text-white leading-none tabular-nums">{Math.round(consumed)}</span>
+          <span className="text-[8px] text-gray-600 mt-0.5">{unit}</span>
+        </div>
       </div>
-      <div className="h-1.5 w-full rounded-full bg-white/8 overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-700 ${color}`}
-          style={{ width: `${Math.min(pct, 100)}%` }}
-        />
-      </div>
+      <span className="text-[10px] font-semibold text-gray-500">{label}</span>
     </div>
   );
 }
@@ -583,11 +593,11 @@ export default function Home() {
               <span className="text-gray-700"> / {calGoal.toLocaleString()} kcal</span>
             </p>
           </div>
-          <div className="space-y-3.5">
-            <MacroBar label="Calories" pct={macroPcts.cal} consumed={calConsumed} goal={calGoal} unit=" kcal" color="bg-orange-400" />
-            <MacroBar label="Protein" pct={macroPcts.pro} consumed={nutrition.protein.consumed} goal={proGoal} unit="g" color="bg-blue-400" />
-            <MacroBar label="Carbs" pct={macroPcts.carb} consumed={nutrition.carbs.consumed} goal={carbGoal} unit="g" color="bg-violet-400" />
-            <MacroBar label="Fat" pct={macroPcts.fat} consumed={nutrition.fat.consumed} goal={fatGoal} unit="g" color="bg-amber-400" />
+          <div className="grid grid-cols-4 gap-2">
+            <MacroRing label="Calories" pct={macroPcts.cal} consumed={calConsumed} goal={calGoal} unit="kcal" stroke="#fb923c" />
+            <MacroRing label="Protein" pct={macroPcts.pro} consumed={nutrition.protein.consumed} goal={proGoal} unit="g" stroke="#60a5fa" />
+            <MacroRing label="Carbs" pct={macroPcts.carb} consumed={nutrition.carbs.consumed} goal={carbGoal} unit="g" stroke="#a78bfa" />
+            <MacroRing label="Fat" pct={macroPcts.fat} consumed={nutrition.fat.consumed} goal={fatGoal} unit="g" stroke="#fbbf24" />
           </div>
         </Link>
 
