@@ -546,9 +546,7 @@ export default function Home() {
                 </div>
               ) : mogMessage ? (
                 <p className="text-xs text-gray-400 leading-relaxed">{mogMessage}</p>
-              ) : (
-                <p className="text-xs text-gray-600 leading-relaxed">Analysing your week...</p>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
@@ -561,7 +559,6 @@ export default function Home() {
                 <Dumbbell className="w-5 h-5 text-teal-400" />
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-teal-400/60">Today's workout</p>
                 <p className="text-base font-bold text-white truncate">{todayWorkout.title}</p>
                 {todayExerciseCount > 0 && (
                   <p className="text-[11px] text-gray-500">{todayExerciseCount} exercises</p>
@@ -577,10 +574,7 @@ export default function Home() {
             <div className="w-9 h-9 rounded-xl bg-teal-500/20 border border-teal-500/30 flex items-center justify-center shrink-0">
               <Check className="w-4 h-4 text-teal-400" strokeWidth={2.5} />
             </div>
-            <div>
-              <p className="text-sm font-bold text-teal-300">Workout complete</p>
-              <p className="text-[11px] text-gray-500 mt-0.5">Great work today</p>
-            </div>
+            <p className="text-sm font-bold text-teal-300">Workout done</p>
           </div>
         ) : null}
 
@@ -611,7 +605,7 @@ export default function Home() {
           </div>
           {!upcomingCurrent && !upcomingNext ? (
             <div className="px-4 py-6 text-center">
-              <p className="text-sm text-gray-600">Nothing scheduled for today</p>
+              <p className="text-sm text-gray-600">Nothing today</p>
             </div>
           ) : (
             <div className="divide-y divide-white/5">
@@ -659,15 +653,14 @@ export default function Home() {
           className="mb-4 block rounded-2xl border border-violet-500/20 p-4 transition-all hover:border-violet-400/30"
           style={{ background: "linear-gradient(135deg, rgba(46,16,101,0.4) 0%, rgba(10,10,20,0.8) 100%)" }}
         >
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="h-3.5 w-3.5 text-violet-400" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-violet-300/70">AI Reflection</span>
-          </div>
-          <p className="text-sm font-semibold text-white leading-relaxed mb-3">{mogMessage || "Log your wins, set your goals, get AI feedback."}</p>
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-gray-600">Review · Set goals · Get feedback</span>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-violet-400" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-violet-300/70">Reflect</span>
+            </div>
             <ChevronRight className="h-4 w-4 text-violet-400/60" />
           </div>
+          <p className="text-xs text-gray-400 leading-relaxed">{mogMessage || "Tap to reflect on your week."}</p>
         </Link>
 
         {/* Reminders (non-workout items) */}
