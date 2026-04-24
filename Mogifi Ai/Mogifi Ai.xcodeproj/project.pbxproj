@@ -41,6 +41,7 @@
 		A10000072F356735007D6CE1 = {
 			isa = PBXGroup;
 			children = (
+				A10000332F356735007D6CE1 /* StoreKit */,
 				A10000082F356735007D6CE1 /* Mogifi Ai */,
 				A10000092F356735007D6CE1 /* Products */,
 			);
@@ -55,7 +56,6 @@
 				A10000192F356735007D6CE1 /* NotificationManager.swift */,
 				A100002B2F356735007D6CE1 /* SubscriptionManager.swift */,
 				A10000312F356735007D6CE1 /* Mogifi_Ai.entitlements */,
-				A10000322F356735007D6CE1 /* Products.storekit */,
 				A10000142F356735007D6CE1 /* Assets.xcassets */,
 			);
 			path = "Mogifi Ai";
@@ -67,6 +67,14 @@
 				A10000052F356735007D6CE1 /* Mogifi Ai.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A10000332F356735007D6CE1 /* StoreKit */ = {
+			isa = PBXGroup;
+			children = (
+				A10000322F356735007D6CE1 /* Products.storekit */,
+			);
+			path = StoreKit;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -101,6 +109,11 @@
 				TargetAttributes = {
 					A100000A2F356735007D6CE1 = {
 						CreatedOnToolsVersion = 15.0;
+						SystemCapabilities = {
+							com.apple.InAppPurchase = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};
@@ -283,15 +296,15 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "To scan food for nutrition tracking";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "To upload photos of food for nutrition tracking";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIApplicationSupportsMultipleScenes = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "To scan food for nutrition tracking";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "To upload photos of food for nutrition tracking";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -316,15 +329,15 @@
 				DEVELOPMENT_ASSET_PATHS = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "To scan food for nutrition tracking";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "To upload photos of food for nutrition tracking";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UIApplicationSupportsMultipleScenes = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "To scan food for nutrition tracking";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "To upload photos of food for nutrition tracking";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

@@ -650,49 +650,82 @@ export default function GoalsPage() {
         );
       })()}
 
-      {/* Add/Edit Goal — bottom sheet wizard */}
+      {/* Add/Edit Goal — centered dialog (not bottom sheet) */}
       {showAddForm && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
-          <div className="absolute inset-0 bg-black/60" onClick={() => { setShowAddForm(false); setEditingGoal(null); }} />
-          <div className="relative bg-[#0c1422] rounded-t-3xl border-t border-white/8 px-5 pt-4 pb-10 max-h-[85vh] overflow-y-auto">
-            {/* Handle */}
-            <div className="w-10 h-1 bg-white/15 rounded-full mx-auto mb-5" />
-
-            {/* Step dots */}
-            {!editingGoal && (
-              <div className="flex items-center justify-center gap-1.5 mb-6">
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className={`h-1 rounded-full transition-all duration-300 ${
-                    addStep === i ? "w-6 bg-teal-400" : i < addStep ? "w-3 bg-teal-400/40" : "w-3 bg-white/10"
-                  }`} />
-                ))}
-              </div>
-            )}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+            onClick={() => {
+              setShowAddForm(false);
+              setEditingGoal(null);
+            }}
+            aria-hidden
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={editingGoal ? "Edit goal" : "Add goal"}
+            className="relative z-10 w-full max-w-md max-h-[min(88vh,720px)] overflow-y-auto rounded-2xl border border-white/20 bg-[#101a2e] shadow-2xl shadow-black/60 ring-1 ring-white/10 px-4 pt-3 pb-6 sm:px-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-2 mb-3">
+              {!editingGoal && (
+                <div className="flex flex-1 items-center justify-center gap-1.5 pt-0.5">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className={`h-1 rounded-full transition-all duration-300 ${
+                        addStep === i
+                          ? "w-6 bg-teal-400"
+                          : i < addStep
+                            ? "w-3 bg-teal-400/50"
+                            : "w-3 bg-white/15"
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+              {editingGoal && <div className="flex-1" />}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddForm(false);
+                  setEditingGoal(null);
+                }}
+                className="shrink-0 rounded-full p-2 text-gray-400 hover:bg-white/10 hover:text-white transition-colors -mr-1 -mt-0.5"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" strokeWidth={2} />
+              </button>
+            </div>
 
             {/* Step 0 — Category */}
             {addStep === 0 && (
               <>
-                <p className="text-xl font-bold text-white mb-1">What are you working on?</p>
-                <p className="text-sm text-gray-500 mb-6">Pick a category to get started</p>
-                <div className="grid grid-cols-2 gap-3">
+                <p className="text-lg sm:text-xl font-bold text-white mb-0.5 leading-tight">What are you working on?</p>
+                <p className="text-sm text-gray-400 mb-3">Pick a category to get started</p>
+                <div className="grid grid-cols-2 gap-2.5">
                   {[
-                    { value: "financial", label: "Financial", icon: <TrendingUp className="w-5 h-5" />, color: "text-green-400", bg: "bg-green-400/10 border-green-400/20" },
-                    { value: "fitness", label: "Fitness", icon: <Dumbbell className="w-5 h-5" />, color: "text-orange-400", bg: "bg-orange-400/10 border-orange-400/20" },
-                    { value: "health", label: "Health", icon: <Heart className="w-5 h-5" />, color: "text-pink-400", bg: "bg-pink-400/10 border-pink-400/20" },
-                    { value: "learning", label: "Learning", icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20" },
-                    { value: "other", label: "Other", icon: <Target className="w-5 h-5" />, color: "text-violet-400", bg: "bg-violet-400/10 border-violet-400/20" },
+                    { value: "financial", label: "Financial", icon: <TrendingUp className="w-5 h-5" />, color: "text-green-400", iconBg: "bg-green-500/20 border-green-400/45" },
+                    { value: "fitness", label: "Fitness", icon: <Dumbbell className="w-5 h-5" />, color: "text-orange-400", iconBg: "bg-orange-500/20 border-orange-400/45" },
+                    { value: "health", label: "Health", icon: <Heart className="w-5 h-5" />, color: "text-pink-400", iconBg: "bg-pink-500/20 border-pink-400/45" },
+                    { value: "learning", label: "Learning", icon: <BookOpen className="w-5 h-5" />, color: "text-blue-400", iconBg: "bg-blue-500/20 border-blue-400/45" },
+                    { value: "other", label: "Other", icon: <Target className="w-5 h-5" />, color: "text-violet-400", iconBg: "bg-violet-500/20 border-violet-400/45" },
                   ].map((cat) => {
                     const goalTypeMatch = GOAL_TYPES.find((t) => t.value === cat.value);
                     return (
                       <button
                         key={cat.value}
+                        type="button"
                         onClick={() => {
                           setFormData((p) => ({ ...p, type: cat.value, unit: goalTypeMatch?.unit || "" }));
                           setAddStep(1);
                         }}
-                        className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/8 hover:border-white/20 transition-colors text-left"
+                        className="flex items-center gap-2.5 rounded-2xl border-2 border-white/25 bg-white/[0.07] p-3 text-left shadow-md shadow-black/30 ring-1 ring-white/10 transition-all hover:border-teal-400/60 hover:bg-white/[0.12] hover:ring-teal-400/20 active:scale-[0.98]"
                       >
-                        <div className={`w-9 h-9 rounded-xl border flex items-center justify-center flex-shrink-0 ${cat.bg} ${cat.color}`}>
+                        <div
+                          className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border-2 ${cat.iconBg} ${cat.color}`}
+                        >
                           {cat.icon}
                         </div>
                         <span className="text-sm font-semibold text-white">{cat.label}</span>
@@ -706,22 +739,24 @@ export default function GoalsPage() {
             {/* Step 1 — Daily or Long-term */}
             {addStep === 1 && (
               <>
-                <p className="text-xl font-bold text-white mb-1">How does it work?</p>
-                <p className="text-sm text-gray-500 mb-6">Choose how to track your progress</p>
-                <div className="space-y-3 mb-6">
+                <p className="text-lg sm:text-xl font-bold text-white mb-0.5 leading-tight">How does it work?</p>
+                <p className="text-sm text-gray-400 mb-3">Choose how to track your progress</p>
+                <div className="mb-4 space-y-2.5">
                   <button
+                    type="button"
                     onClick={() => { setFormData((p) => ({ ...p, goalType: "daily" })); setAddStep(2); }}
-                    className="w-full p-4 rounded-2xl bg-white/5 border border-white/8 hover:border-teal-400/40 hover:bg-white/8 transition-colors text-left"
+                    className="w-full rounded-2xl border-2 border-white/20 bg-white/[0.06] p-4 text-left ring-1 ring-white/10 transition-colors hover:border-teal-400/50 hover:bg-white/10"
                   >
-                    <p className="text-base font-bold text-white mb-0.5">Daily</p>
-                    <p className="text-sm text-gray-500">Resets every day — track your streak.</p>
+                    <p className="mb-0.5 text-base font-bold text-white">Daily</p>
+                    <p className="text-sm text-gray-400">Resets every day — track your streak.</p>
                   </button>
                   <button
+                    type="button"
                     onClick={() => { setFormData((p) => ({ ...p, goalType: "long-term" })); setAddStep(2); }}
-                    className="w-full p-4 rounded-2xl bg-white/5 border border-white/8 hover:border-teal-400/40 hover:bg-white/8 transition-colors text-left"
+                    className="w-full rounded-2xl border-2 border-white/20 bg-white/[0.06] p-4 text-left ring-1 ring-white/10 transition-colors hover:border-teal-400/50 hover:bg-white/10"
                   >
-                    <p className="text-base font-bold text-white mb-0.5">Long-term</p>
-                    <p className="text-sm text-gray-500">A milestone with a target date.</p>
+                    <p className="mb-0.5 text-base font-bold text-white">Long-term</p>
+                    <p className="text-sm text-gray-400">A milestone with a target date.</p>
                   </button>
                 </div>
                 <button onClick={() => setAddStep(0)} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-300 transition-colors">
@@ -733,8 +768,8 @@ export default function GoalsPage() {
             {/* Step 2 — Details */}
             {addStep === 2 && (
               <>
-                <p className="text-xl font-bold text-white mb-1">{editingGoal ? "Edit goal" : "Set the details"}</p>
-                <p className="text-sm text-gray-500 mb-6">
+                <p className="text-lg sm:text-xl font-bold text-white mb-0.5 leading-tight">{editingGoal ? "Edit goal" : "Set the details"}</p>
+                <p className="mb-4 text-sm text-gray-400">
                   {editingGoal ? "Update your goal details below." : "Almost done — fill in a few quick details."}
                 </p>
                 <div className="space-y-4">

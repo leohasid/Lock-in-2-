@@ -218,7 +218,8 @@ struct WebView: UIViewRepresentable {
                     let id = body["id"] as? String ?? ""
                     let value = UserDefaults.standard.string(forKey: prefix + key) ?? ""
                     let b64 = Data(value.utf8).base64EncodedString()
-                    let js = "if(window.MogifiNativeStorage&&window.MogifiNativeStorage._resolve){var v='';try{v=atob('\(b64)')}catch(e){};window.MogifiNativeStorage._resolve('\(id)',v)}"
+                    // atob gives byte values as chars; reassemble as UTF-8 for TextDecoder (avoids mojibake for non-ASCII).
+                    let js = "if(window.MogifiNativeStorage&&window.MogifiNativeStorage._resolve){var v='';try{var s=atob('\(b64)'),u=new Uint8Array(s.length);for(var i=0;i<s.length;i++)u[i]=s.charCodeAt(i);v=new TextDecoder('utf-8').decode(u)}catch(e){};window.MogifiNativeStorage._resolve('\(id)',v)}"
                     webView?.evaluateJavaScript(js)
                 } else if action == "set" {
                     let key = body["key"] as? String ?? ""
@@ -243,7 +244,7 @@ struct WebView: UIViewRepresentable {
             print("MogifiSubscribe bridge error: \(detail)")
             let msg = detail.isEmpty ? "Unknown StoreKit error" : detail
             let b64 = Data(msg.utf8).base64EncodedString()
-            let js = "if(window.MogifiNativeSubscribe&&window.MogifiNativeSubscribe._reject){try{var m=atob('\(b64)');window.MogifiNativeSubscribe._reject('\(escapedId)',m)}catch(e){window.MogifiNativeSubscribe._reject('\(escapedId)','Purchase failed')}}"
+            let js = "if(window.MogifiNativeSubscribe&&window.MogifiNativeSubscribe._reject){try{var s=atob('\(b64)'),u=new Uint8Array(s.length);for(var i=0;i<s.length;i++)u[i]=s.charCodeAt(i);var m=new TextDecoder('utf-8').decode(u);window.MogifiNativeSubscribe._reject('\(escapedId)',m)}catch(e){window.MogifiNativeSubscribe._reject('\(escapedId)','Purchase failed')}}"
             webView?.evaluateJavaScript(js, completionHandler: nil)
         }
         

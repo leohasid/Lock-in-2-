@@ -75,9 +75,12 @@ export default function SubscribePage() {
       const msg = formatUnknownError(error);
       if (msg.toLowerCase().includes("cancel")) return;
       let detail = msg;
-      if (/not available|couldn.?t find|invalid product|no products|storekit|product/i.test(msg)) {
+      if (
+        /not available|couldn.?t find|invalid product|no products|storekit|product/i.test(msg) &&
+        !/app store connect|sandbox|xcode|storekit file/i.test(msg)
+      ) {
         detail +=
-          " — Often: App Store Connect metadata still incomplete, product ID mismatch, or not signed in with a Sandbox Apple ID for testing.";
+          " If this persists: check App Store Connect (product ID match, complete metadata) and a Sandbox test account on device.";
       }
       setSubscribeError(detail);
     } finally {

@@ -12,8 +12,8 @@
 //    • Each product → Subscription pricing → Introductory Offer → Free for 3 days
 //      (eligibility: new subscribers; Apple shows the exact sheet text per region)
 //
-//  Local testing: add Products.storekit to the Xcode project, then
-//  Product → Scheme → Edit Scheme → Run → Options → StoreKit Configuration → Products.storekit
+//  Local testing: `StoreKit/Products.storekit` in this repo, Scheme → Run → Options →
+//  StoreKit Configuration = Products.storekit (only applies when you Run from Xcode, ⌘R).
 //
 //  Production: products + introductory offers must exist in App Store Connect; the
 //  same product.purchase() call applies the trial automatically for eligible users.
@@ -32,7 +32,7 @@ enum SubscriptionError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .productUnavailable:
-            return "Subscription products are not available yet. Add them in App Store Connect and ensure the product IDs match SubscriptionManager."
+            return "Subscriptions are not available from Apple for this app build yet. To test: run the app with Xcode (Run) so the local StoreKit file is used, or add these exact product IDs in App Store Connect, finish pricing and localizations, then use a Sandbox Apple ID on the device when not launching from Xcode."
         case .userCancelled:
             return "Purchase cancelled."
         case .pending:
@@ -121,9 +121,20 @@ enum SubscriptionManager {
             productId = monthlyProductId
         }
 
-        let products = try await Product.products(for: [productId])
-        guard let product = products.first else {
-            print("Mogifi IAP: StoreKit returned 0 products for \(productId). Fix ASC metadata, link subscription to app, sandbox Apple ID, or Xcode Scheme → StoreKit Configuration → Products.storekit.")
+        // Load all subscription products at once; single-ID fetches can also return [] if the
+        // StoreKit config is not active (e.g. not launched with ⌘R, or device using Sandbox without ASC).
+        let all = try await Product.products(for: [monthlyProductId, yearlyProductId])
+        #if DEBUG
+        if all.isEmpty {
+            print("Mogifi IAP: Product.products returned []. If testing on a device without App Store products, use an iOS Simulator (⌘R) with StoreKit file, or complete ASC + Sandbox. Scheme must list StoreKit/Products.storekit for local catalog.")
+        } else {
+            let ids = all.map(\.id).sorted()
+            print("Mogifi IAP: loaded product IDs: \(ids.joined(separator: ", "))")
+        }
+        #endif
+        let product = all.first { $0.id == productId }
+        guard let product else {
+            print("Mogifi IAP: missing product for \(productId) (fetched: \(all.map(\.id))). Not using local .storekit, or App Store Connect / Sandbox not set for this build.")
             throw SubscriptionError.productUnavailable
         }
 
