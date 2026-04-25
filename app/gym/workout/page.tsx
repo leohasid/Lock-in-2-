@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { getBuiltInImageUrl, getExerciseImagePosition } from "@/lib/built-in-exercise-images";
-import { X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, ChevronLeft, Dumbbell, TrendingUp, Calendar, Sparkles, Play, Flame, Lightbulb } from "lucide-react";
+import { X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, ChevronLeft, Dumbbell, TrendingUp, Calendar, Sparkles, Play, Flame, Lightbulb, Trophy } from "lucide-react";
 import {
   collectWorkoutDaysFromStorage,
   buildProgressionTips,
@@ -74,6 +74,83 @@ interface CustomExercise {
   imageUrl?: string;
 }
 
+// ── Progress tab: lift chart types + component ──
+interface ProgressLiftData {
+  name: string;
+  weights: number[];
+  dates: string[];
+  first: number;
+  latest: number;
+  best: number;
+  delta: number;
+  sessions: number;
+}
+interface ProgressPR { exercise: string; weight: number; reps: number; date: string; }
+
+function fmtProgressDate(dateStr: string): string {
+  try { return new Date(dateStr + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }); }
+  catch { return dateStr; }
+}
+
+function ProgressLiftChart({ lift, idx }: { lift: ProgressLiftData; idx: number }) {
+  const pts_n = Math.min(lift.weights.length, 12);
+  const wts = lift.weights.slice(-pts_n);
+  const dts = lift.dates.slice(-pts_n);
+  const rawMin = Math.min(...wts), rawMax = Math.max(...wts);
+  const pad = Math.max((rawMax - rawMin) * 0.25, rawMax * 0.06, 2);
+  const yMin = Math.max(0, rawMin - pad), yMax = rawMax + pad * 0.4, yRange = yMax - yMin || 1;
+  const W = 320, H = 90, ML = 32, MR = 6, MT = 8, MB = 18;
+  const cW = W - ML - MR, cH = H - MT - MB;
+  const toX = (i: number) => ML + (i / Math.max(wts.length - 1, 1)) * cW;
+  const toY = (v: number) => MT + (1 - (v - yMin) / yRange) * cH;
+  const pts = wts.map((v, i) => ({ x: toX(i), y: toY(v) }));
+  let line = `M ${pts[0].x},${pts[0].y}`;
+  for (let i = 1; i < pts.length; i++) {
+    const cx = (pts[i-1].x + pts[i].x) / 2;
+    line += ` C ${cx},${pts[i-1].y} ${cx},${pts[i].y} ${pts[i].x},${pts[i].y}`;
+  }
+  const area = `${line} L ${pts[pts.length-1].x},${MT+cH} L ${pts[0].x},${MT+cH} Z`;
+  const yTicks = [Math.round(yMin+yRange*0.15), Math.round(yMin+yRange*0.55), Math.round(yMin+yRange*0.9)];
+  const gId = `plg_${idx}`;
+  const isUp = lift.delta > 0, isFlat = lift.delta === 0;
+  const pctChange = lift.first > 0 ? Math.round(Math.abs((lift.delta / lift.first) * 100)) : 0;
+  return (
+    <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4">
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-white truncate">{lift.name}</p>
+          <p className="text-[10px] text-gray-600 mt-0.5">{lift.sessions} sessions · best {lift.best}kg</p>
+        </div>
+        <div className="text-right ml-3 shrink-0">
+          <p className="text-xl font-black text-white leading-none">{lift.latest}<span className="text-xs font-normal text-gray-600 ml-0.5">kg</span></p>
+          <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold mt-1 px-1.5 py-0.5 rounded-lg ${isFlat ? "bg-white/6 text-gray-500" : isUp ? "bg-teal-500/15 text-teal-400" : "bg-red-500/15 text-red-400"}`}>
+            {isFlat ? "No change" : `${isUp ? "+" : ""}${lift.delta}kg (${pctChange}%)`}
+          </span>
+        </div>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 90 }}>
+        <defs>
+          <linearGradient id={gId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#2dd4bf" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {yTicks.map((t, i) => { const y = toY(t); return (
+          <g key={i}>
+            <line x1={ML} y1={y} x2={W-MR} y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="0.7" />
+            <text x={ML-4} y={y+3} textAnchor="end" fontSize="7" fill="rgba(156,163,175,0.4)">{t}</text>
+          </g>
+        );})}
+        <path d={area} fill={`url(#${gId})`} />
+        <path d={line} fill="none" stroke="#2dd4bf" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={i === pts.length-1 ? 3.5 : 2} fill={i === pts.length-1 ? "#2dd4bf" : "rgba(45,212,191,0.45)"} />)}
+        <text x={pts[0].x} y={H-3} textAnchor="middle" fontSize="7" fill="rgba(156,163,175,0.35)">{fmtProgressDate(dts[0])}</text>
+        {pts.length > 1 && <text x={pts[pts.length-1].x} y={H-3} textAnchor="middle" fontSize="7" fill="rgba(156,163,175,0.55)">{fmtProgressDate(dts[dts.length-1])}</text>}
+      </svg>
+    </div>
+  );
+}
+
 const CircularProgress = ({ percentage, size = 120, color = "#f97316", label }: { percentage: number; size?: number; color?: string; label?: string }) => {
   const radius = (size - 20) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -132,6 +209,12 @@ export default function WorkoutPage() {
   const [activeStreak, setActiveStreak] = useState(0);
   const [lastWorkout, setLastWorkout] = useState<{ name: string; daysAgo: number } | null>(null);
   const [caloriesBurnedThisMonth, setCaloriesBurnedThisMonth] = useState(0);
+  const [gymAiMsg, setGymAiMsg] = useState("");
+  const [gymAiFetching, setGymAiFetching] = useState(false);
+  const [liftChartData, setLiftChartData] = useState<ProgressLiftData[]>([]);
+  const [progressPRs, setProgressPRs] = useState<ProgressPR[]>([]);
+  const [progressSubTab, setProgressSubTab] = useState<"overview" | "lifts" | "records">("overview");
+  const [progressDates, setProgressDates] = useState<Set<string>>(new Set());
 
   // Get date from URL on client side
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -816,6 +899,95 @@ export default function WorkoutPage() {
     };
   }, []);
 
+  // Load chart data + AI when user opens the progress tab
+  useEffect(() => {
+    if (activeTab !== "progress" || typeof window === "undefined") return;
+    const allKeys = Object.keys(localStorage).filter(k => k.startsWith("workout_data_")).sort();
+    const exerciseMap: Record<string, { date: string; maxWeight: number; maxReps: number }[]> = {};
+    const prMap: Record<string, { weight: number; reps: number; date: string }> = {};
+    const datesSet = new Set<string>();
+    allKeys.forEach(k => {
+      const date = k.replace("workout_data_", "");
+      try {
+        const data = JSON.parse(localStorage.getItem(k) || "[]");
+        let hasData = false;
+        (data as any[]).forEach((ex: any) => {
+          if (!ex.name?.trim()) return;
+          const name = ex.name.trim();
+          let maxW = 0, maxR = 0;
+          (ex.sets || []).forEach((s: any) => {
+            if (s.completed) {
+              hasData = true;
+              const w = Number(s.weight) || 0, r = Number(s.reps) || 0;
+              if (w > maxW) { maxW = w; maxR = r; }
+              if (!prMap[name] || w > prMap[name].weight) prMap[name] = { weight: w, reps: r, date };
+            }
+          });
+          if (maxW > 0) {
+            if (!exerciseMap[name]) exerciseMap[name] = [];
+            exerciseMap[name].push({ date, maxWeight: maxW, maxReps: maxR });
+          }
+        });
+        if (hasData) datesSet.add(date);
+      } catch {}
+    });
+    setProgressDates(datesSet);
+    const lifts: ProgressLiftData[] = Object.entries(exerciseMap)
+      .filter(([, h]) => h.length >= 2)
+      .map(([name, h]) => {
+        const weights = h.map(x => x.maxWeight), dates = h.map(x => x.date);
+        const first = weights[0], latest = weights[weights.length - 1], best = Math.max(...weights);
+        return { name, weights, dates, first, latest, best, delta: latest - first, sessions: weights.length };
+      })
+      .sort((a, b) => b.sessions - a.sessions)
+      .slice(0, 8);
+    setLiftChartData(lifts);
+    setProgressPRs(
+      Object.entries(prMap)
+        .map(([exercise, v]) => ({ exercise, ...v }))
+        .filter(pr => pr.weight > 0)
+        .sort((a, b) => b.weight - a.weight)
+        .slice(0, 8)
+    );
+    // Weekly AI (cached)
+    const today = new Date();
+    const dow = today.getDay();
+    const mon = new Date(today);
+    mon.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+    const weekKey = mon.toISOString().split("T")[0];
+    const cacheKey = `gymAI_week_${weekKey}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) { setGymAiMsg(cached); return; }
+    if (allKeys.length === 0) return;
+    const improving = Object.entries(exerciseMap)
+      .filter(([, h]) => h.length >= 2)
+      .map(([name, h]) => ({ name, delta: h[h.length-1].maxWeight - h[0].maxWeight, sessions: h.length }))
+      .filter(l => l.delta > 0).sort((a, b) => b.delta - a.delta);
+    const stagnant = Object.entries(exerciseMap)
+      .filter(([, h]) => h.length >= 3)
+      .map(([name, h]) => { const r = h.slice(-3).map(x => x.maxWeight); return { name, spread: Math.max(...r) - Math.min(...r) }; })
+      .filter(l => l.spread === 0);
+    const prompt = `You are a gym coach analysing a user's training data. Give a 2-3 sentence performance summary.
+Sessions: ${allKeys.length} total, ${activeStreak} day streak.
+Improving lifts: ${improving.length > 0 ? improving.slice(0,3).map(l => `${l.name} +${l.delta}kg`).join(", ") : "none yet"}.
+Stagnant lifts (no change last 3 sessions): ${stagnant.length > 0 ? stagnant.slice(0,2).map(l => l.name).join(", ") : "none"}.
+PRs: ${Object.entries(prMap).filter(([,v]) => v.weight > 0).sort(([,a],[,b]) => b.weight - a.weight).slice(0,3).map(([n,v]) => `${n} ${v.weight}kg`).join(", ")}.
+Rules: Reference specific numbers. If improving, acknowledge with numbers. If stagnant, give ONE specific actionable tip. Direct coach tone. No emojis. Max 40 words.`;
+    setGymAiFetching(true);
+    fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "general", data: { prompt } }) })
+      .then(r => r.json())
+      .then(d => {
+        const msg = d.result || d.message || "";
+        if (msg) {
+          setGymAiMsg(msg);
+          localStorage.setItem(cacheKey, msg);
+          Object.keys(localStorage).filter(k => k.startsWith("gymAI_week_") && k !== cacheKey).forEach(k => localStorage.removeItem(k));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setGymAiFetching(false));
+  }, [activeTab]);
+
   const handleSwapExercise = (exId: string, newName: string) => {
     const workoutType = getWorkoutTypeForDate(selectedDate);
     if (!workoutType) return;
@@ -1023,140 +1195,191 @@ export default function WorkoutPage() {
 
         {/* Content based on active tab */}
         {activeTab === "progress" ? (
-          <div className="space-y-4 pb-20">
-            <div>
-              <h1 className="text-2xl font-bold text-white">Progress</h1>
-              <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
-                Uses <span className="text-gray-400">completed sets</span> and your plan&apos;s <span className="text-gray-400">rep targets</span>.
-              </p>
-            </div>
+          <div className="space-y-3 pb-20">
 
-            <div className="flex flex-wrap gap-2 text-[11px] items-center">
-              <span className="inline-flex items-center gap-1 rounded-lg border border-orange-500/25 bg-orange-500/10 px-2 py-1 text-orange-200">
-                <Flame className="w-3.5 h-3.5 shrink-0" />
-                {activeStreak}d streak
-              </span>
-              <span
-                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 ${
-                  weeklySessionProgress.hasPlan
-                    ? "border-teal-500/25 bg-teal-500/10 text-teal-200"
-                    : "border-sky-500/25 bg-sky-500/10 text-sky-200"
-                }`}
-              >
-                <Dumbbell className="w-3.5 h-3.5 shrink-0" />
-                <span className="font-semibold tabular-nums">{weeklySessionProgress.completed}/{weeklySessionProgress.target}</span>
-                <span className={weeklySessionProgress.hasPlan ? "text-teal-300/80" : "text-sky-300/80"}>days complete</span>
-              </span>
-              {lastWorkout && (
-                <span className="text-gray-500">
-                  Last: <span className="text-gray-300">{lastWorkout.name}</span>
-                  {lastWorkout.daysAgo === 0 ? " · today" : lastWorkout.daysAgo === 1 ? " · yesterday" : ` · ${lastWorkout.daysAgo}d ago`}
-                </span>
-              )}
-            </div>
-
-            <div className="rounded-lg border border-violet-500/25 bg-violet-950/20 px-3 py-2.5">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-3.5 h-3.5 text-violet-400/90 shrink-0" />
-                <h2 className="text-[11px] font-semibold text-white whitespace-nowrap">Strength trend</h2>
-                <select
-                  value={strengthTrendPeriod}
-                  onChange={(e) => setStrengthTrendPeriod(e.target.value as StrengthTrendPeriodId)}
-                  className="min-w-0 flex-1 rounded-md border border-white/8 bg-black/50 py-1 pl-2 pr-7 text-[11px] text-white focus:outline-none focus:ring-1 focus:ring-violet-500/50 appearance-none bg-[length:14px] bg-[right_0.35rem_center] bg-no-repeat"
-                  style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239ca3af'%3E%3Cpath d='M3 5h6l-3 4z'/%3E%3C/svg%3E")`,
-                  }}
-                >
-                  {progressAnalytics.strengthTrends.map((row) => (
-                    <option key={row.id} value={row.id}>
-                      {row.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {(() => {
-                const row = progressAnalytics.strengthTrends.find((r) => r.id === strengthTrendPeriod);
-                if (!row) return null;
-                const pctLabel =
-                  row.changePct == null
-                    ? "0%"
-                    : `${row.changePct >= 0 ? "+" : ""}${row.changePct}%`;
-                const pctClass =
-                  row.changePct == null
-                    ? "text-gray-400"
-                    : row.changePct >= 0
-                      ? "text-teal-400"
-                      : "text-red-400";
-                return (
-                  <div className="mt-2 flex justify-center pl-6 pr-0.5 py-0.5">
-                    <span className={`text-base font-bold tabular-nums px-1 ${pctClass}`}>{pctLabel}</span>
+            {/* AI Coach Analysis */}
+            <div className="relative overflow-hidden rounded-2xl" style={{ background: "linear-gradient(135deg, #0a1628 0%, #0f2a2a 60%, #071a14 100%)" }}>
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <Sparkles className="w-3.5 h-3.5 text-teal-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-teal-400/70">AI Coach Analysis</span>
+                </div>
+                {gymAiFetching ? (
+                  <div className="flex gap-1 py-1">
+                    {[0,1,2].map(i => <div key={i} className="w-1.5 h-1.5 rounded-full bg-teal-400/40 animate-bounce" style={{ animationDelay: `${i*150}ms` }} />)}
                   </div>
-                );
-              })()}
+                ) : gymAiMsg ? (
+                  <p className="text-[13px] text-gray-300 leading-relaxed">{gymAiMsg}</p>
+                ) : (
+                  <p className="text-[12px] text-gray-600 leading-relaxed">Log sessions with weights to unlock your personalised AI analysis.</p>
+                )}
+              </div>
             </div>
 
-            <div className="rounded-xl border border-gray-700 bg-gray-800/40 p-4">
-              <h2 className="text-sm font-semibold text-white mb-0.5">Best at your rep goal</h2>
-              <p className="text-[10px] text-gray-500 mb-3">
-                Only sets where reps ≥ your plan target. Heaviest weight and most reps can come from different sets.
-              </p>
-              {progressAnalytics.goalBests.length === 0 ? (
-                <p className="text-sm text-gray-500">Add exercises in Workout plans so each lift has a rep target.</p>
-              ) : (
-                <ul className="divide-y divide-white/10 rounded-lg border border-white/8 overflow-hidden">
-                  {progressAnalytics.goalBests.map((row) => (
-                    <li key={`${row.exerciseName}-${row.goalReps}`} className="px-3 py-2.5 bg-black/20">
-                      <div className="flex justify-between gap-2 items-start">
-                        <p className="text-sm font-medium text-white">{row.exerciseName}</p>
-                        <span className="text-[10px] text-gray-500 shrink-0">target {row.goalReps}+ reps</span>
-                      </div>
-                      {row.bestWeight == null && row.bestReps == null ? (
-                        <p className="text-[11px] text-gray-500 mt-1">No completed sets at {row.goalReps}+ reps yet.</p>
-                      ) : (
-                        <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
-                          {row.bestWeight != null && (
-                            <span className="text-teal-300/90">
-                              Heaviest: <span className="font-bold tabular-nums">{row.bestWeight} kg</span>
-                            </span>
-                          )}
-                          {row.bestReps != null && (
-                            <span className="text-gray-300">
-                              Top reps: <span className="font-semibold tabular-nums">{row.bestReps}</span>
-                            </span>
-                          )}
-                          {row.qualifyingSetCount > 0 && (
-                            <span className="text-gray-600">({row.qualifyingSetCount} sets ≥ goal)</span>
-                          )}
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-3 text-center">
+                <p className="text-2xl font-black text-white leading-none mb-1">{totalWorkoutsLogged}</p>
+                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Sessions</p>
+              </div>
+              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-3 text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  {activeStreak > 0 && <Flame className="w-3.5 h-3.5 text-orange-400" />}
+                  <p className={`text-2xl font-black leading-none ${activeStreak > 0 ? "text-orange-400" : "text-white"}`}>{activeStreak}d</p>
+                </div>
+                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Streak</p>
+              </div>
+              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-3 text-center">
+                <p className="text-2xl font-black text-teal-400 leading-none mb-1">{weeklySessionProgress.completed}</p>
+                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">This week</p>
+              </div>
+            </div>
+
+            {/* Sub-tab bar */}
+            <div className="bg-white/5 border border-white/8 rounded-2xl p-1 flex gap-1">
+              {(["overview", "lifts", "records"] as const).map(tab => (
+                <button key={tab} onClick={() => setProgressSubTab(tab)}
+                  className={`flex-1 py-2 rounded-xl text-[12px] font-bold capitalize transition-all ${progressSubTab === tab ? "bg-teal-400 text-black" : "text-gray-500 hover:text-gray-300"}`}>
+                  {tab === "overview" ? "Overview" : tab === "lifts" ? "Strength" : "Records"}
+                </button>
+              ))}
+            </div>
+
+            {/* ── OVERVIEW ── */}
+            {progressSubTab === "overview" && (
+              <div className="space-y-3">
+                {/* This week dots */}
+                <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4">
+                  <p className="text-sm font-bold text-white mb-3">This week</p>
+                  <div className="flex gap-2 justify-between">
+                    {weekDays.map((day, i) => {
+                      const ds = toLocalDateString(day);
+                      const todayStr = toLocalDateString(new Date());
+                      const isFuture = ds > todayStr;
+                      const isToday = ds === todayStr;
+                      const hasWorkout = progressDates.has(ds);
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                          <div className={`w-full aspect-square rounded-lg max-w-[36px] ${
+                            isFuture ? "bg-white/3"
+                            : hasWorkout ? isToday ? "bg-teal-400 ring-2 ring-teal-300/50 ring-offset-1 ring-offset-[#0c1422]" : "bg-teal-500/70"
+                            : isToday ? "ring-1 ring-teal-500/40 ring-offset-1 ring-offset-[#0c1422] bg-transparent" : "bg-white/6"
+                          }`} />
+                          <span className={`text-[9px] font-bold ${isFuture ? "text-gray-700" : isToday ? "text-teal-400" : "text-gray-600"}`}>
+                            {["M","T","W","T","F","S","S"][i]}
+                          </span>
                         </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
-            {progressAnalytics.progressionTips.length > 0 && (
-              <div className="rounded-xl border border-amber-500/20 bg-amber-950/15 p-3">
-                <h2 className="text-xs font-semibold text-white flex items-center gap-2 mb-2">
-                  <Lightbulb className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  Quick tips
-                </h2>
-                <ul className="space-y-2">
-                  {progressAnalytics.progressionTips.map((tip, i) => (
-                    <li key={i}>
-                      <p className="text-[11px] font-medium text-amber-100/90">{tip.title}</p>
-                      <p className="text-[10px] text-gray-500 mt-0.5 leading-snug">{tip.detail}</p>
-                    </li>
-                  ))}
-                </ul>
+                {/* Volume bars */}
+                {weeklyVolume.some(v => v > 0) && (
+                  <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-bold text-white">Weekly volume</p>
+                      <span className="text-[10px] text-gray-600">kg lifted per day</span>
+                    </div>
+                    <div className="flex items-end gap-1.5" style={{ height: 64 }}>
+                      {weeklyVolume.map((vol, i) => {
+                        const maxVol = Math.max(...weeklyVolume, 1);
+                        const pct = (vol / maxVol) * 100;
+                        const todayIdx = weekDays.findIndex(d => toLocalDateString(d) === toLocalDateString(new Date()));
+                        const isToday = i === todayIdx;
+                        return (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                            {vol > 0 && <span className="text-[8px] text-gray-600 tabular-nums">{vol >= 1000 ? `${Math.round(vol/1000)}k` : vol}</span>}
+                            <div className="w-full rounded-md" style={{
+                              height: Math.max(3, (pct/100) * 44),
+                              background: isToday ? "linear-gradient(to top, #0d9488, #5eead4)" : vol > 0 ? "rgba(45,212,191,0.3)" : "rgba(255,255,255,0.05)",
+                            }} />
+                            <span className={`text-[8px] font-bold ${isToday ? "text-teal-400" : "text-gray-700"}`}>
+                              {["M","T","W","T","F","S","S"][i]}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tips */}
+                {progressAnalytics.progressionTips.length > 0 && (
+                  <div className="bg-[#0c1422] border border-amber-500/15 rounded-2xl p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+                      <p className="text-sm font-bold text-white">Training tips</p>
+                    </div>
+                    <div className="space-y-2.5">
+                      {progressAnalytics.progressionTips.map((tip, i) => (
+                        <div key={i}>
+                          <p className="text-[12px] font-semibold text-amber-200/90">{tip.title}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5 leading-snug">{tip.detail}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
-            <div className="rounded-xl border border-gray-700 bg-gray-800/40 p-4">
-              <p className="text-[9px] font-bold uppercase tracking-wider text-gray-500 mb-1">Est. calories this month</p>
-              <p className="text-2xl font-bold text-white tabular-nums">{caloriesBurnedThisMonth.toLocaleString()} kcal</p>
-              <p className="text-[10px] text-gray-600 mt-1">From logged volume × 0.04 (rough estimate)</p>
-            </div>
+            {/* ── STRENGTH CHARTS ── */}
+            {progressSubTab === "lifts" && (
+              <div className="space-y-3">
+                {liftChartData.length === 0 ? (
+                  <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-8 text-center">
+                    <p className="text-gray-500 text-sm">Need 2+ sessions per exercise to show charts.</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold px-1">Max weight per session</p>
+                    {liftChartData.map((lift, i) => <ProgressLiftChart key={lift.name} lift={lift} idx={i} />)}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* ── RECORDS ── */}
+            {progressSubTab === "records" && (
+              <div>
+                {progressPRs.length === 0 ? (
+                  <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-8 text-center">
+                    <p className="text-gray-500 text-sm">No records yet — log sets with weights.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Trophy className="w-3.5 h-3.5 text-yellow-400" />
+                      <p className="text-[11px] text-yellow-400/70 font-semibold uppercase tracking-widest">Personal Records</p>
+                    </div>
+                    <div className="space-y-2">
+                      {progressPRs.map((pr, i) => (
+                        <div key={i} className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 flex items-center gap-4">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                            i === 0 ? "bg-yellow-400/15 border border-yellow-400/25"
+                            : i === 1 ? "bg-gray-400/10 border border-gray-400/20"
+                            : i === 2 ? "bg-amber-700/15 border border-amber-700/25"
+                            : "bg-white/5 border border-white/8"
+                          }`}>
+                            <span className={`text-[11px] font-black ${i === 0 ? "text-yellow-400" : i === 1 ? "text-gray-400" : i === 2 ? "text-amber-600" : "text-gray-600"}`}>#{i+1}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-white truncate">{pr.exercise}</p>
+                            <p className="text-[10px] text-gray-600 mt-0.5">{fmtProgressDate(pr.date)}{pr.reps > 0 ? ` · ${pr.reps} reps` : ""}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xl font-black text-yellow-400 leading-none">
+                              {pr.weight}<span className="text-xs font-normal text-yellow-600/50 ml-0.5">kg</span>
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <>
