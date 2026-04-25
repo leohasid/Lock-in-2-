@@ -151,6 +151,112 @@ function ProgressLiftChart({ lift, idx }: { lift: ProgressLiftData; idx: number 
   );
 }
 
+// ── Muscle body diagram ──
+const LEVEL_COLORS: Record<string, string> = {
+  none: "#1e293b",
+  beginner: "#3b82f6",
+  intermediate: "#f59e0b",
+  advanced: "#10b981",
+};
+
+function getMuscleGroups(name: string): string[] {
+  const n = name.toLowerCase();
+  const out: string[] = [];
+  if (/bench|chest|push.?up|pec|fly|cable cross/.test(n)) out.push("chest");
+  if (/pull.?up|chin.?up|lat|row|deadlift|pull.?down|t.bar/.test(n)) out.push("back");
+  if (/shoulder|delt|overhead press|ohp|lateral raise|face pull|military/.test(n)) out.push("shoulders");
+  if (/bicep|curl|hammer/.test(n)) out.push("biceps");
+  if (/tricep|skull|pushdown|dip|close grip/.test(n)) out.push("triceps");
+  if (/squat|leg press|lunge|quad|hack|bulgarian|front squat/.test(n)) out.push("quads");
+  if (/rdl|romanian|hamstring|leg curl/.test(n)) out.push("hamstrings");
+  if (/glute|hip thrust|deadlift/.test(n)) out.push("glutes");
+  if (/calf|calves/.test(n)) out.push("calves");
+  if (/crunch|plank|sit.?up|\bab\b|core|oblique/.test(n)) out.push("abs");
+  return out;
+}
+
+function getMuscleLevel(sessions: number): "none" | "beginner" | "intermediate" | "advanced" {
+  if (sessions === 0) return "none";
+  if (sessions <= 4) return "beginner";
+  if (sessions <= 12) return "intermediate";
+  return "advanced";
+}
+
+function BodyDiagram({ levels, view }: { levels: Record<string, string>; view: "front" | "back" }) {
+  const c = (m: string) => LEVEL_COLORS[levels[m] ?? "none"] ?? LEVEL_COLORS.none;
+  if (view === "front") return (
+    <svg viewBox="0 0 120 280" style={{ width: 120, height: 280 }}>
+      <ellipse cx="60" cy="19" rx="14" ry="17" fill="#1e293b" />
+      <rect x="55" y="34" width="10" height="9" rx="3" fill="#1e293b" />
+      {/* shoulders */}
+      <ellipse cx="38" cy="51" rx="13" ry="8" fill={c("shoulders")} />
+      <ellipse cx="82" cy="51" rx="13" ry="8" fill={c("shoulders")} />
+      {/* chest */}
+      <ellipse cx="50" cy="63" rx="12" ry="11" fill={c("chest")} />
+      <ellipse cx="70" cy="63" rx="12" ry="11" fill={c("chest")} />
+      {/* upper arms / biceps */}
+      <rect x="23" y="52" width="14" height="40" rx="6" fill={c("biceps")} />
+      <rect x="83" y="52" width="14" height="40" rx="6" fill={c("biceps")} />
+      {/* forearms */}
+      <rect x="21" y="93" width="12" height="34" rx="5" fill="#1e293b" />
+      <rect x="87" y="93" width="12" height="34" rx="5" fill="#1e293b" />
+      {/* hands */}
+      <ellipse cx="27" cy="132" rx="7" ry="4" fill="#1e293b" />
+      <ellipse cx="93" cy="132" rx="7" ry="4" fill="#1e293b" />
+      {/* abs */}
+      <rect x="46" y="75" width="28" height="42" rx="5" fill={c("abs")} />
+      {/* hips */}
+      <rect x="42" y="115" width="36" height="13" rx="5" fill="#1e293b" />
+      {/* quads */}
+      <rect x="43" y="126" width="15" height="52" rx="7" fill={c("quads")} />
+      <rect x="62" y="126" width="15" height="52" rx="7" fill={c("quads")} />
+      {/* knees */}
+      <ellipse cx="51" cy="181" rx="8" ry="5" fill="#1e293b" />
+      <ellipse cx="70" cy="181" rx="8" ry="5" fill="#1e293b" />
+      {/* calves */}
+      <rect x="44" y="185" width="13" height="42" rx="6" fill={c("calves")} />
+      <rect x="63" y="185" width="13" height="42" rx="6" fill={c("calves")} />
+      {/* feet */}
+      <ellipse cx="51" cy="231" rx="11" ry="4" fill="#1e293b" />
+      <ellipse cx="70" cy="231" rx="11" ry="4" fill="#1e293b" />
+    </svg>
+  );
+  return (
+    <svg viewBox="0 0 120 280" style={{ width: 120, height: 280 }}>
+      <ellipse cx="60" cy="19" rx="14" ry="17" fill="#1e293b" />
+      <rect x="55" y="34" width="10" height="9" rx="3" fill="#1e293b" />
+      {/* traps / upper back */}
+      <ellipse cx="38" cy="51" rx="13" ry="8" fill={c("back")} />
+      <ellipse cx="82" cy="51" rx="13" ry="8" fill={c("back")} />
+      {/* lats */}
+      <path d="M 37 58 L 83 58 L 76 118 L 44 118 Z" rx="4" fill={c("back")} />
+      {/* triceps */}
+      <rect x="23" y="52" width="14" height="40" rx="6" fill={c("triceps")} />
+      <rect x="83" y="52" width="14" height="40" rx="6" fill={c("triceps")} />
+      {/* forearms */}
+      <rect x="21" y="93" width="12" height="34" rx="5" fill="#1e293b" />
+      <rect x="87" y="93" width="12" height="34" rx="5" fill="#1e293b" />
+      {/* hands */}
+      <ellipse cx="27" cy="132" rx="7" ry="4" fill="#1e293b" />
+      <ellipse cx="93" cy="132" rx="7" ry="4" fill="#1e293b" />
+      {/* glutes */}
+      <rect x="42" y="115" width="36" height="20" rx="6" fill={c("glutes")} />
+      {/* hamstrings */}
+      <rect x="43" y="133" width="15" height="48" rx="7" fill={c("hamstrings")} />
+      <rect x="62" y="133" width="15" height="48" rx="7" fill={c("hamstrings")} />
+      {/* knees */}
+      <ellipse cx="51" cy="183" rx="8" ry="5" fill="#1e293b" />
+      <ellipse cx="70" cy="183" rx="8" ry="5" fill="#1e293b" />
+      {/* calves back */}
+      <rect x="44" y="187" width="13" height="40" rx="6" fill={c("calves")} />
+      <rect x="63" y="187" width="13" height="40" rx="6" fill={c("calves")} />
+      {/* feet */}
+      <ellipse cx="51" cy="231" rx="11" ry="4" fill="#1e293b" />
+      <ellipse cx="70" cy="231" rx="11" ry="4" fill="#1e293b" />
+    </svg>
+  );
+}
+
 const CircularProgress = ({ percentage, size = 120, color = "#f97316", label }: { percentage: number; size?: number; color?: string; label?: string }) => {
   const radius = (size - 20) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -215,6 +321,8 @@ export default function WorkoutPage() {
   const [progressPRs, setProgressPRs] = useState<ProgressPR[]>([]);
   const [progressSubTab, setProgressSubTab] = useState<"overview" | "lifts" | "records">("overview");
   const [progressDates, setProgressDates] = useState<Set<string>>(new Set());
+  const [muscleData, setMuscleData] = useState<Record<string, "none" | "beginner" | "intermediate" | "advanced">>({});
+  const [bodyView, setBodyView] = useState<"front" | "back">("front");
 
   // Get date from URL on client side
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -932,6 +1040,19 @@ export default function WorkoutPage() {
       } catch {}
     });
     setProgressDates(datesSet);
+
+    // Muscle group session counts → levels
+    const muscleSessions: Record<string, number> = {};
+    Object.entries(exerciseMap).forEach(([exName, history]) => {
+      getMuscleGroups(exName).forEach(m => {
+        muscleSessions[m] = (muscleSessions[m] || 0) + history.length;
+      });
+    });
+    const muscleResult: Record<string, "none" | "beginner" | "intermediate" | "advanced"> = {};
+    ["chest","back","shoulders","biceps","triceps","abs","quads","hamstrings","glutes","calves"]
+      .forEach(m => { muscleResult[m] = getMuscleLevel(muscleSessions[m] || 0); });
+    setMuscleData(muscleResult);
+
     const lifts: ProgressLiftData[] = Object.entries(exerciseMap)
       .filter(([, h]) => h.length >= 2)
       .map(([name, h]) => {
@@ -1195,9 +1316,9 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
 
         {/* Content based on active tab */}
         {activeTab === "progress" ? (
-          <div className="space-y-3 pb-20">
+          <div className="space-y-4 pb-20">
 
-            {/* AI Coach Analysis */}
+            {/* AI Coach */}
             <div className="relative overflow-hidden rounded-2xl" style={{ background: "linear-gradient(135deg, #0a1628 0%, #0f2a2a 60%, #071a14 100%)" }}>
               <div className="p-4">
                 <div className="flex items-center gap-2 mb-2.5">
@@ -1205,179 +1326,180 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
                   <span className="text-[10px] font-bold uppercase tracking-widest text-teal-400/70">AI Coach Analysis</span>
                 </div>
                 {gymAiFetching ? (
-                  <div className="flex gap-1 py-1">
-                    {[0,1,2].map(i => <div key={i} className="w-1.5 h-1.5 rounded-full bg-teal-400/40 animate-bounce" style={{ animationDelay: `${i*150}ms` }} />)}
-                  </div>
+                  <div className="flex gap-1 py-1">{[0,1,2].map(i => <div key={i} className="w-1.5 h-1.5 rounded-full bg-teal-400/40 animate-bounce" style={{ animationDelay: `${i*150}ms` }} />)}</div>
                 ) : gymAiMsg ? (
                   <p className="text-[13px] text-gray-300 leading-relaxed">{gymAiMsg}</p>
                 ) : (
-                  <p className="text-[12px] text-gray-600 leading-relaxed">Log sessions with weights to unlock your personalised AI analysis.</p>
+                  <p className="text-[12px] text-gray-600 leading-relaxed">Log sessions with weights to unlock your AI analysis.</p>
                 )}
               </div>
             </div>
 
-            {/* Stats row */}
+            {/* Stats row — no streak */}
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-3 text-center">
                 <p className="text-2xl font-black text-white leading-none mb-1">{totalWorkoutsLogged}</p>
-                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Sessions</p>
-              </div>
-              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-3 text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  {activeStreak > 0 && <Flame className="w-3.5 h-3.5 text-orange-400" />}
-                  <p className={`text-2xl font-black leading-none ${activeStreak > 0 ? "text-orange-400" : "text-white"}`}>{activeStreak}d</p>
-                </div>
-                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Streak</p>
+                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Total</p>
               </div>
               <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-3 text-center">
                 <p className="text-2xl font-black text-teal-400 leading-none mb-1">{weeklySessionProgress.completed}</p>
-                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">This week</p>
+                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">This Week</p>
+              </div>
+              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-3 text-center">
+                <p className="text-2xl font-black text-violet-400 leading-none mb-1">
+                  {[...progressDates].filter(d => d.startsWith(new Date().toISOString().slice(0,7))).length}
+                </p>
+                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">This Month</p>
               </div>
             </div>
 
-            {/* Sub-tab bar */}
-            <div className="bg-white/5 border border-white/8 rounded-2xl p-1 flex gap-1">
-              {(["overview", "lifts", "records"] as const).map(tab => (
-                <button key={tab} onClick={() => setProgressSubTab(tab)}
-                  className={`flex-1 py-2 rounded-xl text-[12px] font-bold capitalize transition-all ${progressSubTab === tab ? "bg-teal-400 text-black" : "text-gray-500 hover:text-gray-300"}`}>
-                  {tab === "overview" ? "Overview" : tab === "lifts" ? "Strength" : "Records"}
-                </button>
-              ))}
-            </div>
-
-            {/* ── OVERVIEW ── */}
-            {progressSubTab === "overview" && (
-              <div className="space-y-3">
-                {/* This week dots */}
-                <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4">
-                  <p className="text-sm font-bold text-white mb-3">This week</p>
-                  <div className="flex gap-2 justify-between">
-                    {weekDays.map((day, i) => {
-                      const ds = toLocalDateString(day);
-                      const todayStr = toLocalDateString(new Date());
-                      const isFuture = ds > todayStr;
-                      const isToday = ds === todayStr;
-                      const hasWorkout = progressDates.has(ds);
+            {/* Muscle body diagram */}
+            <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm font-bold text-white">Muscle Development</p>
+                  <p className="text-[10px] text-gray-600 mt-0.5">Based on your training history</p>
+                </div>
+                <div className="flex gap-1 bg-white/5 border border-white/8 rounded-xl p-0.5">
+                  {(["front","back"] as const).map(v => (
+                    <button key={v} onClick={() => setBodyView(v)}
+                      className={`px-3 py-1 rounded-lg text-[11px] font-bold capitalize transition-all ${bodyView === v ? "bg-teal-400 text-black" : "text-gray-500"}`}>
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <div className="flex justify-center" style={{ minWidth: 120 }}>
+                  <BodyDiagram levels={muscleData} view={bodyView} />
+                </div>
+                <div className="flex-1 pt-2 space-y-4">
+                  {/* Legend */}
+                  <div className="space-y-1.5">
+                    {[
+                      { level: "advanced",     label: "Advanced",     color: "#10b981" },
+                      { level: "intermediate", label: "Intermediate", color: "#f59e0b" },
+                      { level: "beginner",     label: "Beginner",     color: "#3b82f6" },
+                      { level: "none",         label: "Not trained",  color: "#1e293b" },
+                    ].map(item => (
+                      <div key={item.level} className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-sm shrink-0" style={{ background: item.color, border: item.level === "none" ? "1px solid rgba(255,255,255,0.12)" : "none" }} />
+                        <span className="text-[11px] text-gray-400">{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Muscle list for this view */}
+                  <div className="space-y-1.5 border-t border-white/5 pt-3">
+                    {(bodyView === "front"
+                      ? ["Chest","Shoulders","Biceps","Abs","Quads","Calves"]
+                      : ["Back","Triceps","Glutes","Hamstrings","Calves"]
+                    ).map(m => {
+                      const lv = muscleData[m.toLowerCase()] ?? "none";
                       return (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                          <div className={`w-full aspect-square rounded-lg max-w-[36px] ${
-                            isFuture ? "bg-white/3"
-                            : hasWorkout ? isToday ? "bg-teal-400 ring-2 ring-teal-300/50 ring-offset-1 ring-offset-[#0c1422]" : "bg-teal-500/70"
-                            : isToday ? "ring-1 ring-teal-500/40 ring-offset-1 ring-offset-[#0c1422] bg-transparent" : "bg-white/6"
-                          }`} />
-                          <span className={`text-[9px] font-bold ${isFuture ? "text-gray-700" : isToday ? "text-teal-400" : "text-gray-600"}`}>
-                            {["M","T","W","T","F","S","S"][i]}
-                          </span>
+                        <div key={m} className="flex items-center justify-between">
+                          <span className="text-[11px] text-gray-500">{m}</span>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: LEVEL_COLORS[lv] }} />
+                            <span className="text-[10px] font-semibold capitalize" style={{ color: LEVEL_COLORS[lv] }}>{lv === "none" ? "—" : lv}</span>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
                 </div>
+              </div>
+            </div>
 
-                {/* Volume bars */}
-                {weeklyVolume.some(v => v > 0) && (
-                  <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-sm font-bold text-white">Weekly volume</p>
-                      <span className="text-[10px] text-gray-600">kg lifted per day</span>
+            {/* This week dots */}
+            <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4">
+              <p className="text-sm font-bold text-white mb-3">This week</p>
+              <div className="flex gap-2 justify-between">
+                {weekDays.map((day, i) => {
+                  const ds = toLocalDateString(day);
+                  const todayStr = toLocalDateString(new Date());
+                  const isFuture = ds > todayStr;
+                  const isToday = ds === todayStr;
+                  const hasWorkout = progressDates.has(ds);
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                      <div className={`w-full aspect-square rounded-lg max-w-[36px] ${
+                        isFuture ? "bg-white/3"
+                        : hasWorkout ? isToday ? "bg-teal-400 ring-2 ring-teal-300/50 ring-offset-1 ring-offset-[#0c1422]" : "bg-teal-500/70"
+                        : isToday ? "ring-1 ring-teal-500/40 ring-offset-1 ring-offset-[#0c1422] bg-transparent" : "bg-white/6"
+                      }`} />
+                      <span className={`text-[9px] font-bold ${isFuture ? "text-gray-700" : isToday ? "text-teal-400" : "text-gray-600"}`}>
+                        {["M","T","W","T","F","S","S"][i]}
+                      </span>
                     </div>
-                    <div className="flex items-end gap-1.5" style={{ height: 64 }}>
-                      {weeklyVolume.map((vol, i) => {
-                        const maxVol = Math.max(...weeklyVolume, 1);
-                        const pct = (vol / maxVol) * 100;
-                        const todayIdx = weekDays.findIndex(d => toLocalDateString(d) === toLocalDateString(new Date()));
-                        const isToday = i === todayIdx;
-                        return (
-                          <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                            {vol > 0 && <span className="text-[8px] text-gray-600 tabular-nums">{vol >= 1000 ? `${Math.round(vol/1000)}k` : vol}</span>}
-                            <div className="w-full rounded-md" style={{
-                              height: Math.max(3, (pct/100) * 44),
-                              background: isToday ? "linear-gradient(to top, #0d9488, #5eead4)" : vol > 0 ? "rgba(45,212,191,0.3)" : "rgba(255,255,255,0.05)",
-                            }} />
-                            <span className={`text-[8px] font-bold ${isToday ? "text-teal-400" : "text-gray-700"}`}>
-                              {["M","T","W","T","F","S","S"][i]}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                  );
+                })}
+              </div>
+            </div>
 
-                {/* Tips */}
-                {progressAnalytics.progressionTips.length > 0 && (
-                  <div className="bg-[#0c1422] border border-amber-500/15 rounded-2xl p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
-                      <p className="text-sm font-bold text-white">Training tips</p>
-                    </div>
-                    <div className="space-y-2.5">
-                      {progressAnalytics.progressionTips.map((tip, i) => (
-                        <div key={i}>
-                          <p className="text-[12px] font-semibold text-amber-200/90">{tip.title}</p>
-                          <p className="text-[10px] text-gray-500 mt-0.5 leading-snug">{tip.detail}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+            {/* Volume bar chart */}
+            {weeklyVolume.some(v => v > 0) && (
+              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-bold text-white">Weekly volume</p>
+                  <span className="text-[10px] text-gray-600">total kg lifted</span>
+                </div>
+                <div className="flex items-end gap-1.5" style={{ height: 68 }}>
+                  {weeklyVolume.map((vol, i) => {
+                    const maxVol = Math.max(...weeklyVolume, 1);
+                    const pct = (vol / maxVol) * 100;
+                    const todayIdx = weekDays.findIndex(d => toLocalDateString(d) === toLocalDateString(new Date()));
+                    const isToday = i === todayIdx;
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                        {vol > 0 && <span className="text-[8px] text-gray-600 tabular-nums">{vol >= 1000 ? `${Math.round(vol/1000)}k` : vol}</span>}
+                        <div className="w-full rounded-md" style={{
+                          height: Math.max(3, (pct/100) * 46),
+                          background: isToday ? "linear-gradient(to top,#0d9488,#5eead4)" : vol > 0 ? "rgba(45,212,191,0.28)" : "rgba(255,255,255,0.04)",
+                        }} />
+                        <span className={`text-[8px] font-bold ${isToday ? "text-teal-400" : "text-gray-700"}`}>{["M","T","W","T","F","S","S"][i]}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
-            {/* ── STRENGTH CHARTS ── */}
-            {progressSubTab === "lifts" && (
+            {/* Strength progress charts */}
+            {liftChartData.length > 0 && (
               <div className="space-y-3">
-                {liftChartData.length === 0 ? (
-                  <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-8 text-center">
-                    <p className="text-gray-500 text-sm">Need 2+ sessions per exercise to show charts.</p>
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold px-1">Max weight per session</p>
-                    {liftChartData.map((lift, i) => <ProgressLiftChart key={lift.name} lift={lift} idx={i} />)}
-                  </>
-                )}
+                <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold px-0.5">Strength progress · max weight per session</p>
+                {liftChartData.map((lift, i) => <ProgressLiftChart key={lift.name} lift={lift} idx={i} />)}
               </div>
             )}
 
-            {/* ── RECORDS ── */}
-            {progressSubTab === "records" && (
-              <div>
-                {progressPRs.length === 0 ? (
-                  <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-8 text-center">
-                    <p className="text-gray-500 text-sm">No records yet — log sets with weights.</p>
+            {/* Personal Records */}
+            {progressPRs.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-3.5 h-3.5 text-yellow-400" />
+                  <p className="text-[11px] text-yellow-400/70 font-semibold uppercase tracking-widest">Personal Records</p>
+                </div>
+                {progressPRs.map((pr, i) => (
+                  <div key={i} className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${i===0?"bg-yellow-400/15 border border-yellow-400/25":i===1?"bg-gray-400/10 border border-gray-400/20":i===2?"bg-amber-700/15 border border-amber-700/25":"bg-white/5 border border-white/8"}`}>
+                      <span className={`text-[11px] font-black ${i===0?"text-yellow-400":i===1?"text-gray-400":i===2?"text-amber-600":"text-gray-600"}`}>#{i+1}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-white truncate">{pr.exercise}</p>
+                      <p className="text-[10px] text-gray-600 mt-0.5">{fmtProgressDate(pr.date)}{pr.reps > 0 ? ` · ${pr.reps} reps` : ""}</p>
+                    </div>
+                    <p className="text-xl font-black text-yellow-400 leading-none shrink-0">
+                      {pr.weight}<span className="text-xs font-normal text-yellow-600/50 ml-0.5">kg</span>
+                    </p>
                   </div>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-2 mb-3">
-                      <Trophy className="w-3.5 h-3.5 text-yellow-400" />
-                      <p className="text-[11px] text-yellow-400/70 font-semibold uppercase tracking-widest">Personal Records</p>
-                    </div>
-                    <div className="space-y-2">
-                      {progressPRs.map((pr, i) => (
-                        <div key={i} className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 flex items-center gap-4">
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                            i === 0 ? "bg-yellow-400/15 border border-yellow-400/25"
-                            : i === 1 ? "bg-gray-400/10 border border-gray-400/20"
-                            : i === 2 ? "bg-amber-700/15 border border-amber-700/25"
-                            : "bg-white/5 border border-white/8"
-                          }`}>
-                            <span className={`text-[11px] font-black ${i === 0 ? "text-yellow-400" : i === 1 ? "text-gray-400" : i === 2 ? "text-amber-600" : "text-gray-600"}`}>#{i+1}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-white truncate">{pr.exercise}</p>
-                            <p className="text-[10px] text-gray-600 mt-0.5">{fmtProgressDate(pr.date)}{pr.reps > 0 ? ` · ${pr.reps} reps` : ""}</p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-xl font-black text-yellow-400 leading-none">
-                              {pr.weight}<span className="text-xs font-normal text-yellow-600/50 ml-0.5">kg</span>
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
+                ))}
+              </div>
+            )}
+
+            {totalWorkoutsLogged === 0 && (
+              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-8 text-center">
+                <Dumbbell className="w-10 h-10 text-gray-700 mx-auto mb-3" />
+                <p className="text-gray-500 text-sm">Log your first workout to see progress charts.</p>
               </div>
             )}
           </div>
