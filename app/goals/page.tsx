@@ -1,10 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
-import { Edit2, Check, X, Plus, Trash2, MoreVertical, Bell, TrendingUp, Dumbbell, Heart, BookOpen, Target, ChevronLeft } from "lucide-react";
+import {
+  Check,
+  X,
+  Plus,
+  Trash2,
+  MoreVertical,
+  Bell,
+  TrendingUp,
+  Dumbbell,
+  Heart,
+  BookOpen,
+  Target,
+  ChevronLeft,
+  Crown,
+  Sparkles,
+  Flame,
+  Trophy,
+  Calendar,
+  ListChecks,
+} from "lucide-react";
 import { requestNotificationPermission, scheduleTaskReminder, rescheduleTodayTaskReminders, scheduleDailyTasksSummaryNotification } from "@/app/utils/notifications";
 
 interface Goal {
@@ -39,9 +57,163 @@ const GOAL_TYPES = [
 ];
 
 const LONG_TERM_GOALS_PREVIEW = 3;
+const MOTO_DISMISS_KEY = "goals_motivation_dismissed";
+
+function RingProgress({ percent, size = 56 }: { percent: number; size?: number }) {
+  const stroke = 3;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c - (percent / 100) * c;
+  return (
+    <div
+      className="relative flex shrink-0 items-center justify-center"
+      style={{ width: size, height: size }}
+    >
+      <svg
+        className="rotate-[-90deg] text-teal-400"
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        aria-hidden
+      >
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          className="text-white/10"
+          stroke="currentColor"
+          strokeWidth={stroke}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          className="transition-all duration-500"
+        />
+      </svg>
+      <span className="absolute text-[11px] font-bold text-white tabular-nums">{percent}%</span>
+    </div>
+  );
+}
+
+function formatTargetDateLabel(iso: string) {
+  if (!iso) return "";
+  const d = new Date(iso + (iso.length <= 10 ? "T12:00:00" : ""));
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function typeAccent(goalType: string): { border: string; iconWrap: string; ring: string } {
+  switch (goalType) {
+    case "financial":
+      return {
+        border: "border-l-emerald-400",
+        iconWrap: "from-emerald-500/30 to-emerald-600/10 text-emerald-300",
+        ring: "text-emerald-400",
+      };
+    case "fitness":
+      return {
+        border: "border-l-teal-400",
+        iconWrap: "from-teal-500/30 to-teal-600/10 text-teal-300",
+        ring: "text-teal-400",
+      };
+    case "health":
+      return {
+        border: "border-l-fuchsia-400",
+        iconWrap: "from-fuchsia-500/30 to-fuchsia-600/10 text-fuchsia-300",
+        ring: "text-fuchsia-400",
+      };
+    case "learning":
+      return {
+        border: "border-l-sky-400",
+        iconWrap: "from-sky-500/30 to-sky-600/10 text-sky-300",
+        ring: "text-sky-400",
+      };
+    default:
+      return {
+        border: "border-l-violet-400",
+        iconWrap: "from-violet-500/30 to-violet-600/10 text-violet-300",
+        ring: "text-violet-400",
+      };
+  }
+}
+
+function TypeIcon({ type }: { type: string }) {
+  const c = "h-4 w-4";
+  switch (type) {
+    case "financial":
+      return <TrendingUp className={c} />;
+    case "fitness":
+      return <Dumbbell className={c} />;
+    case "health":
+      return <Heart className={c} />;
+    case "learning":
+      return <BookOpen className={c} />;
+    default:
+      return <Target className={c} />;
+  }
+}
+
+function RingProgressTinted({
+  percent,
+  size = 48,
+  ringClass,
+}: {
+  percent: number;
+  size?: number;
+  ringClass: string;
+}) {
+  const stroke = 3;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c - (percent / 100) * c;
+  return (
+    <div
+      className="relative flex shrink-0 items-center justify-center"
+      style={{ width: size, height: size }}
+    >
+      <svg
+        className={`rotate-[-90deg] ${ringClass}`}
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        aria-hidden
+      >
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          className="text-white/10"
+          stroke="currentColor"
+          strokeWidth={stroke}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          className="transition-all duration-500"
+        />
+      </svg>
+      <span className="absolute text-[10px] font-bold text-white tabular-nums">{percent}%</span>
+    </div>
+  );
+}
 
 export default function GoalsPage() {
-  const pathname = usePathname();
   const [isEditing, setIsEditing] = useState(false);
   const [allGoals, setAllGoals] = useState<Goal[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -56,6 +228,8 @@ export default function GoalsPage() {
   const [reminderTaskId, setReminderTaskId] = useState<string | null>(null);
   const [draftReminderTimes, setDraftReminderTimes] = useState<string[]>([]);
   const [customTimeInput, setCustomTimeInput] = useState("");
+  const quickTaskInputRef = useRef<HTMLInputElement>(null);
+  const [showMotivationBanner, setShowMotivationBanner] = useState(true);
 
   const [formData, setFormData] = useState({
     goalType: "long-term" as "daily" | "long-term",
@@ -131,6 +305,11 @@ export default function GoalsPage() {
       }
     }
   }, [todayStr, tasks]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setShowMotivationBanner(localStorage.getItem(MOTO_DISMISS_KEY) !== "1");
+  }, []);
 
   const parseValue = (value: string): number => {
     if (!value || value.trim() === "") return 0;
@@ -346,240 +525,354 @@ export default function GoalsPage() {
   };
 
   const completedTasksCount = tasks.filter((t) => t.completed).length;
-  const dailyGoalsMetCount = dailyGoals.filter((g) => g.target > 0 && g.current >= g.target).length;
-  const todaySectionDone = completedTasksCount + dailyGoalsMetCount;
-  const todaySectionTotal = tasks.length + dailyGoals.length;
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="max-w-md mx-auto pb-24 px-4 pt-6">
-        {/* Tab Bar */}
-        <div className="flex gap-1 mb-6 bg-white/5 border border-white/8 rounded-2xl p-1">
-          <Link href="/" className="flex-1 py-2.5 text-center text-sm font-semibold text-gray-500 hover:text-gray-300 rounded-xl transition-colors">
+    <div className="min-h-screen bg-[#080B12] text-white">
+      <div className="mx-auto max-w-md px-4 pb-28 pt-5">
+        {/* Tab bar */}
+        <div className="mb-5 flex gap-1 rounded-2xl border border-white/10 bg-white/[0.04] p-1">
+          <Link
+            href="/"
+            className="flex-1 rounded-xl py-2.5 text-center text-sm font-semibold text-gray-500 transition-colors hover:text-gray-300"
+          >
             Home
           </Link>
-          <div className="flex-1 py-2.5 text-center text-sm font-bold text-white bg-white/10 rounded-xl">
+          <div className="flex-1 rounded-xl bg-gradient-to-b from-white/12 to-white/[0.07] py-2.5 text-center text-sm font-bold text-white shadow-[0_0_20px_rgba(45,212,191,0.12)]">
             Goals
           </div>
         </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-[28px] font-bold text-teal-400">Goals</h1>
-          <div className="flex gap-2">
+        {/* Title row */}
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="bg-gradient-to-r from-teal-300 to-cyan-400 bg-clip-text text-[28px] font-bold text-transparent">
+              Goals
+            </h1>
+            <p className="mt-0.5 text-sm text-gray-500">Track progress. Stay motivated.</p>
+          </div>
+          <div className="flex gap-2 pt-0.5">
             <button
+              type="button"
               onClick={() => {
                 setShowAddForm(true);
                 setEditingGoal(null);
                 setAddStep(0);
-                setFormData({ goalType: "long-term", type: "", title: "", current: "", target: "", unit: "", targetDate: "" });
+                setFormData({
+                  goalType: "long-term",
+                  type: "",
+                  title: "",
+                  current: "",
+                  target: "",
+                  unit: "",
+                  targetDate: "",
+                });
               }}
-              className="px-5 py-2 rounded-lg bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 text-black font-semibold text-sm transition-colors"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-teal-400 to-cyan-500 text-black shadow-md shadow-teal-500/25 transition-transform hover:scale-105 active:scale-95"
+              aria-label="Add goal"
             >
-              + Add
+              <Plus className="h-5 w-5" strokeWidth={2.5} />
             </button>
             <button
+              type="button"
               onClick={() => setIsEditing(!isEditing)}
-              className="px-4 py-2 rounded-lg bg-[#0c1422] border border-white/8 text-white text-sm hover:bg-white/10 transition-colors"
+              className="flex h-10 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.05] px-3 text-xs font-semibold text-gray-300 transition-colors hover:bg-white/10"
             >
-              <Edit2 className="w-4 h-4" />
+              <Sparkles className="h-3.5 w-3.5" />
+              Customize
             </button>
           </div>
         </div>
 
-        {/* Long-term Goals Section */}
-        <p className="text-[11px] font-semibold text-gray-500 tracking-wider mb-3">LONG-TERM GOALS</p>
-        <div className="space-y-4 mb-4">
+        {/* Long-term goals */}
+        <div className="mb-1 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Crown className="h-3.5 w-3.5 text-amber-400/90" />
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Long-term goals</p>
+          </div>
+          <span className="text-[11px] font-semibold text-teal-400/90">
+            {longTermGoals.length} Active
+          </span>
+        </div>
+        <div className="mb-2 space-y-3">
           {displayedLongTermGoals.map((goal) => {
-            const percent = goal.target > 0 ? Math.min(Math.round((goal.current / goal.target) * 100), 100) : 0;
+            const percent =
+              goal.target > 0 ? Math.min(Math.round((goal.current / goal.target) * 100), 100) : 0;
             return (
               <div
                 key={goal.id}
-                className="rounded-xl bg-[#0c1422] border border-white/8 p-4"
+                className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-4 shadow-sm shadow-black/20"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-base font-medium text-white truncate">{goal.title}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{formatProgressText(goal)}</p>
+                <div className="flex gap-3">
+                  <RingProgress percent={percent} />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-white">{goal.title}</p>
+                    <p className="text-xs text-gray-500">{formatProgressText(goal)}</p>
+                    <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-teal-400 transition-all duration-300"
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                    {goal.targetDate ? (
+                      <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[11px] text-gray-400">
+                        <Calendar className="h-3 w-3 text-teal-400/80" />
+                        <span>Target: {formatTargetDateLabel(goal.targetDate)}</span>
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-lg font-bold text-teal-400">{percent}%</span>
+                  <div className="flex flex-shrink-0 flex-col items-end">
                     {isEditing ? (
-                      <div className="flex gap-1">
+                      <div className="flex flex-col gap-1">
                         <button
+                          type="button"
                           onClick={() => handleOpenProgressModal(goal)}
-                          className="p-1 text-gray-500 hover:text-white"
+                          className="text-xs text-gray-500 hover:text-white"
                         >
                           Edit
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDeleteGoal(goal.id)}
-                          className="p-1 text-red-400 hover:text-red-300"
+                          className="text-red-400 hover:text-red-300"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     ) : (
                       <button
+                        type="button"
                         onClick={() => handleOpenProgressModal(goal)}
                         className="p-1 text-gray-500 hover:text-white"
+                        aria-label="Goal actions"
                       >
-                        <MoreVertical className="w-4 h-4" />
+                        <MoreVertical className="h-5 w-5" />
                       </button>
                     )}
                   </div>
                 </div>
-                <div className="mt-3 h-2 rounded-full bg-gray-800 overflow-hidden">
-                  <div
-                    className="h-2 rounded-full bg-teal-500 transition-all duration-300"
-                    style={{ width: `${percent}%` }}
-                  />
-                </div>
               </div>
             );
           })}
+          {longTermGoals.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-6 text-center text-sm text-gray-500">
+              No long-term goals yet. Tap the + to add one.
+            </div>
+          )}
         </div>
 
-        {/* Show More */}
         {longTermGoals.length > LONG_TERM_GOALS_PREVIEW && !showMoreGoals && (
           <button
+            type="button"
             onClick={() => setShowMoreGoals(true)}
-            className="w-full py-3 rounded-lg border border-dashed border-white/8 text-gray-500 text-sm hover:border-teal-400/50 hover:text-gray-400 transition-colors mb-8"
+            className="mb-8 w-full rounded-xl border border-dashed border-white/10 py-3 text-sm text-gray-500 transition-colors hover:border-teal-400/40 hover:text-gray-400"
           >
             + {hiddenGoalsCount} more goal{hiddenGoalsCount !== 1 ? "s" : ""}
           </button>
         )}
 
-        {/* Today's Tasks Section */}
-        <div className="flex items-center justify-between mb-3 mt-8">
-          <p className="text-[11px] font-semibold text-gray-500 tracking-wider">TODAY&apos;S TASKS</p>
-          <span className="text-[11px] font-semibold text-teal-400" title="Tasks done + daily goals met">
-            {todaySectionDone}/{todaySectionTotal}
+        {/* Today’s tasks */}
+        <div className="mb-3 mt-8 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ListChecks className="h-3.5 w-3.5 text-teal-400/80" />
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              Today&apos;s tasks
+            </p>
+          </div>
+          <span className="text-[11px] font-semibold text-teal-400/90">
+            {completedTasksCount}/{tasks.length} completed
           </span>
         </div>
 
-        {/* Quick Add Input */}
-        <div className="flex items-center gap-2 mb-4 rounded-xl bg-[#0c1422] border border-white/8 px-4 py-3">
-          <input
-            type="text"
-            value={quickTaskInput}
-            onChange={(e) => setQuickTaskInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAddQuickTask()}
-            placeholder="Set your goals for the day..."
-            className="flex-1 bg-transparent text-sm text-white placeholder:text-gray-500 focus:outline-none"
-          />
-          <button
-            onClick={handleAddQuickTask}
-            className="w-8 h-6 rounded-md bg-teal-400 flex items-center justify-center text-black font-bold text-base hover:bg-teal-500 transition-colors"
-          >
-            +
-          </button>
-        </div>
-
-        {/* Task List */}
-        <div className="space-y-2">
-          {tasks.map((task) => (
-            <div
-              key={task.id}
-              className="flex items-center gap-3 rounded-xl bg-[#0c1422] border border-white/8 px-4 py-3 relative"
-            >
+        {tasks.length === 0 ? (
+          <div className="mb-5 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-transparent p-4">
+            <div className="flex gap-3">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center text-2xl" aria-hidden>
+                📋
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-white">Plan your day</p>
+                <p className="mt-0.5 text-sm leading-relaxed text-gray-500">
+                  Set up to 2 daily tasks to stay on track and build momentum.
+                </p>
+                <div className="mt-3 flex items-center gap-2">
+                  <input
+                    ref={quickTaskInputRef}
+                    type="text"
+                    value={quickTaskInput}
+                    onChange={(e) => setQuickTaskInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddQuickTask()}
+                    placeholder="Add a task…"
+                    className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white placeholder:text-gray-600 focus:border-teal-400/50 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddQuickTask}
+                    className="shrink-0 rounded-xl bg-gradient-to-r from-teal-400 to-cyan-500 px-3 py-2.5 text-xs font-bold text-black"
+                  >
+                    + Add
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="mb-3 flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2.5">
+              <input
+                ref={quickTaskInputRef}
+                type="text"
+                value={quickTaskInput}
+                onChange={(e) => setQuickTaskInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddQuickTask()}
+                placeholder="Add another task…"
+                className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-gray-600 focus:outline-none"
+              />
               <button
-                onClick={() => handleToggleTask(task.id)}
-                className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-colors ${
-                  task.completed ? "bg-teal-400 border-teal-400" : "border-teal-400 bg-transparent"
-                }`}
+                type="button"
+                onClick={handleAddQuickTask}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-teal-400 text-black hover:bg-teal-300"
+                aria-label="Add task"
               >
-                {task.completed && <Check className="w-5 h-5 text-black" strokeWidth={3} />}
-              </button>
-              <span
-                className={`flex-1 text-[15px] min-w-0 ${
-                  task.completed ? "text-gray-500 line-through" : "text-white"
-                }`}
-              >
-                {task.title}
-              </span>
-              <button
-                onClick={() => {
-                  setReminderTaskId(task.id);
-                  setDraftReminderTimes(getTaskReminderTimes(task));
-                  setCustomTimeInput("");
-                }}
-                className={`flex-shrink-0 p-2 rounded-lg transition-colors ${
-                  getTaskReminderTimes(task).length > 0
-                    ? "text-teal-400 bg-teal-400/20"
-                    : "text-gray-500 hover:text-teal-400 hover:bg-white/5"
-                }`}
-                title={
-                  getTaskReminderTimes(task).length > 0
-                    ? `${getTaskReminderTimes(task).length} alert(s) set`
-                    : "Set time alerts"
-                }
-              >
-                <Bell className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => handleDeleteTask(task.id)}
-                className="flex-shrink-0 p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                title="Delete task"
-              >
-                <Trash2 className="w-5 h-5" />
+                <Plus className="h-4 w-4" strokeWidth={2.5} />
               </button>
             </div>
-          ))}
-        </div>
+            <div className="mb-2 space-y-2">
+              {tasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="relative flex items-center gap-3 rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] px-3 py-3"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleToggleTask(task.id)}
+                    className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                      task.completed
+                        ? "border-teal-400 bg-teal-400"
+                        : "border-teal-400/60 bg-transparent"
+                    }`}
+                  >
+                    {task.completed && <Check className="h-5 w-5 text-black" strokeWidth={3} />}
+                  </button>
+                  <span
+                    className={`min-w-0 flex-1 text-[15px] ${
+                      task.completed ? "text-gray-500 line-through" : "text-white"
+                    }`}
+                  >
+                    {task.title}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReminderTaskId(task.id);
+                      setDraftReminderTimes(getTaskReminderTimes(task));
+                      setCustomTimeInput("");
+                    }}
+                    className={`shrink-0 rounded-lg p-2 transition-colors ${
+                      getTaskReminderTimes(task).length > 0
+                        ? "bg-teal-400/20 text-teal-400"
+                        : "text-gray-500 hover:bg-white/5 hover:text-teal-400"
+                    }`}
+                    title={
+                      getTaskReminderTimes(task).length > 0
+                        ? `${getTaskReminderTimes(task).length} alert(s) set`
+                        : "Set time alerts"
+                    }
+                  >
+                    <Bell className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTask(task.id)}
+                    className="shrink-0 rounded-lg p-2 text-gray-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                    title="Delete task"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
-        {/* Daily goals (reset daily) — under today&apos;s task list, same "Today" section */}
+        {/* Daily goals */}
         {dailyGoals.length > 0 && (
           <>
-            <p className="mb-3 mt-5 text-[11px] font-semibold tracking-wider text-gray-500">DAILY GOALS</p>
+            <div className="mb-3 mt-6 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Flame className="h-3.5 w-3.5 text-orange-400/90" />
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Daily goals</p>
+              </div>
+              <span className="text-[11px] font-semibold text-teal-400/90">{dailyGoals.length} Active</span>
+            </div>
             <div className="space-y-3">
               {dailyGoals.map((goal) => {
-                const percent = goal.target > 0 ? Math.min(Math.round((goal.current / goal.target) * 100), 100) : 0;
+                const percent =
+                  goal.target > 0 ? Math.min(Math.round((goal.current / goal.target) * 100), 100) : 0;
+                const acc = typeAccent(goal.type);
                 return (
                   <div
                     key={goal.id}
-                    className="rounded-xl border border-white/8 bg-[#0c1422] p-4"
+                    className={`overflow-hidden rounded-2xl border border-white/10 border-l-4 ${acc.border} bg-gradient-to-b from-white/[0.07] to-white/[0.02] p-3.5 pl-3.5 shadow-sm shadow-black/20`}
                   >
-                    <div className="flex items-start justify-between">
+                    <div className="flex gap-3">
+                      <RingProgressTinted percent={percent} size={50} ringClass={acc.ring} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-base font-medium text-white">{goal.title}</p>
-                        <p className="mt-0.5 text-xs text-gray-500">{formatProgressText(goal)}</p>
-                      </div>
-                      <div className="flex flex-shrink-0 items-center gap-2">
-                        <span className="text-lg font-bold text-teal-400">{percent}%</span>
-                        {isEditing ? (
-                          <div className="flex gap-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${acc.iconWrap}`}
+                            >
+                              <TypeIcon type={goal.type} />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-white">{goal.title}</p>
+                              <p className="text-xs text-gray-500">{formatProgressText(goal)}</p>
+                            </div>
+                          </div>
+                          {isEditing ? (
+                            <div className="flex shrink-0 gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenProgressModal(goal)}
+                                className="text-xs text-gray-500"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteGoal(goal.id)}
+                                className="text-red-400"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ) : (
                             <button
                               type="button"
                               onClick={() => handleOpenProgressModal(goal)}
-                              className="p-1 text-gray-500 hover:text-white"
+                              className="shrink-0 p-1 text-gray-500 hover:text-white"
                             >
-                              Edit
+                              <MoreVertical className="h-5 w-5" />
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteGoal(goal.id)}
-                              className="p-1 text-red-400 hover:text-red-300"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenProgressModal(goal)}
-                            className="p-1 text-gray-500 hover:text-white"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                        )}
+                          )}
+                        </div>
+                        <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className={`h-full rounded-full ${
+                              goal.type === "fitness"
+                                ? "bg-teal-400"
+                                : goal.type === "health"
+                                  ? "bg-fuchsia-400"
+                                  : goal.type === "financial"
+                                    ? "bg-emerald-400"
+                                    : goal.type === "learning"
+                                      ? "bg-sky-400"
+                                      : "bg-violet-400"
+                            } transition-all duration-300`}
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-gray-800">
-                      <div
-                        className="h-2 rounded-full bg-teal-500 transition-all duration-300"
-                        style={{ width: `${percent}%` }}
-                      />
                     </div>
                   </div>
                 );
@@ -589,9 +882,36 @@ export default function GoalsPage() {
         )}
 
         {longTermGoals.length === 0 && dailyGoals.length === 0 && tasks.length === 0 && (
-          <p className="text-center text-gray-500 py-12 text-sm">
-            No goals yet. Click &quot;+ Add&quot; to create one.
+          <p className="py-10 text-center text-sm text-gray-500">
+            No goals yet. Tap the teal + to get started.
           </p>
+        )}
+
+        {/* Motivation banner */}
+        {showMotivationBanner && (
+          <div className="relative mt-6 overflow-hidden rounded-2xl border border-teal-500/20 bg-gradient-to-r from-teal-950/80 via-[#0a1818] to-teal-950/40 px-4 py-3.5 pr-10">
+            <div className="pointer-events-none absolute -right-4 bottom-0 text-4xl opacity-20" aria-hidden>
+              🏔️
+            </div>
+            <div className="flex gap-2.5">
+              <Trophy className="h-5 w-5 shrink-0 text-amber-400/90" />
+              <div>
+                <p className="text-sm font-medium text-white">Small steps every day</p>
+                <p className="text-xs text-gray-500">Lead to big changes tomorrow.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== "undefined") localStorage.setItem(MOTO_DISMISS_KEY, "1");
+                setShowMotivationBanner(false);
+              }}
+              className="absolute right-2 top-2 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-white/10 hover:text-white"
+              aria-label="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         )}
       </div>
 
