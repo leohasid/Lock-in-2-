@@ -184,75 +184,102 @@ function getMuscleLevel(sessions: number): "none" | "beginner" | "intermediate" 
 
 function BodyDiagram({ levels, view }: { levels: Record<string, string>; view: "front" | "back" }) {
   const c = (m: string) => LEVEL_COLORS[levels[m] ?? "none"] ?? LEVEL_COLORS.none;
-  if (view === "front") return (
-    <svg viewBox="0 0 120 280" style={{ width: 120, height: 280 }}>
-      <ellipse cx="60" cy="19" rx="14" ry="17" fill="#1e293b" />
-      <rect x="55" y="34" width="10" height="9" rx="3" fill="#1e293b" />
-      {/* shoulders */}
-      <ellipse cx="38" cy="51" rx="13" ry="8" fill={c("shoulders")} />
-      <ellipse cx="82" cy="51" rx="13" ry="8" fill={c("shoulders")} />
-      {/* chest */}
-      <ellipse cx="50" cy="63" rx="12" ry="11" fill={c("chest")} />
-      <ellipse cx="70" cy="63" rx="12" ry="11" fill={c("chest")} />
-      {/* upper arms / biceps */}
-      <rect x="23" y="52" width="14" height="40" rx="6" fill={c("biceps")} />
-      <rect x="83" y="52" width="14" height="40" rx="6" fill={c("biceps")} />
-      {/* forearms */}
-      <rect x="21" y="93" width="12" height="34" rx="5" fill="#1e293b" />
-      <rect x="87" y="93" width="12" height="34" rx="5" fill="#1e293b" />
-      {/* hands */}
-      <ellipse cx="27" cy="132" rx="7" ry="4" fill="#1e293b" />
-      <ellipse cx="93" cy="132" rx="7" ry="4" fill="#1e293b" />
-      {/* abs */}
-      <rect x="46" y="75" width="28" height="42" rx="5" fill={c("abs")} />
-      {/* hips */}
-      <rect x="42" y="115" width="36" height="13" rx="5" fill="#1e293b" />
-      {/* quads */}
-      <rect x="43" y="126" width="15" height="52" rx="7" fill={c("quads")} />
-      <rect x="62" y="126" width="15" height="52" rx="7" fill={c("quads")} />
-      {/* knees */}
-      <ellipse cx="51" cy="181" rx="8" ry="5" fill="#1e293b" />
-      <ellipse cx="70" cy="181" rx="8" ry="5" fill="#1e293b" />
-      {/* calves */}
-      <rect x="44" y="185" width="13" height="42" rx="6" fill={c("calves")} />
-      <rect x="63" y="185" width="13" height="42" rx="6" fill={c("calves")} />
-      {/* feet */}
-      <ellipse cx="51" cy="231" rx="11" ry="4" fill="#1e293b" />
-      <ellipse cx="70" cy="231" rx="11" ry="4" fill="#1e293b" />
-    </svg>
-  );
+  const BASE = "#1a2e3f";
+  const hasAbs = (levels["abs"] ?? "none") !== "none";
+
   return (
-    <svg viewBox="0 0 120 280" style={{ width: 120, height: 280 }}>
-      <ellipse cx="60" cy="19" rx="14" ry="17" fill="#1e293b" />
-      <rect x="55" y="34" width="10" height="9" rx="3" fill="#1e293b" />
-      {/* traps / upper back */}
-      <ellipse cx="38" cy="51" rx="13" ry="8" fill={c("back")} />
-      <ellipse cx="82" cy="51" rx="13" ry="8" fill={c("back")} />
-      {/* lats */}
-      <path d="M 37 58 L 83 58 L 76 118 L 44 118 Z" rx="4" fill={c("back")} />
-      {/* triceps */}
-      <rect x="23" y="52" width="14" height="40" rx="6" fill={c("triceps")} />
-      <rect x="83" y="52" width="14" height="40" rx="6" fill={c("triceps")} />
-      {/* forearms */}
-      <rect x="21" y="93" width="12" height="34" rx="5" fill="#1e293b" />
-      <rect x="87" y="93" width="12" height="34" rx="5" fill="#1e293b" />
-      {/* hands */}
-      <ellipse cx="27" cy="132" rx="7" ry="4" fill="#1e293b" />
-      <ellipse cx="93" cy="132" rx="7" ry="4" fill="#1e293b" />
-      {/* glutes */}
-      <rect x="42" y="115" width="36" height="20" rx="6" fill={c("glutes")} />
-      {/* hamstrings */}
-      <rect x="43" y="133" width="15" height="48" rx="7" fill={c("hamstrings")} />
-      <rect x="62" y="133" width="15" height="48" rx="7" fill={c("hamstrings")} />
-      {/* knees */}
-      <ellipse cx="51" cy="183" rx="8" ry="5" fill="#1e293b" />
-      <ellipse cx="70" cy="183" rx="8" ry="5" fill="#1e293b" />
-      {/* calves back */}
-      <rect x="44" y="187" width="13" height="40" rx="6" fill={c("calves")} />
-      <rect x="63" y="187" width="13" height="40" rx="6" fill={c("calves")} />
-      {/* feet */}
-      <ellipse cx="51" cy="231" rx="11" ry="4" fill="#1e293b" />
-      <ellipse cx="70" cy="231" rx="11" ry="4" fill="#1e293b" />
+    <svg viewBox="0 0 160 410" style={{ width: "100%", maxWidth: 150 }}>
+      <defs>
+        <clipPath id="bodyOutlineClip">
+          {/* Head */}
+          <ellipse cx="80" cy="26" rx="22" ry="26" />
+          {/* Neck */}
+          <path d="M 70 49 L 90 49 L 91 68 L 69 68 Z" />
+          {/* Shoulder blobs */}
+          <ellipse cx="26" cy="72" rx="15" ry="10" />
+          <ellipse cx="134" cy="72" rx="15" ry="10" />
+          {/* Torso */}
+          <path d="M 38 66 C 28 72 20 84 18 100 L 18 195 C 28 212 52 224 80 224 C 108 224 132 212 142 195 L 142 100 C 140 84 132 72 122 66 Z" />
+          {/* Left upper arm */}
+          <path d="M 4 74 C 1 82 0 92 0 104 L 0 160 C 0 168 2 174 6 178 L 36 178 C 40 174 42 168 42 160 L 42 104 C 42 92 41 82 38 74 Z" />
+          {/* Left forearm */}
+          <path d="M 6 178 L 6 222 C 6 228 10 232 15 234 L 35 234 C 40 232 44 228 44 222 L 44 178 Z" />
+          {/* Left hand */}
+          <ellipse cx="22" cy="238" rx="14" ry="7" />
+          {/* Right upper arm */}
+          <path d="M 118 74 C 119 82 118 92 118 104 L 118 160 C 118 168 120 174 124 178 L 154 178 C 158 174 160 168 160 160 L 160 104 C 160 92 159 82 156 74 Z" />
+          {/* Right forearm */}
+          <path d="M 116 178 L 116 222 C 116 228 120 232 125 234 L 145 234 C 150 232 154 228 154 222 L 154 178 Z" />
+          {/* Right hand */}
+          <ellipse cx="138" cy="238" rx="14" ry="7" />
+          {/* Left leg */}
+          <path d="M 34 222 C 34 222 36 226 38 228 L 38 370 C 38 378 42 384 48 388 L 78 388 C 84 384 84 378 82 370 L 80 228 C 82 226 82 222 82 222 Z" />
+          {/* Left foot */}
+          <ellipse cx="60" cy="393" rx="21" ry="8" />
+          {/* Right leg */}
+          <path d="M 78 222 C 78 222 78 226 80 228 L 82 370 C 82 378 80 384 86 388 L 116 388 C 122 384 126 378 126 370 L 126 228 C 128 226 126 222 126 222 Z" />
+          {/* Right foot */}
+          <ellipse cx="102" cy="393" rx="21" ry="8" />
+        </clipPath>
+      </defs>
+
+      {/* Base body fill */}
+      <rect x="0" y="0" width="160" height="410" fill={BASE} clipPath="url(#bodyOutlineClip)" />
+
+      {/* Muscle layers */}
+      <g clipPath="url(#bodyOutlineClip)">
+        {view === "front" ? (
+          <>
+            {/* Deltoids / shoulders */}
+            <ellipse cx="16" cy="96" rx="16" ry="28" transform="rotate(15 16 96)" fill={c("shoulders")} opacity="0.88" />
+            <ellipse cx="144" cy="96" rx="16" ry="28" transform="rotate(-15 144 96)" fill={c("shoulders")} opacity="0.88" />
+            {/* Pectorals - two teardrop shapes */}
+            <ellipse cx="54" cy="110" rx="22" ry="26" transform="rotate(-18 54 110)" fill={c("chest")} opacity="0.88" />
+            <ellipse cx="106" cy="110" rx="22" ry="26" transform="rotate(18 106 110)" fill={c("chest")} opacity="0.88" />
+            {/* Biceps */}
+            <ellipse cx="10" cy="132" rx="12" ry="28" fill={c("biceps")} opacity="0.88" />
+            <ellipse cx="150" cy="132" rx="12" ry="28" fill={c("biceps")} opacity="0.88" />
+            {/* Abs - segmented rect */}
+            <rect x="59" y="122" width="42" height="60" rx="10" fill={c("abs")} opacity="0.88" />
+            {hasAbs && (
+              <>
+                <line x1="59" y1="142" x2="101" y2="142" stroke={BASE} strokeWidth="2" opacity="0.4" />
+                <line x1="59" y1="162" x2="101" y2="162" stroke={BASE} strokeWidth="2" opacity="0.4" />
+                <line x1="80" y1="122" x2="80" y2="182" stroke={BASE} strokeWidth="2" opacity="0.4" />
+              </>
+            )}
+            {/* Quads - large anatomical teardrops */}
+            <ellipse cx="56" cy="292" rx="24" ry="54" fill={c("quads")} opacity="0.88" />
+            <ellipse cx="106" cy="292" rx="24" ry="54" fill={c("quads")} opacity="0.88" />
+            {/* Calves front */}
+            <ellipse cx="57" cy="360" rx="14" ry="26" fill={c("calves")} opacity="0.88" />
+            <ellipse cx="104" cy="360" rx="14" ry="26" fill={c("calves")} opacity="0.88" />
+          </>
+        ) : (
+          <>
+            {/* Traps / rear delts */}
+            <ellipse cx="16" cy="90" rx="14" ry="22" transform="rotate(12 16 90)" fill={c("back")} opacity="0.88" />
+            <ellipse cx="144" cy="90" rx="14" ry="22" transform="rotate(-12 144 90)" fill={c("back")} opacity="0.88" />
+            {/* Lats - fan shapes */}
+            <path d="M 38 72 C 22 96 20 142 28 174 L 80 166 Z" fill={c("back")} opacity="0.88" />
+            <path d="M 122 72 C 138 96 140 142 132 174 L 80 166 Z" fill={c("back")} opacity="0.88" />
+            {/* Middle back fill */}
+            <rect x="38" y="78" width="84" height="86" rx="6" fill={c("back")} opacity="0.6" />
+            {/* Triceps */}
+            <ellipse cx="10" cy="130" rx="12" ry="28" fill={c("triceps")} opacity="0.88" />
+            <ellipse cx="150" cy="130" rx="12" ry="28" fill={c("triceps")} opacity="0.88" />
+            {/* Glutes - rounded blobs */}
+            <ellipse cx="57" cy="236" rx="26" ry="24" fill={c("glutes")} opacity="0.88" />
+            <ellipse cx="105" cy="236" rx="26" ry="24" fill={c("glutes")} opacity="0.88" />
+            {/* Hamstrings */}
+            <ellipse cx="57" cy="300" rx="22" ry="54" fill={c("hamstrings")} opacity="0.88" />
+            <ellipse cx="104" cy="300" rx="22" ry="54" fill={c("hamstrings")} opacity="0.88" />
+            {/* Calves back - fuller shape */}
+            <ellipse cx="57" cy="358" rx="14" ry="26" fill={c("calves")} opacity="0.88" />
+            <ellipse cx="104" cy="358" rx="14" ry="26" fill={c("calves")} opacity="0.88" />
+          </>
+        )}
+      </g>
     </svg>
   );
 }
