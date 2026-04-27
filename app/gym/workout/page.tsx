@@ -163,15 +163,17 @@ function getMuscleGroups(name: string): string[] {
   const n = name.toLowerCase();
   const out: string[] = [];
   if (/bench|chest|push.?up|pec|fly|cable cross/.test(n)) out.push("chest");
-  if (/pull.?up|chin.?up|lat|row|deadlift|pull.?down|t.bar/.test(n)) out.push("back");
-  if (/shoulder|delt|overhead press|ohp|lateral raise|face pull|military/.test(n)) out.push("shoulders");
+  if (/pull.?up|chin.?up|lat|row|deadlift|pull.?down|t.bar/.test(n)) { out.push("back"); out.push("lats"); }
+  if (/shoulder|delt|overhead press|ohp|lateral raise|face pull|military/.test(n)) { out.push("shoulders"); out.push("traps"); }
+  if (/shrug|trap/.test(n)) out.push("traps");
   if (/bicep|curl|hammer/.test(n)) out.push("biceps");
   if (/tricep|skull|pushdown|dip|close grip/.test(n)) out.push("triceps");
+  if (/forearm|wrist|farmer/.test(n)) out.push("forearms");
   if (/squat|leg press|lunge|quad|hack|bulgarian|front squat/.test(n)) out.push("quads");
   if (/rdl|romanian|hamstring|leg curl/.test(n)) out.push("hamstrings");
   if (/glute|hip thrust|deadlift/.test(n)) out.push("glutes");
   if (/calf|calves/.test(n)) out.push("calves");
-  if (/crunch|plank|sit.?up|\bab\b|core|oblique/.test(n)) out.push("abs");
+  if (/crunch|plank|sit.?up|\bab\b|core|oblique|russian twist/.test(n)) out.push("abs");
   return out;
 }
 
@@ -184,99 +186,146 @@ function getMuscleLevel(sessions: number): "none" | "beginner" | "intermediate" 
 
 function BodyDiagram({ levels, view }: { levels: Record<string, string>; view: "front" | "back" }) {
   const c = (m: string) => LEVEL_COLORS[levels[m] ?? "none"] ?? LEVEL_COLORS.none;
-  const BASE = "#1a2e3f";
-  const hasAbs = (levels["abs"] ?? "none") !== "none";
+  const BASE = "#131f2e";
+  const trainedAbs = (levels["abs"] ?? "none") !== "none";
+
+  // Shared clip id must be stable per view so both diagrams don't collide if ever rendered together
+  const clipId = `bc-${view}`;
 
   return (
-    <svg viewBox="0 0 160 410" style={{ width: "100%", maxWidth: 150 }}>
+    <svg viewBox="0 0 160 500" style={{ width: "100%", maxWidth: 140 }}>
       <defs>
-        <clipPath id="bodyOutlineClip">
+        <clipPath id={clipId}>
           {/* Head */}
-          <ellipse cx="80" cy="26" rx="22" ry="26" />
+          <ellipse cx="80" cy="23" rx="15" ry="19" />
           {/* Neck */}
-          <path d="M 70 49 L 90 49 L 91 68 L 69 68 Z" />
-          {/* Shoulder blobs */}
-          <ellipse cx="26" cy="72" rx="15" ry="10" />
-          <ellipse cx="134" cy="72" rx="15" ry="10" />
-          {/* Torso */}
-          <path d="M 38 66 C 28 72 20 84 18 100 L 18 195 C 28 212 52 224 80 224 C 108 224 132 212 142 195 L 142 100 C 140 84 132 72 122 66 Z" />
+          <path d="M73,40 L87,40 L88,60 L72,60 Z" />
+          {/* Torso – narrow waist, defined shoulder-to-hip taper */}
+          <path d="M36,64 C22,72 16,92 16,112 L18,186 C20,208 40,222 80,226 C120,222 140,208 142,186 L144,112 C144,92 138,72 124,64 Z" />
+          {/* Left shoulder cap */}
+          <path d="M34,66 C20,68 10,80 8,96 L8,118 C12,128 24,132 34,128 L36,106 Z" />
+          {/* Right shoulder cap */}
+          <path d="M126,66 C140,68 150,80 152,96 L152,118 C148,128 136,132 126,128 L124,106 Z" />
           {/* Left upper arm */}
-          <path d="M 4 74 C 1 82 0 92 0 104 L 0 160 C 0 168 2 174 6 178 L 36 178 C 40 174 42 168 42 160 L 42 104 C 42 92 41 82 38 74 Z" />
+          <path d="M8,108 C4,120 2,136 2,152 L2,186 C2,194 6,198 12,200 L30,200 C36,198 40,194 40,186 L40,152 C40,136 38,120 34,108 Z" />
           {/* Left forearm */}
-          <path d="M 6 178 L 6 222 C 6 228 10 232 15 234 L 35 234 C 40 232 44 228 44 222 L 44 178 Z" />
+          <path d="M4,200 L4,254 C4,262 10,266 16,266 L32,266 C38,264 42,260 42,254 L42,200 Z" />
           {/* Left hand */}
-          <ellipse cx="22" cy="238" rx="14" ry="7" />
+          <ellipse cx="23" cy="270" rx="12" ry="6" />
           {/* Right upper arm */}
-          <path d="M 118 74 C 119 82 118 92 118 104 L 118 160 C 118 168 120 174 124 178 L 154 178 C 158 174 160 168 160 160 L 160 104 C 160 92 159 82 156 74 Z" />
+          <path d="M152,108 C156,120 158,136 158,152 L158,186 C158,194 154,198 148,200 L130,200 C124,198 120,194 120,186 L120,152 C120,136 122,120 126,108 Z" />
           {/* Right forearm */}
-          <path d="M 116 178 L 116 222 C 116 228 120 232 125 234 L 145 234 C 150 232 154 228 154 222 L 154 178 Z" />
+          <path d="M156,200 L156,254 C156,260 152,264 146,266 L130,266 C124,264 118,260 118,254 L118,200 Z" />
           {/* Right hand */}
-          <ellipse cx="138" cy="238" rx="14" ry="7" />
-          {/* Left leg */}
-          <path d="M 34 222 C 34 222 36 226 38 228 L 38 370 C 38 378 42 384 48 388 L 78 388 C 84 384 84 378 82 370 L 80 228 C 82 226 82 222 82 222 Z" />
+          <ellipse cx="137" cy="270" rx="12" ry="6" />
+          {/* Left leg – gap at crotch */}
+          <path d="M36,226 C30,234 30,244 34,250 L34,390 C36,400 44,408 54,410 L72,410 C78,406 80,400 80,392 L78,250 C80,244 80,234 76,226 Z" />
           {/* Left foot */}
-          <ellipse cx="60" cy="393" rx="21" ry="8" />
+          <path d="M30,408 C26,414 28,422 36,424 L72,424 C80,422 82,414 78,408 Z" />
           {/* Right leg */}
-          <path d="M 78 222 C 78 222 78 226 80 228 L 82 370 C 82 378 80 384 86 388 L 116 388 C 122 384 126 378 126 370 L 126 228 C 128 226 126 222 126 222 Z" />
+          <path d="M84,226 C80,234 80,244 82,250 L80,392 C80,400 82,406 88,410 L106,410 C116,406 124,400 126,390 L126,250 C130,244 130,234 124,226 Z" />
           {/* Right foot */}
-          <ellipse cx="102" cy="393" rx="21" ry="8" />
+          <path d="M78,408 C74,414 80,422 88,424 L124,424 C132,422 134,414 130,408 Z" />
         </clipPath>
       </defs>
 
-      {/* Base body fill */}
-      <rect x="0" y="0" width="160" height="410" fill={BASE} clipPath="url(#bodyOutlineClip)" />
+      {/* Base silhouette */}
+      <rect x="0" y="0" width="160" height="500" fill={BASE} clipPath={`url(#${clipId})`} />
 
-      {/* Muscle layers */}
-      <g clipPath="url(#bodyOutlineClip)">
+      {/* Muscle overlays – all clipped to silhouette */}
+      <g clipPath={`url(#${clipId})`}>
         {view === "front" ? (
           <>
-            {/* Deltoids / shoulders */}
-            <ellipse cx="16" cy="96" rx="16" ry="28" transform="rotate(15 16 96)" fill={c("shoulders")} opacity="0.88" />
-            <ellipse cx="144" cy="96" rx="16" ry="28" transform="rotate(-15 144 96)" fill={c("shoulders")} opacity="0.88" />
-            {/* Pectorals - two teardrop shapes */}
-            <ellipse cx="54" cy="110" rx="22" ry="26" transform="rotate(-18 54 110)" fill={c("chest")} opacity="0.88" />
-            <ellipse cx="106" cy="110" rx="22" ry="26" transform="rotate(18 106 110)" fill={c("chest")} opacity="0.88" />
-            {/* Biceps */}
-            <ellipse cx="10" cy="132" rx="12" ry="28" fill={c("biceps")} opacity="0.88" />
-            <ellipse cx="150" cy="132" rx="12" ry="28" fill={c("biceps")} opacity="0.88" />
-            {/* Abs - segmented rect */}
-            <rect x="59" y="122" width="42" height="60" rx="10" fill={c("abs")} opacity="0.88" />
-            {hasAbs && (
+            {/* === FRONT VIEW === */}
+
+            {/* Anterior deltoids */}
+            <path d="M8,92 C6,106 10,120 20,126 L34,124 L34,78 C20,72 6,80 8,92 Z" fill={c("shoulders")} opacity="0.92" />
+            <path d="M152,92 C154,106 150,120 140,126 L126,124 L126,78 C140,72 154,80 152,92 Z" fill={c("shoulders")} opacity="0.92" />
+
+            {/* Pectorals – teardrop from sternum outward */}
+            <path d="M36,74 C26,82 22,100 26,120 L44,136 L80,116 L80,78 C62,70 44,70 36,74 Z" fill={c("chest")} opacity="0.92" />
+            <path d="M124,74 C134,82 138,100 134,120 L116,136 L80,116 L80,78 C98,70 116,70 124,74 Z" fill={c("chest")} opacity="0.92" />
+            {/* Pec division line */}
+            <line x1="80" y1="78" x2="80" y2="136" stroke={BASE} strokeWidth="1" opacity="0.35" />
+
+            {/* Biceps – front of upper arms */}
+            <path d="M4,120 C2,138 4,162 8,180 L26,182 C30,158 30,132 28,114 Z" fill={c("biceps")} opacity="0.92" />
+            <path d="M156,120 C158,138 156,162 152,180 L134,182 C130,158 130,132 132,114 Z" fill={c("biceps")} opacity="0.92" />
+
+            {/* Forearms */}
+            <path d="M4,200 L6,252 C8,260 14,264 20,264 L34,264 C40,260 42,256 42,252 L42,200 Z" fill={c("forearms")} opacity="0.92" />
+            <path d="M156,200 L154,252 C152,256 148,260 142,264 L126,264 C120,260 118,256 118,252 L118,200 Z" fill={c("forearms")} opacity="0.92" />
+
+            {/* Abs – 6-pack block */}
+            <path d="M58,132 C56,148 56,186 58,216 C62,224 72,228 80,228 C88,228 98,224 102,216 C104,186 104,148 102,132 C96,124 88,120 80,120 C72,120 64,124 58,132 Z" fill={c("abs")} opacity="0.92" />
+            {trainedAbs && (
               <>
-                <line x1="59" y1="142" x2="101" y2="142" stroke={BASE} strokeWidth="2" opacity="0.4" />
-                <line x1="59" y1="162" x2="101" y2="162" stroke={BASE} strokeWidth="2" opacity="0.4" />
-                <line x1="80" y1="122" x2="80" y2="182" stroke={BASE} strokeWidth="2" opacity="0.4" />
+                <line x1="57" y1="156" x2="103" y2="156" stroke={BASE} strokeWidth="1.5" opacity="0.45" />
+                <line x1="57" y1="184" x2="103" y2="184" stroke={BASE} strokeWidth="1.5" opacity="0.45" />
+                <line x1="80" y1="132" x2="80" y2="216" stroke={BASE} strokeWidth="1.5" opacity="0.45" />
               </>
             )}
-            {/* Quads - large anatomical teardrops */}
-            <ellipse cx="56" cy="292" rx="24" ry="54" fill={c("quads")} opacity="0.88" />
-            <ellipse cx="106" cy="292" rx="24" ry="54" fill={c("quads")} opacity="0.88" />
-            {/* Calves front */}
-            <ellipse cx="57" cy="360" rx="14" ry="26" fill={c("calves")} opacity="0.88" />
-            <ellipse cx="104" cy="360" rx="14" ry="26" fill={c("calves")} opacity="0.88" />
+
+            {/* Obliques – flank strips beside abs */}
+            <path d="M36,118 C32,134 30,162 34,190 L54,206 L56,132 Z" fill={c("abs")} opacity="0.55" />
+            <path d="M124,118 C128,134 130,162 126,190 L106,206 L104,132 Z" fill={c("abs")} opacity="0.55" />
+
+            {/* Quads – front thighs */}
+            <path d="M34,240 C28,260 28,300 30,340 L32,390 C36,404 46,410 56,410 L72,408 L74,242 C62,232 46,232 34,240 Z" fill={c("quads")} opacity="0.92" />
+            <path d="M126,240 C132,260 132,300 130,340 L128,390 C124,404 114,410 104,410 L88,408 L86,242 C98,232 114,232 126,240 Z" fill={c("quads")} opacity="0.92" />
+            {/* Inner quads (VMO) */}
+            <path d="M74,244 L74,408 C78,410 80,410 80,410 L80,228 C78,232 74,236 74,244 Z" fill={c("quads")} opacity="0.8" />
+            <path d="M86,244 L86,408 C82,410 80,410 80,410 L80,228 C82,232 86,236 86,244 Z" fill={c("quads")} opacity="0.8" />
+
+            {/* Calves – front tibialis bulge */}
+            <path d="M32,380 C28,396 30,408 36,416 L56,420 L70,416 L72,388 C58,388 40,384 32,380 Z" fill={c("calves")} opacity="0.92" />
+            <path d="M128,380 C132,396 130,408 124,416 L104,420 L90,416 L88,388 C102,388 120,384 128,380 Z" fill={c("calves")} opacity="0.92" />
           </>
         ) : (
           <>
-            {/* Traps / rear delts */}
-            <ellipse cx="16" cy="90" rx="14" ry="22" transform="rotate(12 16 90)" fill={c("back")} opacity="0.88" />
-            <ellipse cx="144" cy="90" rx="14" ry="22" transform="rotate(-12 144 90)" fill={c("back")} opacity="0.88" />
-            {/* Lats - fan shapes */}
-            <path d="M 38 72 C 22 96 20 142 28 174 L 80 166 Z" fill={c("back")} opacity="0.88" />
-            <path d="M 122 72 C 138 96 140 142 132 174 L 80 166 Z" fill={c("back")} opacity="0.88" />
-            {/* Middle back fill */}
-            <rect x="38" y="78" width="84" height="86" rx="6" fill={c("back")} opacity="0.6" />
-            {/* Triceps */}
-            <ellipse cx="10" cy="130" rx="12" ry="28" fill={c("triceps")} opacity="0.88" />
-            <ellipse cx="150" cy="130" rx="12" ry="28" fill={c("triceps")} opacity="0.88" />
-            {/* Glutes - rounded blobs */}
-            <ellipse cx="57" cy="236" rx="26" ry="24" fill={c("glutes")} opacity="0.88" />
-            <ellipse cx="105" cy="236" rx="26" ry="24" fill={c("glutes")} opacity="0.88" />
-            {/* Hamstrings */}
-            <ellipse cx="57" cy="300" rx="22" ry="54" fill={c("hamstrings")} opacity="0.88" />
-            <ellipse cx="104" cy="300" rx="22" ry="54" fill={c("hamstrings")} opacity="0.88" />
-            {/* Calves back - fuller shape */}
-            <ellipse cx="57" cy="358" rx="14" ry="26" fill={c("calves")} opacity="0.88" />
-            <ellipse cx="104" cy="358" rx="14" ry="26" fill={c("calves")} opacity="0.88" />
+            {/* === BACK VIEW === */}
+
+            {/* Rear deltoids */}
+            <path d="M8,92 C6,106 10,120 20,126 L34,124 L34,78 C20,72 6,80 8,92 Z" fill={c("shoulders")} opacity="0.92" />
+            <path d="M152,92 C154,106 150,120 140,126 L126,124 L126,78 C140,72 154,80 152,92 Z" fill={c("shoulders")} opacity="0.92" />
+
+            {/* Traps – diamond from neck to mid-back */}
+            <path d="M72,58 C60,64 46,72 36,82 L80,100 Z" fill={c("traps")} opacity="0.92" />
+            <path d="M88,58 C100,64 114,72 124,82 L80,100 Z" fill={c("traps")} opacity="0.92" />
+            <path d="M36,82 L80,100 L80,124 L38,112 Z" fill={c("traps")} opacity="0.72" />
+            <path d="M124,82 L80,100 L80,124 L122,112 Z" fill={c("traps")} opacity="0.72" />
+
+            {/* Lats – swept wing from armpit to waist */}
+            <path d="M18,106 C16,128 18,158 24,176 L56,188 L54,98 Z" fill={c("lats")} opacity="0.92" />
+            <path d="M142,106 C144,128 142,158 136,176 L104,188 L106,98 Z" fill={c("lats")} opacity="0.92" />
+
+            {/* Rhomboids / erector spinae */}
+            <path d="M54,98 L54,188 C60,198 70,204 80,204 C90,204 100,198 106,188 L106,98 C98,90 88,86 80,86 C72,86 62,90 54,98 Z" fill={c("back")} opacity="0.92" />
+            <line x1="80" y1="98" x2="80" y2="202" stroke={BASE} strokeWidth="1.5" opacity="0.4" />
+            <line x1="54" y1="134" x2="106" y2="134" stroke={BASE} strokeWidth="1" opacity="0.3" />
+            <line x1="54" y1="164" x2="106" y2="164" stroke={BASE} strokeWidth="1" opacity="0.3" />
+
+            {/* Triceps – back of upper arms */}
+            <path d="M4,114 C2,132 4,162 8,184 L26,186 C30,160 30,130 28,110 Z" fill={c("triceps")} opacity="0.92" />
+            <path d="M156,114 C158,132 156,162 152,184 L134,186 C130,160 130,130 132,110 Z" fill={c("triceps")} opacity="0.92" />
+
+            {/* Forearms back */}
+            <path d="M4,200 L6,252 C8,260 14,264 20,264 L34,264 C40,260 42,256 42,252 L42,200 Z" fill={c("forearms")} opacity="0.92" />
+            <path d="M156,200 L154,252 C152,256 148,260 142,264 L126,264 C120,260 118,256 118,252 L118,200 Z" fill={c("forearms")} opacity="0.92" />
+
+            {/* Glutes */}
+            <path d="M34,232 C28,250 28,272 36,286 C44,298 60,302 72,296 L78,282 L78,230 Z" fill={c("glutes")} opacity="0.92" />
+            <path d="M126,232 C132,250 132,272 124,286 C116,298 100,302 88,296 L82,282 L82,230 Z" fill={c("glutes")} opacity="0.92" />
+
+            {/* Hamstrings – back of thighs */}
+            <path d="M34,286 C28,308 28,346 32,378 L34,392 L72,408 L74,298 C60,302 44,298 34,286 Z" fill={c("hamstrings")} opacity="0.92" />
+            <path d="M126,286 C132,308 132,346 128,378 L126,392 L88,408 L86,298 C100,302 116,298 126,286 Z" fill={c("hamstrings")} opacity="0.92" />
+            <path d="M78,284 L78,408 C80,410 80,410 80,410 L80,228 Z" fill={c("hamstrings")} opacity="0.7" />
+            <path d="M82,284 L82,408 C80,410 80,410 80,410 L80,228 Z" fill={c("hamstrings")} opacity="0.7" />
+
+            {/* Calves – gastrocnemius */}
+            <path d="M32,380 C28,396 30,410 38,416 L56,420 L70,416 L72,388 C56,388 38,384 32,380 Z" fill={c("calves")} opacity="0.92" />
+            <path d="M128,380 C132,396 130,410 122,416 L104,420 L90,416 L88,388 C104,388 122,384 128,380 Z" fill={c("calves")} opacity="0.92" />
           </>
         )}
       </g>
@@ -1418,13 +1467,13 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
                   {/* Muscle list for this view */}
                   <div className="space-y-1.5 border-t border-white/5 pt-3">
                     {(bodyView === "front"
-                      ? ["Chest","Shoulders","Biceps","Abs","Quads","Calves"]
-                      : ["Back","Triceps","Glutes","Hamstrings","Calves"]
-                    ).map(m => {
-                      const lv = muscleData[m.toLowerCase()] ?? "none";
+                      ? [["Chest","chest"],["Shoulders","shoulders"],["Biceps","biceps"],["Forearms","forearms"],["Abs","abs"],["Quads","quads"],["Calves","calves"]]
+                      : [["Traps","traps"],["Lats","lats"],["Back","back"],["Triceps","triceps"],["Glutes","glutes"],["Hamstrings","hamstrings"],["Calves","calves"]]
+                    ).map(([label, key]) => {
+                      const lv = muscleData[key] ?? "none";
                       return (
-                        <div key={m} className="flex items-center justify-between">
-                          <span className="text-[11px] text-gray-500">{m}</span>
+                        <div key={key} className="flex items-center justify-between">
+                          <span className="text-[11px] text-gray-500">{label}</span>
                           <div className="flex items-center gap-1.5">
                             <div className="w-2 h-2 rounded-full shrink-0" style={{ background: LEVEL_COLORS[lv] }} />
                             <span className="text-[10px] font-semibold capitalize" style={{ color: LEVEL_COLORS[lv] }}>{lv === "none" ? "—" : lv}</span>

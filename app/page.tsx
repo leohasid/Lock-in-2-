@@ -97,7 +97,7 @@ export default function Home() {
   const [weeklyTaskStats, setWeeklyTaskStats] = useState({ completed: 0, total: 0 });
   const [weeklyWorkoutStats, setWeeklyWorkoutStats] = useState({ completed: 0, scheduled: 0 });
   const [mogMessage, setMogMessage] = useState("");
-  const [isFetchingMessage, setIsFetchingMessage] = useState(false);
+
 
   const loadData = () => {
     if (typeof window === "undefined") return;
@@ -423,7 +423,6 @@ export default function Home() {
 
     const prompt = promptLines.filter(Boolean).join("\n");
 
-    setIsFetchingMessage(true);
     fetch("/api/ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -439,7 +438,7 @@ export default function Home() {
         }
       })
       .catch(() => {})
-      .finally(() => setIsFetchingMessage(false));
+      .finally(() => {});
   }, [mogScore, todayStr]);
 
   const todayWorkout = todaySchedule.find(e => e.type === "workout");
@@ -540,13 +539,7 @@ export default function Home() {
             </div>
 
             {/* AI message */}
-            {isFetchingMessage ? (
-              <div className="flex items-center gap-1.5">
-                <div className="w-1 h-1 rounded-full bg-teal-400 animate-pulse" />
-                <div className="w-1 h-1 rounded-full bg-teal-400 animate-pulse delay-75" />
-                <div className="w-1 h-1 rounded-full bg-teal-400 animate-pulse delay-150" />
-              </div>
-            ) : mogMessage ? (
+            {mogMessage ? (
               <p className="text-[11px] text-gray-400 leading-relaxed">{mogMessage}</p>
             ) : null}
           </div>
