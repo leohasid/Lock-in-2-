@@ -108,6 +108,8 @@ export default function GuidedWorkoutView({
   const [showRestEdit, setShowRestEdit] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [tempRestSeconds, setTempRestSeconds] = useState(DEFAULT_REST_SECONDS);
+  /** When false, skip timed rest screens between sets (and between exercises). */
+  const [restTimerEnabled, setRestTimerEnabled] = useState(true);
   const completionShownRef = useRef(false);
 
   useEffect(() => {
@@ -149,7 +151,18 @@ export default function GuidedWorkoutView({
     if (!currentEx || !currentSet) return;
     onUpdateSet(currentEx.id, currentSetIndex, { completed: true });
 
-    // Start rest countdown
+    if (!restTimerEnabled || restSeconds <= 0) {
+      const hasMoreSets = currentSetIndex + 1 < currentEx.sets.length;
+      const hasMoreExercises = currentExIndex + 1 < exercises.length;
+      if (hasMoreSets) {
+        setCurrentSetIndex((i) => i + 1);
+      } else if (hasMoreExercises) {
+        setCurrentExIndex((i) => i + 1);
+        setCurrentSetIndex(0);
+      }
+      return;
+    }
+
     setRestSecondsRemaining(restSeconds);
     setRestReason("set");
     setIsResting(true);
@@ -158,6 +171,12 @@ export default function GuidedWorkoutView({
   const skipRest = () => {
     setRestSecondsRemaining(0);
   };
+
+  useEffect(() => {
+    if (!restTimerEnabled && isResting) {
+      setRestSecondsRemaining(0);
+    }
+  }, [restTimerEnabled, isResting]);
 
   const goToNext = () => {
     const hasMoreSets = currentSetIndex + 1 < (currentEx?.sets.length ?? 0);
@@ -168,12 +187,16 @@ export default function GuidedWorkoutView({
     } else if (hasMoreSets) {
       setCurrentSetIndex((i) => i + 1);
     } else if (hasMoreExercises) {
-      setRestReason("exercise");
-      const nextEx = exercises[currentExIndex + 1];
-      setRestSecondsRemaining(nextEx?.restSeconds ?? DEFAULT_REST_SECONDS);
-      setCurrentExIndex((i) => i + 1);
+      const nextIdx = currentExIndex + 1;
+      const nextEx = exercises[nextIdx];
+      const nextRest = nextEx?.restSeconds ?? DEFAULT_REST_SECONDS;
+      setCurrentExIndex(nextIdx);
       setCurrentSetIndex(0);
-      setIsResting(true);
+      if (restTimerEnabled && nextRest > 0) {
+        setRestReason("exercise");
+        setRestSecondsRemaining(nextRest);
+        setIsResting(true);
+      }
     }
   };
 
@@ -189,11 +212,18 @@ export default function GuidedWorkoutView({
         setCurrentSetIndex((i) => i + 1);
         setIsResting(false);
       } else if (hasMoreExercises) {
-        setRestReason("exercise");
-        const nextEx = exercises[currentExIndex + 1];
-        setRestSecondsRemaining(nextEx?.restSeconds ?? DEFAULT_REST_SECONDS);
-        setCurrentExIndex((i) => i + 1);
+        const nextIdx = currentExIndex + 1;
+        const nextEx = exercises[nextIdx];
+        const nextRest = nextEx?.restSeconds ?? DEFAULT_REST_SECONDS;
+        setCurrentExIndex(nextIdx);
         setCurrentSetIndex(0);
+        if (restTimerEnabled && nextRest > 0) {
+          setRestReason("exercise");
+          setRestSecondsRemaining(nextRest);
+        } else {
+          setRestReason("set");
+          setIsResting(false);
+        }
       } else {
         setIsResting(false);
       }
@@ -202,7 +232,16 @@ export default function GuidedWorkoutView({
       setRestReason("set");
       setIsResting(false);
     }
-  }, [isResting, restSecondsRemaining]);
+  }, [
+    isResting,
+    restSecondsRemaining,
+    restReason,
+    restTimerEnabled,
+    currentEx,
+    currentExIndex,
+    currentSetIndex,
+    exercises,
+  ]);
 
   const handleSwap = (newName: string) => {
     if (currentEx) onSwapExercise(currentEx.id, newName);
@@ -267,26 +306,36 @@ export default function GuidedWorkoutView({
   if (isResting) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col z-50">
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
+        <div className="flex flex-col gap-3 p-4 border-b border-white/10">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setShowExitConfirm(true)}
+              className="p-2 text-gray-400 hover:text-white"
+              title="Exit"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <span className="text-gray-400 text-sm">
+              {restReason === "exercise" ? "Rest before next exercise" : "Rest before next set"}
+            </span>
+            <button
+              onClick={() => {
+                setShowRestEdit(true);
+                setTempRestSeconds(restSecondsRemaining);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/10 rounded-lg text-gray-300 text-sm disabled:opacity-40"
+              disabled={!restTimerEnabled}
+            >
+              <Clock className="w-4 h-4" />
+              Change rest
+            </button>
+          </div>
           <button
-            onClick={() => setShowExitConfirm(true)}
-            className="p-2 text-gray-400 hover:text-white"
-            title="Exit"
+            type="button"
+            onClick={() => setRestTimerEnabled(false)}
+            className="w-full py-2 text-sm text-cyan-400/90 hover:text-cyan-300 border border-white/10 rounded-lg bg-white/5"
           >
-            <X className="w-6 h-6" />
-          </button>
-          <span className="text-gray-400 text-sm">
-            {restReason === "exercise" ? "Rest before next exercise" : "Rest before next set"}
-          </span>
-          <button
-            onClick={() => {
-              setShowRestEdit(true);
-              setTempRestSeconds(restSecondsRemaining);
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/10 rounded-lg text-gray-300 text-sm"
-          >
-            <Clock className="w-4 h-4" />
-            Change rest
+            Turn off rest timer for this workout
           </button>
         </div>
 
@@ -380,16 +429,17 @@ export default function GuidedWorkoutView({
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={() => {
-                    if (currentEx) onUpdateRest(currentEx.id, tempRestSeconds);
-                    setRestSecondsRemaining(tempRestSeconds);
-                    setShowRestEdit(false);
-                  }}
-                  className="flex-1 py-2 bg-cyan-500 text-black font-semibold rounded-lg"
-                >
-                  Save
-                </button>
+          <button
+            onClick={() => {
+              if (currentEx) onUpdateRest(currentEx.id, tempRestSeconds);
+              setRestSecondsRemaining(tempRestSeconds);
+              setShowRestEdit(false);
+              if (tempRestSeconds <= 0) setRestTimerEnabled(false);
+            }}
+            className="flex-1 py-2 bg-cyan-500 text-black font-semibold rounded-lg"
+          >
+            Save
+          </button>
               </div>
             </div>
           </div>
@@ -502,9 +552,31 @@ export default function GuidedWorkoutView({
           </button>
         </div>
 
-        <div className="mt-8 flex items-center gap-1 text-cyan-400 text-sm">
-          <Clock className="w-4 h-4" />
-          Rest: {currentEx.restSeconds ?? DEFAULT_REST_SECONDS}s
+        <div className="mt-8 w-full max-w-sm flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 text-cyan-400 text-sm min-w-0">
+            <Clock className="w-4 h-4 shrink-0" />
+            <span className="truncate">
+              Rest between sets:{" "}
+              {restTimerEnabled
+                ? `${currentEx.restSeconds ?? DEFAULT_REST_SECONDS}s`
+                : "Off"}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setRestTimerEnabled((v) => !v)}
+            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 ${
+              restTimerEnabled ? "bg-cyan-500" : "bg-gray-600"
+            }`}
+            aria-pressed={restTimerEnabled}
+            title={restTimerEnabled ? "Turn off rest timer" : "Turn on rest timer"}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                restTimerEnabled ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
         </div>
       </div>
 
