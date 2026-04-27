@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Play, SkipForward, RefreshCw, Clock, Check, Pause, X, ChevronRight } from "lucide-react";
 import { getBuiltInImageUrl, getExerciseImagePosition } from "@/lib/built-in-exercise-images";
 
@@ -17,32 +17,55 @@ export interface GuidedExercise {
 
 const DEFAULT_REST_SECONDS = 90;
 
-// Common exercise alternatives for swapping (grouped loosely by type)
-const EXERCISE_ALTERNATIVES: Record<string, string[]> = {
-  "bench press": ["Dumbbell Bench Press", "Push-ups", "Cable Chest Fly", "Machine Chest Press"],
-  "chest press": ["Dumbbell Bench Press", "Push-ups", "Cable Chest Fly", "Barbell Bench Press"],
-  "squat": ["Leg Press", "Goblet Squat", "Lunges", "Hack Squat"],
-  "deadlift": ["Romanian Deadlift", "Leg Curl", "Back Extension", "Good Morning"],
-  "row": ["Cable Row", "Dumbbell Row", "T-Bar Row", "Machine Row"],
-  "pull": ["Lat Pulldown", "Lat Pull Overs", "Pull-ups", "Cable Row", "Dumbbell Row"],
-  "curl": ["Hammer Curl", "Cable Curl", "Preacher Curl", "Concentration Curl"],
-  "press": ["Dumbbell Shoulder Press", "Machine Shoulder Press", "Push Press", "Arnold Press"],
-  "extension": ["Cable Tricep Pushdown", "Overhead Tricep Extension", "Overhead Tricep Extensions", "One Handed Tricep Push Down", "Dips", "Skull Crushers"],
-  "tricep push down": ["Cable Tricep Pushdown", "One Handed Tricep Push Down", "Overhead Tricep Extensions", "Dips"],
-  "pull down": ["Pull-ups", "Assisted Pull-up", "Lat Pulldown", "Lat Pull Overs", "Chin-ups"],
-  "leg curl": ["Romanian Deadlift", "Stiff Leg Deadlift", "Good Morning", "Glute Bridge"],
-  "leg press": ["Squat", "Hack Squat", "Lunges", "Goblet Squat"],
-};
+// Alternatives for swapping — match keywords longest/specific first via iteration order below
+const EXERCISE_ALTERNATIVES_ORDERED: [string, string[]][] = [
+  ["single leg", ["Leg Press", "Bulgarian Split Squat", "Single Leg RDL", "Single Leg Hip Thrust"]],
+  ["single arm", ["Single Arm Cable Row", "Single Arm Dumbbell Row", "One Arm Cable Curl", "Single Arm Cable Fly"]],
+  ["cable fly", ["Dumbbell Fly", "Machine Chest Fly", "Pec Deck", "Cable Crossover"]],
+  ["machine fly", ["Cable Chest Fly", "Pec Deck", "Incline Dumbbell Fly", "Dumbbell Fly"]],
+  ["chest fly", ["Cable Chest Fly", "Machine Chest Fly", "Pec Deck", "Incline Dumbbell Fly"]],
+  ["bench press", ["Dumbbell Bench Press", "Cable Chest Fly", "Machine Chest Press", "Smith Machine Bench Press"]],
+  ["chest press", ["Barbell Bench Press", "Cable Chest Fly", "Dumbbell Bench Press", "Push Ups"]],
+  ["squat", ["Leg Press", "Hack Squat", "Bulgarian Split Squat", "Goblet Squat"]],
+  ["deadlift", ["Romanian Deadlift", "Trap Bar Deadlift", "Sumo Deadlift", "Good Morning"]],
+  ["row", ["Cable Row", "T-Bar Row", "Machine Row", "Single Arm Dumbbell Row"]],
+  ["pulldown", ["Pull Ups", "Lat Pull Overs", "Straight Arm Pulldown", "Cable Row"]],
+  ["pull", ["Lat Pulldown", "Cable Row", "Machine Row", "Face Pull"]],
+  ["curl", ["Hammer Curl", "Cable Curl", "Preacher Curl", "Machine Curl"]],
+  ["fly", ["Cable Chest Fly", "Machine Chest Fly", "Pec Deck", "Incline Cable Fly"]],
+  ["press", ["Machine Shoulder Press", "Dumbbell Shoulder Press", "Smith Machine Shoulder Press", "Arnold Press"]],
+  [
+    "extension",
+    [
+      "Cable Tricep Pushdown",
+      "Overhead Tricep Extensions",
+      "Skull Crushers",
+      "One Handed Tricep Push Down",
+      "Dips",
+    ],
+  ],
+  ["tricep push down", ["Cable Tricep Pushdown", "Overhead Tricep Extensions", "Rope Pushdown", "Dips"]],
+  ["pull down", ["Pull Ups", "Lat Pulldown", "Lat Pull Overs", "Straight Arm Lat Pulldown"]],
+  ["leg curl", ["Romanian Deadlift", "Nordic Curl", "Glute Bridge", "Single Leg Curl"]],
+  ["leg press", ["Squat", "Hack Squat", "Leg Extension", "Walking Lunges"]],
+];
 
 function getAlternatives(exerciseName: string): string[] {
   const name = exerciseName.toLowerCase();
-  for (const [key, alts] of Object.entries(EXERCISE_ALTERNATIVES)) {
+  for (const [key, alts] of EXERCISE_ALTERNATIVES_ORDERED) {
     if (name.includes(key)) return alts;
   }
   return [
-    "Dumbbell Bench Press", "Push-ups", "Squat", "Leg Press", "Lat Pulldown",
-    "Cable Row", "Dumbbell Row", "Bicep Curl", "Tricep Pushdown", "Shoulder Press",
-    "Lunges", "Romanian Deadlift", "Cable Chest Fly", "Pull-ups",
+    "Cable Chest Fly",
+    "Machine Chest Fly",
+    "Single Arm Cable Fly",
+    "Lat Pulldown",
+    "Cable Row",
+    "Leg Press",
+    "Hack Squat",
+    "Bulgarian Split Squat",
+    "Romanian Deadlift",
+    "Single Leg Deadlift",
   ];
 }
 
@@ -53,6 +76,12 @@ interface GuidedWorkoutViewProps {
   onUpdateRest: (exId: string, restSeconds: number) => void;
   onFinish: () => void;
   onExit: () => void;
+  /** Increments when a new guided session starts — resets completion-screen side effects */
+  completionResetKey?: number;
+  /** Called once when the workout-complete screen is shown — start AI summary fetch from parent */
+  onCompletionScreenShown?: () => void;
+  completionAiLoading?: boolean;
+  completionAiSummary?: string | null;
 }
 
 type RestReason = "set" | "exercise";
@@ -64,6 +93,10 @@ export default function GuidedWorkoutView({
   onUpdateRest,
   onFinish,
   onExit,
+  completionResetKey = 0,
+  onCompletionScreenShown,
+  completionAiLoading,
+  completionAiSummary,
 }: GuidedWorkoutViewProps) {
   const [currentExIndex, setCurrentExIndex] = useState(0);
   const [currentSetIndex, setCurrentSetIndex] = useState(0);
@@ -75,6 +108,11 @@ export default function GuidedWorkoutView({
   const [showRestEdit, setShowRestEdit] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [tempRestSeconds, setTempRestSeconds] = useState(DEFAULT_REST_SECONDS);
+  const completionShownRef = useRef(false);
+
+  useEffect(() => {
+    completionShownRef.current = false;
+  }, [completionResetKey]);
 
   const currentEx = exercises[currentExIndex];
   const restSeconds = currentEx?.restSeconds ?? DEFAULT_REST_SECONDS;
@@ -87,6 +125,25 @@ export default function GuidedWorkoutView({
     return () => clearInterval(t);
   }, [isResting, restSecondsRemaining, isPaused]);
 
+  useEffect(() => {
+    if (exercises.length === 0 || !onCompletionScreenShown) return;
+    const ce = exercises[currentExIndex];
+    const ts = ce?.sets.length ?? 0;
+    const lastEx = currentExIndex === exercises.length - 1;
+    const lastSet = currentSetIndex === ts - 1;
+    const allDone = ce?.sets.every((s) => s.completed) ?? false;
+    const showComplete = lastEx && lastSet && allDone && !isResting;
+    if (!showComplete || completionShownRef.current) return;
+    completionShownRef.current = true;
+    onCompletionScreenShown();
+  }, [
+    exercises,
+    currentExIndex,
+    currentSetIndex,
+    isResting,
+    onCompletionScreenShown,
+    completionResetKey,
+  ]);
 
   const markSetComplete = () => {
     if (!currentEx || !currentSet) return;
@@ -160,8 +217,11 @@ export default function GuidedWorkoutView({
   const isLastSet = currentSetIndex === totalSets - 1;
   const allSetsDone = currentEx?.sets.every((s) => s.completed) ?? false;
 
+  const showCompletionScreen =
+    isLastExercise && isLastSet && allSetsDone && !isResting;
+
   // Workout complete: last exercise, last set just completed, rest done
-  if (isLastExercise && isLastSet && allSetsDone && !isResting) {
+  if (showCompletionScreen) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col z-50">
         <div className="flex justify-end p-4">
@@ -173,10 +233,25 @@ export default function GuidedWorkoutView({
             <X className="w-6 h-6" />
           </button>
         </div>
-        <div className="flex-1 flex flex-col items-center justify-center p-6 -mt-12">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 -mt-12 overflow-y-auto">
           <div className="text-6xl mb-4">🎉</div>
           <h2 className="text-2xl font-bold text-white mb-2">Workout complete!</h2>
-          <p className="text-gray-400 text-sm mb-8">{totalExercises} exercises finished</p>
+          <p className="text-gray-400 text-sm mb-6">{totalExercises} exercises finished</p>
+
+          {(completionAiLoading || completionAiSummary) && (
+            <div className="w-full max-w-md mb-6 px-2">
+              <p className="text-[11px] text-cyan-400/80 font-semibold uppercase tracking-widest mb-2 text-center">
+                Session summary
+              </p>
+              {completionAiLoading && !completionAiSummary && (
+                <p className="text-gray-500 text-sm text-center animate-pulse">Analyzing your session…</p>
+              )}
+              {completionAiSummary && (
+                <p className="text-[13px] text-gray-300 leading-relaxed text-center">{completionAiSummary}</p>
+              )}
+            </div>
+          )}
+
           <button
             onClick={onFinish}
             className="px-8 py-4 bg-cyan-500 text-black font-bold rounded-xl text-lg"

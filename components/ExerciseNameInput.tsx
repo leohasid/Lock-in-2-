@@ -22,7 +22,7 @@ export default function ExerciseNameInput({
   const [highlightIndex, setHighlightIndex] = useState(0);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const suggestions = filterExerciseSuggestions(value, 8);
+  const suggestions = filterExerciseSuggestions(value, 15);
 
   useEffect(() => {
     setHighlightIndex(0);

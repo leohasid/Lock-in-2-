@@ -31,6 +31,10 @@ export async function POST(request: Request) {
       age,
       weight,
       aggressiveness,
+      gender,
+      workoutExtraNotes,
+      wantsAIWorkoutPlan,
+      wantsMacrosPlan,
     } = requestData;
 
     if (!fitnessGoal || !equipment || !height || !age || !weight || !aggressiveness) {
@@ -38,11 +42,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // Calculate BMI and BMR for context
-    // Using Mifflin-St Jeor equation (assuming male for calculation - can be adjusted)
+    const genderNorm =
+      typeof gender === "string" ? gender.toLowerCase().trim() : "";
+    const isFemale = genderNorm === "female" || genderNorm === "f";
+
+    // Calculate BMI and BMR for context — Mifflin-St Jeor
     const bmi = weight / ((height / 100) ** 2);
-    // BMR calculation: For males use +5, for females use -161 (defaulting to male)
-    const bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+    const bmrConstant = isFemale ? -161 : 5;
+    const bmr = 10 * weight + 6.25 * height - 5 * age + bmrConstant;
+
+    const genderLabel = isFemale ? "female" : genderNorm === "male" || genderNorm === "m" ? "male" : "not specified";
+    const notesBlock =
+      typeof workoutExtraNotes === "string" && workoutExtraNotes.trim().length > 0
+        ? `\n- Extra preferences / constraints from the user: ${workoutExtraNotes.trim()}`
+        : "";
+    const gymRequested = wantsAIWorkoutPlan !== false;
+    const macrosRequested = wantsMacrosPlan !== false;
 
     const goalLabels: Record<string, string> = {
       lose_weight: "lose weight",
@@ -63,19 +78,24 @@ export async function POST(request: Request) {
       very_aggressive: "very aggressive (maximum intensity, rapid results)",
     };
 
-    const systemPrompt = `You are an expert fitness and nutrition coach. Create a personalized workout plan and nutrition plan based on the user's profile.
+    const systemPrompt = `You are an expert fitness and nutrition coach. Create personalized plans based on the user's profile.
 
 User Profile:
+- Sex (for programming load/recovery context): ${genderLabel}
 - Goal: ${goalLabels[fitnessGoal]}
 - Equipment: ${equipmentLabels[equipment]}
 - Height: ${height} cm
 - Age: ${age} years
 - Weight: ${weight} kg
 - BMI: ${bmi.toFixed(1)}
-- BMR: ${bmr.toFixed(0)} kcal/day
-- Intensity: ${aggressivenessLabels[aggressiveness]}
+- BMR (Mifflin–St Jeor): ${bmr.toFixed(0)} kcal/day
+- Intensity: ${aggressivenessLabels[aggressiveness]}${notesBlock}
 
-Generate TWO detailed plans:
+Generate detailed plans as requested:
+- Gym/workout JSON: ${gymRequested ? "REQUIRED — full weekly schedule as specified below" : "You may return a minimal placeholder gymPlan if not needed, but still output valid JSON keys."}
+- Nutrition JSON: ${macrosRequested ? "REQUIRED — full macros plan as specified below" : "You may return sensible defaults in nutritionPlan."}
+
+Details for gym plan (when applicable):
 
 1. GYM PLAN (JSON format):
 {

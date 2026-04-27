@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -14,6 +14,7 @@ type FitnessGoal = "lose_weight" | "gain_weight" | "build_muscle";
 type Equipment = "full_gym" | "home_gym" | "minimal" | "bodyweight_only";
 type Aggressiveness = "moderate" | "aggressive" | "very_aggressive";
 type AddictionType = "phone" | "vape" | "alcohol" | "other";
+type Gender = "male" | "female";
 
 interface AIExercise {
   name: string;
@@ -43,6 +44,8 @@ interface OnboardingData {
   age: number | null;
   weight: number | null; // in kg
   aggressiveness: Aggressiveness | null;
+  gender: Gender | null;
+  workoutExtraNotes: string;
   // AI Plans
   wantsAIWorkoutPlan: boolean | null;
   wantsMacrosPlan: boolean | null;
@@ -64,6 +67,10 @@ export default function OnboardingPage() {
   const [subscribing, setSubscribing] = useState(false);
   const [planReady, setPlanReady] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [planGenerationPhase, setPlanGenerationPhase] = useState<
+    "idle" | "progress" | "subscribe_gate" | "generating"
+  >("idle");
+  const [generationProgress, setGenerationProgress] = useState(0);
   const [data, setData] = useState<OnboardingData>({
     fitnessGoal: null,
     equipment: null,
@@ -71,6 +78,8 @@ export default function OnboardingPage() {
     age: null,
     weight: null,
     aggressiveness: null,
+    gender: null,
+    workoutExtraNotes: "",
     wantsAIWorkoutPlan: null,
     wantsMacrosPlan: null,
     wantsToTrackAddictions: null,
@@ -99,19 +108,23 @@ export default function OnboardingPage() {
   }, [router]);
 
   const getStepInfo = (currentStep: number) => {
-    // Steps 1-6 are fitness questions
     if (currentStep <= 6) {
       return { step: currentStep, isLast: false };
     }
-    
-    // Step 7: AI Workout Plan
+
     if (currentStep === 7) {
       return { step: currentStep, isLast: false };
     }
-    
-    // Step 8: Macros Plan
+
     if (currentStep === 8) {
-      // Check if we have addiction questions
+      return { step: currentStep, isLast: false };
+    }
+
+    if (currentStep === 9) {
+      return { step: currentStep, isLast: false };
+    }
+
+    if (currentStep === 10) {
       if (data.wantsToTrackAddictions === null) {
         return { step: currentStep, isLast: false };
       }
@@ -120,100 +133,322 @@ export default function OnboardingPage() {
       }
       return { step: currentStep, isLast: false };
     }
-    
-    // Step 9: Track addictions?
-    if (currentStep === 9) {
+
+    if (currentStep === 11) {
       if (data.wantsToTrackAddictions === false) {
         return { step: currentStep, isLast: true };
       }
       return { step: currentStep, isLast: false };
     }
-    
-    // Step 10: Which addictions
-    if (currentStep === 10) {
+
+    if (currentStep === 12) {
       return { step: currentStep, isLast: false };
     }
-    
-    // Step 11: Phone limit (only if phone selected)
-    if (currentStep === 11) {
+
+    if (currentStep === 13) {
       if (!data.selectedAddictions.includes("phone")) {
-        // Skip this step, go to next
-        return getStepInfo(12);
+        return getStepInfo(14);
       }
-      const hasSpendStep = data.selectedAddictions.some(a => ["vape", "alcohol", "other"].includes(a));
+      const hasSpendStep = data.selectedAddictions.some((a) =>
+        ["vape", "alcohol", "other"].includes(a)
+      );
       return { step: currentStep, isLast: !hasSpendStep && !data.addictionStartDate };
     }
-    
-    // Step 12: Weekly spend (only if vape/alcohol/other selected)
-    if (currentStep === 12) {
-      if (!data.selectedAddictions.some(a => ["vape", "alcohol", "other"].includes(a))) {
-        // Skip this step, go to next
-        return getStepInfo(13);
+
+    if (currentStep === 14) {
+      if (!data.selectedAddictions.some((a) => ["vape", "alcohol", "other"].includes(a))) {
+        return getStepInfo(15);
       }
       return { step: currentStep, isLast: !data.addictionStartDate };
     }
-    
-    // Step 13: Start date (always last if tracking addictions)
-    if (currentStep === 13) {
+
+    if (currentStep === 15) {
       return { step: currentStep, isLast: true };
     }
-    
+
     return { step: currentStep, isLast: false };
   };
 
-  const getTotalSteps = () => {
-    let total = 6; // Base fitness questions
-    
-    // AI Plan questions (steps 7-8)
-    total += 1; // Step 7: AI Workout Plan
-    total += 1; // Step 8: Macros Plan
-    
-    // Addiction questions
-    if (data.wantsToTrackAddictions === true) {
-      total += 1; // Step 9: Track addictions?
-      total += 1; // Step 10: Which addictions
-      if (data.selectedAddictions.includes("phone")) {
-        total += 1; // Step 11: Phone limit
-      }
-      if (data.selectedAddictions.some(a => ["vape", "alcohol", "other"].includes(a))) {
-        total += 1; // Step 12: Weekly spend
-      }
-      total += 1; // Step 13: Start date
-    } else if (data.wantsToTrackAddictions === null) {
-      total += 1; // Step 9: Track addictions? (not answered yet)
-    }
-    
-    return total;
-  };
+  /** Max onboarding step index (1-based); progress bar denominator */
+  const getTotalSteps = () => 15;
 
   const handleNext = () => {
     const stepInfo = getStepInfo(step);
-    
+
     if (stepInfo.isLast) {
       handleSubmit();
-    } else {
-      // Find next valid step
-      let nextStep = step + 1;
-      while (nextStep <= 11) {
-        const nextStepInfo = getStepInfo(nextStep);
-        if (nextStepInfo.step === nextStep) {
-          setStep(nextStep);
-          return;
-        }
-        nextStep++;
-      }
-      handleSubmit();
+      return;
     }
+
+    if (step === 7 && data.wantsAIWorkoutPlan === false) {
+      setStep(10);
+      return;
+    }
+
+    let nextStep = step + 1;
+    while (nextStep <= 15) {
+      const nextStepInfo = getStepInfo(nextStep);
+      if (nextStepInfo.step === nextStep) {
+        setStep(nextStep);
+        return;
+      }
+      nextStep++;
+    }
+    handleSubmit();
   };
 
   const handleBack = () => {
-    if (step > 1) {
-      setStep(step - 1);
+    if (step <= 1) return;
+    if (step === 10 && data.wantsAIWorkoutPlan !== true) {
+      setStep(7);
+      return;
     }
+    setStep(step - 1);
   };
+
+  /** Runs after subscription — calls AI then saves gym + nutrition + workoutPlan */
+  const generateAndPersistPlans = useCallback(async () => {
+    let gymPlan: AIGymPlan | null = null;
+    let nutritionPlan: Record<string, unknown> | null = null;
+
+    if (data.wantsAIWorkoutPlan || data.wantsMacrosPlan) {
+      try {
+        const response = await fetch("/api/generate-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fitnessGoal: data.fitnessGoal,
+            equipment: data.equipment,
+            height: data.height,
+            age: data.age,
+            weight: data.weight,
+            aggressiveness: data.aggressiveness,
+            gender: data.gender,
+            workoutExtraNotes: data.workoutExtraNotes?.trim() || undefined,
+            wantsAIWorkoutPlan: data.wantsAIWorkoutPlan,
+            wantsMacrosPlan: data.wantsMacrosPlan,
+          }),
+        });
+
+        if (response.ok) {
+          const planData = await response.json();
+          gymPlan = planData.gymPlan;
+          nutritionPlan = planData.nutritionPlan;
+        } else {
+          console.error("Failed to generate AI plan, using placeholder");
+        }
+      } catch (error) {
+        console.error("Error generating AI plan:", error);
+      }
+    }
+
+    if (!gymPlan) {
+      gymPlan = {
+        planName: "Custom Workout Plan",
+        weeklySchedule: [],
+        duration: "12 weeks",
+        notes: data.wantsAIWorkoutPlan
+          ? "Your personalized workout plan will load here."
+          : "Create your own workout plan in the gym section.",
+      };
+    }
+
+    if (!nutritionPlan) {
+      let calculatedCalories = 2000;
+      let calculatedProtein = 150;
+      let calculatedCarbs = 200;
+      let calculatedFats = 65;
+
+      if (data.weight && data.height && data.age) {
+        const bmrConst = data.gender === "female" ? -161 : 5;
+        const bmr = 10 * data.weight + 6.25 * data.height - 5 * data.age + bmrConst;
+
+        let activityMultiplier = 1.4;
+        if (data.aggressiveness === "aggressive") activityMultiplier = 1.6;
+        if (data.aggressiveness === "very_aggressive") activityMultiplier = 1.8;
+
+        if (data.fitnessGoal === "lose_weight") {
+          calculatedCalories = Math.round(bmr * activityMultiplier - 500);
+          calculatedProtein = Math.round(data.weight * 2.2);
+          calculatedCarbs = Math.round(calculatedCalories * 0.35 / 4);
+          calculatedFats = Math.round(calculatedCalories * 0.25 / 9);
+        } else if (data.fitnessGoal === "gain_weight") {
+          calculatedCalories = Math.round(bmr * activityMultiplier + 500);
+          calculatedProtein = Math.round(data.weight * 2.2);
+          calculatedCarbs = Math.round(calculatedCalories * 0.45 / 4);
+          calculatedFats = Math.round(calculatedCalories * 0.25 / 9);
+        } else if (data.fitnessGoal === "build_muscle") {
+          calculatedCalories = Math.round(bmr * activityMultiplier + 300);
+          calculatedProtein = Math.round(data.weight * 2.5);
+          calculatedCarbs = Math.round(calculatedCalories * 0.4 / 4);
+          calculatedFats = Math.round(calculatedCalories * 0.25 / 9);
+        } else {
+          calculatedCalories = Math.round(bmr * activityMultiplier);
+          calculatedProtein = Math.round(data.weight * 2.0);
+          calculatedCarbs = Math.round(calculatedCalories * 0.4 / 4);
+          calculatedFats = Math.round(calculatedCalories * 0.25 / 9);
+        }
+      }
+
+      nutritionPlan = {
+        dailyCalories: data.wantsMacrosPlan ? calculatedCalories : 2000,
+        macros: {
+          protein: data.wantsMacrosPlan ? calculatedProtein : 150,
+          carbs: data.wantsMacrosPlan ? calculatedCarbs : 200,
+          fats: data.wantsMacrosPlan ? calculatedFats : 65,
+        },
+        mealsPerDay: 3,
+        mealTiming: "Spread meals throughout the day",
+        hydration: "2-3 liters of water daily",
+        supplements: [],
+        notes: data.wantsMacrosPlan
+          ? "Your personalized macros plan based on your goals."
+          : "Set your own macro targets in the nutrition section.",
+      };
+    }
+
+    localStorage.setItem("customGymPlan", JSON.stringify(gymPlan));
+    localStorage.setItem("customNutritionPlan", JSON.stringify(nutritionPlan));
+
+    if (
+      data.wantsAIWorkoutPlan &&
+      gymPlan &&
+      gymPlan.weeklySchedule &&
+      gymPlan.weeklySchedule.length > 0
+    ) {
+      const workoutPlanByDay: {
+        pushDay: Array<{
+          id: string;
+          name: string;
+          goalSets: number;
+          goalReps: number;
+          goalWeight: number;
+          sets: never[];
+        }>;
+        pullDay: Array<{
+          id: string;
+          name: string;
+          goalSets: number;
+          goalReps: number;
+          goalWeight: number;
+          sets: never[];
+        }>;
+        legsDay: Array<{
+          id: string;
+          name: string;
+          goalSets: number;
+          goalReps: number;
+          goalWeight: number;
+          sets: never[];
+        }>;
+      } = {
+        pushDay: [],
+        pullDay: [],
+        legsDay: [],
+      };
+
+      gymPlan.weeklySchedule.forEach((day: AIWorkoutDay) => {
+        const workoutName = day.workoutName?.toLowerCase() || "";
+        const exercises = (day.exercises || []).map((ex: AIExercise) => ({
+          id: `${ex.name}-${Date.now()}-${Math.random()}`,
+          name: ex.name,
+          goalSets: ex.sets || 3,
+          goalReps:
+            typeof ex.reps === "string"
+              ? parseInt(ex.reps.replace(/[^0-9]/g, ""), 10) || 10
+              : ex.reps || 10,
+          goalWeight: 0,
+          sets: [],
+        }));
+
+        if (workoutName.includes("push")) {
+          workoutPlanByDay.pushDay.push(...exercises);
+        } else if (workoutName.includes("pull")) {
+          workoutPlanByDay.pullDay.push(...exercises);
+        } else if (workoutName.includes("leg") || workoutName.includes("lower")) {
+          workoutPlanByDay.legsDay.push(...exercises);
+        }
+      });
+
+      if (
+        workoutPlanByDay.pushDay.length === 0 &&
+        workoutPlanByDay.pullDay.length === 0 &&
+        workoutPlanByDay.legsDay.length === 0
+      ) {
+        gymPlan.weeklySchedule.forEach((day: AIWorkoutDay) => {
+          const exercises = (day.exercises || []).map((ex: AIExercise) => ({
+            id: `${ex.name}-${Date.now()}-${Math.random()}`,
+            name: ex.name,
+            goalSets: ex.sets || 3,
+            goalReps:
+              typeof ex.reps === "string"
+                ? parseInt(ex.reps.replace(/[^0-9]/g, ""), 10) || 10
+                : ex.reps || 10,
+            goalWeight: 0,
+            sets: [],
+          }));
+
+          exercises.forEach((ex) => {
+            const name = ex.name.toLowerCase();
+            if (
+              name.includes("bench") ||
+              name.includes("press") ||
+              name.includes("push") ||
+              name.includes("chest") ||
+              name.includes("shoulder") ||
+              name.includes("tricep")
+            ) {
+              workoutPlanByDay.pushDay.push(ex);
+            } else if (
+              name.includes("pull") ||
+              name.includes("row") ||
+              name.includes("lat") ||
+              name.includes("bicep") ||
+              name.includes("back")
+            ) {
+              workoutPlanByDay.pullDay.push(ex);
+            } else if (
+              name.includes("squat") ||
+              name.includes("leg") ||
+              name.includes("deadlift") ||
+              name.includes("calf") ||
+              name.includes("quad") ||
+              name.includes("hamstring")
+            ) {
+              workoutPlanByDay.legsDay.push(ex);
+            } else {
+              workoutPlanByDay.pushDay.push(ex);
+            }
+          });
+        });
+      }
+
+      localStorage.setItem("workoutPlan", JSON.stringify(workoutPlanByDay));
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (!showSubscribeModal || planGenerationPhase !== "progress") return;
+    setGenerationProgress(0);
+    const start = Date.now();
+    const durationMs = 3400;
+    const cap = 75;
+    const id = window.setInterval(() => {
+      const elapsed = Date.now() - start;
+      const p = Math.min(cap, (elapsed / durationMs) * cap);
+      setGenerationProgress(p);
+      if (p >= cap - 0.5) {
+        window.clearInterval(id);
+        setGenerationProgress(cap);
+        setPlanGenerationPhase("subscribe_gate");
+      }
+    }, 40);
+    return () => window.clearInterval(id);
+  }, [showSubscribeModal, planGenerationPhase]);
 
   const handleSubscribeInModal = async () => {
     setSubscribing(true);
+    setGenerationError(null);
     try {
       if (isNativeIapAvailable()) {
         const result = await purchaseNative("monthly");
@@ -228,13 +463,22 @@ export default function OnboardingPage() {
         await set("subscriptionPlan", "monthly");
         await set("subscriptionDate", new Date().toISOString());
       }
+
+      setPlanGenerationPhase("generating");
+      setGenerationProgress(Math.max(generationProgress, 76));
+
+      await generateAndPersistPlans();
+
+      setGenerationProgress(100);
       setShowSubscribeModal(false);
+      setPlanGenerationPhase("idle");
       setPlanReady(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg && !msg.toLowerCase().includes("cancel")) {
         alert(msg);
       }
+      setGenerationError(msg || "Could not complete checkout.");
     } finally {
       setSubscribing(false);
     }
@@ -243,9 +487,24 @@ export default function OnboardingPage() {
   const handleRestoreInModal = async () => {
     if (!isNativeIapAvailable()) return;
     setSubscribing(true);
+    setGenerationError(null);
     try {
       await restoreNativePurchases();
+      const { get } = await import("@/lib/persistent-storage");
+      const status = await get("subscriptionStatus");
+      if (status !== "active") {
+        alert("No active subscription found.");
+        return;
+      }
+
+      setPlanGenerationPhase("generating");
+      setGenerationProgress(82);
+
+      await generateAndPersistPlans();
+
+      setGenerationProgress(100);
       setShowSubscribeModal(false);
+      setPlanGenerationPhase("idle");
       setPlanReady(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Restore failed.";
@@ -259,7 +518,6 @@ export default function OnboardingPage() {
     setLoading(true);
     setGenerationError(null);
     const needsCustomPlan = data.wantsAIWorkoutPlan || data.wantsMacrosPlan;
-    if (needsCustomPlan) setShowSubscribeModal(true);
 
     try {
       // Store onboarding data (persistent storage for iOS/native)
@@ -330,182 +588,18 @@ export default function OnboardingPage() {
         localStorage.setItem("addictions", JSON.stringify(existingAddictions));
       }
 
-      // Generate or create plans based on user preferences
-      let gymPlan = null;
-      let nutritionPlan = null;
-
-      // Generate AI workout plan if requested
-      if (data.wantsAIWorkoutPlan) {
-        try {
-          const response = await fetch("/api/generate-plan", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              fitnessGoal: data.fitnessGoal,
-              equipment: data.equipment,
-              height: data.height,
-              age: data.age,
-              weight: data.weight,
-              aggressiveness: data.aggressiveness,
-            }),
-          });
-
-          if (response.ok) {
-            const planData = await response.json();
-            gymPlan = planData.gymPlan;
-            nutritionPlan = planData.nutritionPlan;
-          } else {
-            // Fallback to placeholder if API fails
-            console.error("Failed to generate AI plan, using placeholder");
-          }
-        } catch (error) {
-          console.error("Error generating AI plan:", error);
-          // Fallback to placeholder
-        }
-      }
-
-      // Create workout plan (AI-generated or placeholder)
-      if (!gymPlan) {
-        gymPlan = {
-          planName: "Custom Workout Plan",
-          weeklySchedule: [],
-          duration: "12 weeks",
-          notes: data.wantsAIWorkoutPlan 
-            ? "Your personalized workout plan will be generated after subscription."
-            : "Create your own workout plan in the gym section."
-        };
-      }
-
-      // Create nutrition plan (AI-generated or calculated)
-      if (!nutritionPlan) {
-        // Calculate basic macros based on user data if available
-        let calculatedCalories = 2000;
-        let calculatedProtein = 150;
-        let calculatedCarbs = 200;
-        let calculatedFats = 65;
-
-        if (data.weight && data.height && data.age) {
-          // Calculate BMR using Mifflin-St Jeor equation
-          const bmr = 10 * data.weight + 6.25 * data.height - 5 * data.age + 5;
-          
-          // Adjust based on goal and aggressiveness
-          let activityMultiplier = 1.4; // Moderate activity
-          if (data.aggressiveness === "aggressive") activityMultiplier = 1.6;
-          if (data.aggressiveness === "very_aggressive") activityMultiplier = 1.8;
-
-          if (data.fitnessGoal === "lose_weight") {
-            calculatedCalories = Math.round(bmr * activityMultiplier - 500);
-            calculatedProtein = Math.round(data.weight * 2.2); // 1g per lb of bodyweight
-            calculatedCarbs = Math.round(calculatedCalories * 0.35 / 4); // 35% of calories
-            calculatedFats = Math.round(calculatedCalories * 0.25 / 9); // 25% of calories
-          } else if (data.fitnessGoal === "gain_weight") {
-            calculatedCalories = Math.round(bmr * activityMultiplier + 500);
-            calculatedProtein = Math.round(data.weight * 2.2);
-            calculatedCarbs = Math.round(calculatedCalories * 0.45 / 4); // 45% of calories
-            calculatedFats = Math.round(calculatedCalories * 0.25 / 9); // 25% of calories
-          } else if (data.fitnessGoal === "build_muscle") {
-            calculatedCalories = Math.round(bmr * activityMultiplier + 300);
-            calculatedProtein = Math.round(data.weight * 2.5); // Higher protein for muscle building
-            calculatedCarbs = Math.round(calculatedCalories * 0.40 / 4); // 40% of calories
-            calculatedFats = Math.round(calculatedCalories * 0.25 / 9); // 25% of calories
-          } else {
-            calculatedCalories = Math.round(bmr * activityMultiplier);
-            calculatedProtein = Math.round(data.weight * 2.0);
-            calculatedCarbs = Math.round(calculatedCalories * 0.40 / 4);
-            calculatedFats = Math.round(calculatedCalories * 0.25 / 9);
-          }
-        }
-
-        nutritionPlan = {
-          dailyCalories: data.wantsMacrosPlan ? calculatedCalories : 2000,
-          macros: {
-            protein: data.wantsMacrosPlan ? calculatedProtein : 150,
-            carbs: data.wantsMacrosPlan ? calculatedCarbs : 200,
-            fats: data.wantsMacrosPlan ? calculatedFats : 65
-          },
-          mealsPerDay: 3,
-          mealTiming: "Spread meals throughout the day",
-          hydration: "2-3 liters of water daily",
-          supplements: [],
-          notes: data.wantsMacrosPlan 
-            ? "Your personalized macros plan based on your goals."
-            : "Set your own macro targets in the nutrition section."
-        };
-      }
-
-      // Store plans
-      localStorage.setItem("customGymPlan", JSON.stringify(gymPlan));
-      localStorage.setItem("customNutritionPlan", JSON.stringify(nutritionPlan));
-
-      // Convert and store workout plan in gym page format
-      if (gymPlan && gymPlan.weeklySchedule && gymPlan.weeklySchedule.length > 0) {
-        const workoutPlanByDay: { pushDay: Array<{ id: string; name: string; goalSets: number; goalReps: number; goalWeight: number; sets: never[] }>; pullDay: Array<{ id: string; name: string; goalSets: number; goalReps: number; goalWeight: number; sets: never[] }>; legsDay: Array<{ id: string; name: string; goalSets: number; goalReps: number; goalWeight: number; sets: never[] }> } = {
-          pushDay: [],
-          pullDay: [],
-          legsDay: [],
-        };
-
-        // Convert AI plan format to gym page format
-        (gymPlan as AIGymPlan).weeklySchedule.forEach((day: AIWorkoutDay) => {
-          const workoutName = day.workoutName?.toLowerCase() || "";
-          const exercises = (day.exercises || []).map((ex: AIExercise) => ({
-            id: `${ex.name}-${Date.now()}-${Math.random()}`,
-            name: ex.name,
-            goalSets: ex.sets || 3,
-            goalReps: typeof ex.reps === "string" ? parseInt(ex.reps.replace(/[^0-9]/g, "")) || 10 : ex.reps || 10,
-            goalWeight: 0,
-            sets: [],
-          }));
-
-          if (workoutName.includes("push")) {
-            workoutPlanByDay.pushDay.push(...exercises);
-          } else if (workoutName.includes("pull")) {
-            workoutPlanByDay.pullDay.push(...exercises);
-          } else if (workoutName.includes("leg") || workoutName.includes("lower")) {
-            workoutPlanByDay.legsDay.push(...exercises);
-          }
-        });
-
-        // If no exercises were categorized, distribute them
-        if (workoutPlanByDay.pushDay.length === 0 && 
-            workoutPlanByDay.pullDay.length === 0 && 
-            workoutPlanByDay.legsDay.length === 0) {
-          // Try to categorize by exercise names
-          (gymPlan as AIGymPlan).weeklySchedule.forEach((day: AIWorkoutDay) => {
-            const exercises = (day.exercises || []).map((ex: AIExercise) => ({
-              id: `${ex.name}-${Date.now()}-${Math.random()}`,
-              name: ex.name,
-              goalSets: ex.sets || 3,
-              goalReps: typeof ex.reps === "string" ? parseInt(ex.reps.replace(/[^0-9]/g, "")) || 10 : ex.reps || 10,
-              goalWeight: 0,
-              sets: [],
-            }));
-
-            exercises.forEach((ex) => {
-              const name = ex.name.toLowerCase();
-              if (name.includes("bench") || name.includes("press") || name.includes("push") || name.includes("chest") || name.includes("shoulder") || name.includes("tricep")) {
-                workoutPlanByDay.pushDay.push(ex);
-              } else if (name.includes("pull") || name.includes("row") || name.includes("lat") || name.includes("bicep") || name.includes("back")) {
-                workoutPlanByDay.pullDay.push(ex);
-              } else if (name.includes("squat") || name.includes("leg") || name.includes("deadlift") || name.includes("calf") || name.includes("quad") || name.includes("hamstring")) {
-                workoutPlanByDay.legsDay.push(ex);
-              } else {
-                // Default to push day
-                workoutPlanByDay.pushDay.push(ex);
-              }
-            });
-          });
-        }
-
-        localStorage.setItem("workoutPlan", JSON.stringify(workoutPlanByDay));
-      }
-
       if (needsCustomPlan) {
         setLoading(false);
-        // Modal stays open; user subscribes → planReady
-      } else {
-        router.push("/subscribe");
+        setShowSubscribeModal(true);
+        setPlanGenerationPhase("progress");
+        setGenerationProgress(0);
+        setGenerationError(null);
+        return;
       }
+
+      await generateAndPersistPlans();
+      setLoading(false);
+      router.push("/subscribe");
     } catch (error) {
       console.error("Error saving onboarding data:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -514,7 +608,10 @@ export default function OnboardingPage() {
     }
   };
 
-  const updateData = (key: keyof OnboardingData, value: FitnessGoal | Equipment | number | Aggressiveness | boolean | AddictionType[] | string | null) => {
+  const updateData = (
+    key: keyof OnboardingData,
+    value: FitnessGoal | Equipment | number | Aggressiveness | boolean | AddictionType[] | string | null | Gender
+  ) => {
     setData((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -565,66 +662,86 @@ export default function OnboardingPage() {
         {showSubscribeModal && (
           <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
             <div className="bg-gradient-to-b from-[#0c1422] to-black rounded-2xl p-6 max-w-sm w-full border border-teal-500/30">
-              {loading ? (
-                <>
-                  <div className="text-center mb-6">
-                    <div className="inline-block w-12 h-12 border-4 border-teal-500/30 border-t-teal-500 rounded-full animate-spin mb-4" />
-                    <h2 className="text-xl font-bold text-white mb-2">Creating your custom plan...</h2>
-                    <p className="text-gray-400 text-sm">Subscribe to unlock your workout and diet plan</p>
+              <div className="mb-5">
+                <div className="w-full bg-black/40 rounded-full h-3 overflow-hidden border border-white/10">
+                  <div
+                    className="bg-gradient-to-r from-teal-400 to-cyan-500 h-3 rounded-full transition-[width] duration-300 ease-out"
+                    style={{ width: `${Math.min(100, generationProgress)}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-gray-500 mt-2 text-center tabular-nums">
+                  {Math.round(Math.min(100, generationProgress))}% —{" "}
+                  {planGenerationPhase === "generating"
+                    ? "Generating & saving…"
+                    : planGenerationPhase === "subscribe_gate"
+                      ? "Subscribe to continue"
+                      : "Preparing your plan…"}
+                </p>
+              </div>
+
+              <h2 className="text-xl font-bold text-white mb-2 text-center">
+                {planGenerationPhase === "generating"
+                  ? "Almost there"
+                  : planGenerationPhase === "subscribe_gate"
+                    ? "Subscribe to unlock your plan"
+                    : "Building your plan"}
+              </h2>
+              <p className="text-gray-400 text-sm mb-4 text-center leading-relaxed">
+                {planGenerationPhase === "progress"
+                  ? "We’re tailoring workouts and nutrition to your answers. At 75% you’ll unlock the next step."
+                  : planGenerationPhase === "subscribe_gate"
+                    ? "Subscribe to generate and save your personalized workout & macros plan."
+                    : planGenerationPhase === "generating"
+                      ? "Hang tight — finishing generation and saving to your account."
+                      : ""}
+              </p>
+
+              {generationError && (
+                <p className="text-red-400/90 text-xs mb-3 text-center">{generationError}</p>
+              )}
+
+              {(planGenerationPhase === "subscribe_gate" || planGenerationPhase === "progress") && (
+                <div className="space-y-4">
+                  <div className="bg-teal-500/10 border border-teal-400/30 rounded-xl p-4">
+                    <p className="text-teal-300 font-semibold">3 days free</p>
+                    <p className="text-2xl font-bold text-white mt-1">
+                      £2.99<span className="text-sm font-normal text-gray-400">/month after</span>
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Price may vary by region on App Store</p>
                   </div>
-                  <div className="space-y-4">
-                    <div className="bg-teal-500/10 border border-teal-400/30 rounded-xl p-4">
-                      <p className="text-teal-300 font-semibold">3 days free</p>
-                      <p className="text-2xl font-bold text-white mt-1">£2.99<span className="text-sm font-normal text-gray-400">/month after</span></p>
-                      <p className="text-xs text-gray-500 mt-1">Price may vary by region on App Store</p>
-                    </div>
+                  <button
+                    type="button"
+                    onClick={handleSubscribeInModal}
+                    disabled={
+                      subscribing ||
+                      planGenerationPhase === "progress" ||
+                      loading
+                    }
+                    className="w-full py-4 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-xl transition-colors"
+                  >
+                    {subscribing
+                      ? "Processing..."
+                      : planGenerationPhase === "progress"
+                        ? "Reach 75% to continue…"
+                        : "Subscribe & unlock"}
+                  </button>
+                  {planGenerationPhase === "subscribe_gate" && isNativeIapAvailable() && (
                     <button
-                      onClick={handleSubscribeInModal}
-                      disabled={subscribing || loading}
-                      className="w-full py-4 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-black font-bold rounded-xl transition-colors"
-                    >
-                      {subscribing ? "Processing..." : loading ? "Creating plan..." : "Subscribe"}
-                    </button>
-                    {isNativeIapAvailable() && (
-                      <button
-                        type="button"
-                        onClick={handleRestoreInModal}
-                        disabled={subscribing || loading}
-                        className="w-full py-2 text-sm font-semibold text-teal-300/90 hover:text-teal-200 disabled:opacity-50"
-                      >
-                        Restore purchases
-                      </button>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <h2 className="text-xl font-bold text-white mb-2">Plan ready</h2>
-                  <p className="text-gray-400 text-sm mb-4">Subscribe to access your custom plan</p>
-                  <div className="space-y-4">
-                    <div className="bg-teal-500/10 border border-teal-400/30 rounded-xl p-4">
-                      <p className="text-teal-300 font-semibold">3 days free</p>
-                      <p className="text-2xl font-bold text-white mt-1">£2.99<span className="text-sm font-normal text-gray-400">/month after</span></p>
-                    </div>
-                    <button
-                      onClick={handleSubscribeInModal}
+                      type="button"
+                      onClick={handleRestoreInModal}
                       disabled={subscribing}
-                      className="w-full py-4 bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-black font-bold rounded-xl transition-colors"
+                      className="w-full py-2 text-sm font-semibold text-teal-300/90 hover:text-teal-200 disabled:opacity-50"
                     >
-                      {subscribing ? "Processing..." : "Subscribe"}
+                      Restore purchases
                     </button>
-                    {isNativeIapAvailable() && (
-                      <button
-                        type="button"
-                        onClick={handleRestoreInModal}
-                        disabled={subscribing}
-                        className="w-full py-2 text-sm font-semibold text-teal-300/90 hover:text-teal-200 disabled:opacity-50"
-                      >
-                        Restore purchases
-                      </button>
-                    )}
-                  </div>
-                </>
+                  )}
+                </div>
+              )}
+
+              {planGenerationPhase === "generating" && (
+                <div className="flex justify-center py-4">
+                  <div className="inline-block w-10 h-10 border-4 border-teal-500/30 border-t-teal-500 rounded-full animate-spin" />
+                </div>
               )}
             </div>
           </div>
@@ -860,8 +977,66 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 8: Macros Plan */}
-        {step === 8 && (
+        {/* Step 8: Sex — before AI plan generation */}
+        {step === 8 && data.wantsAIWorkoutPlan === true && (
+          <div className="space-y-6">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
+              Which best describes you?
+            </h1>
+            <p className="text-gray-300 text-center mb-6">
+              We use this to tune calorie estimates and recovery recommendations for your AI plan
+            </p>
+            <div className="space-y-3">
+              {[
+                { value: "male" as Gender, label: "Male", emoji: "♂️" },
+                { value: "female" as Gender, label: "Female", emoji: "♀️" },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => updateData("gender", option.value)}
+                  className={`w-full p-4 rounded-xl border-2 transition-all transform hover:scale-105 text-left shadow-lg ${
+                    data.gender === option.value
+                      ? "border-teal-400 bg-gradient-to-br from-teal-500/20 via-cyan-500/20 to-teal-500/10 shadow-teal-500/30"
+                      : "border-white/10 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black hover:border-teal-400/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{option.emoji}</span>
+                    <span
+                      className={`text-lg font-bold ${data.gender === option.value ? "text-white" : "text-gray-200"}`}
+                    >
+                      {option.label}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Step 9: Optional notes for AI workout */}
+        {step === 9 && data.wantsAIWorkoutPlan === true && (
+          <div className="space-y-6">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
+              Anything else we should know?
+            </h1>
+            <p className="text-gray-300 text-center mb-6">
+              Optional — injuries, schedule limits, exercises you love or hate. Helps the AI shape your workouts.
+            </p>
+            <textarea
+              value={data.workoutExtraNotes}
+              onChange={(e) => updateData("workoutExtraNotes", e.target.value)}
+              placeholder="e.g. bad left shoulder, prefer 45 min sessions, no barbell squats…"
+              rows={5}
+              className="w-full p-4 bg-gradient-to-br from-[#0c1422] via-[#1a2332] to-black border-2 border-white/10 rounded-xl text-white placeholder:text-gray-600 focus:border-teal-400 focus:outline-none text-sm leading-relaxed resize-none"
+            />
+            <p className="text-xs text-gray-500 text-center">You can leave this blank — tap Next when ready.</p>
+          </div>
+        )}
+
+        {/* Step 10: Macros Plan */}
+        {step === 10 && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               Want a personalized macros plan?
@@ -893,8 +1068,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 9: Track Addictions? */}
-        {step === 9 && (
+        {/* Step 11: Track Addictions? */}
+        {step === 11 && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               Do you want to track any addictions?
@@ -932,8 +1107,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 10: Which Addictions */}
-        {step === 10 && (
+        {/* Step 12: Which Addictions */}
+        {step === 12 && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               Which addictions would you like to track?
@@ -973,8 +1148,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 11: Phone Daily Limit */}
-        {step === 11 && data.selectedAddictions.includes("phone") && (
+        {/* Step 13: Phone Daily Limit */}
+        {step === 13 && data.selectedAddictions.includes("phone") && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               What&apos;s your daily phone limit?
@@ -1000,8 +1175,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 12: Weekly Spend for Vape/Alcohol/Other */}
-        {step === 12 && data.selectedAddictions.some(a => ["vape", "alcohol", "other"].includes(a)) && (
+        {/* Step 14: Weekly Spend for Vape/Alcohol/Other */}
+        {step === 14 && data.selectedAddictions.some(a => ["vape", "alcohol", "other"].includes(a)) && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               How much do you spend weekly?
@@ -1056,8 +1231,8 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Step 13: Start Date */}
-        {step === 13 && (
+        {/* Step 15: Start Date */}
+        {step === 15 && (
           <div className="space-y-6">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent text-center mb-2">
               When did you start your journey?
@@ -1116,6 +1291,7 @@ export default function OnboardingPage() {
             onClick={handleNext}
             disabled={
               loading ||
+              showSubscribeModal ||
               (step === 1 && !data.fitnessGoal) ||
               (step === 2 && !data.equipment) ||
               (step === 3 && !data.height) ||
@@ -1123,19 +1299,21 @@ export default function OnboardingPage() {
               (step === 5 && !data.weight) ||
               (step === 6 && !data.aggressiveness) ||
               (step === 7 && data.wantsAIWorkoutPlan === null) ||
-              (step === 8 && data.wantsMacrosPlan === null) ||
-              (step === 9 && data.wantsToTrackAddictions === null) ||
-              (step === 10 && data.selectedAddictions.length === 0) ||
-              (step === 11 && (!data.phoneDailyLimit || data.phoneDailyLimit <= 0)) ||
-              (step === 12 && data.selectedAddictions.some(a => ["vape", "alcohol", "other"].includes(a)) && 
+              (step === 8 && data.wantsAIWorkoutPlan === true && !data.gender) ||
+              (step === 10 && data.wantsMacrosPlan === null) ||
+              (step === 11 && data.wantsToTrackAddictions === null) ||
+              (step === 12 && data.selectedAddictions.length === 0) ||
+              (step === 13 && (!data.phoneDailyLimit || data.phoneDailyLimit <= 0)) ||
+              (step === 14 &&
+                data.selectedAddictions.some((a) => ["vape", "alcohol", "other"].includes(a)) &&
                 ((data.selectedAddictions.includes("vape") && !data.vapeWeeklySpend) ||
-                 (data.selectedAddictions.includes("alcohol") && !data.alcoholWeeklySpend) ||
-                 (data.selectedAddictions.includes("other") && !data.otherWeeklySpend))) ||
-              (step === 13 && !data.addictionStartDate)
+                  (data.selectedAddictions.includes("alcohol") && !data.alcoholWeeklySpend) ||
+                  (data.selectedAddictions.includes("other") && !data.otherWeeklySpend))) ||
+              (step === 15 && !data.addictionStartDate)
             }
             className="flex-1 p-4 bg-gradient-to-r from-teal-400 to-cyan-500 text-white rounded-xl font-bold hover:from-teal-500 hover:to-cyan-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 shadow-lg shadow-teal-500/30 disabled:hover:scale-100"
           >
-            {loading ? "Saving..." : step === getTotalSteps() ? "Continue" : "Next"}
+            {loading ? "Saving..." : getStepInfo(step).isLast ? "Continue" : "Next"}
           </button>
         </div>
       </div>

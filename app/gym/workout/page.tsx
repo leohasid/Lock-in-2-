@@ -23,6 +23,7 @@ import {
   scheduleGym1HourAfterNotification,
 } from "@/app/utils/notifications";
 import { toLocalDateString } from "@/lib/date-utils";
+import { callRailwayAI } from "@/lib/api";
 
 interface Exercise {
   id: string;
@@ -424,6 +425,14 @@ export default function WorkoutPage() {
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
   const [workoutMode, setWorkoutMode] = useState<"browse" | "active">("browse");
   const [guidedExercises, setGuidedExercises] = useState<Exercise[] | null>(null);
+  const guidedExercisesRef = useRef<Exercise[] | null>(null);
+  useEffect(() => {
+    guidedExercisesRef.current = guidedExercises;
+  }, [guidedExercises]);
+  const [guidedSessionKey, setGuidedSessionKey] = useState(0);
+  const [showPickWorkoutModal, setShowPickWorkoutModal] = useState(false);
+  const [completionAiSummary, setCompletionAiSummary] = useState<string | null>(null);
+  const [completionAiLoading, setCompletionAiLoading] = useState(false);
   const [workoutSchedule, setWorkoutSchedule] = useState<WorkoutSchedule[]>([]);
   const [manualScheduleByPlan, setManualScheduleByPlan] = useState<Record<string, { days: number[] }>>({});
   const [showCustomWorkoutModal, setShowCustomWorkoutModal] = useState(false);
@@ -820,6 +829,69 @@ export default function WorkoutPage() {
     });
   }, [selectedDate, workoutSchedule, selectedWorkoutOption, selectedWorkoutOptions, manualScheduleByPlan, workoutOptions, workoutPlan]);
 
+  const buildExercisesFromOptionId = useCallback(
+    (optionId: string): Exercise[] => {
+      const option = workoutOptions.find((o) => o.id === optionId);
+      const dayExercises = optionExercisesList(option);
+      if (dayExercises.length === 0) return [];
+
+      let savedImages: Record<string, string> = {};
+      if (typeof window !== "undefined") {
+        try {
+          const storedImages = localStorage.getItem("exerciseImages");
+          if (storedImages) savedImages = JSON.parse(storedImages);
+        } catch {
+          /* ignore */
+        }
+      }
+      const getImageUrl = (ex: any): string | undefined =>
+        ex.imageUrl || savedImages[ex.name?.toLowerCase()] || getBuiltInImageUrl(ex.name);
+
+      const ds = toLocalDateString(selectedDate);
+      const raw = typeof window !== "undefined" ? localStorage.getItem(`workout_data_${ds}`) : null;
+      const savedData: {
+        id?: string;
+        name?: string;
+        sets?: Array<{ reps?: number; weight?: number; completed?: boolean }>;
+      }[] = raw
+        ? (() => {
+            try {
+              const d = JSON.parse(raw);
+              return Array.isArray(d) ? d : [];
+            } catch {
+              return [];
+            }
+          })()
+        : [];
+
+      return dayExercises.map((ex: any) => {
+        const savedEx = savedData.find((s: any) => s.id === ex.id);
+        const sets = savedEx?.sets?.length
+          ? (savedEx.sets || []).map((set: any) => ({
+              reps: set.reps ?? ex.goalReps ?? 10,
+              weight: set.weight ?? ex.goalWeight ?? 0,
+              completed: set.completed ?? false,
+            }))
+          : ex.sets ||
+            Array.from({ length: ex.goalSets ?? (Array.isArray(ex.sets) ? ex.sets.length : 3) }, () => ({
+              reps: ex.goalReps || ex.reps || 10,
+              weight: ex.goalWeight || 0,
+              completed: false,
+            }));
+        return {
+          id: ex.id || `ex-${Date.now()}-${Math.random()}`,
+          name: ex.name || "",
+          goalSets: sets.length,
+          goalReps: ex.goalReps || ex.reps || 10,
+          goalWeight: ex.goalWeight || 0,
+          imageUrl: getImageUrl(ex),
+          sets,
+        };
+      });
+    },
+    [selectedDate, workoutOptions]
+  );
+
   const getWorkoutNameForDate = (date: Date): string => {
     const scheduledWorkout = workoutSchedule.find((w) => w.date === toLocalDateString(date));
     if (scheduledWorkout && scheduledWorkout.workoutName !== "Rest Day") return scheduledWorkout.workoutName;
@@ -1058,6 +1130,63 @@ export default function WorkoutPage() {
     }
     setCaloriesBurnedThisMonth(Math.round(monthVolume * 0.04));
   };
+
+  const persistGuidedSession = (exercises: Exercise[] | null) => {
+    if (!exercises?.length) return;
+    const dateStr = toLocalDateString(selectedDate);
+    const workoutData = exercises.map((ex) => ({
+      id: ex.id,
+      name: ex.name,
+      sets: ex.sets,
+    }));
+    localStorage.setItem(`workout_data_${dateStr}`, JSON.stringify(workoutData));
+
+    const workoutType = getWorkoutTypeForDate(selectedDate);
+    if (workoutType) {
+      setWorkoutPlan((prev) => ({
+        ...prev,
+        [workoutType]: exercises,
+      }));
+    } else {
+      setWorkoutPlan((prev) => ({
+        ...prev,
+        pushDay: exercises,
+        pullDay: [],
+        legsDay: [],
+      }));
+    }
+
+    const allCompleted = exercises.every((ex) => ex.sets.every((s) => s.completed));
+    if (allCompleted) {
+      localStorage.setItem(`workout_${dateStr}`, "completed");
+      setWorkoutSchedule((prev) =>
+        prev.map((w) => (w.date === dateStr ? { ...w, completed: true } : w))
+      );
+    }
+    loadWeeklyStats();
+  };
+
+  const handleCompletionScreenShown = useCallback(() => {
+    const ex = guidedExercisesRef.current;
+    if (!ex?.length) return;
+    setCompletionAiLoading(true);
+    setCompletionAiSummary(null);
+    const detail = ex
+      .map((e) => {
+        const done = e.sets.filter((s) => s.completed);
+        const parts = done.map((s) => `${s.reps}×${s.weight}`).join(", ");
+        return `${e.name}: ${done.length}/${e.sets.length} sets${parts ? ` (${parts})` : ""}`;
+      })
+      .join("\n");
+    const prompt = `You are a supportive gym coach. In 2–4 short sentences, summarize how this session looks based on the log (effort, consistency, notable loads). Be honest but encouraging. No emoji. Under 80 words.\n\nSession log:\n${detail}`;
+
+    callRailwayAI(prompt)
+      .then((text) => setCompletionAiSummary(text.trim()))
+      .catch(() =>
+        setCompletionAiSummary("Great job finishing the session — keep showing up.")
+      )
+      .finally(() => setCompletionAiLoading(false));
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1366,6 +1495,17 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
       totalSets,
     };
   }, [currentDayExercises]);
+
+  const showScheduledStartButton =
+    activeTab === "workout" &&
+    workoutMode === "browse" &&
+    currentDayWorkoutName !== "Rest Day" &&
+    (currentDayExercises ?? []).length > 0;
+
+  const showPickWorkoutStartButton =
+    activeTab === "workout" &&
+    workoutMode === "browse" &&
+    (currentDayWorkoutName === "Rest Day" || (currentDayExercises ?? []).length === 0);
 
   return (
     <div className="min-h-screen bg-black text-white pb-20">
@@ -1730,11 +1870,14 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
           </div>
         )}
 
-        {/* Fixed Start Workout button - only when exercises exist */}
-        {currentDayWorkoutName !== "Rest Day" && (currentDayExercises ?? []).length > 0 && (
+        {/* Fixed Start: scheduled day with exercises */}
+        {showScheduledStartButton && (
           <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-40">
             <button
               onClick={() => {
+                setGuidedSessionKey((k) => k + 1);
+                setCompletionAiSummary(null);
+                setCompletionAiLoading(false);
                 setWorkoutMode("active");
                 setGuidedExercises(
                   (currentDayExercises ?? []).map((ex) => ({
@@ -1747,6 +1890,20 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
             >
               <Play className="w-5 h-5 fill-current" />
               Start Workout
+            </button>
+          </div>
+        )}
+
+        {/* Rest day or no exercises: Start → pick a saved plan */}
+        {showPickWorkoutStartButton && (
+          <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-40">
+            <button
+              type="button"
+              onClick={() => setShowPickWorkoutModal(true)}
+              className="w-full max-w-md flex items-center justify-center gap-2 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-semibold rounded-xl text-base shadow-lg"
+            >
+              <Play className="w-5 h-5 fill-current" />
+              Start
             </button>
           </div>
         )}
@@ -1957,54 +2114,84 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
                 prev ? prev.map((ex) => (ex.id === exId ? { ...ex, restSeconds } : ex)) : prev
               );
             }}
+            completionResetKey={guidedSessionKey}
+            onCompletionScreenShown={handleCompletionScreenShown}
+            completionAiLoading={completionAiLoading}
+            completionAiSummary={completionAiSummary}
             onExit={() => {
-              const workoutType = getWorkoutTypeForDate(selectedDate);
-              if (workoutType && guidedExercises) {
-                setWorkoutPlan((prev) => ({
-                  ...prev,
-                  [workoutType]: guidedExercises,
-                }));
-                const dateStr = toLocalDateString(selectedDate);
-                const workoutData = guidedExercises.map((ex) => ({
-                  id: ex.id,
-                  name: ex.name,
-                  sets: ex.sets,
-                }));
-                localStorage.setItem(`workout_data_${dateStr}`, JSON.stringify(workoutData));
-                loadWeeklyStats();
-              }
+              persistGuidedSession(guidedExercises);
               setWorkoutMode("browse");
               setGuidedExercises(null);
+              setCompletionAiSummary(null);
+              setCompletionAiLoading(false);
             }}
             onFinish={() => {
-              const workoutType = getWorkoutTypeForDate(selectedDate);
-              if (workoutType && guidedExercises) {
-                setWorkoutPlan((prev) => ({
-                  ...prev,
-                  [workoutType]: guidedExercises,
-                }));
-                const dateStr = toLocalDateString(selectedDate);
-                const workoutData = guidedExercises.map((ex) => ({
-                  id: ex.id,
-                  name: ex.name,
-                  sets: ex.sets,
-                }));
-                localStorage.setItem(`workout_data_${dateStr}`, JSON.stringify(workoutData));
-                const allCompleted = guidedExercises.every((ex) =>
-                  ex.sets.every((s) => s.completed)
-                );
-                if (allCompleted) {
-                  localStorage.setItem(`workout_${dateStr}`, "completed");
-                  setWorkoutSchedule((prev) =>
-                    prev.map((w) => (w.date === dateStr ? { ...w, completed: true } : w))
-                  );
-                }
-                loadWeeklyStats();
-              }
+              persistGuidedSession(guidedExercises);
               setWorkoutMode("browse");
               setGuidedExercises(null);
+              setCompletionAiSummary(null);
+              setCompletionAiLoading(false);
             }}
           />
+        )}
+
+        {showPickWorkoutModal && (
+          <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[55] p-4">
+            <div className="bg-[#0c1422] rounded-2xl border border-white/8 w-full max-w-md max-h-[min(80vh,520px)] overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b border-white/10">
+                <h2 className="text-lg font-bold text-white">Choose workout</h2>
+                <button
+                  type="button"
+                  onClick={() => setShowPickWorkoutModal(false)}
+                  className="p-2 text-gray-400 hover:text-white rounded-lg"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="overflow-y-auto p-3 space-y-2">
+                {workoutOptions.filter((o) => optionExercisesList(o).length > 0).length === 0 ? (
+                  <p className="text-gray-400 text-sm text-center py-8 px-2">
+                    No saved plans with exercises yet. Add moves in{" "}
+                    <Link href="/gym/workouts" className="text-teal-400 font-semibold">
+                      Workout plans
+                    </Link>
+                    .
+                  </p>
+                ) : (
+                  workoutOptions
+                    .filter((o) => optionExercisesList(o).length > 0)
+                    .map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => {
+                          const list = buildExercisesFromOptionId(option.id);
+                          if (list.length === 0) return;
+                          setShowPickWorkoutModal(false);
+                          setGuidedSessionKey((k) => k + 1);
+                          setCompletionAiSummary(null);
+                          setCompletionAiLoading(false);
+                          setWorkoutMode("active");
+                          setGuidedExercises(
+                            list.map((ex) => ({
+                              ...ex,
+                              sets: ex.sets.map((s) => ({ ...s })),
+                            }))
+                          );
+                        }}
+                        className="w-full text-left p-4 rounded-xl bg-black/30 border border-white/10 hover:border-cyan-400/40 transition-colors"
+                      >
+                        <p className="font-semibold text-white">{option.name}</p>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          {optionExercisesList(option).length} exercises
+                        </p>
+                      </button>
+                    ))
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Custom Workout Plan Modal */}
