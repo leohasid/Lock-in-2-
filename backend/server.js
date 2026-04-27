@@ -206,12 +206,140 @@ app.post('/api/ai', async (req, res) => {
   }
 });
 
+// --- Support community (in-memory; shared by all clients hitting this server) ---
+const community = {
+  posts: [],
+  messages: [],
+  usernames: new Set(),
+};
+
+function normUserComm(u) {
+  return String(u).trim().toLowerCase();
+}
+
+app.get('/api/community/posts', (req, res) => {
+  res.json({ posts: community.posts });
+});
+
+app.post('/api/community/posts', (req, res) => {
+  try {
+    const { username, content, imageUrl, addictionType } = req.body || {};
+    if (!username || typeof username !== 'string' || (!String(content || '').trim() && !imageUrl)) {
+      return res.status(400).json({ error: 'Missing username or content' });
+    }
+    if (imageUrl && String(imageUrl).length > 6000000) {
+      return res.status(400).json({ error: 'Image too large' });
+    }
+    const post = {
+      id: `post-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      username: username.trim(),
+      content: String(content || '').trim(),
+      timestamp: new Date().toISOString(),
+      likes: [],
+      comments: [],
+      ...(addictionType && addictionType !== 'all' ? { addictionType } : {}),
+      ...(imageUrl ? { imageUrl } : {}),
+    };
+    community.posts.unshift(post);
+    res.json({ post });
+  } catch (e) {
+    res.status(400).json({ error: 'Invalid request' });
+  }
+});
+
+app.post('/api/community/posts/like', (req, res) => {
+  const { postId, username } = req.body || {};
+  if (!postId || !username) return res.status(400).json({ error: 'postId and username required' });
+  const post = community.posts.find((p) => p.id === postId);
+  if (!post) return res.status(404).json({ error: 'Post not found' });
+  const u = normUserComm(username);
+  const idx = post.likes.findIndex((x) => normUserComm(x) === u);
+  if (idx >= 0) post.likes.splice(idx, 1);
+  else post.likes.push(username.trim());
+  res.json({ posts: community.posts });
+});
+
+app.post('/api/community/posts/comment', (req, res) => {
+  const { postId, username, content } = req.body || {};
+  if (!postId || !username || !content || !String(content).trim()) {
+    return res.status(400).json({ error: 'postId, username, and content required' });
+  }
+  const post = community.posts.find((p) => p.id === postId);
+  if (!post) return res.status(404).json({ error: 'Post not found' });
+  const comment = {
+    id: `c-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    username: String(username).trim(),
+    content: String(content).trim().slice(0, 2000),
+    timestamp: new Date().toISOString(),
+  };
+  post.comments = [...post.comments, comment];
+  res.json({ posts: community.posts });
+});
+
+app.get('/api/community/messages', (req, res) => {
+  res.json({ messages: community.messages });
+});
+
+app.post('/api/community/messages', (req, res) => {
+  const { from, to, content } = req.body || {};
+  if (!from || !to || !content || !String(content).trim()) {
+    return res.status(400).json({ error: 'from, to, and content required' });
+  }
+  const m = {
+    id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    from: String(from).trim(),
+    to: String(to).trim(),
+    content: String(content).trim().slice(0, 5000),
+    timestamp: new Date().toISOString(),
+    read: false,
+  };
+  community.messages.unshift(m);
+  res.json({ message: m, messages: community.messages });
+});
+
+app.post('/api/community/messages/read', (req, res) => {
+  const { from, to } = req.body || {};
+  if (!from || !to) return res.status(400).json({ error: 'from and to required' });
+  community.messages = community.messages.map((msg) => {
+    if (msg.from === from && msg.to === to && !msg.read) return { ...msg, read: true };
+    return msg;
+  });
+  res.json({ messages: community.messages });
+});
+
+app.get('/api/community/username/check', (req, res) => {
+  const u = req.query.username;
+  if (!u || !String(u).trim()) return res.status(400).json({ available: false, error: 'username required' });
+  return res.json({ available: !community.usernames.has(normUserComm(String(u))) });
+});
+
+app.post('/api/community/username/register', (req, res) => {
+  const { username } = req.body || {};
+  if (!username || !String(username).trim()) {
+    return res.status(400).json({ error: 'username required' });
+  }
+  const u = String(username).trim();
+  if (u.length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters' });
+  const key = normUserComm(u);
+  if (community.usernames.has(key)) {
+    return res.status(409).json({ error: 'Username already taken' });
+  }
+  community.usernames.add(key);
+  return res.json({ ok: true });
+});
+
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({ 
     status: 'ok', 
     service: 'Mogifi AI Backend',
-    endpoints: ['/health', '/api/ai', '/api/food-estimate']
+    endpoints: [
+      '/health',
+      '/api/ai',
+      '/api/food-estimate',
+      '/api/community/posts',
+      '/api/community/messages',
+    ],
   });
 });
 
@@ -224,6 +352,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`\nAvailable endpoints:`);
   console.log(`  GET  /          - Root endpoint`);
   console.log(`  GET  /health    - Health check`);
-  console.log(`  POST /api/ai             - AI text endpoint`);
-  console.log(`  POST /api/food-estimate  - Food image analysis\n`);
+  console.log(`  POST /api/ai              - AI text endpoint`);
+  console.log(`  POST /api/food-estimate  - Food image analysis`);
+  console.log(`  GET/POST  /api/community/* - Shared support community (in-memory)\n`);
 });

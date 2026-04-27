@@ -1,34 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { ArrowLeft, Send, Heart, MessageCircle, Plus, X, Search, Image, Filter } from "lucide-react";
-
-interface Post {
-  id: string;
-  username: string;
-  content: string;
-  timestamp: string;
-  likes: string[];
-  imageUrl?: string; // Base64 image data
-  addictionType?: "phone" | "vape" | "goon" | "other" | "all"; // Optional for backward compatibility
-  comments: Array<{
-    id: string;
-    username: string;
-    content: string;
-    timestamp: string;
-  }>;
-}
-
-interface Message {
-  id: string;
-  from: string;
-  to: string;
-  content: string;
-  timestamp: string;
-  read: boolean;
-}
+import { communityUrl } from "@/lib/community-client";
+import type { CommunityPost, CommunityMessage } from "@/lib/community-types";
 
 interface User {
   username: string;
@@ -37,8 +14,9 @@ interface User {
 
 export default function SupportPage() {
   const [activeTab, setActiveTab] = useState<"feed" | "messages">("feed");
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [messages, setMessages] = useState<CommunityMessage[]>([]);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [showPostForm, setShowPostForm] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
@@ -54,78 +32,109 @@ export default function SupportPage() {
   const [usernameInput, setUsernameInput] = useState("");
   const [usernameError, setUsernameError] = useState<string | null>(null);
 
-  const checkUsernameAvailability = (username: string): boolean => {
-    if (!username || username.trim() === "") return false;
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
-    return !users.some((u: { username: string }) => u.username.toLowerCase() === username.toLowerCase());
-  };
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    
-    // Load current user
-    const userStr = localStorage.getItem("currentUser");
-    if (userStr) {
-      setCurrentUser(JSON.parse(userStr));
-    } else {
-      // Show username modal if no user exists
-      setShowUsernameModal(true);
-    }
-
-    // Load posts
-    const storedPosts = localStorage.getItem("communityPosts");
-    if (storedPosts) {
-      setPosts(JSON.parse(storedPosts));
-    }
-
-    // Load messages
-    const storedMessages = localStorage.getItem("communityMessages");
-    if (storedMessages) {
-      setMessages(JSON.parse(storedMessages));
+  const fetchCommunity = useCallback(async () => {
+    try {
+      setSyncError(null);
+      const [pr, mr] = await Promise.all([
+        fetch(communityUrl("/api/community/posts"), { cache: "no-store" }),
+        fetch(communityUrl("/api/community/messages"), { cache: "no-store" }),
+      ]);
+      if (pr.ok) {
+        const j = (await pr.json()) as { posts?: CommunityPost[] };
+        setPosts(Array.isArray(j.posts) ? j.posts : []);
+      } else {
+        setSyncError("Could not load community feed.");
+      }
+      if (mr.ok) {
+        const j = (await mr.json()) as { messages?: CommunityMessage[] };
+        setMessages(Array.isArray(j.messages) ? j.messages : []);
+      } else {
+        setSyncError((s) => s ?? "Could not load messages.");
+      }
+    } catch {
+      setSyncError("Could not connect to the community server.");
     }
   }, []);
 
-  const handleSetUsername = () => {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const userStr = localStorage.getItem("currentUser");
+    if (userStr) {
+      setCurrentUser(JSON.parse(userStr) as User);
+    } else {
+      setShowUsernameModal(true);
+    }
+
+    void fetchCommunity();
+    const id = window.setInterval(() => void fetchCommunity(), 15000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") void fetchCommunity();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [fetchCommunity]);
+
+  useEffect(() => {
+    if (!showUsernameModal) return;
+    const u = usernameInput.trim();
+    if (u.length < 3) {
+      if (u.length > 0) setUsernameError("Username must be at least 3 characters");
+      else setUsernameError(null);
+      return;
+    }
+    const t = window.setTimeout(async () => {
+      try {
+        const r = await fetch(
+          communityUrl(`/api/community/username/check?username=${encodeURIComponent(u)}`)
+        );
+        if (r.ok) {
+          const { available } = (await r.json()) as { available: boolean };
+          setUsernameError(available ? null : "Username already taken");
+        }
+      } catch {
+        // offline: keep form usable; register will show error
+      }
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [usernameInput, showUsernameModal]);
+
+  const handleSetUsername = async () => {
     if (!usernameInput.trim()) {
       setUsernameError("Username cannot be empty");
       return;
     }
-
     if (usernameInput.trim().length < 3) {
       setUsernameError("Username must be at least 3 characters");
       return;
     }
-
-    if (!checkUsernameAvailability(usernameInput.trim())) {
-      setUsernameError("Username already taken");
-      return;
+    if (usernameError) return;
+    try {
+      const res = await fetch(communityUrl("/api/community/username/register"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: usernameInput.trim() }),
+      });
+      if (!res.ok) {
+        const e = (await res.json().catch(() => ({}))) as { error?: string };
+        setUsernameError(e.error || "Could not register this username");
+        return;
+      }
+      const userData: User = {
+        username: usernameInput.trim(),
+        createdAt: new Date().toISOString(),
+      };
+      localStorage.setItem("currentUser", JSON.stringify(userData));
+      setCurrentUser(userData);
+      setShowUsernameModal(false);
+      setUsernameInput("");
+      setUsernameError(null);
+    } catch {
+      setUsernameError("Connection error. Try again.");
     }
-
-    // Save user
-    const userData: User = {
-      username: usernameInput.trim(),
-      createdAt: new Date().toISOString(),
-    };
-    
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
-    users.push(userData);
-    localStorage.setItem("users", JSON.stringify(users));
-    localStorage.setItem("currentUser", JSON.stringify(userData));
-    
-    setCurrentUser(userData);
-    setShowUsernameModal(false);
-    setUsernameInput("");
-    setUsernameError(null);
-  };
-
-  const savePosts = (updatedPosts: Post[]) => {
-    localStorage.setItem("communityPosts", JSON.stringify(updatedPosts));
-    setPosts(updatedPosts);
-  };
-
-  const saveMessages = (updatedMessages: Message[]) => {
-    localStorage.setItem("communityMessages", JSON.stringify(updatedMessages));
-    setMessages(updatedMessages);
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,92 +161,106 @@ export default function SupportPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleCreatePost = () => {
+  const handleCreatePost = async () => {
     if ((!newPostContent.trim() && !newPostImage) || !currentUser) return;
-
-    const newPost: Post = {
-      id: `post-${Date.now()}`,
-      username: currentUser.username,
-      content: newPostContent.trim(),
-      timestamp: new Date().toISOString(),
-      likes: [],
-      comments: [],
-      addictionType: newPostAddictionType !== "all" ? newPostAddictionType : undefined,
-      ...(newPostImage && { imageUrl: newPostImage }),
-    };
-
-    const updatedPosts = [newPost, ...posts];
-    savePosts(updatedPosts);
-    setNewPostContent("");
-    setNewPostImage(null);
-    setNewPostAddictionType("all");
-    setShowPostForm(false);
+    try {
+      const res = await fetch(communityUrl("/api/community/posts"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: currentUser.username,
+          content: newPostContent.trim(),
+          imageUrl: newPostImage || undefined,
+          addictionType: newPostAddictionType,
+        }),
+      });
+      if (!res.ok) {
+        alert("Could not post. Try again.");
+        return;
+      }
+      setNewPostContent("");
+      setNewPostImage(null);
+      setNewPostAddictionType("all");
+      setShowPostForm(false);
+      void fetchCommunity();
+    } catch {
+      alert("Connection error. Try again.");
+    }
   };
 
-  const handleLikePost = (postId: string) => {
+  const handleLikePost = async (postId: string) => {
     if (!currentUser) return;
-
-    const updatedPosts = posts.map((post) => {
-      if (post.id === postId) {
-        const isLiked = post.likes.includes(currentUser.username);
-        return {
-          ...post,
-          likes: isLiked
-            ? post.likes.filter((u) => u !== currentUser.username)
-            : [...post.likes, currentUser.username],
-        };
+    try {
+      const res = await fetch(communityUrl("/api/community/posts/like"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId, username: currentUser.username }),
+      });
+      if (res.ok) {
+        const j = (await res.json()) as { posts?: CommunityPost[] };
+        if (Array.isArray(j.posts)) setPosts(j.posts);
+      } else {
+        void fetchCommunity();
       }
-      return post;
-    });
-
-    savePosts(updatedPosts);
+    } catch {
+      void fetchCommunity();
+    }
   };
 
-  const handleAddComment = (postId: string, content: string) => {
+  const handleAddComment = async (postId: string, content: string) => {
     if (!content.trim() || !currentUser) return;
-
-    const updatedPosts = posts.map((post) => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          comments: [
-            ...post.comments,
-            {
-              id: `comment-${Date.now()}`,
-              username: currentUser.username,
-              content: content.trim(),
-              timestamp: new Date().toISOString(),
-            },
-          ],
-        };
+    try {
+      const res = await fetch(communityUrl("/api/community/posts/comment"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postId,
+          username: currentUser.username,
+          content: content.trim(),
+        }),
+      });
+      if (res.ok) {
+        const j = (await res.json()) as { posts?: CommunityPost[] };
+        if (Array.isArray(j.posts)) setPosts(j.posts);
+      } else {
+        void fetchCommunity();
       }
-      return post;
-    });
-
-    savePosts(updatedPosts);
+    } catch {
+      void fetchCommunity();
+    }
   };
 
-  const handleSendMessage = (to: string) => {
+  const handleSendMessage = async (to: string) => {
     if (!newMessageContent.trim() || !currentUser) return;
-
-    const newMessage: Message = {
-      id: `msg-${Date.now()}`,
-      from: currentUser.username,
-      to,
-      content: newMessageContent.trim(),
-      timestamp: new Date().toISOString(),
-      read: false,
-    };
-
-    const updatedMessages = [newMessage, ...messages];
-    saveMessages(updatedMessages);
+    try {
+      const res = await fetch(communityUrl("/api/community/messages"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          from: currentUser.username,
+          to,
+          content: newMessageContent.trim(),
+        }),
+      });
+      if (res.ok) {
+        const j = (await res.json()) as { messages?: CommunityMessage[] };
+        if (Array.isArray(j.messages)) setMessages(j.messages);
+      } else {
+        void fetchCommunity();
+      }
+    } catch {
+      void fetchCommunity();
+    }
     setNewMessageContent("");
   };
 
   const getConversations = () => {
     if (!currentUser) return [];
     
-    const conversations = new Map<string, { user: string; lastMessage: Message; unread: number }>();
+    const conversations = new Map<
+      string,
+      { user: string; lastMessage: CommunityMessage; unread: number }
+    >();
     
     messages.forEach((msg) => {
       const otherUser = msg.from === currentUser.username ? msg.to : msg.from;
@@ -264,23 +287,33 @@ export default function SupportPage() {
   };
 
   const getMessagesWithUser = (username: string) => {
-    if (!currentUser) return [];
+    if (!currentUser) return [] as CommunityMessage[];
     return messages
-      .filter((msg) => (msg.from === currentUser.username && msg.to === username) || (msg.from === username && msg.to === currentUser.username))
+      .filter(
+        (msg) =>
+          (msg.from === currentUser.username && msg.to === username) ||
+          (msg.from === username && msg.to === currentUser.username)
+      )
       .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   };
 
-  const markMessagesAsRead = (username: string) => {
+  const markMessagesAsRead = async (otherUsername: string) => {
     if (!currentUser) return;
-    
-    const updatedMessages = messages.map((msg) => {
-      if (msg.from === username && msg.to === currentUser.username && !msg.read) {
-        return { ...msg, read: true };
+    try {
+      const res = await fetch(communityUrl("/api/community/messages/read"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from: otherUsername, to: currentUser.username }),
+      });
+      if (res.ok) {
+        const j = (await res.json()) as { messages?: CommunityMessage[] };
+        if (Array.isArray(j.messages)) setMessages(j.messages);
+      } else {
+        void fetchCommunity();
       }
-      return msg;
-    });
-
-    saveMessages(updatedMessages);
+    } catch {
+      void fetchCommunity();
+    }
   };
 
   const formatTime = (timestamp: string) => {
@@ -319,6 +352,11 @@ export default function SupportPage() {
           </Link>
           <h1 className="text-3xl font-bold text-white">💬 Support Community</h1>
           <p className="text-gray-400 mt-1">Share your journey and support others</p>
+          {syncError && (
+            <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+              {syncError}
+            </p>
+          )}
         </div>
 
         {/* Tabs */}
@@ -550,24 +588,11 @@ export default function SupportPage() {
                     type="text"
                     value={usernameInput}
                     onChange={(e) => {
-                      const username = e.target.value.trim();
                       setUsernameInput(e.target.value);
-                      setUsernameError(null);
-                      
-                      // Check availability in real-time
-                      if (username.length >= 3) {
-                        if (!checkUsernameAvailability(username)) {
-                          setUsernameError("Username already taken");
-                        } else {
-                          setUsernameError(null);
-                        }
-                      } else if (username.length > 0) {
-                        setUsernameError("Username must be at least 3 characters");
-                      }
                     }}
-                    onKeyPress={(e) => {
-                      if (e.key === "Enter" && usernameInput.trim() && !usernameError && checkUsernameAvailability(usernameInput.trim())) {
-                        handleSetUsername();
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && usernameInput.trim().length >= 3 && !usernameError) {
+                        void handleSetUsername();
                       }
                     }}
                     placeholder="Enter your username"
@@ -577,13 +602,14 @@ export default function SupportPage() {
                   {usernameError && (
                     <p className="text-red-400 text-sm mt-2">{usernameError}</p>
                   )}
-                  {usernameInput.trim().length >= 3 && !usernameError && checkUsernameAvailability(usernameInput.trim()) && (
+                  {usernameInput.trim().length >= 3 && !usernameError && (
                     <p className="text-green-400 text-sm mt-2">✓ Username available</p>
                   )}
                 </div>
                 <button
-                  onClick={handleSetUsername}
-                  disabled={!usernameInput.trim() || !!usernameError || !checkUsernameAvailability(usernameInput.trim())}
+                  type="button"
+                  onClick={() => void handleSetUsername()}
+                  disabled={!usernameInput.trim() || usernameInput.trim().length < 3 || !!usernameError}
                   className="w-full bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-black px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg shadow-teal-500/30"
                 >
                   Continue
@@ -714,7 +740,13 @@ export default function SupportPage() {
   );
 }
 
-function CommentForm({ postId, onAddComment }: { postId: string; onAddComment: (postId: string, content: string) => void }) {
+function CommentForm({
+  postId,
+  onAddComment,
+}: {
+  postId: string;
+  onAddComment: (postId: string, content: string) => void | Promise<void>;
+}) {
   const [comment, setComment] = useState("");
 
   return (
@@ -757,8 +789,8 @@ function MessageView({
   setNewMessageContent,
 }: {
   user: string;
-  messages: Message[];
-  onSendMessage: (to: string) => void;
+  messages: CommunityMessage[];
+  onSendMessage: (to: string) => void | Promise<void>;
   onBack: () => void;
   currentUser: string;
   newMessageContent: string;
