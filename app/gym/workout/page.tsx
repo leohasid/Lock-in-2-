@@ -23,7 +23,6 @@ import {
   scheduleGym1HourAfterNotification,
 } from "@/app/utils/notifications";
 import { toLocalDateString } from "@/lib/date-utils";
-import { callRailwayAI } from "@/lib/api";
 
 interface Exercise {
   id: string;
@@ -187,146 +186,116 @@ function getMuscleLevel(sessions: number): "none" | "beginner" | "intermediate" 
 
 function BodyDiagram({ levels, view }: { levels: Record<string, string>; view: "front" | "back" }) {
   const c = (m: string) => LEVEL_COLORS[levels[m] ?? "none"] ?? LEVEL_COLORS.none;
-  const BASE = "#131f2e";
+  const BASE = "#0d1724";
   const trainedAbs = (levels["abs"] ?? "none") !== "none";
-
-  // Shared clip id must be stable per view so both diagrams don't collide if ever rendered together
-  const clipId = `bc-${view}`;
+  const clipId = `hb-${view}`;
 
   return (
-    <svg viewBox="0 0 160 500" style={{ width: "100%", maxWidth: 140 }}>
+    <svg viewBox="0 0 200 560" style={{ width: "100%", maxWidth: 140 }}>
       <defs>
         <clipPath id={clipId}>
           {/* Head */}
-          <ellipse cx="80" cy="23" rx="15" ry="19" />
+          <path d="M100,6 C116,6 126,18 126,30 C126,44 114,52 100,52 C86,52 74,44 74,30 C74,18 84,6 100,6 Z" />
           {/* Neck */}
-          <path d="M73,40 L87,40 L88,60 L72,60 Z" />
-          {/* Torso – narrow waist, defined shoulder-to-hip taper */}
-          <path d="M36,64 C22,72 16,92 16,112 L18,186 C20,208 40,222 80,226 C120,222 140,208 142,186 L144,112 C144,92 138,72 124,64 Z" />
-          {/* Left shoulder cap */}
-          <path d="M34,66 C20,68 10,80 8,96 L8,118 C12,128 24,132 34,128 L36,106 Z" />
-          {/* Right shoulder cap */}
-          <path d="M126,66 C140,68 150,80 152,96 L152,118 C148,128 136,132 126,128 L124,106 Z" />
-          {/* Left upper arm */}
-          <path d="M8,108 C4,120 2,136 2,152 L2,186 C2,194 6,198 12,200 L30,200 C36,198 40,194 40,186 L40,152 C40,136 38,120 34,108 Z" />
-          {/* Left forearm */}
-          <path d="M4,200 L4,254 C4,262 10,266 16,266 L32,266 C38,264 42,260 42,254 L42,200 Z" />
-          {/* Left hand */}
-          <ellipse cx="23" cy="270" rx="12" ry="6" />
-          {/* Right upper arm */}
-          <path d="M152,108 C156,120 158,136 158,152 L158,186 C158,194 154,198 148,200 L130,200 C124,198 120,194 120,186 L120,152 C120,136 122,120 126,108 Z" />
-          {/* Right forearm */}
-          <path d="M156,200 L156,254 C156,260 152,264 146,266 L130,266 C124,264 118,260 118,254 L118,200 Z" />
-          {/* Right hand */}
-          <ellipse cx="137" cy="270" rx="12" ry="6" />
-          {/* Left leg – gap at crotch */}
-          <path d="M36,226 C30,234 30,244 34,250 L34,390 C36,400 44,408 54,410 L72,410 C78,406 80,400 80,392 L78,250 C80,244 80,234 76,226 Z" />
-          {/* Left foot */}
-          <path d="M30,408 C26,414 28,422 36,424 L72,424 C80,422 82,414 78,408 Z" />
+          <path d="M90,50 C89,58 89,64 90,70 L110,70 C111,64 111,58 110,50 C106,48 94,48 90,50 Z" />
+          {/* Torso: shoulder peaks curve smoothly to narrow waist then flare at hip */}
+          <path d="M92,70 C76,68 52,70 36,82 C18,92 12,110 16,130 C20,140 40,144 50,148 C52,160 54,178 56,196 C56,212 56,232 58,248 C60,254 66,260 100,262 C134,260 140,254 142,248 C144,232 144,212 144,196 C146,178 148,160 150,148 C160,144 180,140 184,130 C188,110 182,92 164,82 C148,70 124,68 108,70 Z" />
+          {/* Left arm: single tapered bezier, bicep bulge, forearm taper to wrist */}
+          <path d="M16,100 C10,118 8,144 8,162 C8,180 10,196 12,212 C12,232 14,254 16,272 C16,282 18,290 24,294 C30,298 38,296 42,290 C44,284 44,278 42,272 C40,256 40,234 42,214 C44,202 46,190 46,176 C46,152 44,126 42,106 C36,98 24,96 16,100 Z" />
+          {/* Right arm */}
+          <path d="M184,100 C190,118 192,144 192,162 C192,180 190,196 188,212 C188,232 186,254 184,272 C184,282 182,290 176,294 C170,298 162,296 158,290 C156,284 156,278 158,272 C160,256 160,234 158,214 C156,202 154,190 154,176 C154,152 156,126 158,106 C164,98 176,96 184,100 Z" />
+          {/* Left leg: quad width at top, knee taper, calf bulge, slim ankle */}
+          <path d="M64,252 C54,264 44,288 40,316 C36,340 40,362 44,378 C44,390 46,404 50,418 C52,434 56,448 58,462 C58,470 64,478 76,480 C86,482 96,476 98,466 C100,456 98,444 96,430 C96,414 96,396 94,380 C96,364 98,342 96,318 C94,294 90,268 86,252 C82,246 74,246 64,252 Z" />
           {/* Right leg */}
-          <path d="M84,226 C80,234 80,244 82,250 L80,392 C80,400 82,406 88,410 L106,410 C116,406 124,400 126,390 L126,250 C130,244 130,234 124,226 Z" />
-          {/* Right foot */}
-          <path d="M78,408 C74,414 80,422 88,424 L124,424 C132,422 134,414 130,408 Z" />
+          <path d="M136,252 C146,264 156,288 160,316 C164,340 160,362 156,378 C156,390 154,404 150,418 C148,434 144,448 142,462 C142,470 136,478 124,480 C114,482 104,476 102,466 C100,456 102,444 104,430 C104,414 104,396 106,380 C104,364 102,342 104,318 C106,294 110,268 114,252 C118,246 126,246 136,252 Z" />
         </clipPath>
       </defs>
 
-      {/* Base silhouette */}
-      <rect x="0" y="0" width="160" height="500" fill={BASE} clipPath={`url(#${clipId})`} />
+      <rect x="0" y="0" width="200" height="560" fill={BASE} clipPath={`url(#${clipId})`} />
 
-      {/* Muscle overlays – all clipped to silhouette */}
       <g clipPath={`url(#${clipId})`}>
         {view === "front" ? (
           <>
-            {/* === FRONT VIEW === */}
-
             {/* Anterior deltoids */}
-            <path d="M8,92 C6,106 10,120 20,126 L34,124 L34,78 C20,72 6,80 8,92 Z" fill={c("shoulders")} opacity="0.92" />
-            <path d="M152,92 C154,106 150,120 140,126 L126,124 L126,78 C140,72 154,80 152,92 Z" fill={c("shoulders")} opacity="0.92" />
+            <path d="M14,100 C10,118 12,142 22,158 L42,154 L42,104 C32,96 20,96 14,100 Z" fill={c("shoulders")} opacity="0.9" />
+            <path d="M186,100 C190,118 188,142 178,158 L158,154 L158,104 C168,96 180,96 186,100 Z" fill={c("shoulders")} opacity="0.9" />
 
-            {/* Pectorals – teardrop from sternum outward */}
-            <path d="M36,74 C26,82 22,100 26,120 L44,136 L80,116 L80,78 C62,70 44,70 36,74 Z" fill={c("chest")} opacity="0.92" />
-            <path d="M124,74 C134,82 138,100 134,120 L116,136 L80,116 L80,78 C98,70 116,70 124,74 Z" fill={c("chest")} opacity="0.92" />
-            {/* Pec division line */}
-            <line x1="80" y1="78" x2="80" y2="136" stroke={BASE} strokeWidth="1" opacity="0.35" />
+            {/* Pectorals: teardrop curve from sternum, fullest at bottom outer */}
+            <path d="M56,96 C38,108 28,130 36,154 L62,164 L100,142 L100,92 C80,86 64,88 56,96 Z" fill={c("chest")} opacity="0.9" />
+            <path d="M144,96 C162,108 172,130 164,154 L138,164 L100,142 L100,92 C120,86 136,88 144,96 Z" fill={c("chest")} opacity="0.9" />
+            <line x1="100" y1="92" x2="100" y2="164" stroke={BASE} strokeWidth="1.2" opacity="0.35" />
 
-            {/* Biceps – front of upper arms */}
-            <path d="M4,120 C2,138 4,162 8,180 L26,182 C30,158 30,132 28,114 Z" fill={c("biceps")} opacity="0.92" />
-            <path d="M156,120 C158,138 156,162 152,180 L134,182 C130,158 130,132 132,114 Z" fill={c("biceps")} opacity="0.92" />
+            {/* Biceps */}
+            <path d="M8,116 C6,138 8,166 14,188 L36,186 C40,160 40,132 38,112 Z" fill={c("biceps")} opacity="0.9" />
+            <path d="M192,116 C194,138 192,166 186,188 L164,186 C160,160 160,132 162,112 Z" fill={c("biceps")} opacity="0.9" />
 
             {/* Forearms */}
-            <path d="M4,200 L6,252 C8,260 14,264 20,264 L34,264 C40,260 42,256 42,252 L42,200 Z" fill={c("forearms")} opacity="0.92" />
-            <path d="M156,200 L154,252 C152,256 148,260 142,264 L126,264 C120,260 118,256 118,252 L118,200 Z" fill={c("forearms")} opacity="0.92" />
+            <path d="M12,212 C10,236 14,258 16,276 L42,278 C44,260 44,236 44,212 Z" fill={c("forearms")} opacity="0.9" />
+            <path d="M188,212 C190,236 186,258 184,276 L158,278 C156,260 156,236 156,212 Z" fill={c("forearms")} opacity="0.9" />
 
-            {/* Abs – 6-pack block */}
-            <path d="M58,132 C56,148 56,186 58,216 C62,224 72,228 80,228 C88,228 98,224 102,216 C104,186 104,148 102,132 C96,124 88,120 80,120 C72,120 64,124 58,132 Z" fill={c("abs")} opacity="0.92" />
+            {/* Abs: six-pack region with soft curves */}
+            <path d="M68,158 C62,178 60,212 64,238 C72,252 86,258 100,260 C114,258 128,252 136,238 C140,212 138,178 132,158 C122,142 112,136 100,136 C88,136 78,142 68,158 Z" fill={c("abs")} opacity="0.9" />
             {trainedAbs && (
               <>
-                <line x1="57" y1="156" x2="103" y2="156" stroke={BASE} strokeWidth="1.5" opacity="0.45" />
-                <line x1="57" y1="184" x2="103" y2="184" stroke={BASE} strokeWidth="1.5" opacity="0.45" />
-                <line x1="80" y1="132" x2="80" y2="216" stroke={BASE} strokeWidth="1.5" opacity="0.45" />
+                <line x1="66" y1="184" x2="134" y2="184" stroke={BASE} strokeWidth="1.5" opacity="0.45" />
+                <line x1="66" y1="214" x2="134" y2="214" stroke={BASE} strokeWidth="1.5" opacity="0.45" />
+                <line x1="100" y1="158" x2="100" y2="240" stroke={BASE} strokeWidth="1.5" opacity="0.45" />
               </>
             )}
 
-            {/* Obliques – flank strips beside abs */}
-            <path d="M36,118 C32,134 30,162 34,190 L54,206 L56,132 Z" fill={c("abs")} opacity="0.55" />
-            <path d="M124,118 C128,134 130,162 126,190 L106,206 L104,132 Z" fill={c("abs")} opacity="0.55" />
+            {/* Obliques */}
+            <path d="M50,150 C44,172 44,208 52,238 L68,246 L68,158 Z" fill={c("abs")} opacity="0.5" />
+            <path d="M150,150 C156,172 156,208 148,238 L132,246 L132,158 Z" fill={c("abs")} opacity="0.5" />
 
-            {/* Quads – front thighs */}
-            <path d="M34,240 C28,260 28,300 30,340 L32,390 C36,404 46,410 56,410 L72,408 L74,242 C62,232 46,232 34,240 Z" fill={c("quads")} opacity="0.92" />
-            <path d="M126,240 C132,260 132,300 130,340 L128,390 C124,404 114,410 104,410 L88,408 L86,242 C98,232 114,232 126,240 Z" fill={c("quads")} opacity="0.92" />
-            {/* Inner quads (VMO) */}
-            <path d="M74,244 L74,408 C78,410 80,410 80,410 L80,228 C78,232 74,236 74,244 Z" fill={c("quads")} opacity="0.8" />
-            <path d="M86,244 L86,408 C82,410 80,410 80,410 L80,228 C82,232 86,236 86,244 Z" fill={c("quads")} opacity="0.8" />
+            {/* Quads: sweeping teardrop shapes */}
+            <path d="M66,258 C54,276 44,304 40,334 C36,358 40,378 46,394 L92,394 L96,262 C84,254 76,254 66,258 Z" fill={c("quads")} opacity="0.9" />
+            <path d="M134,258 C146,276 156,304 160,334 C164,358 160,378 154,394 L108,394 L104,262 C116,254 124,254 134,258 Z" fill={c("quads")} opacity="0.9" />
 
-            {/* Calves – front tibialis bulge */}
-            <path d="M32,380 C28,396 30,408 36,416 L56,420 L70,416 L72,388 C58,388 40,384 32,380 Z" fill={c("calves")} opacity="0.92" />
-            <path d="M128,380 C132,396 130,408 124,416 L104,420 L90,416 L88,388 C102,388 120,384 128,380 Z" fill={c("calves")} opacity="0.92" />
+            {/* Calves */}
+            <path d="M40,396 C34,418 36,442 44,464 L64,472 L92,466 L96,398 C76,394 56,392 40,396 Z" fill={c("calves")} opacity="0.9" />
+            <path d="M160,396 C166,418 164,442 156,464 L136,472 L108,466 L104,398 C124,394 144,392 160,396 Z" fill={c("calves")} opacity="0.9" />
           </>
         ) : (
           <>
-            {/* === BACK VIEW === */}
-
             {/* Rear deltoids */}
-            <path d="M8,92 C6,106 10,120 20,126 L34,124 L34,78 C20,72 6,80 8,92 Z" fill={c("shoulders")} opacity="0.92" />
-            <path d="M152,92 C154,106 150,120 140,126 L126,124 L126,78 C140,72 154,80 152,92 Z" fill={c("shoulders")} opacity="0.92" />
+            <path d="M14,100 C10,118 12,142 22,158 L42,154 L42,104 C32,96 20,96 14,100 Z" fill={c("shoulders")} opacity="0.9" />
+            <path d="M186,100 C190,118 188,142 178,158 L158,154 L158,104 C168,96 180,96 186,100 Z" fill={c("shoulders")} opacity="0.9" />
 
-            {/* Traps – diamond from neck to mid-back */}
-            <path d="M72,58 C60,64 46,72 36,82 L80,100 Z" fill={c("traps")} opacity="0.92" />
-            <path d="M88,58 C100,64 114,72 124,82 L80,100 Z" fill={c("traps")} opacity="0.92" />
-            <path d="M36,82 L80,100 L80,124 L38,112 Z" fill={c("traps")} opacity="0.72" />
-            <path d="M124,82 L80,100 L80,124 L122,112 Z" fill={c("traps")} opacity="0.72" />
+            {/* Traps: diamond from neck to lower traps */}
+            <path d="M92,70 C76,68 56,72 40,82 L100,118 Z" fill={c("traps")} opacity="0.9" />
+            <path d="M108,70 C124,68 144,72 160,82 L100,118 Z" fill={c("traps")} opacity="0.9" />
+            <path d="M40,82 C20,96 12,118 16,138 L64,154 L100,118 Z" fill={c("traps")} opacity="0.72" />
+            <path d="M160,82 C180,96 188,118 184,138 L136,154 L100,118 Z" fill={c("traps")} opacity="0.72" />
 
-            {/* Lats – swept wing from armpit to waist */}
-            <path d="M18,106 C16,128 18,158 24,176 L56,188 L54,98 Z" fill={c("lats")} opacity="0.92" />
-            <path d="M142,106 C144,128 142,158 136,176 L104,188 L106,98 Z" fill={c("lats")} opacity="0.92" />
+            {/* Lats: swept fan from armpit down to waist */}
+            <path d="M16,138 C12,164 14,196 24,222 L72,238 L64,154 Z" fill={c("lats")} opacity="0.9" />
+            <path d="M184,138 C188,164 186,196 176,222 L128,238 L136,154 Z" fill={c("lats")} opacity="0.9" />
 
             {/* Rhomboids / erector spinae */}
-            <path d="M54,98 L54,188 C60,198 70,204 80,204 C90,204 100,198 106,188 L106,98 C98,90 88,86 80,86 C72,86 62,90 54,98 Z" fill={c("back")} opacity="0.92" />
-            <line x1="80" y1="98" x2="80" y2="202" stroke={BASE} strokeWidth="1.5" opacity="0.4" />
-            <line x1="54" y1="134" x2="106" y2="134" stroke={BASE} strokeWidth="1" opacity="0.3" />
-            <line x1="54" y1="164" x2="106" y2="164" stroke={BASE} strokeWidth="1" opacity="0.3" />
+            <path d="M64,154 C60,180 60,214 66,240 C76,256 88,262 100,264 C112,262 124,256 134,240 C140,214 140,180 136,154 C124,138 112,132 100,132 C88,132 76,138 64,154 Z" fill={c("back")} opacity="0.9" />
+            <line x1="100" y1="132" x2="100" y2="262" stroke={BASE} strokeWidth="1.5" opacity="0.4" />
+            <line x1="64" y1="178" x2="136" y2="178" stroke={BASE} strokeWidth="1" opacity="0.3" />
+            <line x1="64" y1="212" x2="136" y2="212" stroke={BASE} strokeWidth="1" opacity="0.3" />
 
-            {/* Triceps – back of upper arms */}
-            <path d="M4,114 C2,132 4,162 8,184 L26,186 C30,160 30,130 28,110 Z" fill={c("triceps")} opacity="0.92" />
-            <path d="M156,114 C158,132 156,162 152,184 L134,186 C130,160 130,130 132,110 Z" fill={c("triceps")} opacity="0.92" />
+            {/* Triceps */}
+            <path d="M8,114 C6,140 10,174 14,198 L38,194 C40,166 40,134 40,110 Z" fill={c("triceps")} opacity="0.9" />
+            <path d="M192,114 C194,140 190,174 186,198 L162,194 C160,166 160,134 160,110 Z" fill={c("triceps")} opacity="0.9" />
 
-            {/* Forearms back */}
-            <path d="M4,200 L6,252 C8,260 14,264 20,264 L34,264 C40,260 42,256 42,252 L42,200 Z" fill={c("forearms")} opacity="0.92" />
-            <path d="M156,200 L154,252 C152,256 148,260 142,264 L126,264 C120,260 118,256 118,252 L118,200 Z" fill={c("forearms")} opacity="0.92" />
+            {/* Forearms */}
+            <path d="M12,212 C10,236 14,258 16,276 L42,278 C44,260 44,236 44,212 Z" fill={c("forearms")} opacity="0.9" />
+            <path d="M188,212 C190,236 186,258 184,276 L158,278 C156,260 156,236 156,212 Z" fill={c("forearms")} opacity="0.9" />
 
             {/* Glutes */}
-            <path d="M34,232 C28,250 28,272 36,286 C44,298 60,302 72,296 L78,282 L78,230 Z" fill={c("glutes")} opacity="0.92" />
-            <path d="M126,232 C132,250 132,272 124,286 C116,298 100,302 88,296 L82,282 L82,230 Z" fill={c("glutes")} opacity="0.92" />
+            <path d="M66,264 C52,284 46,312 54,342 C62,360 80,368 100,362 L100,264 Z" fill={c("glutes")} opacity="0.9" />
+            <path d="M134,264 C148,284 154,312 146,342 C138,360 120,368 100,362 L100,264 Z" fill={c("glutes")} opacity="0.9" />
 
-            {/* Hamstrings – back of thighs */}
-            <path d="M34,286 C28,308 28,346 32,378 L34,392 L72,408 L74,298 C60,302 44,298 34,286 Z" fill={c("hamstrings")} opacity="0.92" />
-            <path d="M126,286 C132,308 132,346 128,378 L126,392 L88,408 L86,298 C100,302 116,298 126,286 Z" fill={c("hamstrings")} opacity="0.92" />
-            <path d="M78,284 L78,408 C80,410 80,410 80,410 L80,228 Z" fill={c("hamstrings")} opacity="0.7" />
-            <path d="M82,284 L82,408 C80,410 80,410 80,410 L80,228 Z" fill={c("hamstrings")} opacity="0.7" />
+            {/* Hamstrings */}
+            <path d="M66,364 C52,390 46,422 52,452 L56,472 L94,470 L100,366 Z" fill={c("hamstrings")} opacity="0.9" />
+            <path d="M134,364 C148,390 154,422 148,452 L144,472 L106,470 L100,366 Z" fill={c("hamstrings")} opacity="0.9" />
 
-            {/* Calves – gastrocnemius */}
-            <path d="M32,380 C28,396 30,410 38,416 L56,420 L70,416 L72,388 C56,388 38,384 32,380 Z" fill={c("calves")} opacity="0.92" />
-            <path d="M128,380 C132,396 130,410 122,416 L104,420 L90,416 L88,388 C104,388 122,384 128,380 Z" fill={c("calves")} opacity="0.92" />
+            {/* Calves */}
+            <path d="M52,452 C46,470 50,482 58,488 L76,492 L96,484 L98,454 Z" fill={c("calves")} opacity="0.9" />
+            <path d="M148,452 C154,470 150,482 142,488 L124,492 L104,484 L102,454 Z" fill={c("calves")} opacity="0.9" />
           </>
         )}
       </g>
@@ -425,14 +394,6 @@ export default function WorkoutPage() {
   const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
   const [workoutMode, setWorkoutMode] = useState<"browse" | "active">("browse");
   const [guidedExercises, setGuidedExercises] = useState<Exercise[] | null>(null);
-  const guidedExercisesRef = useRef<Exercise[] | null>(null);
-  useEffect(() => {
-    guidedExercisesRef.current = guidedExercises;
-  }, [guidedExercises]);
-  const [guidedSessionKey, setGuidedSessionKey] = useState(0);
-  const [showPickWorkoutModal, setShowPickWorkoutModal] = useState(false);
-  const [completionAiSummary, setCompletionAiSummary] = useState<string | null>(null);
-  const [completionAiLoading, setCompletionAiLoading] = useState(false);
   const [workoutSchedule, setWorkoutSchedule] = useState<WorkoutSchedule[]>([]);
   const [manualScheduleByPlan, setManualScheduleByPlan] = useState<Record<string, { days: number[] }>>({});
   const [showCustomWorkoutModal, setShowCustomWorkoutModal] = useState(false);
@@ -829,69 +790,6 @@ export default function WorkoutPage() {
     });
   }, [selectedDate, workoutSchedule, selectedWorkoutOption, selectedWorkoutOptions, manualScheduleByPlan, workoutOptions, workoutPlan]);
 
-  const buildExercisesFromOptionId = useCallback(
-    (optionId: string): Exercise[] => {
-      const option = workoutOptions.find((o) => o.id === optionId);
-      const dayExercises = optionExercisesList(option);
-      if (dayExercises.length === 0) return [];
-
-      let savedImages: Record<string, string> = {};
-      if (typeof window !== "undefined") {
-        try {
-          const storedImages = localStorage.getItem("exerciseImages");
-          if (storedImages) savedImages = JSON.parse(storedImages);
-        } catch {
-          /* ignore */
-        }
-      }
-      const getImageUrl = (ex: any): string | undefined =>
-        ex.imageUrl || savedImages[ex.name?.toLowerCase()] || getBuiltInImageUrl(ex.name);
-
-      const ds = toLocalDateString(selectedDate);
-      const raw = typeof window !== "undefined" ? localStorage.getItem(`workout_data_${ds}`) : null;
-      const savedData: {
-        id?: string;
-        name?: string;
-        sets?: Array<{ reps?: number; weight?: number; completed?: boolean }>;
-      }[] = raw
-        ? (() => {
-            try {
-              const d = JSON.parse(raw);
-              return Array.isArray(d) ? d : [];
-            } catch {
-              return [];
-            }
-          })()
-        : [];
-
-      return dayExercises.map((ex: any) => {
-        const savedEx = savedData.find((s: any) => s.id === ex.id);
-        const sets = savedEx?.sets?.length
-          ? (savedEx.sets || []).map((set: any) => ({
-              reps: set.reps ?? ex.goalReps ?? 10,
-              weight: set.weight ?? ex.goalWeight ?? 0,
-              completed: set.completed ?? false,
-            }))
-          : ex.sets ||
-            Array.from({ length: ex.goalSets ?? (Array.isArray(ex.sets) ? ex.sets.length : 3) }, () => ({
-              reps: ex.goalReps || ex.reps || 10,
-              weight: ex.goalWeight || 0,
-              completed: false,
-            }));
-        return {
-          id: ex.id || `ex-${Date.now()}-${Math.random()}`,
-          name: ex.name || "",
-          goalSets: sets.length,
-          goalReps: ex.goalReps || ex.reps || 10,
-          goalWeight: ex.goalWeight || 0,
-          imageUrl: getImageUrl(ex),
-          sets,
-        };
-      });
-    },
-    [selectedDate, workoutOptions]
-  );
-
   const getWorkoutNameForDate = (date: Date): string => {
     const scheduledWorkout = workoutSchedule.find((w) => w.date === toLocalDateString(date));
     if (scheduledWorkout && scheduledWorkout.workoutName !== "Rest Day") return scheduledWorkout.workoutName;
@@ -1131,63 +1029,6 @@ export default function WorkoutPage() {
     setCaloriesBurnedThisMonth(Math.round(monthVolume * 0.04));
   };
 
-  const persistGuidedSession = (exercises: Exercise[] | null) => {
-    if (!exercises?.length) return;
-    const dateStr = toLocalDateString(selectedDate);
-    const workoutData = exercises.map((ex) => ({
-      id: ex.id,
-      name: ex.name,
-      sets: ex.sets,
-    }));
-    localStorage.setItem(`workout_data_${dateStr}`, JSON.stringify(workoutData));
-
-    const workoutType = getWorkoutTypeForDate(selectedDate);
-    if (workoutType) {
-      setWorkoutPlan((prev) => ({
-        ...prev,
-        [workoutType]: exercises,
-      }));
-    } else {
-      setWorkoutPlan((prev) => ({
-        ...prev,
-        pushDay: exercises,
-        pullDay: [],
-        legsDay: [],
-      }));
-    }
-
-    const allCompleted = exercises.every((ex) => ex.sets.every((s) => s.completed));
-    if (allCompleted) {
-      localStorage.setItem(`workout_${dateStr}`, "completed");
-      setWorkoutSchedule((prev) =>
-        prev.map((w) => (w.date === dateStr ? { ...w, completed: true } : w))
-      );
-    }
-    loadWeeklyStats();
-  };
-
-  const handleCompletionScreenShown = useCallback(() => {
-    const ex = guidedExercisesRef.current;
-    if (!ex?.length) return;
-    setCompletionAiLoading(true);
-    setCompletionAiSummary(null);
-    const detail = ex
-      .map((e) => {
-        const done = e.sets.filter((s) => s.completed);
-        const parts = done.map((s) => `${s.reps}×${s.weight}`).join(", ");
-        return `${e.name}: ${done.length}/${e.sets.length} sets${parts ? ` (${parts})` : ""}`;
-      })
-      .join("\n");
-    const prompt = `You are a supportive gym coach. In 2–4 short sentences, summarize how this session looks based on the log (effort, consistency, notable loads). Be honest but encouraging. No emoji. Under 80 words.\n\nSession log:\n${detail}`;
-
-    callRailwayAI(prompt)
-      .then((text) => setCompletionAiSummary(text.trim()))
-      .catch(() =>
-        setCompletionAiSummary("Great job finishing the session — keep showing up.")
-      )
-      .finally(() => setCompletionAiLoading(false));
-  }, []);
-
   useEffect(() => {
     if (typeof window === "undefined") return;
     loadWeeklyStats();
@@ -1254,7 +1095,7 @@ export default function WorkoutPage() {
       });
     });
     const muscleResult: Record<string, "none" | "beginner" | "intermediate" | "advanced"> = {};
-    ["chest","back","shoulders","biceps","triceps","abs","quads","hamstrings","glutes","calves"]
+    ["chest","back","lats","traps","shoulders","biceps","triceps","forearms","abs","quads","hamstrings","glutes","calves"]
       .forEach(m => { muscleResult[m] = getMuscleLevel(muscleSessions[m] || 0); });
     setMuscleData(muscleResult);
 
@@ -1495,17 +1336,6 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
       totalSets,
     };
   }, [currentDayExercises]);
-
-  const showScheduledStartButton =
-    activeTab === "workout" &&
-    workoutMode === "browse" &&
-    currentDayWorkoutName !== "Rest Day" &&
-    (currentDayExercises ?? []).length > 0;
-
-  const showPickWorkoutStartButton =
-    activeTab === "workout" &&
-    workoutMode === "browse" &&
-    (currentDayWorkoutName === "Rest Day" || (currentDayExercises ?? []).length === 0);
 
   return (
     <div className="min-h-screen bg-black text-white pb-20">
@@ -1870,14 +1700,11 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
           </div>
         )}
 
-        {/* Fixed Start: scheduled day with exercises */}
-        {showScheduledStartButton && (
+        {/* Fixed Start Workout button - only when exercises exist */}
+        {currentDayWorkoutName !== "Rest Day" && (currentDayExercises ?? []).length > 0 && (
           <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-40">
             <button
               onClick={() => {
-                setGuidedSessionKey((k) => k + 1);
-                setCompletionAiSummary(null);
-                setCompletionAiLoading(false);
                 setWorkoutMode("active");
                 setGuidedExercises(
                   (currentDayExercises ?? []).map((ex) => ({
@@ -1890,20 +1717,6 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
             >
               <Play className="w-5 h-5 fill-current" />
               Start Workout
-            </button>
-          </div>
-        )}
-
-        {/* Rest day or no exercises: Start → pick a saved plan */}
-        {showPickWorkoutStartButton && (
-          <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-40">
-            <button
-              type="button"
-              onClick={() => setShowPickWorkoutModal(true)}
-              className="w-full max-w-md flex items-center justify-center gap-2 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-semibold rounded-xl text-base shadow-lg"
-            >
-              <Play className="w-5 h-5 fill-current" />
-              Start
             </button>
           </div>
         )}
@@ -2114,84 +1927,54 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
                 prev ? prev.map((ex) => (ex.id === exId ? { ...ex, restSeconds } : ex)) : prev
               );
             }}
-            completionResetKey={guidedSessionKey}
-            onCompletionScreenShown={handleCompletionScreenShown}
-            completionAiLoading={completionAiLoading}
-            completionAiSummary={completionAiSummary}
             onExit={() => {
-              persistGuidedSession(guidedExercises);
+              const workoutType = getWorkoutTypeForDate(selectedDate);
+              if (workoutType && guidedExercises) {
+                setWorkoutPlan((prev) => ({
+                  ...prev,
+                  [workoutType]: guidedExercises,
+                }));
+                const dateStr = toLocalDateString(selectedDate);
+                const workoutData = guidedExercises.map((ex) => ({
+                  id: ex.id,
+                  name: ex.name,
+                  sets: ex.sets,
+                }));
+                localStorage.setItem(`workout_data_${dateStr}`, JSON.stringify(workoutData));
+                loadWeeklyStats();
+              }
               setWorkoutMode("browse");
               setGuidedExercises(null);
-              setCompletionAiSummary(null);
-              setCompletionAiLoading(false);
             }}
             onFinish={() => {
-              persistGuidedSession(guidedExercises);
+              const workoutType = getWorkoutTypeForDate(selectedDate);
+              if (workoutType && guidedExercises) {
+                setWorkoutPlan((prev) => ({
+                  ...prev,
+                  [workoutType]: guidedExercises,
+                }));
+                const dateStr = toLocalDateString(selectedDate);
+                const workoutData = guidedExercises.map((ex) => ({
+                  id: ex.id,
+                  name: ex.name,
+                  sets: ex.sets,
+                }));
+                localStorage.setItem(`workout_data_${dateStr}`, JSON.stringify(workoutData));
+                const allCompleted = guidedExercises.every((ex) =>
+                  ex.sets.every((s) => s.completed)
+                );
+                if (allCompleted) {
+                  localStorage.setItem(`workout_${dateStr}`, "completed");
+                  setWorkoutSchedule((prev) =>
+                    prev.map((w) => (w.date === dateStr ? { ...w, completed: true } : w))
+                  );
+                }
+                loadWeeklyStats();
+              }
               setWorkoutMode("browse");
               setGuidedExercises(null);
-              setCompletionAiSummary(null);
-              setCompletionAiLoading(false);
             }}
           />
-        )}
-
-        {showPickWorkoutModal && (
-          <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-[55] p-4">
-            <div className="bg-[#0c1422] rounded-2xl border border-white/8 w-full max-w-md max-h-[min(80vh,520px)] overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between p-4 border-b border-white/10">
-                <h2 className="text-lg font-bold text-white">Choose workout</h2>
-                <button
-                  type="button"
-                  onClick={() => setShowPickWorkoutModal(false)}
-                  className="p-2 text-gray-400 hover:text-white rounded-lg"
-                  aria-label="Close"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="overflow-y-auto p-3 space-y-2">
-                {workoutOptions.filter((o) => optionExercisesList(o).length > 0).length === 0 ? (
-                  <p className="text-gray-400 text-sm text-center py-8 px-2">
-                    No saved plans with exercises yet. Add moves in{" "}
-                    <Link href="/gym/workouts" className="text-teal-400 font-semibold">
-                      Workout plans
-                    </Link>
-                    .
-                  </p>
-                ) : (
-                  workoutOptions
-                    .filter((o) => optionExercisesList(o).length > 0)
-                    .map((option) => (
-                      <button
-                        key={option.id}
-                        type="button"
-                        onClick={() => {
-                          const list = buildExercisesFromOptionId(option.id);
-                          if (list.length === 0) return;
-                          setShowPickWorkoutModal(false);
-                          setGuidedSessionKey((k) => k + 1);
-                          setCompletionAiSummary(null);
-                          setCompletionAiLoading(false);
-                          setWorkoutMode("active");
-                          setGuidedExercises(
-                            list.map((ex) => ({
-                              ...ex,
-                              sets: ex.sets.map((s) => ({ ...s })),
-                            }))
-                          );
-                        }}
-                        className="w-full text-left p-4 rounded-xl bg-black/30 border border-white/10 hover:border-cyan-400/40 transition-colors"
-                      >
-                        <p className="font-semibold text-white">{option.name}</p>
-                        <p className="text-[11px] text-gray-500 mt-1">
-                          {optionExercisesList(option).length} exercises
-                        </p>
-                      </button>
-                    ))
-                )}
-              </div>
-            </div>
-          </div>
         )}
 
         {/* Custom Workout Plan Modal */}
