@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import BottomNav from "@/components/BottomNav";
 import { getBuiltInImageUrl, getExerciseImagePosition } from "@/lib/built-in-exercise-images";
-import { X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, ChevronLeft, Dumbbell, TrendingUp, Calendar, Sparkles, Play, Flame, Lightbulb, Trophy } from "lucide-react";
+import { X, Plus, Trash2, MoreVertical, Clock, BarChart3, RefreshCw, ChevronRight, ChevronLeft, Dumbbell, TrendingUp, Calendar, Sparkles, Play, Flame, Lightbulb, Trophy, Check, Activity } from "lucide-react";
 import {
   collectWorkoutDaysFromStorage,
   buildProgressionTips,
@@ -187,95 +187,97 @@ function getMuscleLevel(sessions: number): "none" | "beginner" | "intermediate" 
 function BodyDiagram({ levels, view }: { levels: Record<string, string>; view: "front" | "back" }) {
   const mc = (m: string) => LEVEL_COLORS[levels[m] ?? "none"] ?? LEVEL_COLORS.none;
   const has = (m: string) => (levels[m] ?? "none") !== "none";
-  const BODY = "#111d2e";
-  const OUTLINE = "#1a2e48";
+  const uid = view === "front" ? "bdf" : "bdb";
+  const DARK = "#0d1824";
 
+  const defs = (
+    <defs>
+      <radialGradient id={`${uid}-bg`} cx="50%" cy="30%" r="70%">
+        <stop offset="0%" stopColor="#243858" />
+        <stop offset="100%" stopColor="#0d1824" />
+      </radialGradient>
+      <filter id={`${uid}-glow`} x="-40%" y="-40%" width="180%" height="180%">
+        <feGaussianBlur stdDeviation="3.5" result="blur" />
+        <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+      </filter>
+    </defs>
+  );
+
+  const bf = `url(#${uid}-bg)`;
   const silhouette = (
     <>
-      <ellipse cx="60" cy="17" rx="13" ry="15" fill={BODY} />
-      <path d="M53,31 L53,40 Q60,42 67,40 L67,31 Q60,30 53,31 Z" fill={BODY} />
-      <path d="M28,44 C16,50 12,68 12,86 C12,106 16,122 24,132 L34,138 L34,162 C38,166 50,168 60,168 C70,168 82,166 86,162 L86,138 L96,132 C104,122 108,106 108,86 C108,68 104,50 92,44 C80,38 40,38 28,44 Z" fill={BODY} />
-      <path d="M4,56 C0,64 0,80 2,96 L2,136 C2,142 6,146 12,146 L22,146 C26,144 28,140 28,136 L28,94 C28,78 24,62 18,54 Z" fill={BODY} />
-      <path d="M116,56 C120,64 120,80 118,96 L118,136 C118,142 114,146 108,146 L98,146 C94,144 92,140 92,136 L92,94 C92,78 96,62 102,54 Z" fill={BODY} />
-      <path d="M4,138 C2,152 2,168 6,178 L14,180 L24,180 C28,176 30,168 30,158 L30,138 Z" fill={BODY} />
-      <path d="M116,138 C118,152 118,168 114,178 L106,180 L96,180 C92,176 90,168 90,158 L90,138 Z" fill={BODY} />
-      <path d="M26,170 C16,182 12,206 14,230 C14,246 18,258 26,264 L44,266 L50,266 L50,170 Z" fill={BODY} />
-      <path d="M94,170 C104,182 108,206 106,230 C106,246 102,258 94,264 L76,266 L70,266 L70,170 Z" fill={BODY} />
-      <path d="M18,266 C14,280 16,294 24,302 C28,306 36,308 44,306 L48,306 L50,266 Z" fill={BODY} />
-      <path d="M102,266 C106,280 104,294 96,302 C92,306 84,308 76,306 L72,306 L70,266 Z" fill={BODY} />
+      <ellipse cx="60" cy="17" rx="13" ry="15" fill={bf} />
+      <path d="M53,31 L53,40 Q60,42 67,40 L67,31 Q60,30 53,31 Z" fill={bf} />
+      <path d="M28,44 C16,50 12,68 12,86 C12,106 16,122 24,132 L34,138 L34,162 C38,166 50,168 60,168 C70,168 82,166 86,162 L86,138 L96,132 C104,122 108,106 108,86 C108,68 104,50 92,44 C80,38 40,38 28,44 Z" fill={bf} />
+      <path d="M4,56 C0,64 0,80 2,96 L2,136 C2,142 6,146 12,146 L22,146 C26,144 28,140 28,136 L28,94 C28,78 24,62 18,54 Z" fill={bf} />
+      <path d="M116,56 C120,64 120,80 118,96 L118,136 C118,142 114,146 108,146 L98,146 C94,144 92,140 92,136 L92,94 C92,78 96,62 102,54 Z" fill={bf} />
+      <path d="M4,138 C2,152 2,168 6,178 L14,180 L24,180 C28,176 30,168 30,158 L30,138 Z" fill={bf} />
+      <path d="M116,138 C118,152 118,168 114,178 L106,180 L96,180 C92,176 90,168 90,158 L90,138 Z" fill={bf} />
+      <path d="M26,170 C16,182 12,206 14,230 C14,246 18,258 26,264 L44,266 L50,266 L50,170 Z" fill={bf} />
+      <path d="M94,170 C104,182 108,206 106,230 C106,246 102,258 94,264 L76,266 L70,266 L70,170 Z" fill={bf} />
+      <path d="M18,266 C14,280 16,294 24,302 C28,306 36,308 44,306 L48,306 L50,266 Z" fill={bf} />
+      <path d="M102,266 C106,280 104,294 96,302 C92,306 84,308 76,306 L72,306 L70,266 Z" fill={bf} />
     </>
   );
+
+  const mg = (m: string) => ({ fill: mc(m), opacity: has(m) ? 0.9 : 0.12, filter: has(m) ? `url(#${uid}-glow)` : undefined });
 
   if (view === "front") {
     return (
       <svg viewBox="0 0 120 316" style={{ width: "100%", maxWidth: 120 }}>
+        {defs}
         {silhouette}
-        {/* Shoulders */}
-        <path d="M4,54 C0,62 0,76 4,88 L16,94 L28,88 L28,46 C18,42 8,44 4,54 Z" fill={mc("shoulders")} opacity={has("shoulders") ? 0.88 : 0.14} />
-        <path d="M116,54 C120,62 120,76 116,88 L104,94 L92,88 L92,46 C102,42 112,44 116,54 Z" fill={mc("shoulders")} opacity={has("shoulders") ? 0.88 : 0.14} />
-        {/* Chest */}
-        <path d="M32,50 C20,58 16,72 22,88 C26,96 38,100 52,98 L60,92 L60,48 C50,42 38,44 32,50 Z" fill={mc("chest")} opacity={has("chest") ? 0.88 : 0.14} />
-        <path d="M88,50 C100,58 104,72 98,88 C94,96 82,100 68,98 L60,92 L60,48 C70,42 82,44 88,50 Z" fill={mc("chest")} opacity={has("chest") ? 0.88 : 0.14} />
-        <line x1="60" y1="48" x2="60" y2="94" stroke={BODY} strokeWidth="1.2" opacity="0.6" />
-        {/* Abs */}
-        <path d="M40,98 C36,116 36,138 40,156 C46,164 54,166 60,166 C66,166 74,164 80,156 C84,138 84,116 80,98 C74,90 64,88 60,88 C56,88 46,90 40,98 Z" fill={mc("abs")} opacity={has("abs") ? 0.88 : 0.14} />
+        <path d="M4,54 C0,62 0,76 4,88 L16,94 L28,88 L28,46 C18,42 8,44 4,54 Z" {...mg("shoulders")} />
+        <path d="M116,54 C120,62 120,76 116,88 L104,94 L92,88 L92,46 C102,42 112,44 116,54 Z" {...mg("shoulders")} />
+        <path d="M32,50 C20,58 16,72 22,88 C26,96 38,100 52,98 L60,92 L60,48 C50,42 38,44 32,50 Z" {...mg("chest")} />
+        <path d="M88,50 C100,58 104,72 98,88 C94,96 82,100 68,98 L60,92 L60,48 C70,42 82,44 88,50 Z" {...mg("chest")} />
+        {has("chest") && <line x1="60" y1="48" x2="60" y2="94" stroke={DARK} strokeWidth="1.2" opacity="0.5" />}
+        <path d="M40,98 C36,116 36,138 40,156 C46,164 54,166 60,166 C66,166 74,164 80,156 C84,138 84,116 80,98 C74,90 64,88 60,88 C56,88 46,90 40,98 Z" {...mg("abs")} />
         {has("abs") && <>
-          <line x1="40" y1="116" x2="80" y2="116" stroke={BODY} strokeWidth="1.2" opacity="0.5" />
-          <line x1="39" y1="136" x2="81" y2="136" stroke={BODY} strokeWidth="1.2" opacity="0.5" />
-          <line x1="60" y1="98" x2="60" y2="158" stroke={BODY} strokeWidth="1.2" opacity="0.5" />
+          <line x1="40" y1="116" x2="80" y2="116" stroke={DARK} strokeWidth="1.2" opacity="0.5" />
+          <line x1="39" y1="136" x2="81" y2="136" stroke={DARK} strokeWidth="1.2" opacity="0.5" />
+          <line x1="60" y1="98" x2="60" y2="158" stroke={DARK} strokeWidth="1.2" opacity="0.5" />
         </>}
-        {/* Biceps */}
-        <path d="M2,66 C0,80 2,100 6,114 L22,116 L26,68 C18,56 8,58 2,66 Z" fill={mc("biceps")} opacity={has("biceps") ? 0.88 : 0.14} />
-        <path d="M118,66 C120,80 118,100 114,114 L98,116 L94,68 C102,56 112,58 118,66 Z" fill={mc("biceps")} opacity={has("biceps") ? 0.88 : 0.14} />
-        {/* Forearms */}
-        <path d="M4,118 C2,134 2,154 6,166 L18,168 L26,118 Z" fill={mc("forearms")} opacity={has("forearms") ? 0.88 : 0.14} />
-        <path d="M116,118 C118,134 118,154 114,166 L102,168 L94,118 Z" fill={mc("forearms")} opacity={has("forearms") ? 0.88 : 0.14} />
-        {/* Quads */}
-        <path d="M28,172 C18,186 12,210 14,234 C14,248 18,260 28,266 L48,266 L52,172 Z" fill={mc("quads")} opacity={has("quads") ? 0.88 : 0.14} />
-        <path d="M92,172 C102,186 108,210 106,234 C106,248 102,260 92,266 L72,266 L68,172 Z" fill={mc("quads")} opacity={has("quads") ? 0.88 : 0.14} />
-        {/* Calves */}
-        <path d="M16,268 C12,284 14,298 22,306 L42,306 L50,268 Z" fill={mc("calves")} opacity={has("calves") ? 0.88 : 0.14} />
-        <path d="M104,268 C108,284 106,298 98,306 L78,306 L70,268 Z" fill={mc("calves")} opacity={has("calves") ? 0.88 : 0.14} />
+        <path d="M2,66 C0,80 2,100 6,114 L22,116 L26,68 C18,56 8,58 2,66 Z" {...mg("biceps")} />
+        <path d="M118,66 C120,80 118,100 114,114 L98,116 L94,68 C102,56 112,58 118,66 Z" {...mg("biceps")} />
+        <path d="M4,118 C2,134 2,154 6,166 L18,168 L26,118 Z" {...mg("forearms")} />
+        <path d="M116,118 C118,134 118,154 114,166 L102,168 L94,118 Z" {...mg("forearms")} />
+        <path d="M28,172 C18,186 12,210 14,234 C14,248 18,260 28,266 L48,266 L52,172 Z" {...mg("quads")} />
+        <path d="M92,172 C102,186 108,210 106,234 C106,248 102,260 92,266 L72,266 L68,172 Z" {...mg("quads")} />
+        <path d="M16,268 C12,284 14,298 22,306 L42,306 L50,268 Z" {...mg("calves")} />
+        <path d="M104,268 C108,284 106,298 98,306 L78,306 L70,268 Z" {...mg("calves")} />
       </svg>
     );
   }
 
   return (
     <svg viewBox="0 0 120 316" style={{ width: "100%", maxWidth: 120 }}>
+      {defs}
       {silhouette}
-      {/* Rear delts */}
-      <path d="M4,54 C0,62 0,76 4,88 L16,94 L28,88 L28,46 C18,42 8,44 4,54 Z" fill={mc("shoulders")} opacity={has("shoulders") ? 0.88 : 0.14} />
-      <path d="M116,54 C120,62 120,76 116,88 L104,94 L92,88 L92,46 C102,42 112,44 116,54 Z" fill={mc("shoulders")} opacity={has("shoulders") ? 0.88 : 0.14} />
-      {/* Traps */}
-      <path d="M53,32 C40,38 24,46 14,58 L40,84 L60,60 Z" fill={mc("traps")} opacity={has("traps") ? 0.88 : 0.14} />
-      <path d="M67,32 C80,38 96,46 106,58 L80,84 L60,60 Z" fill={mc("traps")} opacity={has("traps") ? 0.88 : 0.14} />
-      <path d="M14,60 C12,72 14,84 20,90 L40,86 L60,60 Z" fill={mc("traps")} opacity={has("traps") ? 0.7 : 0.1} />
-      <path d="M106,60 C108,72 106,84 100,90 L80,86 L60,60 Z" fill={mc("traps")} opacity={has("traps") ? 0.7 : 0.1} />
-      {/* Lats */}
-      <path d="M12,90 C8,108 10,126 18,136 C22,142 32,146 44,142 L44,88 Z" fill={mc("lats")} opacity={has("lats") ? 0.88 : 0.14} />
-      <path d="M108,90 C112,108 110,126 102,136 C98,142 88,146 76,142 L76,88 Z" fill={mc("lats")} opacity={has("lats") ? 0.88 : 0.14} />
-      {/* Back/erectors */}
-      <path d="M44,88 C40,108 40,130 44,150 C48,158 54,162 60,162 C66,162 72,158 76,150 C80,130 80,108 76,88 Z" fill={mc("back")} opacity={has("back") ? 0.88 : 0.14} />
+      <path d="M4,54 C0,62 0,76 4,88 L16,94 L28,88 L28,46 C18,42 8,44 4,54 Z" {...mg("shoulders")} />
+      <path d="M116,54 C120,62 120,76 116,88 L104,94 L92,88 L92,46 C102,42 112,44 116,54 Z" {...mg("shoulders")} />
+      <path d="M53,32 C40,38 24,46 14,58 L40,84 L60,60 Z" {...mg("traps")} />
+      <path d="M67,32 C80,38 96,46 106,58 L80,84 L60,60 Z" {...mg("traps")} />
+      <path d="M14,60 C12,72 14,84 20,90 L40,86 L60,60 Z" fill={mc("traps")} opacity={has("traps") ? 0.65 : 0.08} filter={has("traps") ? `url(#${uid}-glow)` : undefined} />
+      <path d="M106,60 C108,72 106,84 100,90 L80,86 L60,60 Z" fill={mc("traps")} opacity={has("traps") ? 0.65 : 0.08} filter={has("traps") ? `url(#${uid}-glow)` : undefined} />
+      <path d="M12,90 C8,108 10,126 18,136 C22,142 32,146 44,142 L44,88 Z" {...mg("lats")} />
+      <path d="M108,90 C112,108 110,126 102,136 C98,142 88,146 76,142 L76,88 Z" {...mg("lats")} />
+      <path d="M44,88 C40,108 40,130 44,150 C48,158 54,162 60,162 C66,162 72,158 76,150 C80,130 80,108 76,88 Z" {...mg("back")} />
       {has("back") && <>
-        <line x1="60" y1="88" x2="60" y2="158" stroke={BODY} strokeWidth="1.4" opacity="0.5" />
-        <line x1="44" y1="112" x2="76" y2="112" stroke={BODY} strokeWidth="1" opacity="0.4" />
-        <line x1="44" y1="134" x2="76" y2="134" stroke={BODY} strokeWidth="1" opacity="0.4" />
+        <line x1="60" y1="88" x2="60" y2="158" stroke={DARK} strokeWidth="1.4" opacity="0.5" />
+        <line x1="44" y1="112" x2="76" y2="112" stroke={DARK} strokeWidth="1" opacity="0.4" />
+        <line x1="44" y1="134" x2="76" y2="134" stroke={DARK} strokeWidth="1" opacity="0.4" />
       </>}
-      {/* Triceps */}
-      <path d="M2,66 C0,80 2,102 6,118 L24,118 C26,98 26,76 22,60 Z" fill={mc("triceps")} opacity={has("triceps") ? 0.88 : 0.14} />
-      <path d="M118,66 C120,80 118,102 114,118 L96,118 C94,98 94,76 98,60 Z" fill={mc("triceps")} opacity={has("triceps") ? 0.88 : 0.14} />
-      {/* Forearms back */}
-      <path d="M4,120 C2,138 2,156 6,168 L20,170 L26,120 Z" fill={mc("forearms")} opacity={has("forearms") ? 0.88 : 0.14} />
-      <path d="M116,120 C118,138 118,156 114,168 L100,170 L94,120 Z" fill={mc("forearms")} opacity={has("forearms") ? 0.88 : 0.14} />
-      {/* Glutes */}
-      <path d="M26,170 C16,184 14,206 20,224 C24,236 36,242 52,238 L60,232 L60,170 Z" fill={mc("glutes")} opacity={has("glutes") ? 0.88 : 0.14} />
-      <path d="M94,170 C104,184 106,206 100,224 C96,236 84,242 68,238 L60,232 L60,170 Z" fill={mc("glutes")} opacity={has("glutes") ? 0.88 : 0.14} />
-      {/* Hamstrings */}
-      <path d="M20,226 C14,246 16,264 26,274 L46,274 L52,238 Z" fill={mc("hamstrings")} opacity={has("hamstrings") ? 0.88 : 0.14} />
-      <path d="M100,226 C106,246 104,264 94,274 L74,274 L68,238 Z" fill={mc("hamstrings")} opacity={has("hamstrings") ? 0.88 : 0.14} />
-      {/* Calves back */}
-      <path d="M18,276 C14,292 16,306 24,312 L44,312 L48,276 Z" fill={mc("calves")} opacity={has("calves") ? 0.88 : 0.14} />
-      <path d="M102,276 C106,292 104,306 96,312 L76,312 L72,276 Z" fill={mc("calves")} opacity={has("calves") ? 0.88 : 0.14} />
+      <path d="M2,66 C0,80 2,102 6,118 L24,118 C26,98 26,76 22,60 Z" {...mg("triceps")} />
+      <path d="M118,66 C120,80 118,102 114,118 L96,118 C94,98 94,76 98,60 Z" {...mg("triceps")} />
+      <path d="M4,120 C2,138 2,156 6,168 L20,170 L26,120 Z" {...mg("forearms")} />
+      <path d="M116,120 C118,138 118,156 114,168 L100,170 L94,120 Z" {...mg("forearms")} />
+      <path d="M26,170 C16,184 14,206 20,224 C24,236 36,242 52,238 L60,232 L60,170 Z" {...mg("glutes")} />
+      <path d="M94,170 C104,184 106,206 100,224 C96,236 84,242 68,238 L60,232 L60,170 Z" {...mg("glutes")} />
+      <path d="M20,226 C14,246 16,264 26,274 L46,274 L52,238 Z" {...mg("hamstrings")} />
+      <path d="M100,226 C106,246 104,264 94,274 L74,274 L68,238 Z" {...mg("hamstrings")} />
+      <path d="M18,276 C14,292 16,306 24,312 L44,312 L48,276 Z" {...mg("calves")} />
+      <path d="M102,276 C106,292 104,306 96,312 L76,312 L72,276 Z" {...mg("calves")} />
     </svg>
   );
 }
@@ -1339,149 +1341,218 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
 
         {/* Content based on active tab */}
         {activeTab === "progress" ? (
-          <div className="space-y-4 pb-20">
+          <div className="space-y-3 pb-20">
+
+            {/* Page header */}
+            <div className="flex items-start justify-between pt-1 pb-2">
+              <div>
+                <h1 className="text-3xl font-black text-white tracking-tight">Progress</h1>
+                <p className="text-gray-500 text-sm mt-0.5">Track your journey. See your progress.</p>
+              </div>
+              <button className="w-10 h-10 rounded-full bg-white/6 border border-white/10 flex items-center justify-center">
+                <Calendar className="w-4 h-4 text-gray-300" />
+              </button>
+            </div>
 
             {/* AI Coach */}
-            <div className="relative overflow-hidden rounded-2xl" style={{ background: "linear-gradient(135deg, #0a1628 0%, #0f2a2a 60%, #071a14 100%)" }}>
-              <div className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-teal-400/70">AI Coach</span>
+            <div className="rounded-2xl border border-teal-900/60 p-4 flex items-center gap-3" style={{ background: "linear-gradient(135deg,#071c1c 0%,#0a2020 100%)" }}>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Sparkles className="w-4 h-4 text-teal-400" />
+                  <span className="text-teal-400 font-bold text-sm">AI Coach</span>
                 </div>
                 {gymAiFetching ? (
                   <div className="flex gap-1 py-1">{[0,1,2].map(i => <div key={i} className="w-1.5 h-1.5 rounded-full bg-teal-400/40 animate-bounce" style={{ animationDelay: `${i*150}ms` }} />)}</div>
-                ) : gymAiMsg ? (
-                  <p className="text-[13px] text-gray-300 leading-relaxed">{gymAiMsg}</p>
                 ) : (
-                  <p className="text-[12px] text-gray-600 leading-relaxed">Log sessions with weights to unlock your AI analysis.</p>
+                  <p className="text-gray-400 text-sm leading-relaxed">{gymAiMsg || "Keep logging your workouts to unlock personal insights and smart feedback."}</p>
                 )}
+              </div>
+              <div className="w-10 h-10 rounded-full border border-teal-600/50 flex items-center justify-center shrink-0">
+                <ChevronRight className="w-4 h-4 text-white" />
               </div>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { value: totalWorkoutsLogged, label: "Total", color: "text-white" },
-                { value: weeklySessionProgress.completed, label: "This Week", color: "text-teal-400" },
-                { value: [...progressDates].filter(d => d.startsWith(new Date().toISOString().slice(0,7))).length, label: "This Month", color: "text-violet-400" },
-              ].map(({ value, label, color }) => (
-                <div key={label} className="bg-[#0c1422] border border-white/8 rounded-2xl p-3 text-center">
-                  <p className={`text-2xl font-black leading-none mb-1 ${color}`}>{value}</p>
-                  <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">{label}</p>
+            <div className="bg-[#0f1923] border border-white/8 rounded-2xl p-4">
+              <div className="flex items-center">
+                <div className="flex-1 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-teal-500/15 border border-teal-500/20 flex items-center justify-center">
+                    <Activity className="w-5 h-5 text-teal-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-white leading-none">{totalWorkoutsLogged}</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Workouts Total</p>
+                  </div>
                 </div>
-              ))}
-            </div>
-
-            {/* Muscle Map */}
-            <div className="bg-[#0c1422] border border-white/8 rounded-2xl overflow-hidden">
-              <div className="flex items-center justify-between px-4 pt-4 pb-3">
-                <div>
-                  <p className="text-sm font-bold text-white">Muscle Map</p>
-                  <p className="text-[10px] text-gray-600 mt-0.5">Based on your training history</p>
+                <div className="w-px h-10 bg-white/8 mx-2" />
+                <div className="flex-1 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-orange-500/15 border border-orange-500/20 flex items-center justify-center">
+                    <Flame className="w-5 h-5 text-orange-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-white leading-none">{weeklySessionProgress.completed}</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">This Week</p>
+                  </div>
                 </div>
-                <div className="flex gap-0.5 bg-black/30 border border-white/8 rounded-xl p-0.5">
-                  {(["front","back"] as const).map(v => (
-                    <button key={v} onClick={() => setBodyView(v)}
-                      className={`px-3 py-1 rounded-lg text-[11px] font-bold capitalize transition-all ${bodyView === v ? "bg-teal-500 text-white" : "text-gray-500 hover:text-gray-300"}`}>
-                      {v}
-                    </button>
-                  ))}
+                <div className="w-px h-10 bg-white/8 mx-2" />
+                <div className="flex-1 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-purple-500/15 border border-purple-500/20 flex items-center justify-center">
+                    <Trophy className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black text-white leading-none">{progressPRs.length}</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Personal Records</p>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div className="flex gap-3 px-4 pb-4">
+            {/* Muscle Focus */}
+            <div className="bg-[#0f1923] border border-white/8 rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-base font-bold text-white">Muscle Focus</p>
+                <button className="text-teal-400 text-xs font-semibold bg-teal-500/10 border border-teal-500/20 px-3 py-1.5 rounded-full">View All</button>
+              </div>
+              {/* Toggle */}
+              <div className="flex gap-1 mb-4">
+                {(["front","back"] as const).map(v => (
+                  <button key={v} onClick={() => setBodyView(v)}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-bold capitalize transition-all ${bodyView === v ? "bg-teal-500 text-white" : "text-gray-500 hover:text-gray-300"}`}>
+                    {v.charAt(0).toUpperCase() + v.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-4 items-start">
                 {/* Body diagram */}
-                <div className="flex justify-center items-start" style={{ width: 90, flexShrink: 0 }}>
+                <div style={{ width: 100, flexShrink: 0 }}>
                   <BodyDiagram levels={muscleData} view={bodyView} />
                 </div>
-
-                {/* Right column: legend + muscle list */}
-                <div className="flex-1 flex flex-col gap-3 pt-1">
-                  {/* Legend */}
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                    {[
-                      { level: "advanced",     label: "Advanced",    color: "#10b981" },
-                      { level: "intermediate", label: "Mid",         color: "#f59e0b" },
-                      { level: "beginner",     label: "Beginner",    color: "#3b82f6" },
-                      { level: "none",         label: "Untrained",   color: "#1e293b" },
-                    ].map(item => (
-                      <div key={item.level} className="flex items-center gap-1.5">
-                        <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: item.color, border: item.level === "none" ? "1px solid rgba(255,255,255,0.15)" : "none" }} />
-                        <span className="text-[10px] text-gray-500">{item.label}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Muscle list */}
-                  <div className="space-y-1.5 border-t border-white/5 pt-2.5">
-                    {(bodyView === "front"
-                      ? [["Chest","chest"],["Shoulders","shoulders"],["Biceps","biceps"],["Forearms","forearms"],["Abs","abs"],["Quads","quads"],["Calves","calves"]]
-                      : [["Traps","traps"],["Lats","lats"],["Back","back"],["Triceps","triceps"],["Glutes","glutes"],["Hamstrings","hamstrings"],["Calves","calves"]]
-                    ).map(([label, key]) => {
-                      const lv = muscleData[key] ?? "none";
-                      return (
-                        <div key={key} className="flex items-center justify-between gap-2">
-                          <span className="text-[11px] text-gray-400 truncate">{label}</span>
-                          <div className="w-2 h-2 rounded-full shrink-0" style={{ background: LEVEL_COLORS[lv], border: lv === "none" ? "1px solid rgba(255,255,255,0.12)" : "none" }} />
+                {/* Muscle list */}
+                <div className="flex-1 space-y-2.5 pt-1">
+                  {(bodyView === "front"
+                    ? [["Chest","chest"],["Shoulders","shoulders"],["Biceps","biceps"],["Forearms","forearms"],["Abs","abs"],["Quads","quads"],["Calves","calves"]]
+                    : [["Traps","traps"],["Lats","lats"],["Back","back"],["Triceps","triceps"],["Glutes","glutes"],["Hamstrings","hamstrings"],["Calves","calves"]]
+                  ).map(([label, key]) => {
+                    const lv = muscleData[key] ?? "none";
+                    const levelLabel = lv === "none" ? "Untrained" : lv === "intermediate" ? "Mid" : lv.charAt(0).toUpperCase() + lv.slice(1);
+                    const levelColor = lv === "advanced" ? "#10b981" : lv === "intermediate" ? "#f59e0b" : lv === "beginner" ? "#3b82f6" : "#374151";
+                    const barPct = lv === "advanced" ? 88 : lv === "intermediate" ? 55 : lv === "beginner" ? 28 : 0;
+                    return (
+                      <div key={key}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-white font-medium">{label}</span>
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full" style={{ background: levelColor }} />
+                            <span className="text-[10px] font-semibold" style={{ color: levelColor }}>{levelLabel}</span>
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Weekly activity */}
-            <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4">
-              <p className="text-sm font-bold text-white mb-3">This week</p>
-              <div className="flex gap-1.5 justify-between">
-                {weekDays.map((day, i) => {
-                  const ds = toLocalDateString(day);
-                  const todayStr = toLocalDateString(new Date());
-                  const isFuture = ds > todayStr;
-                  const isToday = ds === todayStr;
-                  const hasWorkout = progressDates.has(ds);
-                  return (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                      <div className={`w-full aspect-square rounded-lg max-w-[34px] flex items-center justify-center ${
-                        hasWorkout && isToday ? "bg-teal-400 ring-2 ring-teal-300/40 ring-offset-1 ring-offset-[#0c1422]"
-                        : hasWorkout ? "bg-teal-500/70"
-                        : isToday ? "bg-white/6 ring-1 ring-teal-500/30 ring-offset-1 ring-offset-[#0c1422]"
-                        : isFuture ? "bg-white/3"
-                        : "bg-white/5"
-                      }`}>
-                        {hasWorkout && <div className="w-1.5 h-1.5 rounded-full bg-white/80" />}
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                          {barPct > 0 && <div className="h-full rounded-full" style={{ width: `${barPct}%`, background: levelColor }} />}
+                        </div>
                       </div>
-                      <span className={`text-[9px] font-bold ${isFuture ? "text-gray-700" : isToday ? "text-teal-400" : "text-gray-600"}`}>
-                        {["M","T","W","T","F","S","S"][i]}
-                      </span>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            {/* Volume bar chart */}
-            {weeklyVolume.some(v => v > 0) && (
-              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-bold text-white">Weekly Volume</p>
-                  <span className="text-[10px] text-gray-600">total kg lifted</span>
-                </div>
-                <div className="flex items-end gap-1.5" style={{ height: 68 }}>
+            {/* Two-column grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Weekly Volume */}
+              <div className="bg-[#0f1923] border border-white/8 rounded-2xl p-4">
+                <p className="text-sm font-bold text-white">Weekly Volume</p>
+                <p className="text-[10px] text-gray-500 mb-2">Total Load Lifted</p>
+                <p className="text-2xl font-black text-teal-400 leading-none mb-3">
+                  {weeklyVolume.reduce((s,v) => s+v, 0) >= 1000
+                    ? `${(weeklyVolume.reduce((s,v) => s+v, 0)/1000).toFixed(1).replace(/\.0$/,"")},${String(weeklyVolume.reduce((s,v) => s+v, 0) % 1000).padStart(3,"0")}`
+                    : weeklyVolume.reduce((s,v) => s+v, 0).toString()
+                  } <span className="text-sm font-normal text-gray-500">kg</span>
+                </p>
+                <div className="flex items-end gap-1" style={{ height: 52 }}>
                   {weeklyVolume.map((vol, i) => {
                     const maxVol = Math.max(...weeklyVolume, 1);
                     const pct = (vol / maxVol) * 100;
                     const todayIdx = weekDays.findIndex(d => toLocalDateString(d) === toLocalDateString(new Date()));
                     const isToday = i === todayIdx;
                     return (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                        {vol > 0 && <span className="text-[8px] text-gray-600 tabular-nums">{vol >= 1000 ? `${Math.round(vol/1000)}k` : vol}</span>}
-                        <div className="w-full rounded-md" style={{
-                          height: Math.max(3, (pct/100) * 46),
-                          background: isToday ? "linear-gradient(to top,#0d9488,#5eead4)" : vol > 0 ? "rgba(45,212,191,0.28)" : "rgba(255,255,255,0.04)",
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                        <div className="w-full rounded-sm" style={{
+                          height: Math.max(3, (pct/100) * 40),
+                          background: isToday ? "#2dd4bf" : vol > 0 ? "rgba(45,212,191,0.25)" : "rgba(255,255,255,0.05)",
                         }} />
-                        <span className={`text-[8px] font-bold ${isToday ? "text-teal-400" : "text-gray-700"}`}>{["M","T","W","T","F","S","S"][i]}</span>
+                        <span className={`text-[7px] font-bold ${isToday ? "text-teal-400" : "text-gray-700"}`}>{["M","T","W","T","F","S","S"][i]}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right column */}
+              <div className="space-y-3">
+                {/* This Week */}
+                <div className="bg-[#0f1923] border border-white/8 rounded-2xl p-3">
+                  <p className="text-sm font-bold text-white">This Week</p>
+                  <p className="text-[10px] text-gray-500 mb-2.5">{weeklySessionProgress.completed} of 7 workouts</p>
+                  <div className="flex gap-1 flex-wrap">
+                    {weekDays.map((day, i) => {
+                      const ds = toLocalDateString(day);
+                      const hasWorkout = progressDates.has(ds);
+                      return (
+                        <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center ${hasWorkout ? "bg-teal-500" : "bg-white/6 border border-white/12"}`}>
+                          {hasWorkout && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Personal Records */}
+                <div className="bg-[#0f1923] border border-white/8 rounded-2xl p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <Trophy className="w-3.5 h-3.5 text-purple-400" />
+                      <p className="text-sm font-bold text-white">Personal Records</p>
+                    </div>
+                    <span className="text-teal-400 text-[10px] font-semibold">View All</span>
+                  </div>
+                  <p className="text-2xl font-black text-purple-400 leading-none mb-2">
+                    {progressPRs.length} <span className="text-xs font-normal text-gray-500">Total PRs</span>
+                  </p>
+                  <svg viewBox="0 0 80 28" style={{ width: "100%", height: 28 }}>
+                    <polyline points="0,22 13,18 26,20 40,12 53,8 66,5 80,2"
+                      fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Top Lifts */}
+            {progressPRs.length > 0 && (
+              <div className="bg-[#0f1923] border border-white/8 rounded-2xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                  <p className="text-sm font-bold text-white">Top Lifts</p>
+                  <span className="text-teal-400 text-xs font-semibold">View All</span>
+                </div>
+                <div className="divide-y divide-white/5">
+                  {progressPRs.slice(0,4).map((pr, i) => {
+                    const imgUrl = getBuiltInImageUrl(pr.exercise);
+                    return (
+                      <div key={i} className="flex items-center gap-3 px-4 py-3">
+                        {imgUrl ? (
+                          <img src={imgUrl} className="w-12 h-12 rounded-xl object-cover shrink-0" style={{ objectPosition: getExerciseImagePosition(pr.exercise) }} />
+                        ) : (
+                          <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
+                            <Dumbbell className="w-5 h-5 text-gray-600" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-white truncate">{pr.exercise}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">Best Set · {fmtProgressDate(pr.date)}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-base font-black text-purple-400 leading-none">{pr.weight} <span className="text-xs font-normal text-gray-500">kg</span></p>
+                          {pr.reps > 0 && <p className="text-[10px] text-gray-500 mt-0.5">{pr.reps} reps</p>}
+                        </div>
                       </div>
                     );
                   })}
@@ -1489,40 +1560,8 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
               </div>
             )}
 
-            {/* Strength progress */}
-            {liftChartData.length > 0 && (
-              <div className="space-y-3">
-                <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold px-0.5">Strength Progress · max weight per session</p>
-                {liftChartData.map((lift, i) => <ProgressLiftChart key={lift.name} lift={lift} idx={i} />)}
-              </div>
-            )}
-
-            {/* Personal Records */}
-            {progressPRs.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Trophy className="w-3.5 h-3.5 text-yellow-400" />
-                  <p className="text-[11px] text-yellow-400/70 font-semibold uppercase tracking-widest">Personal Records</p>
-                </div>
-                {progressPRs.map((pr, i) => (
-                  <div key={i} className="bg-[#0c1422] border border-white/8 rounded-2xl p-4 flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${i===0?"bg-yellow-400/15 border border-yellow-400/25":i===1?"bg-gray-400/10 border border-gray-400/20":i===2?"bg-amber-700/15 border border-amber-700/25":"bg-white/5 border border-white/8"}`}>
-                      <span className={`text-[11px] font-black ${i===0?"text-yellow-400":i===1?"text-gray-400":i===2?"text-amber-600":"text-gray-600"}`}>#{i+1}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-white truncate">{pr.exercise}</p>
-                      <p className="text-[10px] text-gray-600 mt-0.5">{fmtProgressDate(pr.date)}{pr.reps > 0 ? ` · ${pr.reps} reps` : ""}</p>
-                    </div>
-                    <p className="text-xl font-black text-yellow-400 leading-none shrink-0">
-                      {pr.weight}<span className="text-xs font-normal text-yellow-600/50 ml-0.5">kg</span>
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-
             {totalWorkoutsLogged === 0 && (
-              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-8 text-center">
+              <div className="bg-[#0f1923] border border-white/8 rounded-2xl p-8 text-center">
                 <Dumbbell className="w-10 h-10 text-gray-700 mx-auto mb-3" />
                 <p className="text-gray-500 text-sm">Log your first workout to see progress charts.</p>
               </div>
