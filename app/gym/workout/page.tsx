@@ -1148,17 +1148,19 @@ export default function WorkoutPage() {
         if (maxWeight > 0) monthlyAvg[m].push(maxWeight);
       });
     });
-    const months12: { label: string; avg: number }[] = [];
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
-      const label = d.toLocaleString("en-US", { month: "short" });
+    // Current calendar year: Jan → current month
+    const yearMonths: { label: string; avg: number; isFuture: boolean }[] = [];
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth(); // 0-indexed
+    for (let m = 0; m <= 11; m++) {
+      const key = `${curYear}-${String(m+1).padStart(2,"0")}`;
+      const label = new Date(curYear, m, 1).toLocaleString("en-US", { month: "short" });
       const vals = monthlyAvg[key] || [];
-      months12.push({ label, avg: vals.length ? vals.reduce((s,v)=>s+v,0)/vals.length : 0 });
+      yearMonths.push({ label, avg: vals.length ? vals.reduce((s,v)=>s+v,0)/vals.length : 0, isFuture: m > curMonth });
     }
-    const firstWithData = months12.find(m => m.avg > 0);
+    const firstWithData = yearMonths.find(m => m.avg > 0);
     const baseline = firstWithData?.avg ?? 1;
-    setYearlyStrengthData(months12.map(m => ({
+    setYearlyStrengthData(yearMonths.map(m => ({
       label: m.label,
       pct: m.avg > 0 ? Math.round(((m.avg-baseline)/baseline)*100) : null,
     })));
@@ -1526,82 +1528,124 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
               </div>
             </div>
 
-            {/* Strength Progress (yearly line graph) */}
+            {/* Strength Progress — current calendar year line graph */}
             {(() => {
-              const pts = yearlyStrengthData.filter(d => d.pct !== null);
-              const hasSData = pts.length >= 2;
-              const allPcts = pts.map(d => d.pct as number);
-              const minPct = Math.min(0, ...allPcts);
-              const maxPct = Math.max(5, ...allPcts);
-              const range = maxPct - minPct || 1;
-              const W = 300, H = 120, PL = 36, PR = 8, PT = 16, PB = 28;
+              const year = new Date().getFullYear();
+              const pts = yearlyStrengthData; // 12 months Jan-Dec
+              const dataPts = pts.filter(d => d.pct !== null);
+              const hasData = dataPts.length >= 1;
+              const allPcts = dataPts.map(d => d.pct as number);
+              const rawMin = hasData ? Math.min(...allPcts) : 0;
+              const rawMax = hasData ? Math.max(...allPcts) : 10;
+              const pad = Math.max(2, (rawMax - rawMin) * 0.15);
+              const minV = Math.min(0, rawMin - pad);
+              const maxV = rawMax + pad;
+              const range = maxV - minV || 1;
+
+              const W = 320, H = 140, PL = 32, PR = 12, PT = 12, PB = 24;
               const cW = W - PL - PR, cH = H - PT - PB;
-              const months = yearlyStrengthData;
-              const toX = (i: number) => PL + (i / (months.length - 1)) * cW;
-              const toY = (v: number) => PT + (1 - (v - minPct) / range) * cH;
-              const plotPts = months.map((m, i) => ({ x: toX(i), y: m.pct !== null ? toY(m.pct) : null, label: m.label, pct: m.pct }));
-              // Build smooth polyline through non-null points
-              const linePts = plotPts.filter(p => p.y !== null);
-              const polyline = linePts.map(p => `${p.x},${p.y}`).join(" ");
-              // Find the latest non-null point
+              const toX = (i: number) => PL + (i / 11) * cW;
+              const toY = (v: number) => PT + (1 - (v - minV) / range) * cH;
+
+              // Plot points — null for months with no data
+              const plotPts = pts.map((m, i) => ({
+                x: toX(i),
+                y: m.pct !== null ? toY(m.pct) : null,
+                pct: m.pct,
+                label: m.label,
+              }));
+
+              // Segments: consecutive non-null pairs
+              const segments: { x1: number; y1: number; x2: number; y2: number }[] = [];
+              for (let i = 0; i < plotPts.length - 1; i++) {
+                const a = plotPts[i], b = plotPts[i + 1];
+                if (a.y !== null && b.y !== null) segments.push({ x1: a.x, y1: a.y!, x2: b.x, y2: b.y! });
+              }
+
+              // Area polygon from connected line points
+              const connected = plotPts.filter(p => p.y !== null);
+              const areaPoints = connected.length >= 2
+                ? `${connected[0].x},${PT + cH} ${connected.map(p => `${p.x},${p.y}`).join(" ")} ${connected[connected.length - 1].x},${PT + cH}`
+                : "";
+
               const latest = [...plotPts].reverse().find(p => p.pct !== null);
-              const yTicks = [minPct, Math.round((minPct+maxPct)/2), maxPct];
+              const yGridVals = [0, Math.round((minV + maxV) / 2), Math.round(maxV)].filter((v, i, a) => a.indexOf(v) === i);
+
               return (
                 <div className="bg-[#0f1923] border border-white/8 rounded-2xl p-4">
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center justify-between mb-0.5">
                     <p className="text-base font-bold text-white">Strength Progress</p>
-                    <span className="text-[10px] text-gray-500 bg-white/5 border border-white/8 px-2.5 py-1 rounded-full">Yearly %</span>
+                    <span className="text-[10px] text-gray-500 bg-white/5 border border-white/8 px-2.5 py-1 rounded-full">{year}</span>
                   </div>
-                  <p className="text-[10px] text-gray-600 mb-3">Average weight increase across all lifts</p>
-                  {hasSData ? (
+                  <p className="text-[11px] text-gray-500 mb-3">% increase in avg lift weight vs January</p>
+
+                  {hasData ? (
                     <>
-                      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 130 }}>
-                        {/* Y-axis grid lines */}
-                        {yTicks.map((tick, i) => (
+                      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 150 }}>
+                        {/* Horizontal grid */}
+                        {yGridVals.map((v, i) => (
                           <g key={i}>
-                            <line x1={PL} y1={toY(tick)} x2={W-PR} y2={toY(tick)} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-                            <text x={PL-4} y={toY(tick)+4} textAnchor="end" fontSize="8" fill="#4b5563">{tick}%</text>
+                            <line x1={PL} y1={toY(v)} x2={W - PR} y2={toY(v)} stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray={v === 0 ? "none" : "3,3"} />
+                            <text x={PL - 4} y={toY(v) + 3.5} textAnchor="end" fontSize="9" fill="#4b5563">{v >= 0 ? "+" : ""}{v}%</text>
                           </g>
                         ))}
-                        {/* Area fill */}
-                        {linePts.length >= 2 && (
-                          <polygon
-                            points={`${linePts[0].x},${PT+cH} ${polyline} ${linePts[linePts.length-1].x},${PT+cH}`}
-                            fill="rgba(45,212,191,0.08)"
-                          />
-                        )}
-                        {/* Line */}
-                        {linePts.length >= 2 && (
-                          <polyline points={polyline} fill="none" stroke="#2dd4bf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        )}
-                        {/* Dots */}
-                        {linePts.map((p, i) => (
-                          <circle key={i} cx={p.x} cy={p.y!} r="3" fill="#2dd4bf" />
+                        {/* Zero baseline */}
+                        <line x1={PL} y1={toY(0)} x2={W - PR} y2={toY(0)} stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+
+                        {/* Area */}
+                        {areaPoints && <polygon points={areaPoints} fill="url(#strGrad)" opacity="0.25" />}
+
+                        {/* Gradient def */}
+                        <defs>
+                          <linearGradient id="strGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#2dd4bf" stopOpacity="1" />
+                            <stop offset="100%" stopColor="#2dd4bf" stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+
+                        {/* Line segments */}
+                        {segments.map((s, i) => (
+                          <line key={i} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke="#2dd4bf" strokeWidth="2.5" strokeLinecap="round" />
                         ))}
-                        {/* Tooltip on latest */}
-                        {latest && latest.y !== null && (
-                          <g>
-                            <rect x={latest.x - 18} y={latest.y - 22} width={36} height={16} rx="4" fill="#2dd4bf" />
-                            <text x={latest.x} y={latest.y - 11} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#000">{latest.pct! >= 0 ? "+" : ""}{latest.pct}%</text>
-                          </g>
-                        )}
-                        {/* X-axis month labels — show every 2nd to avoid crowding */}
-                        {months.map((m, i) => i % 2 === 0 && (
-                          <text key={i} x={toX(i)} y={H-2} textAnchor="middle" fontSize="8" fill="#4b5563">{m.label}</text>
+
+                        {/* Dots on data points */}
+                        {plotPts.filter(p => p.y !== null).map((p, i) => (
+                          <circle key={i} cx={p.x} cy={p.y!} r="3.5" fill="#2dd4bf" stroke="#0f1923" strokeWidth="1.5" />
+                        ))}
+
+                        {/* Tooltip on latest data point */}
+                        {latest && latest.y !== null && (() => {
+                          const labelW = 38, labelH = 18;
+                          const lx = Math.min(latest.x, W - PR - labelW / 2);
+                          const ly = latest.y! - 26;
+                          return (
+                            <g>
+                              <rect x={lx - labelW / 2} y={Math.max(2, ly)} width={labelW} height={labelH} rx="5" fill="#2dd4bf" />
+                              <text x={lx} y={Math.max(2, ly) + 12} textAnchor="middle" fontSize="9.5" fontWeight="bold" fill="#000">
+                                {(latest.pct ?? 0) >= 0 ? "+" : ""}{latest.pct}%
+                              </text>
+                            </g>
+                          );
+                        })()}
+
+                        {/* X-axis month labels */}
+                        {pts.map((m, i) => (
+                          <text key={i} x={toX(i)} y={H - 4} textAnchor="middle" fontSize="8.5" fill={plotPts[i].y !== null ? "#6b7280" : "#374151"}>{m.label}</text>
                         ))}
                       </svg>
-                      {/* Summary row */}
-                      <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-1">
-                        <div>
-                          <p className="text-teal-400 font-black text-lg leading-none">{latest?.pct !== undefined && latest.pct !== null && latest.pct >= 0 ? "+" : ""}{latest?.pct ?? 0}%</p>
-                          <p className="text-[10px] text-gray-500 mt-0.5">vs baseline</p>
+
+                      {/* Summary strip */}
+                      <div className="flex items-center mt-2 pt-3 border-t border-white/5 gap-0">
+                        <div className="flex-1">
+                          <p className="text-teal-400 font-black text-xl leading-none">{(latest?.pct ?? 0) >= 0 ? "+" : ""}{latest?.pct ?? 0}%</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">YTD gain</p>
                         </div>
-                        <div className="text-center">
-                          <p className="text-white font-bold text-lg leading-none">{pts.length}</p>
-                          <p className="text-[10px] text-gray-500 mt-0.5">months tracked</p>
+                        <div className="flex-1 text-center">
+                          <p className="text-white font-bold text-xl leading-none">{dataPts.length}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">months data</p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-white font-bold text-lg leading-none">{liftChartData.length}</p>
+                        <div className="flex-1 text-right">
+                          <p className="text-white font-bold text-xl leading-none">{liftChartData.length}</p>
                           <p className="text-[10px] text-gray-500 mt-0.5">exercises</p>
                         </div>
                       </div>
@@ -1609,7 +1653,7 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
                   ) : (
                     <div className="flex flex-col items-center py-8 text-center">
                       <TrendingUp className="w-8 h-8 text-gray-700 mb-2" />
-                      <p className="text-gray-600 text-sm">Log workouts with weights across multiple sessions to see your strength trend.</p>
+                      <p className="text-gray-600 text-sm">Log weighted workouts in {year} across multiple months to see your yearly strength trend.</p>
                     </div>
                   )}
                 </div>
