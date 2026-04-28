@@ -348,6 +348,9 @@ export default function WorkoutPage() {
   const [progressDates, setProgressDates] = useState<Set<string>>(new Set());
   const [muscleData, setMuscleData] = useState<Record<string, "none" | "beginner" | "intermediate" | "advanced">>({});
   const [bodyView, setBodyView] = useState<"front" | "back">("front");
+  const [yearlyStrengthData, setYearlyStrengthData] = useState<{ label: string; pct: number | null }[]>([]);
+  const [allTimeVolume, setAllTimeVolume] = useState(0);
+  const [workoutTrends, setWorkoutTrends] = useState({ monthPct: 0, weekPct: 0, volumePct: 0, prDiff: 0 });
 
   // Get date from URL on client side
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
@@ -1095,6 +1098,72 @@ export default function WorkoutPage() {
         .sort((a, b) => b.weight - a.weight)
         .slice(0, 8)
     );
+
+    // ── Trends + yearly strength ──────────────────────────────────────────
+    const now = new Date();
+    const thisMonthKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
+    const lastMonthDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    const lastMonthKey = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth()+1).padStart(2,"0")}`;
+    const todayStr2 = toLocalDateString(now);
+    const thisWeekStart = new Date(now); thisWeekStart.setDate(now.getDate() - (now.getDay()===0?6:now.getDay()-1)); thisWeekStart.setHours(0,0,0,0);
+    const lastWeekStart = new Date(thisWeekStart); lastWeekStart.setDate(thisWeekStart.getDate()-7);
+    const lastWeekEnd = new Date(thisWeekStart); lastWeekEnd.setDate(thisWeekStart.getDate()-1);
+
+    let allVol = 0, thisMonthSessions = 0, lastMonthSessions = 0;
+    let thisMonthVol = 0, lastMonthVol = 0;
+    let thisWeekCount = 0, lastWeekCount = 0;
+    allKeys.forEach(k => {
+      const dateStr = k.replace("workout_data_", "");
+      const month = dateStr.slice(0,7);
+      try {
+        const data = JSON.parse(localStorage.getItem(k) || "[]");
+        let sessVol = 0, hasCompletedSet = false;
+        (data as any[]).forEach((ex: any) => {
+          (ex.sets||[]).forEach((s: any) => {
+            if (s.completed) { sessVol += (Number(s.weight)||0)*(Number(s.reps)||0); hasCompletedSet = true; }
+          });
+        });
+        if (hasCompletedSet) {
+          allVol += sessVol;
+          if (month === thisMonthKey) { thisMonthSessions++; thisMonthVol += sessVol; }
+          if (month === lastMonthKey) { lastMonthSessions++; lastMonthVol += sessVol; }
+          const d = new Date(dateStr + "T00:00:00");
+          if (d >= thisWeekStart && dateStr <= todayStr2) thisWeekCount++;
+          if (d >= lastWeekStart && d <= lastWeekEnd) lastWeekCount++;
+        }
+      } catch {}
+    });
+    setAllTimeVolume(Math.round(allVol));
+    const monthPct = lastMonthSessions > 0 ? Math.round(((thisMonthSessions-lastMonthSessions)/lastMonthSessions)*100) : 0;
+    const weekPct = lastWeekCount > 0 ? Math.round(((thisWeekCount-lastWeekCount)/lastWeekCount)*100) : 0;
+    const volumePct = lastMonthVol > 0 ? Math.round(((thisMonthVol-lastMonthVol)/lastMonthVol)*100) : 0;
+    setWorkoutTrends({ monthPct, weekPct, volumePct, prDiff: 0 });
+
+    // Yearly strength: monthly avg of best weights across all exercises
+    const monthlyAvg: Record<string, number[]> = {};
+    Object.values(exerciseMap).forEach(history => {
+      history.forEach(({ date, maxWeight }) => {
+        const m = date.slice(0,7);
+        if (!monthlyAvg[m]) monthlyAvg[m] = [];
+        if (maxWeight > 0) monthlyAvg[m].push(maxWeight);
+      });
+    });
+    const months12: { label: string; avg: number }[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+      const label = d.toLocaleString("en-US", { month: "short" });
+      const vals = monthlyAvg[key] || [];
+      months12.push({ label, avg: vals.length ? vals.reduce((s,v)=>s+v,0)/vals.length : 0 });
+    }
+    const firstWithData = months12.find(m => m.avg > 0);
+    const baseline = firstWithData?.avg ?? 1;
+    setYearlyStrengthData(months12.map(m => ({
+      label: m.label,
+      pct: m.avg > 0 ? Math.round(((m.avg-baseline)/baseline)*100) : null,
+    })));
+    // ─────────────────────────────────────────────────────────────────────
+
     // Weekly AI (cached)
     const today = new Date();
     const dow = today.getDay();
@@ -1344,214 +1413,236 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
           <div className="space-y-3 pb-20">
 
             {/* Page header */}
-            <div className="flex items-start justify-between pt-1 pb-2">
+            <div className="flex items-start justify-between pt-1 pb-1">
               <div>
                 <h1 className="text-3xl font-black text-white tracking-tight">Progress</h1>
                 <p className="text-gray-500 text-sm mt-0.5">Track your journey. See your progress.</p>
               </div>
-              <button className="w-10 h-10 rounded-full bg-white/6 border border-white/10 flex items-center justify-center">
-                <Calendar className="w-4 h-4 text-gray-300" />
+              <button className="w-12 h-12 rounded-2xl bg-white/6 border border-white/10 flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-gray-300" />
               </button>
             </div>
 
             {/* AI Coach */}
-            <div className="rounded-2xl border border-teal-900/60 p-4 flex items-center gap-3" style={{ background: "linear-gradient(135deg,#071c1c 0%,#0a2020 100%)" }}>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Sparkles className="w-4 h-4 text-teal-400" />
-                  <span className="text-teal-400 font-bold text-sm">AI Coach</span>
+            <div className="rounded-2xl border border-teal-800/60 p-4" style={{ background: "linear-gradient(135deg,#071e1e 0%,#0c2a2a 60%,#071a14 100%)" }}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Sparkles className="w-4 h-4 text-teal-400" />
+                    <span className="text-teal-400 font-bold text-sm">AI Coach</span>
+                  </div>
+                  {gymAiFetching ? (
+                    <div className="flex gap-1 py-1">{[0,1,2].map(i => <div key={i} className="w-1.5 h-1.5 rounded-full bg-teal-400/40 animate-bounce" style={{ animationDelay: `${i*150}ms` }} />)}</div>
+                  ) : (
+                    <p className="text-gray-300 text-sm leading-relaxed">{gymAiMsg || "Log your workouts to unlock AI insights and personalized feedback."}</p>
+                  )}
                 </div>
-                {gymAiFetching ? (
-                  <div className="flex gap-1 py-1">{[0,1,2].map(i => <div key={i} className="w-1.5 h-1.5 rounded-full bg-teal-400/40 animate-bounce" style={{ animationDelay: `${i*150}ms` }} />)}</div>
-                ) : (
-                  <p className="text-gray-400 text-sm leading-relaxed">{gymAiMsg || "Keep logging your workouts to unlock personal insights and smart feedback."}</p>
-                )}
-              </div>
-              <div className="w-10 h-10 rounded-full border border-teal-600/50 flex items-center justify-center shrink-0">
-                <ChevronRight className="w-4 h-4 text-white" />
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="bg-[#0f1923] border border-white/8 rounded-2xl p-4">
-              <div className="flex items-center">
-                <div className="flex-1 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-teal-500/15 border border-teal-500/20 flex items-center justify-center">
-                    <Activity className="w-5 h-5 text-teal-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black text-white leading-none">{totalWorkoutsLogged}</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">Workouts Total</p>
-                  </div>
-                </div>
-                <div className="w-px h-10 bg-white/8 mx-2" />
-                <div className="flex-1 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-orange-500/15 border border-orange-500/20 flex items-center justify-center">
-                    <Flame className="w-5 h-5 text-orange-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black text-white leading-none">{weeklySessionProgress.completed}</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">This Week</p>
-                  </div>
-                </div>
-                <div className="w-px h-10 bg-white/8 mx-2" />
-                <div className="flex-1 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-500/15 border border-purple-500/20 flex items-center justify-center">
-                    <Trophy className="w-5 h-5 text-purple-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-black text-white leading-none">{progressPRs.length}</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">Personal Records</p>
-                  </div>
-                </div>
+                <Link href="/gym/ai-coach" className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/20 text-white text-xs font-semibold whitespace-nowrap bg-white/5 hover:bg-white/10 transition-colors">
+                  Learn more <ChevronRight className="w-3 h-3" />
+                </Link>
               </div>
             </div>
 
-            {/* Muscle Focus */}
+            {/* 4 stat cards */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {[
+                {
+                  icon: <Activity className="w-5 h-5 text-teal-400" />,
+                  iconBg: "bg-teal-500/15 border-teal-500/20",
+                  value: totalWorkoutsLogged,
+                  suffix: "",
+                  label: "Total\nWorkouts",
+                  trend: workoutTrends.monthPct,
+                  trendLabel: "vs last month",
+                  trendColor: "#10b981",
+                },
+                {
+                  icon: <Flame className="w-5 h-5 text-orange-400" />,
+                  iconBg: "bg-orange-500/15 border-orange-500/20",
+                  value: weeklySessionProgress.completed,
+                  suffix: "",
+                  label: "This Week\nWorkouts",
+                  trend: workoutTrends.weekPct,
+                  trendLabel: "vs last week",
+                  trendColor: "#f97316",
+                },
+                {
+                  icon: <Trophy className="w-5 h-5 text-purple-400" />,
+                  iconBg: "bg-purple-500/15 border-purple-500/20",
+                  value: progressPRs.length,
+                  suffix: "",
+                  label: "Personal\nRecords",
+                  trend: null,
+                  trendLabel: "all time",
+                  trendColor: "#a855f7",
+                },
+                {
+                  icon: <BarChart3 className="w-5 h-5 text-blue-400" />,
+                  iconBg: "bg-blue-500/15 border-blue-500/20",
+                  value: allTimeVolume >= 1000 ? `${(allTimeVolume/1000).toFixed(1)}k` : allTimeVolume,
+                  suffix: " kg",
+                  label: "Total Volume\n(All Time)",
+                  trend: workoutTrends.volumePct,
+                  trendLabel: "vs last month",
+                  trendColor: "#60a5fa",
+                },
+              ].map(({ icon, iconBg, value, suffix, label, trend, trendLabel, trendColor }) => (
+                <div key={label} className="bg-[#0f1923] border border-white/8 rounded-2xl p-3.5">
+                  <div className={`w-9 h-9 rounded-xl border flex items-center justify-center mb-2.5 ${iconBg}`}>{icon}</div>
+                  <p className="text-2xl font-black text-white leading-none">{value}<span className="text-sm font-normal text-gray-400">{suffix}</span></p>
+                  <p className="text-[11px] text-gray-500 mt-0.5 whitespace-pre-line leading-tight">{label}</p>
+                  {trend !== null && (
+                    <div className="flex items-center gap-1 mt-2">
+                      <TrendingUp className="w-3 h-3" style={{ color: trendColor }} />
+                      <span className="text-[10px] font-semibold" style={{ color: trendColor }}>
+                        {trend >= 0 ? "+" : ""}{trend}% {trendLabel}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* This Week */}
             <div className="bg-[#0f1923] border border-white/8 rounded-2xl p-4">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-base font-bold text-white">Muscle Focus</p>
-                <button className="text-teal-400 text-xs font-semibold bg-teal-500/10 border border-teal-500/20 px-3 py-1.5 rounded-full">View All</button>
+                <p className="text-base font-bold text-white">This Week</p>
+                <p className="text-[11px] text-gray-500">{weeklySessionProgress.completed} of 7 workouts</p>
               </div>
-              {/* Toggle */}
-              <div className="flex gap-1 mb-4">
-                {(["front","back"] as const).map(v => (
-                  <button key={v} onClick={() => setBodyView(v)}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-bold capitalize transition-all ${bodyView === v ? "bg-teal-500 text-white" : "text-gray-500 hover:text-gray-300"}`}>
-                    {v.charAt(0).toUpperCase() + v.slice(1)}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-4 items-start">
-                {/* Body diagram */}
-                <div style={{ width: 100, flexShrink: 0 }}>
-                  <BodyDiagram levels={muscleData} view={bodyView} />
-                </div>
-                {/* Muscle list */}
-                <div className="flex-1 space-y-2.5 pt-1">
-                  {(bodyView === "front"
-                    ? [["Chest","chest"],["Shoulders","shoulders"],["Biceps","biceps"],["Forearms","forearms"],["Abs","abs"],["Quads","quads"],["Calves","calves"]]
-                    : [["Traps","traps"],["Lats","lats"],["Back","back"],["Triceps","triceps"],["Glutes","glutes"],["Hamstrings","hamstrings"],["Calves","calves"]]
-                  ).map(([label, key]) => {
-                    const lv = muscleData[key] ?? "none";
-                    const levelLabel = lv === "none" ? "Untrained" : lv === "intermediate" ? "Mid" : lv.charAt(0).toUpperCase() + lv.slice(1);
-                    const levelColor = lv === "advanced" ? "#10b981" : lv === "intermediate" ? "#f59e0b" : lv === "beginner" ? "#3b82f6" : "#374151";
-                    const barPct = lv === "advanced" ? 88 : lv === "intermediate" ? 55 : lv === "beginner" ? 28 : 0;
-                    return (
-                      <div key={key}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-white font-medium">{label}</span>
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full" style={{ background: levelColor }} />
-                            <span className="text-[10px] font-semibold" style={{ color: levelColor }}>{levelLabel}</span>
-                          </div>
-                        </div>
-                        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-                          {barPct > 0 && <div className="h-full rounded-full" style={{ width: `${barPct}%`, background: levelColor }} />}
-                        </div>
+              <div className="flex justify-between gap-1">
+                {weekDays.map((day, i) => {
+                  const ds = toLocalDateString(day);
+                  const hasWorkout = progressDates.has(ds);
+                  const label = ["M","T","W","T","F","S","S"][i];
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-1.5">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${hasWorkout ? "bg-teal-500" : "border-2 border-white/12 bg-transparent"}`}>
+                        {hasWorkout && <Check className="w-4 h-4 text-white" strokeWidth={3} />}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Two-column grid */}
-            <div className="grid grid-cols-2 gap-3">
-              {/* Weekly Volume */}
-              <div className="bg-[#0f1923] border border-white/8 rounded-2xl p-4">
-                <p className="text-sm font-bold text-white">Weekly Volume</p>
-                <p className="text-[10px] text-gray-500 mb-2">Total Load Lifted</p>
-                <p className="text-2xl font-black text-teal-400 leading-none mb-3">
-                  {weeklyVolume.reduce((s,v) => s+v, 0) >= 1000
-                    ? `${(weeklyVolume.reduce((s,v) => s+v, 0)/1000).toFixed(1).replace(/\.0$/,"")},${String(weeklyVolume.reduce((s,v) => s+v, 0) % 1000).padStart(3,"0")}`
-                    : weeklyVolume.reduce((s,v) => s+v, 0).toString()
-                  } <span className="text-sm font-normal text-gray-500">kg</span>
-                </p>
-                <div className="flex items-end gap-1" style={{ height: 52 }}>
-                  {weeklyVolume.map((vol, i) => {
-                    const maxVol = Math.max(...weeklyVolume, 1);
-                    const pct = (vol / maxVol) * 100;
-                    const todayIdx = weekDays.findIndex(d => toLocalDateString(d) === toLocalDateString(new Date()));
-                    const isToday = i === todayIdx;
-                    return (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                        <div className="w-full rounded-sm" style={{
-                          height: Math.max(3, (pct/100) * 40),
-                          background: isToday ? "#2dd4bf" : vol > 0 ? "rgba(45,212,191,0.25)" : "rgba(255,255,255,0.05)",
-                        }} />
-                        <span className={`text-[7px] font-bold ${isToday ? "text-teal-400" : "text-gray-700"}`}>{["M","T","W","T","F","S","S"][i]}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Right column */}
-              <div className="space-y-3">
-                {/* This Week */}
-                <div className="bg-[#0f1923] border border-white/8 rounded-2xl p-3">
-                  <p className="text-sm font-bold text-white">This Week</p>
-                  <p className="text-[10px] text-gray-500 mb-2.5">{weeklySessionProgress.completed} of 7 workouts</p>
-                  <div className="flex gap-1 flex-wrap">
-                    {weekDays.map((day, i) => {
-                      const ds = toLocalDateString(day);
-                      const hasWorkout = progressDates.has(ds);
-                      return (
-                        <div key={i} className={`w-7 h-7 rounded-full flex items-center justify-center ${hasWorkout ? "bg-teal-500" : "bg-white/6 border border-white/12"}`}>
-                          {hasWorkout && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Personal Records */}
-                <div className="bg-[#0f1923] border border-white/8 rounded-2xl p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5">
-                      <Trophy className="w-3.5 h-3.5 text-purple-400" />
-                      <p className="text-sm font-bold text-white">Personal Records</p>
+                      <span className={`text-[10px] font-semibold ${hasWorkout ? "text-teal-400" : "text-gray-600"}`}>{label}</span>
                     </div>
-                    <span className="text-teal-400 text-[10px] font-semibold">View All</span>
-                  </div>
-                  <p className="text-2xl font-black text-purple-400 leading-none mb-2">
-                    {progressPRs.length} <span className="text-xs font-normal text-gray-500">Total PRs</span>
-                  </p>
-                  <svg viewBox="0 0 80 28" style={{ width: "100%", height: 28 }}>
-                    <polyline points="0,22 13,18 26,20 40,12 53,8 66,5 80,2"
-                      fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
-                  </svg>
-                </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Top Lifts */}
+            {/* Strength Progress (yearly line graph) */}
+            {(() => {
+              const pts = yearlyStrengthData.filter(d => d.pct !== null);
+              const hasSData = pts.length >= 2;
+              const allPcts = pts.map(d => d.pct as number);
+              const minPct = Math.min(0, ...allPcts);
+              const maxPct = Math.max(5, ...allPcts);
+              const range = maxPct - minPct || 1;
+              const W = 300, H = 120, PL = 36, PR = 8, PT = 16, PB = 28;
+              const cW = W - PL - PR, cH = H - PT - PB;
+              const months = yearlyStrengthData;
+              const toX = (i: number) => PL + (i / (months.length - 1)) * cW;
+              const toY = (v: number) => PT + (1 - (v - minPct) / range) * cH;
+              const plotPts = months.map((m, i) => ({ x: toX(i), y: m.pct !== null ? toY(m.pct) : null, label: m.label, pct: m.pct }));
+              // Build smooth polyline through non-null points
+              const linePts = plotPts.filter(p => p.y !== null);
+              const polyline = linePts.map(p => `${p.x},${p.y}`).join(" ");
+              // Find the latest non-null point
+              const latest = [...plotPts].reverse().find(p => p.pct !== null);
+              const yTicks = [minPct, Math.round((minPct+maxPct)/2), maxPct];
+              return (
+                <div className="bg-[#0f1923] border border-white/8 rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-base font-bold text-white">Strength Progress</p>
+                    <span className="text-[10px] text-gray-500 bg-white/5 border border-white/8 px-2.5 py-1 rounded-full">Yearly %</span>
+                  </div>
+                  <p className="text-[10px] text-gray-600 mb-3">Average weight increase across all lifts</p>
+                  {hasSData ? (
+                    <>
+                      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 130 }}>
+                        {/* Y-axis grid lines */}
+                        {yTicks.map((tick, i) => (
+                          <g key={i}>
+                            <line x1={PL} y1={toY(tick)} x2={W-PR} y2={toY(tick)} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+                            <text x={PL-4} y={toY(tick)+4} textAnchor="end" fontSize="8" fill="#4b5563">{tick}%</text>
+                          </g>
+                        ))}
+                        {/* Area fill */}
+                        {linePts.length >= 2 && (
+                          <polygon
+                            points={`${linePts[0].x},${PT+cH} ${polyline} ${linePts[linePts.length-1].x},${PT+cH}`}
+                            fill="rgba(45,212,191,0.08)"
+                          />
+                        )}
+                        {/* Line */}
+                        {linePts.length >= 2 && (
+                          <polyline points={polyline} fill="none" stroke="#2dd4bf" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        )}
+                        {/* Dots */}
+                        {linePts.map((p, i) => (
+                          <circle key={i} cx={p.x} cy={p.y!} r="3" fill="#2dd4bf" />
+                        ))}
+                        {/* Tooltip on latest */}
+                        {latest && latest.y !== null && (
+                          <g>
+                            <rect x={latest.x - 18} y={latest.y - 22} width={36} height={16} rx="4" fill="#2dd4bf" />
+                            <text x={latest.x} y={latest.y - 11} textAnchor="middle" fontSize="9" fontWeight="bold" fill="#000">{latest.pct! >= 0 ? "+" : ""}{latest.pct}%</text>
+                          </g>
+                        )}
+                        {/* X-axis month labels — show every 2nd to avoid crowding */}
+                        {months.map((m, i) => i % 2 === 0 && (
+                          <text key={i} x={toX(i)} y={H-2} textAnchor="middle" fontSize="8" fill="#4b5563">{m.label}</text>
+                        ))}
+                      </svg>
+                      {/* Summary row */}
+                      <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-1">
+                        <div>
+                          <p className="text-teal-400 font-black text-lg leading-none">{latest?.pct !== undefined && latest.pct !== null && latest.pct >= 0 ? "+" : ""}{latest?.pct ?? 0}%</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">vs baseline</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-white font-bold text-lg leading-none">{pts.length}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">months tracked</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-white font-bold text-lg leading-none">{liftChartData.length}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">exercises</p>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center py-8 text-center">
+                      <TrendingUp className="w-8 h-8 text-gray-700 mb-2" />
+                      <p className="text-gray-600 text-sm">Log workouts with weights across multiple sessions to see your strength trend.</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Personal Records */}
             {progressPRs.length > 0 && (
               <div className="bg-[#0f1923] border border-white/8 rounded-2xl overflow-hidden">
-                <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                  <p className="text-sm font-bold text-white">Top Lifts</p>
-                  <span className="text-teal-400 text-xs font-semibold">View All</span>
+                <div className="flex items-center justify-between px-4 pt-4 pb-3">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-purple-400" />
+                    <p className="text-base font-bold text-white">Personal Records</p>
+                  </div>
+                  <span className="text-purple-400 text-xs font-semibold">View All</span>
                 </div>
                 <div className="divide-y divide-white/5">
-                  {progressPRs.slice(0,4).map((pr, i) => {
+                  {progressPRs.slice(0, 6).map((pr, i) => {
                     const imgUrl = getBuiltInImageUrl(pr.exercise);
                     return (
                       <div key={i} className="flex items-center gap-3 px-4 py-3">
-                        {imgUrl ? (
-                          <img src={imgUrl} className="w-12 h-12 rounded-xl object-cover shrink-0" style={{ objectPosition: getExerciseImagePosition(pr.exercise) }} />
-                        ) : (
-                          <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
-                            <Dumbbell className="w-5 h-5 text-gray-600" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-white truncate">{pr.exercise}</p>
-                          <p className="text-[10px] text-gray-500 mt-0.5">Best Set · {fmtProgressDate(pr.date)}</p>
+                        <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/8 flex items-center justify-center shrink-0 overflow-hidden">
+                          {imgUrl
+                            ? <img src={imgUrl} className="w-full h-full object-cover" style={{ objectPosition: getExerciseImagePosition(pr.exercise) }} />
+                            : <Dumbbell className="w-4 h-4 text-gray-600" />}
                         </div>
-                        <div className="text-right shrink-0">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-white truncate">{pr.exercise}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5">{fmtProgressDate(pr.date)}{pr.reps > 0 ? ` · ${pr.reps} reps` : ""}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <p className="text-base font-black text-purple-400 leading-none">{pr.weight} <span className="text-xs font-normal text-gray-500">kg</span></p>
-                          {pr.reps > 0 && <p className="text-[10px] text-gray-500 mt-0.5">{pr.reps} reps</p>}
+                          <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
                         </div>
                       </div>
                     );
