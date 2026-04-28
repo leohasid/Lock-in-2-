@@ -17,6 +17,16 @@ export interface GuidedExercise {
 
 const DEFAULT_REST_SECONDS = 90;
 
+/** Strip invalid chars; keep at most one "." for decimal entry */
+function sanitizeWeightTyping(raw: string): string {
+  let s = raw.replace(/[^\d.]/g, "");
+  const dot = s.indexOf(".");
+  if (dot !== -1) {
+    s = s.slice(0, dot + 1) + s.slice(dot + 1).replace(/\./g, "");
+  }
+  return s;
+}
+
 // Alternatives for swapping — match keywords longest/specific first via iteration order below
 const EXERCISE_ALTERNATIVES_ORDERED: [string, string[]][] = [
   ["single leg", ["Leg Press", "Bulgarian Split Squat", "Single Leg RDL", "Single Leg Hip Thrust"]],
@@ -110,6 +120,9 @@ export default function GuidedWorkoutView({
   const [tempRestSeconds, setTempRestSeconds] = useState(DEFAULT_REST_SECONDS);
   /** When false, skip timed rest screens between sets (and between exercises). */
   const [restTimerEnabled, setRestTimerEnabled] = useState(true);
+  /** Local display while typing so the field can be empty instead of stuck on "0". */
+  const [repsDraft, setRepsDraft] = useState<string | null>(null);
+  const [weightDraft, setWeightDraft] = useState<string | null>(null);
   const completionShownRef = useRef(false);
 
   useEffect(() => {
@@ -119,6 +132,12 @@ export default function GuidedWorkoutView({
   const currentEx = exercises[currentExIndex];
   const restSeconds = currentEx?.restSeconds ?? DEFAULT_REST_SECONDS;
   const currentSet = currentEx?.sets[currentSetIndex];
+
+  const logFieldKey = currentEx ? `${currentEx.id}-${currentSetIndex}` : "";
+  useEffect(() => {
+    setRepsDraft(null);
+    setWeightDraft(null);
+  }, [logFieldKey]);
 
   // Rest timer countdown (pauses when isPaused)
   useEffect(() => {
@@ -521,24 +540,60 @@ export default function GuidedWorkoutView({
           <div>
             <label className="block text-xs text-gray-400 mb-1">Reps</label>
             <input
-              type="number"
-              value={currentSet.reps}
-              onChange={(e) =>
-                onUpdateSet(currentEx.id, currentSetIndex, { reps: parseInt(e.target.value) || 0 })
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              enterKeyHint="done"
+              value={
+                repsDraft !== null
+                  ? repsDraft
+                  : currentSet.reps === 0
+                    ? ""
+                    : String(currentSet.reps)
               }
+              onChange={(e) => {
+                const raw = e.target.value.replace(/\D/g, "");
+                setRepsDraft(raw);
+                if (raw === "") {
+                  onUpdateSet(currentEx.id, currentSetIndex, { reps: 0 });
+                  return;
+                }
+                const n = parseInt(raw, 10);
+                if (!Number.isNaN(n)) {
+                  onUpdateSet(currentEx.id, currentSetIndex, { reps: n });
+                }
+              }}
+              onBlur={() => setRepsDraft(null)}
               className="w-full bg-white/10 text-white p-4 rounded-xl border border-white/20 text-lg font-semibold text-center"
             />
           </div>
           <div>
             <label className="block text-xs text-gray-400 mb-1">Weight (kg)</label>
             <input
-              type="number"
-              value={currentSet.weight}
-              onChange={(e) =>
-                onUpdateSet(currentEx.id, currentSetIndex, {
-                  weight: parseFloat(e.target.value) || 0,
-                })
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              enterKeyHint="done"
+              value={
+                weightDraft !== null
+                  ? weightDraft
+                  : currentSet.weight === 0
+                    ? ""
+                    : String(currentSet.weight)
               }
+              onChange={(e) => {
+                const raw = sanitizeWeightTyping(e.target.value);
+                setWeightDraft(raw);
+                if (raw === "" || raw === ".") {
+                  onUpdateSet(currentEx.id, currentSetIndex, { weight: 0 });
+                  return;
+                }
+                const n = parseFloat(raw);
+                if (!Number.isNaN(n)) {
+                  onUpdateSet(currentEx.id, currentSetIndex, { weight: n });
+                }
+              }}
+              onBlur={() => setWeightDraft(null)}
               className="w-full bg-white/10 text-white p-4 rounded-xl border border-white/20 text-lg font-semibold text-center"
             />
           </div>
