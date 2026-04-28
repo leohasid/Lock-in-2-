@@ -349,6 +349,8 @@ export default function WorkoutPage() {
   const [muscleData, setMuscleData] = useState<Record<string, "none" | "beginner" | "intermediate" | "advanced">>({});
   const [bodyView, setBodyView] = useState<"front" | "back">("front");
   const [showAllPRs, setShowAllPRs] = useState(false);
+  const [adHocMode, setAdHocMode] = useState(false);
+  const [adHocExercises, setAdHocExercises] = useState<{ name: string; sets: number; reps: number }[]>([{ name: "", sets: 3, reps: 10 }]);
   const [yearlyStrengthData, setYearlyStrengthData] = useState<{ label: string; pct: number | null }[]>([]);
   const [allTimeVolume, setAllTimeVolume] = useState(0);
   const [workoutTrends, setWorkoutTrends] = useState({ monthPct: 0, weekPct: 0, volumePct: 0, prDiff: 0 });
@@ -1760,12 +1762,117 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
 
         {/* Exercises List */}
         {currentDayWorkoutName === "Rest Day" ? (
+          adHocMode ? (
+            /* ── Quick workout builder (rest day ad-hoc) ── */
+            <div className="bg-[#0c1422] rounded-xl border border-white/8 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
+                <p className="text-sm font-bold text-white">Quick Workout</p>
+                <button onClick={() => { setAdHocMode(false); setAdHocExercises([{ name: "", sets: 3, reps: 10 }]); }} className="text-gray-500 text-xs hover:text-gray-300 transition-colors">Cancel</button>
+              </div>
+              <div className="p-4 space-y-3">
+                {adHocExercises.map((ex, i) => (
+                  <div key={i} className="bg-black/30 rounded-xl p-3 border border-white/6 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <ExerciseNameInput
+                          value={ex.name}
+                          onChange={(name) => {
+                            const updated = [...adHocExercises];
+                            updated[i] = { ...updated[i], name };
+                            setAdHocExercises(updated);
+                          }}
+                          placeholder="Exercise name"
+                          className="w-full bg-black text-white px-3 py-2 rounded-lg border border-white/8 focus:outline-none focus:border-teal-400 text-sm"
+                        />
+                      </div>
+                      {adHocExercises.length > 1 && (
+                        <button onClick={() => setAdHocExercises(adHocExercises.filter((_, j) => j !== i))} className="p-1.5 rounded-lg bg-white/5 text-gray-500 hover:text-red-400 transition-colors">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-gray-500 mb-1 block">Sets</label>
+                        <input
+                          type="text" inputMode="numeric" pattern="[0-9]*"
+                          value={ex.sets === 0 ? "" : String(ex.sets)}
+                          placeholder="3"
+                          onChange={(e) => {
+                            const v = e.target.value.replace(/[^0-9]/g, "");
+                            const updated = [...adHocExercises];
+                            updated[i] = { ...updated[i], sets: v === "" ? 0 : parseInt(v) };
+                            setAdHocExercises(updated);
+                          }}
+                          className="w-full bg-black text-white px-3 py-2 rounded-lg border border-white/8 focus:outline-none focus:border-teal-400 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 mb-1 block">Reps</label>
+                        <input
+                          type="text" inputMode="numeric" pattern="[0-9]*"
+                          value={ex.reps === 0 ? "" : String(ex.reps)}
+                          placeholder="10"
+                          onChange={(e) => {
+                            const v = e.target.value.replace(/[^0-9]/g, "");
+                            const updated = [...adHocExercises];
+                            updated[i] = { ...updated[i], reps: v === "" ? 0 : parseInt(v) };
+                            setAdHocExercises(updated);
+                          }}
+                          className="w-full bg-black text-white px-3 py-2 rounded-lg border border-white/8 focus:outline-none focus:border-teal-400 text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setAdHocExercises([...adHocExercises, { name: "", sets: 3, reps: 10 }])}
+                  className="w-full py-2.5 rounded-xl border border-dashed border-white/15 text-gray-500 text-sm hover:border-teal-500/40 hover:text-teal-400 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" /> Add Exercise
+                </button>
+                <button
+                  onClick={() => {
+                    const valid = adHocExercises.filter(ex => ex.name.trim());
+                    if (valid.length === 0) return;
+                    const exercises: Exercise[] = valid.map((ex, i) => ({
+                      id: `adhoc-${Date.now()}-${i}`,
+                      name: ex.name.trim(),
+                      goalSets: ex.sets || 3,
+                      goalReps: ex.reps || 10,
+                      goalWeight: 0,
+                      imageUrl: getBuiltInImageUrl(ex.name.trim()) || undefined,
+                      sets: Array.from({ length: ex.sets || 3 }, () => ({
+                        reps: ex.reps || 10,
+                        weight: 0,
+                        completed: false,
+                      })),
+                    }));
+                    setGuidedExercises(exercises);
+                    setWorkoutMode("active");
+                    setAdHocMode(false);
+                    setAdHocExercises([{ name: "", sets: 3, reps: 10 }]);
+                  }}
+                  className="w-full py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-black text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                >
+                  <Play className="w-4 h-4" /> Start Workout
+                </button>
+              </div>
+            </div>
+          ) : (
+          /* ── Default rest day card ── */
           <div className="bg-[#0c1422] rounded-xl p-6 border border-white/8 text-center space-y-4">
             <div className="text-4xl">😴</div>
             <div>
               <p className="text-base font-bold text-gray-300 mb-1">Rest Day</p>
-              <p className="text-gray-400 text-xs">Take a break and recover. Want to train instead?</p>
+              <p className="text-gray-400 text-xs">Take a break and recover. Feeling up for it anyway?</p>
             </div>
+            <button
+              onClick={() => setAdHocMode(true)}
+              className="w-full py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-black text-sm font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <Play className="w-4 h-4" /> Start Workout
+            </button>
             <Link
               href="/gym/workouts"
               className="block w-full py-3 rounded-xl bg-white/10 border border-white/8 text-sm font-semibold text-white hover:bg-white/15 transition-colors"
@@ -1773,6 +1880,7 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
               Open workout plans
             </Link>
           </div>
+          )
         ) : (currentDayExercises ?? []).length === 0 ? (
           <div className="bg-[#0c1422] rounded-xl p-6 border border-white/8 space-y-4">
             <div className="text-center">
