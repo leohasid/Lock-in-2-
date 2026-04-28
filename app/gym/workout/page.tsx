@@ -348,6 +348,7 @@ export default function WorkoutPage() {
   const [progressDates, setProgressDates] = useState<Set<string>>(new Set());
   const [muscleData, setMuscleData] = useState<Record<string, "none" | "beginner" | "intermediate" | "advanced">>({});
   const [bodyView, setBodyView] = useState<"front" | "back">("front");
+  const [showAllPRs, setShowAllPRs] = useState(false);
   const [yearlyStrengthData, setYearlyStrengthData] = useState<{ label: string; pct: number | null }[]>([]);
   const [allTimeVolume, setAllTimeVolume] = useState(0);
   const [workoutTrends, setWorkoutTrends] = useState({ monthPct: 0, weekPct: 0, volumePct: 0, prDiff: 0 });
@@ -1096,7 +1097,6 @@ export default function WorkoutPage() {
         .map(([exercise, v]) => ({ exercise, ...v }))
         .filter(pr => pr.weight > 0)
         .sort((a, b) => b.weight - a.weight)
-        .slice(0, 8)
     );
 
     // ── Trends + yearly strength ──────────────────────────────────────────
@@ -1668,10 +1668,10 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
                     <Trophy className="w-4 h-4 text-purple-400" />
                     <p className="text-base font-bold text-white">Personal Records</p>
                   </div>
-                  <span className="text-purple-400 text-xs font-semibold">View All</span>
+                  <button onClick={() => setShowAllPRs(v => !v)} className="text-purple-400 text-xs font-semibold hover:text-purple-300 transition-colors">{showAllPRs ? "Show Less" : "View All"}</button>
                 </div>
                 <div className="divide-y divide-white/5">
-                  {progressPRs.slice(0, 6).map((pr, i) => {
+                  {progressPRs.slice(0, showAllPRs ? undefined : 5).map((pr, i) => {
                     const imgUrl = getBuiltInImageUrl(pr.exercise);
                     return (
                       <div key={i} className="flex items-center gap-3 px-4 py-3">
@@ -1978,10 +1978,14 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
                               <div>
                                 <label className="block text-xs text-gray-400 mb-1">Reps</label>
                                 <input
-                                  type="number"
-                                  value={set.reps}
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
+                                  value={set.reps === 0 ? "" : String(set.reps)}
+                                  placeholder="0"
                                   onChange={(e) => {
-                                    updateSet(activeExercise.id, setIndex, { reps: parseInt(e.target.value) || 0 });
+                                    const v = e.target.value.replace(/\D/g, "");
+                                    updateSet(activeExercise.id, setIndex, { reps: v === "" ? 0 : parseInt(v) });
                                   }}
                                   className="w-full bg-black/60 text-white p-2 rounded border border-white/20 focus:outline-none focus:border-cyan-400 text-base font-semibold"
                                 />
@@ -1989,10 +1993,13 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
                               <div>
                                 <label className="block text-xs text-gray-400 mb-1">Weight (lb)</label>
                                 <input
-                                  type="number"
-                                  value={set.weight}
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={set.weight === 0 ? "" : String(set.weight)}
+                                  placeholder="0"
                                   onChange={(e) => {
-                                    updateSet(activeExercise.id, setIndex, { weight: parseFloat(e.target.value) || 0 });
+                                    const v = e.target.value.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+                                    updateSet(activeExercise.id, setIndex, { weight: v === "" ? 0 : parseFloat(v) || 0 });
                                   }}
                                   className="w-full bg-black/60 text-white p-2 rounded border border-white/20 focus:outline-none focus:border-cyan-400 text-base font-semibold"
                                 />
@@ -2273,28 +2280,34 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
                           <div>
                             <label className="block text-gray-400 mb-1 text-xs">Sets</label>
                             <input
-                              type="number"
-                              value={exercise.sets}
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={exercise.sets === 0 ? "" : String(exercise.sets)}
+                              placeholder="3"
                               onChange={(e) => {
+                                const v = e.target.value.replace(/[^0-9]/g, "");
                                 const updated = [...customWorkoutPlan.pushDay];
-                                updated[index].sets = parseInt(e.target.value) || 0;
+                                updated[index].sets = v === "" ? 0 : parseInt(v);
                                 setCustomWorkoutPlan({ ...customWorkoutPlan, pushDay: updated });
                               }}
-                              min="1"
                               className="w-full bg-black text-white p-2 rounded border border-white/8 focus:outline-none focus:border-teal-400 text-sm"
                             />
                           </div>
                           <div>
                             <label className="block text-gray-400 mb-1 text-xs">Reps</label>
                             <input
-                              type="number"
-                              value={exercise.reps}
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={exercise.reps === 0 ? "" : String(exercise.reps)}
+                              placeholder="10"
                               onChange={(e) => {
+                                const v = e.target.value.replace(/[^0-9]/g, "");
                                 const updated = [...customWorkoutPlan.pushDay];
-                                updated[index].reps = parseInt(e.target.value) || 0;
+                                updated[index].reps = v === "" ? 0 : parseInt(v);
                                 setCustomWorkoutPlan({ ...customWorkoutPlan, pushDay: updated });
                               }}
-                              min="1"
                               className="w-full bg-black text-white p-2 rounded border border-white/8 focus:outline-none focus:border-teal-400 text-sm"
                             />
                           </div>
@@ -2381,28 +2394,34 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
                           <div>
                             <label className="block text-gray-400 mb-1 text-xs">Sets</label>
                             <input
-                              type="number"
-                              value={exercise.sets}
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={exercise.sets === 0 ? "" : String(exercise.sets)}
+                              placeholder="3"
                               onChange={(e) => {
+                                const v = e.target.value.replace(/[^0-9]/g, "");
                                 const updated = [...customWorkoutPlan.pullDay];
-                                updated[index].sets = parseInt(e.target.value) || 0;
+                                updated[index].sets = v === "" ? 0 : parseInt(v);
                                 setCustomWorkoutPlan({ ...customWorkoutPlan, pullDay: updated });
                               }}
-                              min="1"
                               className="w-full bg-black text-white p-2 rounded border border-white/8 focus:outline-none focus:border-teal-400 text-sm"
                             />
                           </div>
                           <div>
                             <label className="block text-gray-400 mb-1 text-xs">Reps</label>
                             <input
-                              type="number"
-                              value={exercise.reps}
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={exercise.reps === 0 ? "" : String(exercise.reps)}
+                              placeholder="10"
                               onChange={(e) => {
+                                const v = e.target.value.replace(/[^0-9]/g, "");
                                 const updated = [...customWorkoutPlan.pullDay];
-                                updated[index].reps = parseInt(e.target.value) || 0;
+                                updated[index].reps = v === "" ? 0 : parseInt(v);
                                 setCustomWorkoutPlan({ ...customWorkoutPlan, pullDay: updated });
                               }}
-                              min="1"
                               className="w-full bg-black text-white p-2 rounded border border-white/8 focus:outline-none focus:border-teal-400 text-sm"
                             />
                           </div>
@@ -2489,28 +2508,34 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
                           <div>
                             <label className="block text-gray-400 mb-1 text-xs">Sets</label>
                             <input
-                              type="number"
-                              value={exercise.sets}
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={exercise.sets === 0 ? "" : String(exercise.sets)}
+                              placeholder="3"
                               onChange={(e) => {
+                                const v = e.target.value.replace(/[^0-9]/g, "");
                                 const updated = [...customWorkoutPlan.legsDay];
-                                updated[index].sets = parseInt(e.target.value) || 0;
+                                updated[index].sets = v === "" ? 0 : parseInt(v);
                                 setCustomWorkoutPlan({ ...customWorkoutPlan, legsDay: updated });
                               }}
-                              min="1"
                               className="w-full bg-black text-white p-2 rounded border border-white/8 focus:outline-none focus:border-teal-400 text-sm"
                             />
                           </div>
                           <div>
                             <label className="block text-gray-400 mb-1 text-xs">Reps</label>
                             <input
-                              type="number"
-                              value={exercise.reps}
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={exercise.reps === 0 ? "" : String(exercise.reps)}
+                              placeholder="10"
                               onChange={(e) => {
+                                const v = e.target.value.replace(/[^0-9]/g, "");
                                 const updated = [...customWorkoutPlan.legsDay];
-                                updated[index].reps = parseInt(e.target.value) || 0;
+                                updated[index].reps = v === "" ? 0 : parseInt(v);
                                 setCustomWorkoutPlan({ ...customWorkoutPlan, legsDay: updated });
                               }}
-                              min="1"
                               className="w-full bg-black text-white p-2 rounded border border-white/8 focus:outline-none focus:border-teal-400 text-sm"
                             />
                           </div>
