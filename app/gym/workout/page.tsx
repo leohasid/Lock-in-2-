@@ -185,120 +185,97 @@ function getMuscleLevel(sessions: number): "none" | "beginner" | "intermediate" 
 }
 
 function BodyDiagram({ levels, view }: { levels: Record<string, string>; view: "front" | "back" }) {
-  const c = (m: string) => LEVEL_COLORS[levels[m] ?? "none"] ?? LEVEL_COLORS.none;
-  const BASE = "#0d1724";
-  const trainedAbs = (levels["abs"] ?? "none") !== "none";
-  const clipId = `hb-${view}`;
+  const mc = (m: string) => LEVEL_COLORS[levels[m] ?? "none"] ?? LEVEL_COLORS.none;
+  const has = (m: string) => (levels[m] ?? "none") !== "none";
+  const BODY = "#111d2e";
+  const OUTLINE = "#1a2e48";
+
+  const silhouette = (
+    <>
+      <ellipse cx="60" cy="17" rx="13" ry="15" fill={BODY} />
+      <path d="M53,31 L53,40 Q60,42 67,40 L67,31 Q60,30 53,31 Z" fill={BODY} />
+      <path d="M28,44 C16,50 12,68 12,86 C12,106 16,122 24,132 L34,138 L34,162 C38,166 50,168 60,168 C70,168 82,166 86,162 L86,138 L96,132 C104,122 108,106 108,86 C108,68 104,50 92,44 C80,38 40,38 28,44 Z" fill={BODY} />
+      <path d="M4,56 C0,64 0,80 2,96 L2,136 C2,142 6,146 12,146 L22,146 C26,144 28,140 28,136 L28,94 C28,78 24,62 18,54 Z" fill={BODY} />
+      <path d="M116,56 C120,64 120,80 118,96 L118,136 C118,142 114,146 108,146 L98,146 C94,144 92,140 92,136 L92,94 C92,78 96,62 102,54 Z" fill={BODY} />
+      <path d="M4,138 C2,152 2,168 6,178 L14,180 L24,180 C28,176 30,168 30,158 L30,138 Z" fill={BODY} />
+      <path d="M116,138 C118,152 118,168 114,178 L106,180 L96,180 C92,176 90,168 90,158 L90,138 Z" fill={BODY} />
+      <path d="M26,170 C16,182 12,206 14,230 C14,246 18,258 26,264 L44,266 L50,266 L50,170 Z" fill={BODY} />
+      <path d="M94,170 C104,182 108,206 106,230 C106,246 102,258 94,264 L76,266 L70,266 L70,170 Z" fill={BODY} />
+      <path d="M18,266 C14,280 16,294 24,302 C28,306 36,308 44,306 L48,306 L50,266 Z" fill={BODY} />
+      <path d="M102,266 C106,280 104,294 96,302 C92,306 84,308 76,306 L72,306 L70,266 Z" fill={BODY} />
+    </>
+  );
+
+  if (view === "front") {
+    return (
+      <svg viewBox="0 0 120 316" style={{ width: "100%", maxWidth: 120 }}>
+        {silhouette}
+        {/* Shoulders */}
+        <path d="M4,54 C0,62 0,76 4,88 L16,94 L28,88 L28,46 C18,42 8,44 4,54 Z" fill={mc("shoulders")} opacity={has("shoulders") ? 0.88 : 0.14} />
+        <path d="M116,54 C120,62 120,76 116,88 L104,94 L92,88 L92,46 C102,42 112,44 116,54 Z" fill={mc("shoulders")} opacity={has("shoulders") ? 0.88 : 0.14} />
+        {/* Chest */}
+        <path d="M32,50 C20,58 16,72 22,88 C26,96 38,100 52,98 L60,92 L60,48 C50,42 38,44 32,50 Z" fill={mc("chest")} opacity={has("chest") ? 0.88 : 0.14} />
+        <path d="M88,50 C100,58 104,72 98,88 C94,96 82,100 68,98 L60,92 L60,48 C70,42 82,44 88,50 Z" fill={mc("chest")} opacity={has("chest") ? 0.88 : 0.14} />
+        <line x1="60" y1="48" x2="60" y2="94" stroke={BODY} strokeWidth="1.2" opacity="0.6" />
+        {/* Abs */}
+        <path d="M40,98 C36,116 36,138 40,156 C46,164 54,166 60,166 C66,166 74,164 80,156 C84,138 84,116 80,98 C74,90 64,88 60,88 C56,88 46,90 40,98 Z" fill={mc("abs")} opacity={has("abs") ? 0.88 : 0.14} />
+        {has("abs") && <>
+          <line x1="40" y1="116" x2="80" y2="116" stroke={BODY} strokeWidth="1.2" opacity="0.5" />
+          <line x1="39" y1="136" x2="81" y2="136" stroke={BODY} strokeWidth="1.2" opacity="0.5" />
+          <line x1="60" y1="98" x2="60" y2="158" stroke={BODY} strokeWidth="1.2" opacity="0.5" />
+        </>}
+        {/* Biceps */}
+        <path d="M2,66 C0,80 2,100 6,114 L22,116 L26,68 C18,56 8,58 2,66 Z" fill={mc("biceps")} opacity={has("biceps") ? 0.88 : 0.14} />
+        <path d="M118,66 C120,80 118,100 114,114 L98,116 L94,68 C102,56 112,58 118,66 Z" fill={mc("biceps")} opacity={has("biceps") ? 0.88 : 0.14} />
+        {/* Forearms */}
+        <path d="M4,118 C2,134 2,154 6,166 L18,168 L26,118 Z" fill={mc("forearms")} opacity={has("forearms") ? 0.88 : 0.14} />
+        <path d="M116,118 C118,134 118,154 114,166 L102,168 L94,118 Z" fill={mc("forearms")} opacity={has("forearms") ? 0.88 : 0.14} />
+        {/* Quads */}
+        <path d="M28,172 C18,186 12,210 14,234 C14,248 18,260 28,266 L48,266 L52,172 Z" fill={mc("quads")} opacity={has("quads") ? 0.88 : 0.14} />
+        <path d="M92,172 C102,186 108,210 106,234 C106,248 102,260 92,266 L72,266 L68,172 Z" fill={mc("quads")} opacity={has("quads") ? 0.88 : 0.14} />
+        {/* Calves */}
+        <path d="M16,268 C12,284 14,298 22,306 L42,306 L50,268 Z" fill={mc("calves")} opacity={has("calves") ? 0.88 : 0.14} />
+        <path d="M104,268 C108,284 106,298 98,306 L78,306 L70,268 Z" fill={mc("calves")} opacity={has("calves") ? 0.88 : 0.14} />
+      </svg>
+    );
+  }
 
   return (
-    <svg viewBox="0 0 200 560" style={{ width: "100%", maxWidth: 140 }}>
-      <defs>
-        <clipPath id={clipId}>
-          {/* Head */}
-          <path d="M100,6 C116,6 126,18 126,30 C126,44 114,52 100,52 C86,52 74,44 74,30 C74,18 84,6 100,6 Z" />
-          {/* Neck */}
-          <path d="M90,50 C89,58 89,64 90,70 L110,70 C111,64 111,58 110,50 C106,48 94,48 90,50 Z" />
-          {/* Torso: shoulder peaks curve smoothly to narrow waist then flare at hip */}
-          <path d="M92,70 C76,68 52,70 36,82 C18,92 12,110 16,130 C20,140 40,144 50,148 C52,160 54,178 56,196 C56,212 56,232 58,248 C60,254 66,260 100,262 C134,260 140,254 142,248 C144,232 144,212 144,196 C146,178 148,160 150,148 C160,144 180,140 184,130 C188,110 182,92 164,82 C148,70 124,68 108,70 Z" />
-          {/* Left arm: single tapered bezier, bicep bulge, forearm taper to wrist */}
-          <path d="M16,100 C10,118 8,144 8,162 C8,180 10,196 12,212 C12,232 14,254 16,272 C16,282 18,290 24,294 C30,298 38,296 42,290 C44,284 44,278 42,272 C40,256 40,234 42,214 C44,202 46,190 46,176 C46,152 44,126 42,106 C36,98 24,96 16,100 Z" />
-          {/* Right arm */}
-          <path d="M184,100 C190,118 192,144 192,162 C192,180 190,196 188,212 C188,232 186,254 184,272 C184,282 182,290 176,294 C170,298 162,296 158,290 C156,284 156,278 158,272 C160,256 160,234 158,214 C156,202 154,190 154,176 C154,152 156,126 158,106 C164,98 176,96 184,100 Z" />
-          {/* Left leg: quad width at top, knee taper, calf bulge, slim ankle */}
-          <path d="M64,252 C54,264 44,288 40,316 C36,340 40,362 44,378 C44,390 46,404 50,418 C52,434 56,448 58,462 C58,470 64,478 76,480 C86,482 96,476 98,466 C100,456 98,444 96,430 C96,414 96,396 94,380 C96,364 98,342 96,318 C94,294 90,268 86,252 C82,246 74,246 64,252 Z" />
-          {/* Right leg */}
-          <path d="M136,252 C146,264 156,288 160,316 C164,340 160,362 156,378 C156,390 154,404 150,418 C148,434 144,448 142,462 C142,470 136,478 124,480 C114,482 104,476 102,466 C100,456 102,444 104,430 C104,414 104,396 106,380 C104,364 102,342 104,318 C106,294 110,268 114,252 C118,246 126,246 136,252 Z" />
-        </clipPath>
-      </defs>
-
-      <rect x="0" y="0" width="200" height="560" fill={BASE} clipPath={`url(#${clipId})`} />
-
-      <g clipPath={`url(#${clipId})`}>
-        {view === "front" ? (
-          <>
-            {/* Anterior deltoids */}
-            <path d="M14,100 C10,118 12,142 22,158 L42,154 L42,104 C32,96 20,96 14,100 Z" fill={c("shoulders")} opacity="0.9" />
-            <path d="M186,100 C190,118 188,142 178,158 L158,154 L158,104 C168,96 180,96 186,100 Z" fill={c("shoulders")} opacity="0.9" />
-
-            {/* Pectorals: teardrop curve from sternum, fullest at bottom outer */}
-            <path d="M56,96 C38,108 28,130 36,154 L62,164 L100,142 L100,92 C80,86 64,88 56,96 Z" fill={c("chest")} opacity="0.9" />
-            <path d="M144,96 C162,108 172,130 164,154 L138,164 L100,142 L100,92 C120,86 136,88 144,96 Z" fill={c("chest")} opacity="0.9" />
-            <line x1="100" y1="92" x2="100" y2="164" stroke={BASE} strokeWidth="1.2" opacity="0.35" />
-
-            {/* Biceps */}
-            <path d="M8,116 C6,138 8,166 14,188 L36,186 C40,160 40,132 38,112 Z" fill={c("biceps")} opacity="0.9" />
-            <path d="M192,116 C194,138 192,166 186,188 L164,186 C160,160 160,132 162,112 Z" fill={c("biceps")} opacity="0.9" />
-
-            {/* Forearms */}
-            <path d="M12,212 C10,236 14,258 16,276 L42,278 C44,260 44,236 44,212 Z" fill={c("forearms")} opacity="0.9" />
-            <path d="M188,212 C190,236 186,258 184,276 L158,278 C156,260 156,236 156,212 Z" fill={c("forearms")} opacity="0.9" />
-
-            {/* Abs: six-pack region with soft curves */}
-            <path d="M68,158 C62,178 60,212 64,238 C72,252 86,258 100,260 C114,258 128,252 136,238 C140,212 138,178 132,158 C122,142 112,136 100,136 C88,136 78,142 68,158 Z" fill={c("abs")} opacity="0.9" />
-            {trainedAbs && (
-              <>
-                <line x1="66" y1="184" x2="134" y2="184" stroke={BASE} strokeWidth="1.5" opacity="0.45" />
-                <line x1="66" y1="214" x2="134" y2="214" stroke={BASE} strokeWidth="1.5" opacity="0.45" />
-                <line x1="100" y1="158" x2="100" y2="240" stroke={BASE} strokeWidth="1.5" opacity="0.45" />
-              </>
-            )}
-
-            {/* Obliques */}
-            <path d="M50,150 C44,172 44,208 52,238 L68,246 L68,158 Z" fill={c("abs")} opacity="0.5" />
-            <path d="M150,150 C156,172 156,208 148,238 L132,246 L132,158 Z" fill={c("abs")} opacity="0.5" />
-
-            {/* Quads: sweeping teardrop shapes */}
-            <path d="M66,258 C54,276 44,304 40,334 C36,358 40,378 46,394 L92,394 L96,262 C84,254 76,254 66,258 Z" fill={c("quads")} opacity="0.9" />
-            <path d="M134,258 C146,276 156,304 160,334 C164,358 160,378 154,394 L108,394 L104,262 C116,254 124,254 134,258 Z" fill={c("quads")} opacity="0.9" />
-
-            {/* Calves */}
-            <path d="M40,396 C34,418 36,442 44,464 L64,472 L92,466 L96,398 C76,394 56,392 40,396 Z" fill={c("calves")} opacity="0.9" />
-            <path d="M160,396 C166,418 164,442 156,464 L136,472 L108,466 L104,398 C124,394 144,392 160,396 Z" fill={c("calves")} opacity="0.9" />
-          </>
-        ) : (
-          <>
-            {/* Rear deltoids */}
-            <path d="M14,100 C10,118 12,142 22,158 L42,154 L42,104 C32,96 20,96 14,100 Z" fill={c("shoulders")} opacity="0.9" />
-            <path d="M186,100 C190,118 188,142 178,158 L158,154 L158,104 C168,96 180,96 186,100 Z" fill={c("shoulders")} opacity="0.9" />
-
-            {/* Traps: diamond from neck to lower traps */}
-            <path d="M92,70 C76,68 56,72 40,82 L100,118 Z" fill={c("traps")} opacity="0.9" />
-            <path d="M108,70 C124,68 144,72 160,82 L100,118 Z" fill={c("traps")} opacity="0.9" />
-            <path d="M40,82 C20,96 12,118 16,138 L64,154 L100,118 Z" fill={c("traps")} opacity="0.72" />
-            <path d="M160,82 C180,96 188,118 184,138 L136,154 L100,118 Z" fill={c("traps")} opacity="0.72" />
-
-            {/* Lats: swept fan from armpit down to waist */}
-            <path d="M16,138 C12,164 14,196 24,222 L72,238 L64,154 Z" fill={c("lats")} opacity="0.9" />
-            <path d="M184,138 C188,164 186,196 176,222 L128,238 L136,154 Z" fill={c("lats")} opacity="0.9" />
-
-            {/* Rhomboids / erector spinae */}
-            <path d="M64,154 C60,180 60,214 66,240 C76,256 88,262 100,264 C112,262 124,256 134,240 C140,214 140,180 136,154 C124,138 112,132 100,132 C88,132 76,138 64,154 Z" fill={c("back")} opacity="0.9" />
-            <line x1="100" y1="132" x2="100" y2="262" stroke={BASE} strokeWidth="1.5" opacity="0.4" />
-            <line x1="64" y1="178" x2="136" y2="178" stroke={BASE} strokeWidth="1" opacity="0.3" />
-            <line x1="64" y1="212" x2="136" y2="212" stroke={BASE} strokeWidth="1" opacity="0.3" />
-
-            {/* Triceps */}
-            <path d="M8,114 C6,140 10,174 14,198 L38,194 C40,166 40,134 40,110 Z" fill={c("triceps")} opacity="0.9" />
-            <path d="M192,114 C194,140 190,174 186,198 L162,194 C160,166 160,134 160,110 Z" fill={c("triceps")} opacity="0.9" />
-
-            {/* Forearms */}
-            <path d="M12,212 C10,236 14,258 16,276 L42,278 C44,260 44,236 44,212 Z" fill={c("forearms")} opacity="0.9" />
-            <path d="M188,212 C190,236 186,258 184,276 L158,278 C156,260 156,236 156,212 Z" fill={c("forearms")} opacity="0.9" />
-
-            {/* Glutes */}
-            <path d="M66,264 C52,284 46,312 54,342 C62,360 80,368 100,362 L100,264 Z" fill={c("glutes")} opacity="0.9" />
-            <path d="M134,264 C148,284 154,312 146,342 C138,360 120,368 100,362 L100,264 Z" fill={c("glutes")} opacity="0.9" />
-
-            {/* Hamstrings */}
-            <path d="M66,364 C52,390 46,422 52,452 L56,472 L94,470 L100,366 Z" fill={c("hamstrings")} opacity="0.9" />
-            <path d="M134,364 C148,390 154,422 148,452 L144,472 L106,470 L100,366 Z" fill={c("hamstrings")} opacity="0.9" />
-
-            {/* Calves */}
-            <path d="M52,452 C46,470 50,482 58,488 L76,492 L96,484 L98,454 Z" fill={c("calves")} opacity="0.9" />
-            <path d="M148,452 C154,470 150,482 142,488 L124,492 L104,484 L102,454 Z" fill={c("calves")} opacity="0.9" />
-          </>
-        )}
-      </g>
+    <svg viewBox="0 0 120 316" style={{ width: "100%", maxWidth: 120 }}>
+      {silhouette}
+      {/* Rear delts */}
+      <path d="M4,54 C0,62 0,76 4,88 L16,94 L28,88 L28,46 C18,42 8,44 4,54 Z" fill={mc("shoulders")} opacity={has("shoulders") ? 0.88 : 0.14} />
+      <path d="M116,54 C120,62 120,76 116,88 L104,94 L92,88 L92,46 C102,42 112,44 116,54 Z" fill={mc("shoulders")} opacity={has("shoulders") ? 0.88 : 0.14} />
+      {/* Traps */}
+      <path d="M53,32 C40,38 24,46 14,58 L40,84 L60,60 Z" fill={mc("traps")} opacity={has("traps") ? 0.88 : 0.14} />
+      <path d="M67,32 C80,38 96,46 106,58 L80,84 L60,60 Z" fill={mc("traps")} opacity={has("traps") ? 0.88 : 0.14} />
+      <path d="M14,60 C12,72 14,84 20,90 L40,86 L60,60 Z" fill={mc("traps")} opacity={has("traps") ? 0.7 : 0.1} />
+      <path d="M106,60 C108,72 106,84 100,90 L80,86 L60,60 Z" fill={mc("traps")} opacity={has("traps") ? 0.7 : 0.1} />
+      {/* Lats */}
+      <path d="M12,90 C8,108 10,126 18,136 C22,142 32,146 44,142 L44,88 Z" fill={mc("lats")} opacity={has("lats") ? 0.88 : 0.14} />
+      <path d="M108,90 C112,108 110,126 102,136 C98,142 88,146 76,142 L76,88 Z" fill={mc("lats")} opacity={has("lats") ? 0.88 : 0.14} />
+      {/* Back/erectors */}
+      <path d="M44,88 C40,108 40,130 44,150 C48,158 54,162 60,162 C66,162 72,158 76,150 C80,130 80,108 76,88 Z" fill={mc("back")} opacity={has("back") ? 0.88 : 0.14} />
+      {has("back") && <>
+        <line x1="60" y1="88" x2="60" y2="158" stroke={BODY} strokeWidth="1.4" opacity="0.5" />
+        <line x1="44" y1="112" x2="76" y2="112" stroke={BODY} strokeWidth="1" opacity="0.4" />
+        <line x1="44" y1="134" x2="76" y2="134" stroke={BODY} strokeWidth="1" opacity="0.4" />
+      </>}
+      {/* Triceps */}
+      <path d="M2,66 C0,80 2,102 6,118 L24,118 C26,98 26,76 22,60 Z" fill={mc("triceps")} opacity={has("triceps") ? 0.88 : 0.14} />
+      <path d="M118,66 C120,80 118,102 114,118 L96,118 C94,98 94,76 98,60 Z" fill={mc("triceps")} opacity={has("triceps") ? 0.88 : 0.14} />
+      {/* Forearms back */}
+      <path d="M4,120 C2,138 2,156 6,168 L20,170 L26,120 Z" fill={mc("forearms")} opacity={has("forearms") ? 0.88 : 0.14} />
+      <path d="M116,120 C118,138 118,156 114,168 L100,170 L94,120 Z" fill={mc("forearms")} opacity={has("forearms") ? 0.88 : 0.14} />
+      {/* Glutes */}
+      <path d="M26,170 C16,184 14,206 20,224 C24,236 36,242 52,238 L60,232 L60,170 Z" fill={mc("glutes")} opacity={has("glutes") ? 0.88 : 0.14} />
+      <path d="M94,170 C104,184 106,206 100,224 C96,236 84,242 68,238 L60,232 L60,170 Z" fill={mc("glutes")} opacity={has("glutes") ? 0.88 : 0.14} />
+      {/* Hamstrings */}
+      <path d="M20,226 C14,246 16,264 26,274 L46,274 L52,238 Z" fill={mc("hamstrings")} opacity={has("hamstrings") ? 0.88 : 0.14} />
+      <path d="M100,226 C106,246 104,264 94,274 L74,274 L68,238 Z" fill={mc("hamstrings")} opacity={has("hamstrings") ? 0.88 : 0.14} />
+      {/* Calves back */}
+      <path d="M18,276 C14,292 16,306 24,312 L44,312 L48,276 Z" fill={mc("calves")} opacity={has("calves") ? 0.88 : 0.14} />
+      <path d="M102,276 C106,292 104,306 96,312 L76,312 L72,276 Z" fill={mc("calves")} opacity={has("calves") ? 0.88 : 0.14} />
     </svg>
   );
 }
@@ -1367,9 +1344,9 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
             {/* AI Coach */}
             <div className="relative overflow-hidden rounded-2xl" style={{ background: "linear-gradient(135deg, #0a1628 0%, #0f2a2a 60%, #071a14 100%)" }}>
               <div className="p-4">
-                <div className="flex items-center gap-2 mb-2.5">
+                <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-teal-400/70">AI Coach Analysis</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-teal-400/70">AI Coach</span>
                 </div>
                 {gymAiFetching ? (
                   <div className="flex gap-1 py-1">{[0,1,2].map(i => <div key={i} className="w-1.5 h-1.5 rounded-full bg-teal-400/40 animate-bounce" style={{ animationDelay: `${i*150}ms` }} />)}</div>
@@ -1381,73 +1358,71 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
               </div>
             </div>
 
-            {/* Stats row — no streak */}
+            {/* Stats */}
             <div className="grid grid-cols-3 gap-2">
-              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-3 text-center">
-                <p className="text-2xl font-black text-white leading-none mb-1">{totalWorkoutsLogged}</p>
-                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Total</p>
-              </div>
-              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-3 text-center">
-                <p className="text-2xl font-black text-teal-400 leading-none mb-1">{weeklySessionProgress.completed}</p>
-                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">This Week</p>
-              </div>
-              <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-3 text-center">
-                <p className="text-2xl font-black text-violet-400 leading-none mb-1">
-                  {[...progressDates].filter(d => d.startsWith(new Date().toISOString().slice(0,7))).length}
-                </p>
-                <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">This Month</p>
-              </div>
+              {[
+                { value: totalWorkoutsLogged, label: "Total", color: "text-white" },
+                { value: weeklySessionProgress.completed, label: "This Week", color: "text-teal-400" },
+                { value: [...progressDates].filter(d => d.startsWith(new Date().toISOString().slice(0,7))).length, label: "This Month", color: "text-violet-400" },
+              ].map(({ value, label, color }) => (
+                <div key={label} className="bg-[#0c1422] border border-white/8 rounded-2xl p-3 text-center">
+                  <p className={`text-2xl font-black leading-none mb-1 ${color}`}>{value}</p>
+                  <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">{label}</p>
+                </div>
+              ))}
             </div>
 
-            {/* Muscle body diagram */}
-            <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4">
-              <div className="flex items-center justify-between mb-4">
+            {/* Muscle Map */}
+            <div className="bg-[#0c1422] border border-white/8 rounded-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 pt-4 pb-3">
                 <div>
-                  <p className="text-sm font-bold text-white">Muscle Development</p>
+                  <p className="text-sm font-bold text-white">Muscle Map</p>
                   <p className="text-[10px] text-gray-600 mt-0.5">Based on your training history</p>
                 </div>
-                <div className="flex gap-1 bg-white/5 border border-white/8 rounded-xl p-0.5">
+                <div className="flex gap-0.5 bg-black/30 border border-white/8 rounded-xl p-0.5">
                   {(["front","back"] as const).map(v => (
                     <button key={v} onClick={() => setBodyView(v)}
-                      className={`px-3 py-1 rounded-lg text-[11px] font-bold capitalize transition-all ${bodyView === v ? "bg-teal-400 text-black" : "text-gray-500"}`}>
+                      className={`px-3 py-1 rounded-lg text-[11px] font-bold capitalize transition-all ${bodyView === v ? "bg-teal-500 text-white" : "text-gray-500 hover:text-gray-300"}`}>
                       {v}
                     </button>
                   ))}
                 </div>
               </div>
-              <div className="flex items-start gap-4">
-                <div className="flex justify-center" style={{ minWidth: 120 }}>
+
+              <div className="flex gap-3 px-4 pb-4">
+                {/* Body diagram */}
+                <div className="flex justify-center items-start" style={{ width: 90, flexShrink: 0 }}>
                   <BodyDiagram levels={muscleData} view={bodyView} />
                 </div>
-                <div className="flex-1 pt-2 space-y-4">
+
+                {/* Right column: legend + muscle list */}
+                <div className="flex-1 flex flex-col gap-3 pt-1">
                   {/* Legend */}
-                  <div className="space-y-1.5">
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1">
                     {[
-                      { level: "advanced",     label: "Advanced",     color: "#10b981" },
-                      { level: "intermediate", label: "Intermediate", color: "#f59e0b" },
-                      { level: "beginner",     label: "Beginner",     color: "#3b82f6" },
-                      { level: "none",         label: "Not trained",  color: "#1e293b" },
+                      { level: "advanced",     label: "Advanced",    color: "#10b981" },
+                      { level: "intermediate", label: "Mid",         color: "#f59e0b" },
+                      { level: "beginner",     label: "Beginner",    color: "#3b82f6" },
+                      { level: "none",         label: "Untrained",   color: "#1e293b" },
                     ].map(item => (
-                      <div key={item.level} className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-sm shrink-0" style={{ background: item.color, border: item.level === "none" ? "1px solid rgba(255,255,255,0.12)" : "none" }} />
-                        <span className="text-[11px] text-gray-400">{item.label}</span>
+                      <div key={item.level} className="flex items-center gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: item.color, border: item.level === "none" ? "1px solid rgba(255,255,255,0.15)" : "none" }} />
+                        <span className="text-[10px] text-gray-500">{item.label}</span>
                       </div>
                     ))}
                   </div>
-                  {/* Muscle list for this view */}
-                  <div className="space-y-1.5 border-t border-white/5 pt-3">
+
+                  {/* Muscle list */}
+                  <div className="space-y-1.5 border-t border-white/5 pt-2.5">
                     {(bodyView === "front"
                       ? [["Chest","chest"],["Shoulders","shoulders"],["Biceps","biceps"],["Forearms","forearms"],["Abs","abs"],["Quads","quads"],["Calves","calves"]]
                       : [["Traps","traps"],["Lats","lats"],["Back","back"],["Triceps","triceps"],["Glutes","glutes"],["Hamstrings","hamstrings"],["Calves","calves"]]
                     ).map(([label, key]) => {
                       const lv = muscleData[key] ?? "none";
                       return (
-                        <div key={key} className="flex items-center justify-between">
-                          <span className="text-[11px] text-gray-500">{label}</span>
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-2 h-2 rounded-full shrink-0" style={{ background: LEVEL_COLORS[lv] }} />
-                            <span className="text-[10px] font-semibold capitalize" style={{ color: LEVEL_COLORS[lv] }}>{lv === "none" ? "—" : lv}</span>
-                          </div>
+                        <div key={key} className="flex items-center justify-between gap-2">
+                          <span className="text-[11px] text-gray-400 truncate">{label}</span>
+                          <div className="w-2 h-2 rounded-full shrink-0" style={{ background: LEVEL_COLORS[lv], border: lv === "none" ? "1px solid rgba(255,255,255,0.12)" : "none" }} />
                         </div>
                       );
                     })}
@@ -1456,10 +1431,10 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
               </div>
             </div>
 
-            {/* This week dots */}
+            {/* Weekly activity */}
             <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4">
               <p className="text-sm font-bold text-white mb-3">This week</p>
-              <div className="flex gap-2 justify-between">
+              <div className="flex gap-1.5 justify-between">
                 {weekDays.map((day, i) => {
                   const ds = toLocalDateString(day);
                   const todayStr = toLocalDateString(new Date());
@@ -1468,11 +1443,15 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
                   const hasWorkout = progressDates.has(ds);
                   return (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                      <div className={`w-full aspect-square rounded-lg max-w-[36px] ${
-                        isFuture ? "bg-white/3"
-                        : hasWorkout ? isToday ? "bg-teal-400 ring-2 ring-teal-300/50 ring-offset-1 ring-offset-[#0c1422]" : "bg-teal-500/70"
-                        : isToday ? "ring-1 ring-teal-500/40 ring-offset-1 ring-offset-[#0c1422] bg-transparent" : "bg-white/6"
-                      }`} />
+                      <div className={`w-full aspect-square rounded-lg max-w-[34px] flex items-center justify-center ${
+                        hasWorkout && isToday ? "bg-teal-400 ring-2 ring-teal-300/40 ring-offset-1 ring-offset-[#0c1422]"
+                        : hasWorkout ? "bg-teal-500/70"
+                        : isToday ? "bg-white/6 ring-1 ring-teal-500/30 ring-offset-1 ring-offset-[#0c1422]"
+                        : isFuture ? "bg-white/3"
+                        : "bg-white/5"
+                      }`}>
+                        {hasWorkout && <div className="w-1.5 h-1.5 rounded-full bg-white/80" />}
+                      </div>
                       <span className={`text-[9px] font-bold ${isFuture ? "text-gray-700" : isToday ? "text-teal-400" : "text-gray-600"}`}>
                         {["M","T","W","T","F","S","S"][i]}
                       </span>
@@ -1486,7 +1465,7 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
             {weeklyVolume.some(v => v > 0) && (
               <div className="bg-[#0c1422] border border-white/8 rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-bold text-white">Weekly volume</p>
+                  <p className="text-sm font-bold text-white">Weekly Volume</p>
                   <span className="text-[10px] text-gray-600">total kg lifted</span>
                 </div>
                 <div className="flex items-end gap-1.5" style={{ height: 68 }}>
@@ -1510,10 +1489,10 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
               </div>
             )}
 
-            {/* Strength progress charts */}
+            {/* Strength progress */}
             {liftChartData.length > 0 && (
               <div className="space-y-3">
-                <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold px-0.5">Strength progress · max weight per session</p>
+                <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold px-0.5">Strength Progress · max weight per session</p>
                 {liftChartData.map((lift, i) => <ProgressLiftChart key={lift.name} lift={lift} idx={i} />)}
               </div>
             )}
@@ -1549,6 +1528,7 @@ Rules: Reference specific numbers. If improving, acknowledge with numbers. If st
               </div>
             )}
           </div>
+
         ) : (
           <>
         {/* Content-width only (no flex-1); same compact height as before */}
