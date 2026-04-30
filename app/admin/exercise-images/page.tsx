@@ -56,8 +56,6 @@ export default function ExerciseImagesAdminPage() {
     { id: "chest-fly", name: "Chest Fly", goalSets: 3, goalReps: 12, goalWeight: 0, sets: [] },
     { id: "dumbbell-fly", name: "Dumbbell Fly", goalSets: 3, goalReps: 12, goalWeight: 0, sets: [] },
     { id: "incline-fly", name: "Incline Dumbbell Fly", goalSets: 3, goalReps: 12, goalWeight: 0, sets: [] },
-    { id: "pec-deck", name: "Pec Deck", goalSets: 3, goalReps: 12, goalWeight: 0, sets: [] },
-    
     // Pull Day Exercises
     { id: "pull-ups", name: "Pull Ups", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
     { id: "lat-pulldown", name: "Lat Pulldown", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
@@ -90,7 +88,6 @@ export default function ExerciseImagesAdminPage() {
     { id: "seated-calf-raise", name: "Seated Calf Raise", goalSets: 3, goalReps: 15, goalWeight: 0, sets: [] },
     { id: "hip-thrust", name: "Hip Thrust", goalSets: 3, goalReps: 12, goalWeight: 0, sets: [] },
     { id: "glute-bridge", name: "Glute Bridge", goalSets: 3, goalReps: 15, goalWeight: 0, sets: [] },
-    { id: "leg-press-calf", name: "Leg Press Calf", goalSets: 3, goalReps: 15, goalWeight: 0, sets: [] },
     { id: "hack-squat", name: "Hack Squat", goalSets: 3, goalReps: 10, goalWeight: 0, sets: [] },
     { id: "walking-lunges", name: "Walking Lunges", goalSets: 3, goalReps: 12, goalWeight: 0, sets: [] },
   ];

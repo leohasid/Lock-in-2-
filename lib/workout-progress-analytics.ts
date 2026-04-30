@@ -94,7 +94,7 @@ export function inferMuscleGroup(exerciseName: string): MuscleGroupId | null {
   ) {
     return "shoulders";
   }
-  if (has(["bench", "chest fly", "chest press", "pec deck", "pec ", "push-up", "pushup", " fly", "crossover", " dip"]) || (n.includes("press") && (n.includes("bench") || n.includes("chest") || n.includes("incline") || n.includes("decline")))) {
+  if (has(["bench", "chest fly", "chest press", "push-up", "pushup", " fly", "crossover", " dip"]) || (n.includes("press") && (n.includes("bench") || n.includes("chest") || n.includes("incline") || n.includes("decline")))) {
     return "chest";
   }
 

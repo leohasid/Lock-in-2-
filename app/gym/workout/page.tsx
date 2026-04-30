@@ -162,7 +162,7 @@ const LEVEL_COLORS: Record<string, string> = {
 function getMuscleGroups(name: string): string[] {
   const n = name.toLowerCase();
   const out: string[] = [];
-  if (/bench|chest|push.?up|pec|fly|cable cross/.test(n)) out.push("chest");
+  if (/bench|chest|push.?up|pec deck|fly|cable cross/.test(n)) out.push("chest");
   if (/pull.?up|chin.?up|lat|row|deadlift|pull.?down|t.bar/.test(n)) { out.push("back"); out.push("lats"); }
   if (/shoulder|delt|overhead press|ohp|lateral raise|face pull|military/.test(n)) { out.push("shoulders"); out.push("traps"); }
   if (/shrug|trap/.test(n)) out.push("traps");

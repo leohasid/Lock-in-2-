@@ -29,12 +29,12 @@ function sanitizeWeightTyping(raw: string): string {
 
 // Alternatives for swapping — match keywords longest/specific first via iteration order below
 const EXERCISE_ALTERNATIVES_ORDERED: [string, string[]][] = [
-  ["single leg", ["Leg Press", "Bulgarian Split Squat", "Single Leg RDL", "Single Leg Hip Thrust"]],
-  ["single arm", ["Single Arm Cable Row", "Single Arm Dumbbell Row", "One Arm Cable Curl", "Single Arm Cable Fly"]],
-  ["cable fly", ["Dumbbell Fly", "Machine Chest Fly", "Pec Deck", "Cable Crossover"]],
-  ["machine fly", ["Cable Chest Fly", "Pec Deck", "Incline Dumbbell Fly", "Dumbbell Fly"]],
-  ["chest fly", ["Cable Chest Fly", "Machine Chest Fly", "Pec Deck", "Incline Dumbbell Fly"]],
-  ["bench press", ["Dumbbell Bench Press", "Cable Chest Fly", "Machine Chest Press", "Smith Machine Bench Press"]],
+  ["single leg", ["Leg Press", "Bulgarian Split Squat", "Split Squat", "Walking Lunges"]],
+  ["single arm", ["Single Arm Cable Row", "Single Arm Dumbbell Row", "One Arm Cable Curl", "Cable Chest Fly"]],
+  ["cable fly", ["Dumbbell Fly", "Chest Fly Machine", "Standing Cable Fly", "Incline Cable Fly"]],
+  ["machine fly", ["Cable Chest Fly", "Chest Fly Machine", "Incline Dumbbell Fly", "Dumbbell Fly"]],
+  ["chest fly", ["Cable Chest Fly", "Chest Fly Machine", "Incline Dumbbell Fly", "Incline Cable Fly"]],
+  ["bench press", ["Dumbbell Bench Press", "Cable Chest Fly", "Chest Press Machine", "Smith Machine Bench Press"]],
   ["chest press", ["Barbell Bench Press", "Cable Chest Fly", "Dumbbell Bench Press", "Push Ups"]],
   ["squat", ["Leg Press", "Hack Squat", "Bulgarian Split Squat", "Goblet Squat"]],
   ["deadlift", ["Romanian Deadlift", "Trap Bar Deadlift", "Sumo Deadlift", "Good Morning"]],
@@ -42,7 +42,7 @@ const EXERCISE_ALTERNATIVES_ORDERED: [string, string[]][] = [
   ["pulldown", ["Pull Ups", "Lat Pull Overs", "Straight Arm Pulldown", "Cable Row"]],
   ["pull", ["Lat Pulldown", "Cable Row", "Machine Row", "Face Pull"]],
   ["curl", ["Hammer Curl", "Cable Curl", "Preacher Curl", "Machine Curl"]],
-  ["fly", ["Cable Chest Fly", "Machine Chest Fly", "Pec Deck", "Incline Cable Fly"]],
+  ["fly", ["Cable Chest Fly", "Chest Fly Machine", "Incline Cable Fly", "Incline Dumbbell Fly"]],
   ["press", ["Machine Shoulder Press", "Dumbbell Shoulder Press", "Smith Machine Shoulder Press", "Arnold Press"]],
   [
     "extension",
@@ -56,7 +56,7 @@ const EXERCISE_ALTERNATIVES_ORDERED: [string, string[]][] = [
   ],
   ["tricep push down", ["Cable Tricep Pushdown", "Overhead Tricep Extensions", "Rope Pushdown", "Dips"]],
   ["pull down", ["Pull Ups", "Lat Pulldown", "Lat Pull Overs", "Straight Arm Lat Pulldown"]],
-  ["leg curl", ["Romanian Deadlift", "Nordic Curl", "Glute Bridge", "Single Leg Curl"]],
+  ["leg curl", ["Romanian Deadlift", "Leg Curl", "Seated Leg Curl", "Lying Leg Curl"]],
   ["leg press", ["Squat", "Hack Squat", "Leg Extension", "Walking Lunges"]],
 ];
 
@@ -67,15 +67,15 @@ function getAlternatives(exerciseName: string): string[] {
   }
   return [
     "Cable Chest Fly",
-    "Machine Chest Fly",
-    "Single Arm Cable Fly",
+    "Chest Fly Machine",
+    "Cable Fly",
     "Lat Pulldown",
     "Cable Row",
     "Leg Press",
     "Hack Squat",
     "Bulgarian Split Squat",
     "Romanian Deadlift",
-    "Single Leg Deadlift",
+    "Walking Lunges",
   ];
 }
 
