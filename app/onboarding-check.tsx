@@ -8,11 +8,12 @@ export default function OnboardingCheck({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
+  const isPublicRoute = pathname === "/onboarding" || pathname === "/subscribe" || pathname === "/privacy";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    if (pathname === "/onboarding" || pathname === "/subscribe") {
+    if (isPublicRoute) {
       setIsChecking(false);
       return;
     }
@@ -40,7 +41,7 @@ export default function OnboardingCheck({ children }: { children: React.ReactNod
 
       router.push("/subscribe");
     })();
-  }, [pathname, router]);
+  }, [isPublicRoute, pathname, router]);
 
   // Fallback: stop showing loading after 2s in case something gets stuck
   useEffect(() => {
@@ -49,7 +50,7 @@ export default function OnboardingCheck({ children }: { children: React.ReactNod
   }, []);
 
   // Show loading state while checking
-  if (isChecking && pathname !== "/onboarding" && pathname !== "/subscribe") {
+  if (isChecking && !isPublicRoute) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white">Loading...</div>
