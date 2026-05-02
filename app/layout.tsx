@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import OnboardingCheck from "./onboarding-check";
 import NotificationSetup from "@/components/NotificationSetup";
+import { AIConsentProvider } from "@/components/AIConsentProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,10 +39,12 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-hidden h-full flex flex-col bg-black`}
       >
         <OnboardingCheck>
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scroll-touch">
-            <NotificationSetup />
-            {children}
-          </div>
+          <AIConsentProvider>
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scroll-touch">
+              <NotificationSetup />
+              {children}
+            </div>
+          </AIConsentProvider>
         </OnboardingCheck>
       </body>
     </html>

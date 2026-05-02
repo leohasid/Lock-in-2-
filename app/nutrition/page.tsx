@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Upload, Camera, X, Settings, MessageSquare, Sparkles, ChevronRight, Plus, Clock } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import MedicalWellnessDisclaimer from "@/components/MedicalWellnessDisclaimer";
 import { toLocalDateString } from "@/lib/date-utils";
 import { recommendedRecipes, recipeCardImageSrc, type Recipe } from "@/lib/recommended-recipes";
 
@@ -1340,6 +1341,7 @@ Provide a helpful, conversational response.`;
       </div>
 
       {/* HEADER - Only show on Macros tab */}
+      <MedicalWellnessDisclaimer className="mb-4" />
       {activeTab === "macros" && (
         <div className="mb-5 flex items-start justify-end">
           <div className="flex items-center gap-2">

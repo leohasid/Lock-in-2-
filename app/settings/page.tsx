@@ -9,14 +9,20 @@ import {
   setNotificationSettings,
   type NotificationSettings,
 } from "@/app/utils/notifications";
-import { ArrowLeft, Bell } from "lucide-react";
+import { ArrowLeft, Bell, Shield, ExternalLink, Bot, FileText } from "lucide-react";
+import { revokeAIConsent, hasAIConsent, getAIConsentAcceptedAt } from "@/lib/ai-consent";
 
 export default function SettingsPage() {
   const pathname = usePathname();
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
+  const [aiConsented, setAiConsented] = useState(false);
+  const [consentDate, setConsentDate] = useState<string | null>(null);
 
   useEffect(() => {
     setSettings(getNotificationSettings());
+    setAiConsented(hasAIConsent());
+    const at = getAIConsentAcceptedAt();
+    if (at) setConsentDate(new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }));
   }, []);
 
   const handleSave = () => {
@@ -226,6 +232,74 @@ export default function SettingsPage() {
             Save Settings
           </button>
         </div>
+
+        {/* Legal & AI section */}
+        <div className="rounded-2xl bg-[#0c1422] border border-white/8 p-5 mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Shield className="w-5 h-5 text-teal-400" />
+            <h2 className="text-lg font-semibold">Legal &amp; AI</h2>
+          </div>
+
+          <div className="space-y-1">
+            <Link href="/ai-data-use" className="flex items-center justify-between py-3 border-b border-white/5 hover:bg-white/3 rounded-lg px-1 transition-colors">
+              <div className="flex items-center gap-3">
+                <Bot className="w-4 h-4 text-teal-400 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-white">AI Data Use</p>
+                  <p className="text-xs text-gray-500">What data is sent to third-party AI</p>
+                </div>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 text-gray-600 shrink-0" />
+            </Link>
+
+            <Link href="/sources" className="flex items-center justify-between py-3 border-b border-white/5 hover:bg-white/3 rounded-lg px-1 transition-colors">
+              <div className="flex items-center gap-3">
+                <FileText className="w-4 h-4 text-amber-400 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-white">Health &amp; Nutrition Sources</p>
+                  <p className="text-xs text-gray-500">Citations for wellness information</p>
+                </div>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 text-gray-600 shrink-0" />
+            </Link>
+
+            <Link href="/privacy" className="flex items-center justify-between py-3 border-b border-white/5 hover:bg-white/3 rounded-lg px-1 transition-colors">
+              <div className="flex items-center gap-3">
+                <Shield className="w-4 h-4 text-blue-400 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-white">Privacy Policy</p>
+                  <p className="text-xs text-gray-500">How your data is handled</p>
+                </div>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 text-gray-600 shrink-0" />
+            </Link>
+
+            <div className="pt-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-white">AI Data Sharing Consent</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {aiConsented
+                      ? `Granted${consentDate ? ` · ${consentDate}` : ""}`
+                      : "Not yet granted"}
+                  </p>
+                </div>
+                {aiConsented && (
+                  <button
+                    onClick={() => { revokeAIConsent(); setAiConsented(false); setConsentDate(null); }}
+                    className="text-xs text-red-400 border border-red-400/30 px-3 py-1.5 rounded-lg hover:bg-red-400/10 transition-colors"
+                  >
+                    Revoke
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] text-gray-600 mt-1.5 leading-relaxed">
+                Mogifi is for general wellness and fitness tracking only — not a medical device. Always consult a qualified healthcare professional before making health decisions.
+              </p>
+            </div>
+          </div>
+        </div>
+
       </div>
       <BottomNav />
     </div>

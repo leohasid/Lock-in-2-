@@ -6,13 +6,27 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPolicyPage() {
-  const updatedAt = "April 30, 2026";
+  const updatedAt = "February 7, 2026";
 
   return (
     <main className="min-h-screen bg-black text-white px-4 py-10 sm:px-6">
       <div className="mx-auto w-full max-w-3xl rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Privacy Policy</h1>
         <p className="mt-2 text-sm text-gray-300">Last Updated: {updatedAt}</p>
+
+        <section className="mt-8 space-y-4 text-sm leading-6 text-gray-200 sm:text-base sm:leading-7">
+          <h2 className="text-xl font-semibold text-white">Wellness &amp; not medical advice</h2>
+          <p>
+            Mogifi AI is a <span className="font-semibold text-white">wellness and educational</span> application. It is{" "}
+            <span className="font-semibold text-white">not</span> a medical device and does not provide medical diagnosis,
+            treatment, or clinical care. Always consult a qualified healthcare professional before making medical
+            decisions. General health information in the app is supported by third-party citations on our{" "}
+            <a className="text-blue-300 underline underline-offset-2" href="/sources">
+              Health &amp; nutrition sources
+            </a>{" "}
+            page.
+          </p>
+        </section>
 
         <section className="mt-8 space-y-4 text-sm leading-6 text-gray-200 sm:text-base sm:leading-7">
           <h2 className="text-xl font-semibold text-white">Introduction</h2>
@@ -28,12 +42,14 @@ export default function PrivacyPolicyPage() {
           <p>
             We do not require account creation and do not collect personal data on our own servers for core app
             usage. Your workout logs, nutrition entries, reminders, and related progress data are primarily stored
-            locally on your device.
+            locally on your device. Cross-device cloud backup of your logs is not a core feature of this version.
           </p>
           <p>
-            If you choose to use AI-powered features (for example, consultation or plan-generation endpoints),
-            the content you submit in those requests may be sent to the AI processing service in order to generate
-            a response.
+            If you choose to use AI-powered features (for example, plan generation, meal photo analysis, gym coach chat,
+            or reflection feedback), the prompts, optional images, and related context you submit may be sent to{" "}
+            <span className="font-semibold text-white">OpenAI</span> through our servers to generate a response. The
+            in-app <span className="font-semibold text-white">AI Data Use</span> page and first-time consent modal describe
+            categories of data shared. You must opt in before the first AI request.
           </p>
           <p>
             We do not intentionally collect sensitive personal identifiers such as government ID numbers.
