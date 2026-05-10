@@ -8,7 +8,13 @@ export default function OnboardingCheck({ children }: { children: React.ReactNod
   const router = useRouter();
   const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
-  const isPublicRoute = pathname === "/onboarding" || pathname === "/subscribe" || pathname === "/privacy";
+  const isPublicRoute =
+    pathname === "/onboarding" ||
+    pathname === "/subscribe" ||
+    pathname === "/privacy" ||
+    pathname === "/terms" ||
+    pathname === "/sources" ||
+    pathname === "/ai-data-use";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
