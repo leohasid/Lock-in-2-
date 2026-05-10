@@ -9,7 +9,7 @@ import {
   setNotificationSettings,
   type NotificationSettings,
 } from "@/app/utils/notifications";
-import { ArrowLeft, Bell, Shield, ExternalLink, Bot, FileText } from "lucide-react";
+import { ArrowLeft, Bell, Shield, ExternalLink, Bot, FileText, Scale } from "lucide-react";
 import { revokeAIConsent, hasAIConsent, getAIConsentAcceptedAt } from "@/lib/ai-consent";
 
 export default function SettingsPage() {
@@ -269,6 +269,17 @@ export default function SettingsPage() {
                 <div>
                   <p className="text-sm font-medium text-white">Privacy Policy</p>
                   <p className="text-xs text-gray-500">How your data is handled</p>
+                </div>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 text-gray-600 shrink-0" />
+            </Link>
+
+            <Link href="/terms" className="flex items-center justify-between py-3 border-b border-white/5 hover:bg-white/3 rounded-lg px-1 transition-colors">
+              <div className="flex items-center gap-3">
+                <Scale className="w-4 h-4 text-purple-400 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-white">Terms of Use</p>
+                  <p className="text-xs text-gray-500">Subscription terms &amp; EULA</p>
                 </div>
               </div>
               <ExternalLink className="w-3.5 h-3.5 text-gray-600 shrink-0" />

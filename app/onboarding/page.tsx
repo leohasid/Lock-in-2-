@@ -9,6 +9,8 @@ import {
   restoreNativePurchases,
   syncNativeSubscriptionState,
 } from "@/lib/native-subscribe";
+import { useRequestAIConsent } from "@/components/AIConsentProvider";
+import MedicalWellnessDisclaimer from "@/components/MedicalWellnessDisclaimer";
 
 type FitnessGoal = "lose_weight" | "gain_weight" | "build_muscle";
 type Equipment = "full_gym" | "home_gym" | "minimal" | "bodyweight_only";
@@ -60,6 +62,7 @@ interface OnboardingData {
 }
 
 export default function OnboardingPage() {
+  const requestAIConsent = useRequestAIConsent();
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -101,9 +104,9 @@ export default function OnboardingPage() {
       }
       const { get } = await import("@/lib/persistent-storage");
       const subscriptionStatus = await get("subscriptionStatus");
-      if (subscriptionStatus === "active") {
-        router.push("/");
-      }
+    if (subscriptionStatus === "active") {
+      router.push("/");
+    }
     })();
   }, [router]);
 
@@ -111,11 +114,11 @@ export default function OnboardingPage() {
     if (currentStep <= 6) {
       return { step: currentStep, isLast: false };
     }
-
+    
     if (currentStep === 7) {
       return { step: currentStep, isLast: false };
     }
-
+    
     if (currentStep === 8) {
       return { step: currentStep, isLast: false };
     }
@@ -133,18 +136,18 @@ export default function OnboardingPage() {
       }
       return { step: currentStep, isLast: false };
     }
-
+    
     if (currentStep === 11) {
       if (data.wantsToTrackAddictions === false) {
         return { step: currentStep, isLast: true };
       }
       return { step: currentStep, isLast: false };
     }
-
+    
     if (currentStep === 12) {
       return { step: currentStep, isLast: false };
     }
-
+    
     if (currentStep === 13) {
       if (!data.selectedAddictions.includes("phone")) {
         return getStepInfo(14);
@@ -154,18 +157,18 @@ export default function OnboardingPage() {
       );
       return { step: currentStep, isLast: !hasSpendStep && !data.addictionStartDate };
     }
-
+    
     if (currentStep === 14) {
       if (!data.selectedAddictions.some((a) => ["vape", "alcohol", "other"].includes(a))) {
         return getStepInfo(15);
       }
       return { step: currentStep, isLast: !data.addictionStartDate };
     }
-
+    
     if (currentStep === 15) {
       return { step: currentStep, isLast: true };
     }
-
+    
     return { step: currentStep, isLast: false };
   };
 
@@ -174,7 +177,7 @@ export default function OnboardingPage() {
 
   const handleNext = () => {
     const stepInfo = getStepInfo(step);
-
+    
     if (stepInfo.isLast) {
       handleSubmit();
       return;
@@ -185,16 +188,16 @@ export default function OnboardingPage() {
       return;
     }
 
-    let nextStep = step + 1;
+      let nextStep = step + 1;
     while (nextStep <= 15) {
-      const nextStepInfo = getStepInfo(nextStep);
-      if (nextStepInfo.step === nextStep) {
-        setStep(nextStep);
-        return;
+        const nextStepInfo = getStepInfo(nextStep);
+        if (nextStepInfo.step === nextStep) {
+          setStep(nextStep);
+          return;
+        }
+        nextStep++;
       }
-      nextStep++;
-    }
-    handleSubmit();
+      handleSubmit();
   };
 
   const handleBack = () => {
@@ -212,103 +215,105 @@ export default function OnboardingPage() {
     let nutritionPlan: Record<string, unknown> | null = null;
 
     if (data.wantsAIWorkoutPlan || data.wantsMacrosPlan) {
-      try {
-        const response = await fetch("/api/generate-plan", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fitnessGoal: data.fitnessGoal,
-            equipment: data.equipment,
-            height: data.height,
-            age: data.age,
-            weight: data.weight,
-            aggressiveness: data.aggressiveness,
-            gender: data.gender,
-            workoutExtraNotes: data.workoutExtraNotes?.trim() || undefined,
-            wantsAIWorkoutPlan: data.wantsAIWorkoutPlan,
-            wantsMacrosPlan: data.wantsMacrosPlan,
-          }),
-        });
+      await requestAIConsent(async () => {
+        try {
+          const response = await fetch("/api/generate-plan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fitnessGoal: data.fitnessGoal,
+              equipment: data.equipment,
+              height: data.height,
+              age: data.age,
+              weight: data.weight,
+              aggressiveness: data.aggressiveness,
+              gender: data.gender,
+              workoutExtraNotes: data.workoutExtraNotes?.trim() || undefined,
+              wantsAIWorkoutPlan: data.wantsAIWorkoutPlan,
+              wantsMacrosPlan: data.wantsMacrosPlan,
+            }),
+          });
 
-        if (response.ok) {
-          const planData = await response.json();
-          gymPlan = planData.gymPlan;
-          nutritionPlan = planData.nutritionPlan;
-        } else {
-          console.error("Failed to generate AI plan, using placeholder");
+          if (response.ok) {
+            const planData = await response.json();
+            gymPlan = planData.gymPlan;
+            nutritionPlan = planData.nutritionPlan;
+          } else {
+            console.error("Failed to generate AI plan, using placeholder");
+          }
+        } catch (error) {
+          console.error("Error generating AI plan:", error);
         }
-      } catch (error) {
-        console.error("Error generating AI plan:", error);
-      }
+      });
     }
 
-    if (!gymPlan) {
-      gymPlan = {
-        planName: "Custom Workout Plan",
-        weeklySchedule: [],
-        duration: "12 weeks",
-        notes: data.wantsAIWorkoutPlan
+      if (!gymPlan) {
+        gymPlan = {
+          planName: "Custom Workout Plan",
+          weeklySchedule: [],
+          duration: "12 weeks",
+          notes: data.wantsAIWorkoutPlan 
           ? "Your personalized workout plan will load here."
           : "Create your own workout plan in the gym section.",
-      };
-    }
+        };
+      }
 
-    if (!nutritionPlan) {
-      let calculatedCalories = 2000;
-      let calculatedProtein = 150;
-      let calculatedCarbs = 200;
-      let calculatedFats = 65;
+      if (!nutritionPlan) {
+        let calculatedCalories = 2000;
+        let calculatedProtein = 150;
+        let calculatedCarbs = 200;
+        let calculatedFats = 65;
 
-      if (data.weight && data.height && data.age) {
+        if (data.weight && data.height && data.age) {
         const bmrConst = data.gender === "female" ? -161 : 5;
         const bmr = 10 * data.weight + 6.25 * data.height - 5 * data.age + bmrConst;
-
+          
         let activityMultiplier = 1.4;
-        if (data.aggressiveness === "aggressive") activityMultiplier = 1.6;
-        if (data.aggressiveness === "very_aggressive") activityMultiplier = 1.8;
+          if (data.aggressiveness === "aggressive") activityMultiplier = 1.6;
+          if (data.aggressiveness === "very_aggressive") activityMultiplier = 1.8;
 
-        if (data.fitnessGoal === "lose_weight") {
-          calculatedCalories = Math.round(bmr * activityMultiplier - 500);
+          if (data.fitnessGoal === "lose_weight") {
+            calculatedCalories = Math.round(bmr * activityMultiplier - 500);
           calculatedProtein = Math.round(data.weight * 2.2);
           calculatedCarbs = Math.round(calculatedCalories * 0.35 / 4);
           calculatedFats = Math.round(calculatedCalories * 0.25 / 9);
-        } else if (data.fitnessGoal === "gain_weight") {
-          calculatedCalories = Math.round(bmr * activityMultiplier + 500);
-          calculatedProtein = Math.round(data.weight * 2.2);
+          } else if (data.fitnessGoal === "gain_weight") {
+            calculatedCalories = Math.round(bmr * activityMultiplier + 500);
+            calculatedProtein = Math.round(data.weight * 2.2);
           calculatedCarbs = Math.round(calculatedCalories * 0.45 / 4);
           calculatedFats = Math.round(calculatedCalories * 0.25 / 9);
-        } else if (data.fitnessGoal === "build_muscle") {
-          calculatedCalories = Math.round(bmr * activityMultiplier + 300);
+          } else if (data.fitnessGoal === "build_muscle") {
+            calculatedCalories = Math.round(bmr * activityMultiplier + 300);
           calculatedProtein = Math.round(data.weight * 2.5);
           calculatedCarbs = Math.round(calculatedCalories * 0.4 / 4);
           calculatedFats = Math.round(calculatedCalories * 0.25 / 9);
-        } else {
-          calculatedCalories = Math.round(bmr * activityMultiplier);
-          calculatedProtein = Math.round(data.weight * 2.0);
+          } else {
+            calculatedCalories = Math.round(bmr * activityMultiplier);
+            calculatedProtein = Math.round(data.weight * 2.0);
           calculatedCarbs = Math.round(calculatedCalories * 0.4 / 4);
-          calculatedFats = Math.round(calculatedCalories * 0.25 / 9);
+            calculatedFats = Math.round(calculatedCalories * 0.25 / 9);
+          }
         }
+
+        nutritionPlan = {
+          dailyCalories: data.wantsMacrosPlan ? calculatedCalories : 2000,
+          macros: {
+            protein: data.wantsMacrosPlan ? calculatedProtein : 150,
+            carbs: data.wantsMacrosPlan ? calculatedCarbs : 200,
+          fats: data.wantsMacrosPlan ? calculatedFats : 65,
+          },
+          mealsPerDay: 3,
+          mealTiming: "Spread meals throughout the day",
+          hydration: "2-3 liters of water daily",
+          supplements: [],
+          notes: data.wantsMacrosPlan 
+            ? "Your personalized macros plan based on your goals."
+          : "Set your own macro targets in the nutrition section.",
+        };
       }
 
-      nutritionPlan = {
-        dailyCalories: data.wantsMacrosPlan ? calculatedCalories : 2000,
-        macros: {
-          protein: data.wantsMacrosPlan ? calculatedProtein : 150,
-          carbs: data.wantsMacrosPlan ? calculatedCarbs : 200,
-          fats: data.wantsMacrosPlan ? calculatedFats : 65,
-        },
-        mealsPerDay: 3,
-        mealTiming: "Spread meals throughout the day",
-        hydration: "2-3 liters of water daily",
-        supplements: [],
-        notes: data.wantsMacrosPlan
-          ? "Your personalized macros plan based on your goals."
-          : "Set your own macro targets in the nutrition section.",
-      };
-    }
-
-    localStorage.setItem("customGymPlan", JSON.stringify(gymPlan));
-    localStorage.setItem("customNutritionPlan", JSON.stringify(nutritionPlan));
+      localStorage.setItem("customGymPlan", JSON.stringify(gymPlan));
+      localStorage.setItem("customNutritionPlan", JSON.stringify(nutritionPlan));
 
     if (
       data.wantsAIWorkoutPlan &&
@@ -342,54 +347,54 @@ export default function OnboardingPage() {
           sets: never[];
         }>;
       } = {
-        pushDay: [],
-        pullDay: [],
-        legsDay: [],
-      };
+          pushDay: [],
+          pullDay: [],
+          legsDay: [],
+        };
 
       gymPlan.weeklySchedule.forEach((day: AIWorkoutDay) => {
-        const workoutName = day.workoutName?.toLowerCase() || "";
-        const exercises = (day.exercises || []).map((ex: AIExercise) => ({
-          id: `${ex.name}-${Date.now()}-${Math.random()}`,
-          name: ex.name,
-          goalSets: ex.sets || 3,
-          goalReps:
-            typeof ex.reps === "string"
-              ? parseInt(ex.reps.replace(/[^0-9]/g, ""), 10) || 10
-              : ex.reps || 10,
-          goalWeight: 0,
-          sets: [],
-        }));
-
-        if (workoutName.includes("push")) {
-          workoutPlanByDay.pushDay.push(...exercises);
-        } else if (workoutName.includes("pull")) {
-          workoutPlanByDay.pullDay.push(...exercises);
-        } else if (workoutName.includes("leg") || workoutName.includes("lower")) {
-          workoutPlanByDay.legsDay.push(...exercises);
-        }
-      });
-
-      if (
-        workoutPlanByDay.pushDay.length === 0 &&
-        workoutPlanByDay.pullDay.length === 0 &&
-        workoutPlanByDay.legsDay.length === 0
-      ) {
-        gymPlan.weeklySchedule.forEach((day: AIWorkoutDay) => {
+          const workoutName = day.workoutName?.toLowerCase() || "";
           const exercises = (day.exercises || []).map((ex: AIExercise) => ({
             id: `${ex.name}-${Date.now()}-${Math.random()}`,
             name: ex.name,
             goalSets: ex.sets || 3,
-            goalReps:
-              typeof ex.reps === "string"
-                ? parseInt(ex.reps.replace(/[^0-9]/g, ""), 10) || 10
-                : ex.reps || 10,
+          goalReps:
+            typeof ex.reps === "string"
+              ? parseInt(ex.reps.replace(/[^0-9]/g, ""), 10) || 10
+              : ex.reps || 10,
             goalWeight: 0,
             sets: [],
           }));
 
-          exercises.forEach((ex) => {
-            const name = ex.name.toLowerCase();
+          if (workoutName.includes("push")) {
+            workoutPlanByDay.pushDay.push(...exercises);
+          } else if (workoutName.includes("pull")) {
+            workoutPlanByDay.pullDay.push(...exercises);
+          } else if (workoutName.includes("leg") || workoutName.includes("lower")) {
+            workoutPlanByDay.legsDay.push(...exercises);
+          }
+        });
+
+      if (
+        workoutPlanByDay.pushDay.length === 0 &&
+            workoutPlanByDay.pullDay.length === 0 && 
+        workoutPlanByDay.legsDay.length === 0
+      ) {
+        gymPlan.weeklySchedule.forEach((day: AIWorkoutDay) => {
+            const exercises = (day.exercises || []).map((ex: AIExercise) => ({
+              id: `${ex.name}-${Date.now()}-${Math.random()}`,
+              name: ex.name,
+              goalSets: ex.sets || 3,
+            goalReps:
+              typeof ex.reps === "string"
+                ? parseInt(ex.reps.replace(/[^0-9]/g, ""), 10) || 10
+                : ex.reps || 10,
+              goalWeight: 0,
+              sets: [],
+            }));
+
+            exercises.forEach((ex) => {
+              const name = ex.name.toLowerCase();
             if (
               name.includes("bench") ||
               name.includes("press") ||
@@ -398,7 +403,7 @@ export default function OnboardingPage() {
               name.includes("shoulder") ||
               name.includes("tricep")
             ) {
-              workoutPlanByDay.pushDay.push(ex);
+                workoutPlanByDay.pushDay.push(ex);
             } else if (
               name.includes("pull") ||
               name.includes("row") ||
@@ -406,7 +411,7 @@ export default function OnboardingPage() {
               name.includes("bicep") ||
               name.includes("back")
             ) {
-              workoutPlanByDay.pullDay.push(ex);
+                workoutPlanByDay.pullDay.push(ex);
             } else if (
               name.includes("squat") ||
               name.includes("leg") ||
@@ -415,17 +420,17 @@ export default function OnboardingPage() {
               name.includes("quad") ||
               name.includes("hamstring")
             ) {
-              workoutPlanByDay.legsDay.push(ex);
-            } else {
-              workoutPlanByDay.pushDay.push(ex);
-            }
+                workoutPlanByDay.legsDay.push(ex);
+              } else {
+                workoutPlanByDay.pushDay.push(ex);
+              }
+            });
           });
-        });
-      }
+        }
 
-      localStorage.setItem("workoutPlan", JSON.stringify(workoutPlanByDay));
-    }
-  }, [data]);
+        localStorage.setItem("workoutPlan", JSON.stringify(workoutPlanByDay));
+      }
+  }, [data, requestAIConsent]);
 
   useEffect(() => {
     if (!showSubscribeModal || planGenerationPhase !== "progress") return;
@@ -735,6 +740,13 @@ export default function OnboardingPage() {
                       Restore purchases
                     </button>
                   )}
+                  <p className="text-[10px] text-gray-600 text-center leading-relaxed pt-1">
+                    Auto-renewable subscription. By subscribing you agree to our{" "}
+                    <Link href="/terms" className="text-blue-400/80 underline underline-offset-2">Terms of Use</Link>
+                    {" "}and{" "}
+                    <Link href="/privacy" className="text-blue-400/80 underline underline-offset-2">Privacy Policy</Link>
+                    . Manage or cancel in App Store account settings.
+                  </p>
                 </div>
               )}
 
@@ -953,6 +965,7 @@ export default function OnboardingPage() {
             <p className="text-gray-300 text-center mb-6">
               Our AI coach will create a personalized workout plan based on your goals and equipment
             </p>
+            <MedicalWellnessDisclaimer className="mb-4" />
             <div className="space-y-3">
               {[
                 { value: true, label: "Yes, create my workout plan", emoji: "🤖" },
@@ -984,8 +997,10 @@ export default function OnboardingPage() {
               Which best describes you?
             </h1>
             <p className="text-gray-300 text-center mb-6">
-              We use this to tune calorie estimates and recovery recommendations for your AI plan
+              We use this only to estimate daily energy needs for your plan (wellness / educational, not medical
+              advice).
             </p>
+            <MedicalWellnessDisclaimer className="mb-4" />
             <div className="space-y-3">
               {[
                 { value: "male" as Gender, label: "Male", emoji: "♂️" },
@@ -1044,6 +1059,7 @@ export default function OnboardingPage() {
             <p className="text-gray-300 text-center mb-6">
               Get custom daily calorie and macro targets (protein, carbs, fats) tailored to your goals
             </p>
+            <MedicalWellnessDisclaimer className="mb-4" />
             <div className="space-y-3">
               {[
                 { value: true, label: "Yes, create my macros plan", emoji: "📊" },
@@ -1307,8 +1323,8 @@ export default function OnboardingPage() {
               (step === 14 &&
                 data.selectedAddictions.some((a) => ["vape", "alcohol", "other"].includes(a)) &&
                 ((data.selectedAddictions.includes("vape") && !data.vapeWeeklySpend) ||
-                  (data.selectedAddictions.includes("alcohol") && !data.alcoholWeeklySpend) ||
-                  (data.selectedAddictions.includes("other") && !data.otherWeeklySpend))) ||
+                 (data.selectedAddictions.includes("alcohol") && !data.alcoholWeeklySpend) ||
+                 (data.selectedAddictions.includes("other") && !data.otherWeeklySpend))) ||
               (step === 15 && !data.addictionStartDate)
             }
             className="flex-1 p-4 bg-gradient-to-r from-teal-400 to-cyan-500 text-white rounded-xl font-bold hover:from-teal-500 hover:to-cyan-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 shadow-lg shadow-teal-500/30 disabled:hover:scale-100"

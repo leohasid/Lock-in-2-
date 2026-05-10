@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Check, Crown } from "lucide-react";
 import {
   isNativeIapAvailable,
@@ -256,11 +257,27 @@ export default function SubscribePage() {
           </button>
         )}
 
-        {/* Terms */}
-        <p className="text-xs text-gray-500 text-center leading-relaxed">
-          By subscribing, you agree to our Terms of Service and Privacy Policy.
-          Cancel anytime. Price may vary by region on App Store.
-        </p>
+        {/* Subscription legal info - required by Apple guideline 3.1.2(c) */}
+        <div className="space-y-3 text-center">
+          <p className="text-xs text-gray-400 leading-relaxed">
+            <span className="font-semibold text-white">Mogifi AI Pro</span> — auto-renewable subscription.
+            Monthly: £2.99/month · Yearly: £29.99/year. Includes 3-day free trial.
+            Payment charged to your Apple ID at confirmation. Renews automatically unless cancelled
+            at least 24 hours before the end of the current period. Manage or cancel in App Store
+            account settings. Price may vary by region.
+          </p>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            By subscribing you agree to our{" "}
+            <Link href="/terms" className="text-blue-400 underline underline-offset-2">
+              Terms of Use
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="text-blue-400 underline underline-offset-2">
+              Privacy Policy
+            </Link>
+            .
+          </p>
+        </div>
       </div>
     </div>
   );
