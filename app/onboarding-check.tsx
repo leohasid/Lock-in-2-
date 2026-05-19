@@ -28,7 +28,12 @@ export default function OnboardingCheck({ children }: { children: React.ReactNod
       await migrateFromLocalStorage();
       try {
         const { syncNativeSubscriptionState } = await import("@/lib/native-subscribe");
-        await syncNativeSubscriptionState();
+        const syncResult = await syncNativeSubscriptionState();
+        // StoreKit confirmed active — trust it immediately without waiting for storage write
+        if (syncResult?.active) {
+          setIsChecking(false);
+          return;
+        }
       } catch {
         /* non-iOS or sync unavailable */
       }

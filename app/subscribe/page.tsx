@@ -34,7 +34,8 @@ export default function SubscribePage() {
   useEffect(() => {
     (async () => {
       try {
-        await syncNativeSubscriptionState();
+        const syncResult = await syncNativeSubscriptionState();
+        if (syncResult?.active) { router.push("/"); return; }
       } catch {
         /* ignore */
       }
@@ -53,12 +54,19 @@ export default function SubscribePage() {
     try {
       if (isNativeIapAvailable()) {
         await purchaseNative(plan);
-        await syncNativeSubscriptionState();
-        const { get } = await import("@/lib/persistent-storage");
-        const status = await get("subscriptionStatus");
+        // Poll up to 6s for StoreKit to settle and write subscription status
+        let status: string | null = null;
+        for (let attempt = 0; attempt < 6; attempt++) {
+          const syncResult = await syncNativeSubscriptionState();
+          if (syncResult?.active) { status = "active"; break; }
+          const { get } = await import("@/lib/persistent-storage");
+          status = await get("subscriptionStatus");
+          if (status === "active") break;
+          await new Promise((r) => setTimeout(r, 1000));
+        }
         if (status !== "active") {
           setSubscribeError(
-            "Apple’s sheet may have completed but status didn’t sync yet. Tap Restore purchases below, wait a minute, or force-quit and reopen the app."
+            "Purchase completed but subscription is still activating. Tap Restore purchases below, or force-quit and reopen the app."
           );
           return;
         }
