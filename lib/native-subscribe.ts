@@ -9,10 +9,22 @@ export type NativeSubscribeResult = {
   active?: boolean;
 };
 
+export type NativeProductInfo = {
+  id: string;
+  displayPrice: string;
+  displayName: string;
+};
+
+export type NativeProductsResult = {
+  ok?: boolean;
+  products?: NativeProductInfo[];
+};
+
 type MogifiNativeSubscribeAPI = {
   purchase: (plan: string) => Promise<NativeSubscribeResult>;
   restore?: () => Promise<NativeSubscribeResult>;
   sync?: () => Promise<NativeSubscribeResult>;
+  getProducts?: () => Promise<NativeProductsResult>;
 };
 
 function getApi(): MogifiNativeSubscribeAPI | null {
@@ -43,4 +55,11 @@ export async function syncNativeSubscriptionState(): Promise<NativeSubscribeResu
   const s = getApi();
   if (!s?.sync) return null;
   return s.sync();
+}
+
+/** Fetches localized product info (price, name) from StoreKit for paywall display. */
+export async function getProductsNative(): Promise<NativeProductsResult> {
+  const s = getApi();
+  if (!s?.getProducts) return { ok: false, products: [] };
+  return s.getProducts();
 }

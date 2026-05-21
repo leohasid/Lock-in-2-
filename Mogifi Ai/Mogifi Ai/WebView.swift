@@ -92,6 +92,9 @@ struct WebView: UIViewRepresentable {
               sync: function() {
                 return this._post('sync', null, null);
               },
+              getProducts: function() {
+                return this._post('getProducts', null, null);
+              },
               _resolve: function(id, result) {
                 var c = this._callbacks[id];
                 if (c) { c.resolve(result); delete this._callbacks[id]; }
@@ -197,6 +200,9 @@ struct WebView: UIViewRepresentable {
                                 plan: plan.isEmpty ? "monthly" : plan,
                                 active: active
                             )
+                        case "getProducts":
+                            let infos = await SubscriptionManager.getProductsInfo()
+                            self.resolveSubscribeProductsCallback(callbackId: callbackId, products: infos)
                         default:
                             self.rejectSubscribeJavaScriptCallback(
                                 callbackId: callbackId,
@@ -234,6 +240,14 @@ struct WebView: UIViewRepresentable {
             let escapedPlan = plan.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
             let activeJs = active ? "true" : "false"
             let js = "if(window.MogifiNativeSubscribe&&window.MogifiNativeSubscribe._resolve){window.MogifiNativeSubscribe._resolve('\(escapedId)',{ok:true,plan:'\(escapedPlan)',active:\(activeJs)})}"
+            webView?.evaluateJavaScript(js, completionHandler: nil)
+        }
+
+        private func resolveSubscribeProductsCallback(callbackId: String, products: [[String: String]]) {
+            let escapedId = callbackId.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
+            let data = (try? JSONSerialization.data(withJSONObject: products)) ?? Data()
+            let b64 = data.base64EncodedString()
+            let js = "if(window.MogifiNativeSubscribe&&window.MogifiNativeSubscribe._resolve){try{var p=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob('\(b64)'),function(c){return c.charCodeAt(0)})));window.MogifiNativeSubscribe._resolve('\(escapedId)',{ok:true,products:p})}catch(e){window.MogifiNativeSubscribe._resolve('\(escapedId)',{ok:false,products:[]})}}"
             webView?.evaluateJavaScript(js, completionHandler: nil)
         }
 

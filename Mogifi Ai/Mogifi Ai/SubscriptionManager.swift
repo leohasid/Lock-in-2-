@@ -101,6 +101,22 @@ enum SubscriptionManager {
         }
     }
 
+    /// Returns localized price info for the paywall UI (web layer fetches this via getProducts bridge).
+    static func getProductsInfo() async -> [[String: String]] {
+        guard let all = try? await Product.products(for: [monthlyProductId, yearlyProductId]) else {
+            print("Mogifi IAP getProducts: Product.products() threw — not using local StoreKit file or ASC products missing.")
+            return []
+        }
+        #if DEBUG
+        if all.isEmpty {
+            print("Mogifi IAP getProducts: returned [] — check Xcode scheme StoreKit config or App Store Connect products are approved.")
+        } else {
+            print("Mogifi IAP getProducts: \(all.map { "\($0.id)=\($0.displayPrice)" }.joined(separator: ", "))")
+        }
+        #endif
+        return all.map { ["id": $0.id, "displayPrice": $0.displayPrice, "displayName": $0.displayName] }
+    }
+
     @MainActor
     static func restorePurchases() async throws {
         try await AppStore.sync()

@@ -8,6 +8,7 @@ import {
   purchaseNative,
   restoreNativePurchases,
   syncNativeSubscriptionState,
+  getProductsNative,
 } from "@/lib/native-subscribe";
 import { useRequestAIConsent } from "@/components/AIConsentProvider";
 import MedicalWellnessDisclaimer from "@/components/MedicalWellnessDisclaimer";
@@ -67,6 +68,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
+  const [modalMonthlyPrice, setModalMonthlyPrice] = useState<string | null>(null);
   const [subscribing, setSubscribing] = useState(false);
   const [planReady, setPlanReady] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -109,6 +111,15 @@ export default function OnboardingPage() {
     }
     })();
   }, [router]);
+
+  // Fetch StoreKit monthly price for subscribe modal (iOS only)
+  useEffect(() => {
+    if (!isNativeIapAvailable()) return;
+    getProductsNative().then((result) => {
+      const mp = result.products?.find((p) => p.id === "com.mogifiai.Mogifi_Ai.subscription.monthly");
+      if (mp) setModalMonthlyPrice(mp.displayPrice);
+    }).catch(() => { /* fallback to hardcoded */ });
+  }, []);
 
   const getStepInfo = (currentStep: number) => {
     if (currentStep <= 6) {
@@ -710,7 +721,7 @@ export default function OnboardingPage() {
                   <div className="bg-teal-500/10 border border-teal-400/30 rounded-xl p-4">
                     <p className="text-teal-300 font-semibold">3 days free</p>
                     <p className="text-2xl font-bold text-white mt-1">
-                      £2.99<span className="text-sm font-normal text-gray-400">/month after</span>
+                      {modalMonthlyPrice ?? "£2.99"}<span className="text-sm font-normal text-gray-400">/month after</span>
                     </p>
                     <p className="text-xs text-gray-500 mt-1">Price may vary by region on App Store</p>
                   </div>

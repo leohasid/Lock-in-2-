@@ -9,10 +9,14 @@ import {
   purchaseNative,
   restoreNativePurchases,
   syncNativeSubscriptionState,
+  getProductsNative,
 } from "@/lib/native-subscribe";
 
 /** Bump when changing subscribe / IAP UI so you can confirm Vercel + device picked up the build. */
-const SUBSCRIBE_UI_BUILD = "2026-04-21-iap-panel";
+const SUBSCRIBE_UI_BUILD = "2026-05-21-dynamic-pricing";
+
+const MONTHLY_ID = "com.mogifiai.Mogifi_Ai.subscription.monthly";
+const YEARLY_ID  = "com.mogifiai.Mogifi_Ai.subscription.yearly";
 
 function formatUnknownError(error: unknown): string {
   if (error instanceof Error) return error.message || error.name || "Error (no message)";
@@ -31,6 +35,13 @@ export default function SubscribePage() {
   const [restoring, setRestoring] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
 
+  // StoreKit dynamic pricing
+  const [monthlyPrice, setMonthlyPrice] = useState<string | null>(null);
+  const [yearlyPrice, setYearlyPrice] = useState<string | null>(null);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsLoadFailed, setProductsLoadFailed] = useState(false);
+
+  // Redirect already-subscribed users
   useEffect(() => {
     (async () => {
       try {
@@ -47,9 +58,41 @@ export default function SubscribePage() {
     })();
   }, [router]);
 
+  // Fetch StoreKit product prices (iOS only)
+  useEffect(() => {
+    if (!isNativeIapAvailable()) return;
+    setProductsLoading(true);
+    getProductsNative()
+      .then((result) => {
+        if (result.ok && result.products?.length) {
+          const mp = result.products.find((p) => p.id === MONTHLY_ID);
+          const yp = result.products.find((p) => p.id === YEARLY_ID);
+          console.log(
+            "[Mogifi IAP] Products loaded:",
+            result.products.map((p) => `${p.id} → ${p.displayPrice}`).join(", ")
+          );
+          if (!mp) console.warn("[Mogifi IAP] Missing product:", MONTHLY_ID);
+          if (!yp) console.warn("[Mogifi IAP] Missing product:", YEARLY_ID);
+          if (mp) setMonthlyPrice(mp.displayPrice);
+          if (yp) setYearlyPrice(yp.displayPrice);
+          if (!mp && !yp) setProductsLoadFailed(true);
+        } else {
+          console.warn("[Mogifi IAP] getProducts returned no products:", JSON.stringify(result));
+          setProductsLoadFailed(true);
+        }
+      })
+      .catch((err) => {
+        console.error("[Mogifi IAP] getProducts error:", err);
+        setProductsLoadFailed(true);
+      })
+      .finally(() => setProductsLoading(false));
+  }, []);
+
   const handleSubscribe = async (plan: "monthly" | "yearly") => {
     setLoading(true);
     setSubscribeError(null);
+    const productId = plan === "yearly" ? YEARLY_ID : MONTHLY_ID;
+    console.log(`[Mogifi IAP] Purchase attempt: plan=${plan}, productId=${productId}`);
 
     try {
       if (isNativeIapAvailable()) {
@@ -80,7 +123,7 @@ export default function SubscribePage() {
 
       router.push("/");
     } catch (error) {
-      console.error("Subscription error:", error);
+      console.error("[Mogifi IAP] Purchase error:", error);
       const msg = formatUnknownError(error);
       if (msg.toLowerCase().includes("cancel")) return;
       let detail = msg;
@@ -102,17 +145,21 @@ export default function SubscribePage() {
       alert("Restore purchases is only available in the Mogifi iOS app.");
       return;
     }
+    console.log("[Mogifi IAP] Restore purchases initiated");
     setRestoring(true);
     try {
       await restoreNativePurchases();
       const { get } = await import("@/lib/persistent-storage");
       const subscriptionStatus = await get("subscriptionStatus");
       if (subscriptionStatus === "active") {
+        console.log("[Mogifi IAP] Restore succeeded");
         router.push("/");
       } else {
+        console.warn("[Mogifi IAP] Restore: no active subscription found");
         alert("No active subscription found for this Apple ID.");
       }
     } catch (error) {
+      console.error("[Mogifi IAP] Restore error:", error);
       const msg = error instanceof Error ? error.message : "Restore failed.";
       alert(msg);
     } finally {
@@ -120,15 +167,19 @@ export default function SubscribePage() {
     }
   };
 
+  // Use StoreKit prices when available, fall back to hardcoded
+  const displayMonthly = monthlyPrice ?? "£2.99";
+  const displayYearly  = yearlyPrice  ?? "£29.99";
+
   const plans = {
     monthly: {
-      price: "£2.99",
+      price: displayMonthly,
       period: "per month after free trial",
       trial: "3 days free",
       savings: null,
     },
     yearly: {
-      price: "£29.99",
+      price: displayYearly,
       period: "per year",
       trial: "3 days free",
       savings: "Save 17%",
@@ -145,6 +196,8 @@ export default function SubscribePage() {
     "Unlimited workout plan modifications",
   ];
 
+  const subscribeDisabled = loading || productsLoading;
+
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 overflow-y-auto">
       <div className="w-full max-w-md py-8">
@@ -159,7 +212,9 @@ export default function SubscribePage() {
           <p className="text-gray-400 text-base leading-relaxed max-w-sm mx-auto">
             Your personalized plan is ready. Subscribe to get started.
           </p>
-          <p className="text-blue-400/90 font-medium text-sm mt-2">3 days free, then £2.99/month</p>
+          <p className="text-blue-400/90 font-medium text-sm mt-2">
+            3 days free, then {displayMonthly}/month
+          </p>
         </div>
 
         {/* Plan Selector */}
@@ -186,12 +241,22 @@ export default function SubscribePage() {
           </button>
         </div>
 
+        {/* Products failed to load (iOS only) */}
+        {productsLoadFailed && isNativeIapAvailable() && (
+          <div
+            role="alert"
+            className="mb-4 rounded-xl border border-amber-500/30 bg-amber-950/50 p-3 text-center text-xs text-amber-300"
+          >
+            Could not load subscription prices from the App Store. Check your connection and try again, or tap Restore if you already subscribed.
+          </div>
+        )}
+
         {subscribeError && (
           <div
             role="alert"
             className="mb-4 rounded-xl border border-red-400/50 bg-red-950/80 p-4 text-left text-sm text-red-100"
           >
-            <p className="font-semibold text-red-200 mb-1">Subscription didn’t finish</p>
+            <p className="font-semibold text-red-200 mb-1">Subscription didn&apos;t finish</p>
             <p className="whitespace-pre-wrap break-words text-red-100/95">{subscribeError}</p>
             <button
               type="button"
@@ -215,26 +280,35 @@ export default function SubscribePage() {
               <span className="inline-block px-3 py-1.5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-semibold mb-4">
                 {plans[selectedPlan].trial}
               </span>
-              <div className="flex items-baseline justify-center gap-2">
-                <span className="text-5xl font-bold text-white">{plans[selectedPlan].price}</span>
-                <span className="text-gray-400 text-lg">
-                  {selectedPlan === "monthly" ? "/mo" : "/yr"}
-                </span>
-              </div>
-              <p className="text-gray-400 text-sm mt-2">{plans[selectedPlan].period}</p>
-              {plans[selectedPlan].savings && (
-                <span className="inline-block mt-3 px-4 py-1.5 bg-cyan-500/20 text-cyan-400 rounded-full text-sm font-semibold">
-                  {plans[selectedPlan].savings}
-                </span>
+              {productsLoading ? (
+                <div className="flex flex-col items-center gap-2 py-4">
+                  <div className="w-8 h-8 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                  <p className="text-gray-500 text-sm">Loading prices…</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-baseline justify-center gap-2">
+                    <span className="text-5xl font-bold text-white">{plans[selectedPlan].price}</span>
+                    <span className="text-gray-400 text-lg">
+                      {selectedPlan === "monthly" ? "/mo" : "/yr"}
+                    </span>
+                  </div>
+                  <p className="text-gray-400 text-sm mt-2">{plans[selectedPlan].period}</p>
+                  {plans[selectedPlan].savings && (
+                    <span className="inline-block mt-3 px-4 py-1.5 bg-cyan-500/20 text-cyan-400 rounded-full text-sm font-semibold">
+                      {plans[selectedPlan].savings}
+                    </span>
+                  )}
+                </>
               )}
             </div>
 
             <button
               onClick={() => handleSubscribe(selectedPlan)}
-              disabled={loading}
+              disabled={subscribeDisabled}
               className="w-full py-4 rounded-xl font-bold text-lg bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-blue-500 disabled:hover:to-cyan-500"
             >
-              {loading ? "Processing..." : "Subscribe Now"}
+              {productsLoading ? "Loading…" : loading ? "Processing..." : "Subscribe Now"}
             </button>
           </div>
         </div>
@@ -269,7 +343,7 @@ export default function SubscribePage() {
         <div className="space-y-3 text-center">
           <p className="text-xs text-gray-400 leading-relaxed">
             <span className="font-semibold text-white">Mogifi AI Pro</span> — auto-renewable subscription.
-            Monthly: £2.99/month · Yearly: £29.99/year. Includes 3-day free trial.
+            Monthly: {displayMonthly}/month · Yearly: {displayYearly}/year. Includes 3-day free trial.
             Payment charged to your Apple ID at confirmation. Renews automatically unless cancelled
             at least 24 hours before the end of the current period. Manage or cancel in App Store
             account settings. Price may vary by region.
@@ -290,4 +364,3 @@ export default function SubscribePage() {
     </div>
   );
 }
-
