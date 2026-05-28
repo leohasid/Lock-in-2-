@@ -12,8 +12,6 @@ import {
   getProductsNative,
 } from "@/lib/native-subscribe";
 
-/** Bump when changing subscribe / IAP UI so you can confirm Vercel + device picked up the build. */
-const SUBSCRIBE_UI_BUILD = "2026-05-21-dynamic-pricing";
 
 const MONTHLY_ID = "com.mogifiai.Mogifi_Ai.subscription.monthly";
 const YEARLY_ID  = "com.mogifiai.Mogifi_Ai.subscription.yearly";
@@ -97,22 +95,14 @@ export default function SubscribePage() {
     try {
       if (isNativeIapAvailable()) {
         await purchaseNative(plan);
-        // Poll up to 6s for StoreKit to settle and write subscription status
-        let status: string | null = null;
-        for (let attempt = 0; attempt < 6; attempt++) {
-          const syncResult = await syncNativeSubscriptionState();
-          if (syncResult?.active) { status = "active"; break; }
-          const { get } = await import("@/lib/persistent-storage");
-          status = await get("subscriptionStatus");
-          if (status === "active") break;
-          await new Promise((r) => setTimeout(r, 1000));
-        }
-        if (status !== "active") {
-          setSubscribeError(
-            "Purchase completed but subscription is still activating. Tap Restore purchases below, or force-quit and reopen the app."
-          );
-          return;
-        }
+        // Purchase succeeded — write active status immediately so the subscription
+        // gate always lets the user through on next launch, regardless of sync timing.
+        const { set } = await import("@/lib/persistent-storage");
+        await set("subscriptionStatus", "active");
+        await set("subscriptionPlan", plan);
+        await set("subscriptionDate", new Date().toISOString());
+        // Kick off a background sync so native storage is also up to date.
+        syncNativeSubscriptionState().catch(() => {});
       } else {
         await new Promise((resolve) => setTimeout(resolve, 1500));
         const { set } = await import("@/lib/persistent-storage");
@@ -245,9 +235,9 @@ export default function SubscribePage() {
         {productsLoadFailed && isNativeIapAvailable() && (
           <div
             role="alert"
-            className="mb-4 rounded-xl border border-amber-500/30 bg-amber-950/50 p-3 text-center text-xs text-amber-300"
+            className="mb-4 rounded-xl border border-white/10 bg-white/5 p-3 text-center text-xs text-gray-400"
           >
-            Could not load subscription prices from the App Store. Check your connection and try again, or tap Restore if you already subscribed.
+            Showing offline prices. Tap Subscribe Now to continue — prices are confirmed before payment.
           </div>
         )}
 
@@ -267,10 +257,6 @@ export default function SubscribePage() {
             </button>
           </div>
         )}
-
-        <p className="text-[10px] text-gray-600 text-center mb-3 font-mono">
-          UI {SUBSCRIBE_UI_BUILD}
-        </p>
 
         {/* Pricing Card */}
         <div className="relative overflow-hidden rounded-2xl mb-8 p-6 bg-gradient-to-br from-[#0c1929] via-[#0f1a2e] to-[#0a0f1a] border border-blue-500/30 shadow-xl shadow-blue-500/5">
