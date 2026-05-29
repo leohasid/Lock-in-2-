@@ -73,11 +73,12 @@ export function AIConsentProvider({ children }: { children: ReactNode }) {
               AI data sharing
             </h2>
             <p className="mt-3 text-sm text-gray-300 leading-relaxed">
-              To use AI features, Mogifi sends your prompts and related context (and optional meal photos when you
-              use food scan) to{" "}
-              <span className="font-semibold text-white">OpenAI</span> through our servers so we can return a
-              response. We do not use this to train third-party models on your behalf beyond OpenAI&apos;s normal
-              service terms.
+              To use AI features, Mogifi sends your prompts and related context to third-party AI services through
+              our servers. Depending on the feature, data is sent to{" "}
+              <span className="font-semibold text-white">Anthropic (Claude)</span> for chat, reflections, and
+              coaching, and to <span className="font-semibold text-white">OpenAI</span> for meal photo scanning and
+              plan generation. Meal photos you scan are also sent to OpenAI. We do not use this data to train
+              third-party models on your behalf beyond each provider&apos;s standard service terms.
             </p>
             <p className="mt-2 text-xs text-gray-500">
               See{" "}

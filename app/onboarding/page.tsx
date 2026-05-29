@@ -68,7 +68,9 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
+  const [selectedModalPlan, setSelectedModalPlan] = useState<"monthly" | "yearly">("monthly");
   const [modalMonthlyPrice, setModalMonthlyPrice] = useState<string | null>(null);
+  const [modalYearlyPrice, setModalYearlyPrice] = useState<string | null>(null);
   const [subscribing, setSubscribing] = useState(false);
   const [planReady, setPlanReady] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -112,12 +114,14 @@ export default function OnboardingPage() {
     })();
   }, [router]);
 
-  // Fetch StoreKit monthly price for subscribe modal (iOS only)
+  // Fetch StoreKit prices for subscribe modal (iOS only)
   useEffect(() => {
     if (!isNativeIapAvailable()) return;
     getProductsNative().then((result) => {
       const mp = result.products?.find((p) => p.id === "com.mogifiai.Mogifi_Ai.subscription.monthly");
+      const yp = result.products?.find((p) => p.id === "com.mogifiai.Mogifi_Ai.subscription.yearly");
       if (mp) setModalMonthlyPrice(mp.displayPrice);
+      if (yp) setModalYearlyPrice(yp.displayPrice);
     }).catch(() => { /* fallback to hardcoded */ });
   }, []);
 
@@ -467,16 +471,18 @@ export default function OnboardingPage() {
     setGenerationError(null);
     try {
       if (isNativeIapAvailable()) {
-        const result = await purchaseNative("monthly");
-        if (result.active === false) {
-          alert("Subscription was not activated. Please try again.");
-          return;
-        }
+        await purchaseNative(selectedModalPlan);
+        // Write active status immediately — same pattern as /subscribe page
+        const { set } = await import("@/lib/persistent-storage");
+        await set("subscriptionStatus", "active");
+        await set("subscriptionPlan", selectedModalPlan);
+        await set("subscriptionDate", new Date().toISOString());
+        syncNativeSubscriptionState().catch(() => {});
       } else {
         await new Promise((r) => setTimeout(r, 1200));
         const { set } = await import("@/lib/persistent-storage");
         await set("subscriptionStatus", "active");
-        await set("subscriptionPlan", "monthly");
+        await set("subscriptionPlan", selectedModalPlan);
         await set("subscriptionDate", new Date().toISOString());
       }
 
@@ -718,11 +724,42 @@ export default function OnboardingPage() {
 
               {(planGenerationPhase === "subscribe_gate" || planGenerationPhase === "progress") && (
                 <div className="space-y-4">
+                  {/* Plan selector */}
+                  <div className="flex gap-1 p-1 bg-black/40 rounded-xl border border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedModalPlan("monthly")}
+                      className={`flex-1 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+                        selectedModalPlan === "monthly"
+                          ? "bg-teal-500 text-black shadow"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      Monthly
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedModalPlan("yearly")}
+                      className={`flex-1 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+                        selectedModalPlan === "yearly"
+                          ? "bg-teal-500 text-black shadow"
+                          : "text-gray-400"
+                      }`}
+                    >
+                      Yearly <span className="text-xs opacity-75">· Save 17%</span>
+                    </button>
+                  </div>
                   <div className="bg-teal-500/10 border border-teal-400/30 rounded-xl p-4">
                     <p className="text-teal-300 font-semibold">3 days free</p>
-                    <p className="text-2xl font-bold text-white mt-1">
-                      {modalMonthlyPrice ?? "£2.99"}<span className="text-sm font-normal text-gray-400">/month after</span>
-                    </p>
+                    {selectedModalPlan === "monthly" ? (
+                      <p className="text-2xl font-bold text-white mt-1">
+                        {modalMonthlyPrice ?? "$3.99"}<span className="text-sm font-normal text-gray-400">/month after</span>
+                      </p>
+                    ) : (
+                      <p className="text-2xl font-bold text-white mt-1">
+                        {modalYearlyPrice ?? "$39.99"}<span className="text-sm font-normal text-gray-400">/year after</span>
+                      </p>
+                    )}
                     <p className="text-xs text-gray-500 mt-1">Price may vary by region on App Store</p>
                   </div>
                   <button
