@@ -32,7 +32,7 @@ enum SubscriptionError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .productUnavailable:
-            return "Subscriptions are not available from Apple for this app build yet. To test: run the app with Xcode (Run) so the local StoreKit file is used, or add these exact product IDs in App Store Connect, finish pricing and localizations, then use a Sandbox Apple ID on the device when not launching from Xcode."
+            return "Subscription products could not be loaded from the App Store. Please check your internet connection and try again."
         case .userCancelled:
             return "Purchase cancelled."
         case .pending:
