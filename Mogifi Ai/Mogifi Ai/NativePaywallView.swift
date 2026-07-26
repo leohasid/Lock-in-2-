@@ -200,7 +200,7 @@ struct NativePaywallView: View {
                 .cornerRadius(16)
                 .opacity((isPurchasing || isRestoring) ? 0.6 : 1)
             }
-            .disabled(isPurchasing || isRestoring)
+            .disabled(isPurchasing || isRestoring || activeProduct == nil)
         }
     }
 
@@ -268,14 +268,22 @@ struct NativePaywallView: View {
         isPurchasing = true
         defer { isPurchasing = false }
 
-        let targetId = selectedPlan == .yearly
-            ? SubscriptionManager.yearlyProductId
-            : SubscriptionManager.monthlyProductId
+        // Use already-loaded products; avoid a second network fetch that can fail in sandbox.
+        var product = selectedPlan == .yearly ? yearlyProduct : monthlyProduct
 
-        let ids = [SubscriptionManager.monthlyProductId, SubscriptionManager.yearlyProductId]
-        guard let products = try? await Product.products(for: ids),
-              let product = products.first(where: { $0.id == targetId }) else {
-            errorMessage = "Subscription products could not be loaded. Check your connection and try again."
+        // If not loaded yet, do one fetch attempt.
+        if product == nil {
+            let ids = [SubscriptionManager.monthlyProductId, SubscriptionManager.yearlyProductId]
+            let fetched = try? await Product.products(for: ids)
+            if selectedPlan == .yearly {
+                product = fetched?.first { $0.id == SubscriptionManager.yearlyProductId }
+            } else {
+                product = fetched?.first { $0.id == SubscriptionManager.monthlyProductId }
+            }
+        }
+
+        guard let product else {
+            errorMessage = "Subscription products could not be loaded. Please check your internet connection and try again."
             return
         }
 

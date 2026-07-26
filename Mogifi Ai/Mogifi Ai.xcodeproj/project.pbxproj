@@ -13,6 +13,7 @@
 		A10000042F356735007D6CE1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000142F356735007D6CE1 /* Assets.xcassets */; };
 		A10000182F356735007D6CE1 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000192F356735007D6CE1 /* NotificationManager.swift */; };
 		A100002A2F356735007D6CE1 /* SubscriptionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100002B2F356735007D6CE1 /* SubscriptionManager.swift */; };
+		A100003A2F356735007D6CE1 /* NativePaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100003B2F356735007D6CE1 /* NativePaywallView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,6 +24,7 @@
 		A10000142F356735007D6CE1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000192F356735007D6CE1 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		A100002B2F356735007D6CE1 /* SubscriptionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionManager.swift; sourceTree = "<group>"; };
+		A100003B2F356735007D6CE1 /* NativePaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePaywallView.swift; sourceTree = "<group>"; };
 		A10000312F356735007D6CE1 /* Mogifi_Ai.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Mogifi_Ai.entitlements; sourceTree = "<group>"; };
 		A10000322F356735007D6CE1 /* Products.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Products.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -55,6 +57,7 @@
 				A10000132F356735007D6CE1 /* WebView.swift */,
 				A10000192F356735007D6CE1 /* NotificationManager.swift */,
 				A100002B2F356735007D6CE1 /* SubscriptionManager.swift */,
+				A100003B2F356735007D6CE1 /* NativePaywallView.swift */,
 				A10000312F356735007D6CE1 /* Mogifi_Ai.entitlements */,
 				A10000142F356735007D6CE1 /* Assets.xcassets */,
 			);
@@ -156,6 +159,7 @@
 				A10000032F356735007D6CE1 /* WebView.swift in Sources */,
 				A10000182F356735007D6CE1 /* NotificationManager.swift in Sources */,
 				A100002A2F356735007D6CE1 /* SubscriptionManager.swift in Sources */,
+				A100003A2F356735007D6CE1 /* NativePaywallView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

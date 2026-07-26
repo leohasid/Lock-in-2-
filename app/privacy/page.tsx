@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BackButton } from "@/components/BackButton";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | Mogifi AI",
@@ -10,6 +11,9 @@ export default function PrivacyPolicyPage() {
 
   return (
     <main className="min-h-screen bg-black text-white px-4 py-10 sm:px-6">
+      <div className="mx-auto w-full max-w-3xl">
+        <BackButton />
+      </div>
       <div className="mx-auto w-full max-w-3xl rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Privacy Policy</h1>
         <p className="mt-2 text-sm text-gray-300">Last Updated: {updatedAt}</p>

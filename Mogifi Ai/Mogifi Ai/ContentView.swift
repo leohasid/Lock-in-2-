@@ -43,11 +43,11 @@ struct ContentView: View {
                         appState = .app
                     }
                 }
-                .transition(.opacity)
+                .transition(AnyTransition.opacity)
 
             case .app:
                 appView
-                    .transition(.opacity)
+                    .transition(AnyTransition.opacity)
             }
         }
         .task {
